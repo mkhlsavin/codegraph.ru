@@ -18,7 +18,7 @@
     // API configuration for demo
     apiBaseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       ? 'http://localhost:8000'
-      : '',  // Same origin in production
+      : 'http://89.169.181.22:8000',  // Production API server
     apiTimeout: 30000  // 30 seconds timeout
   };
 
@@ -859,7 +859,7 @@ palloc() ← MemoryContextAlloc() ← ExecInitExpr()
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const leadsApiUrl = isLocalhost
           ? 'http://localhost:8001/api/v1/leads'
-          : '/api/leads';
+          : 'http://89.169.181.22:8001/api/v1/leads';
 
         try {
           const response = await fetch(leadsApiUrl, {
