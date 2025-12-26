@@ -18,8 +18,8 @@
     // API configuration for demo
     apiBaseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       ? 'http://localhost:8000'
-      : 'http://89.169.181.22:8000',  // Production API server
-    apiTimeout: 30000  // 30 seconds timeout
+      : 'https://api.codegraph.ru',  // Production API server with SSL
+    apiTimeout: 180000  // 180 seconds timeout (LLM responses can take 60+ seconds)
   };
 
   // Demo scenarios with questions and responses
