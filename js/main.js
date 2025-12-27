@@ -242,8 +242,38 @@
 
       const data = await response.json();
       DOM.demoOutput.innerHTML = '';
-      typeHTML(DOM.demoOutput, escapeHtml(data.answer), () => {
+
+      // Truncate for Hero terminal (max 300 chars)
+      const MAX_HERO_LENGTH = 300;
+      let displayText = data.answer;
+      let isTruncated = false;
+
+      if (displayText.length > MAX_HERO_LENGTH) {
+        displayText = displayText.substring(0, MAX_HERO_LENGTH).trim();
+        // Cut at last space to avoid breaking words
+        const lastSpace = displayText.lastIndexOf(' ');
+        if (lastSpace > MAX_HERO_LENGTH - 50) {
+          displayText = displayText.substring(0, lastSpace);
+        }
+        displayText += '...';
+        isTruncated = true;
+      }
+
+      typeHTML(DOM.demoOutput, escapeHtml(displayText), () => {
         if (DOM.demoCursor) DOM.demoCursor.style.display = 'none';
+
+        // Add "more" link if truncated
+        if (isTruncated) {
+          const moreLink = document.createElement('a');
+          moreLink.href = '#solution';
+          moreLink.className = 'demo-more-link';
+          moreLink.textContent = ' Подробнее →';
+          moreLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelector('#solution').scrollIntoView({ behavior: 'smooth' });
+          });
+          DOM.demoOutput.appendChild(moreLink);
+        }
       });
 
     } catch (err) {
