@@ -22,86 +22,6 @@
     apiTimeout: 180000  // 180 seconds timeout (LLM responses can take 60+ seconds)
   };
 
-  // Demo scenarios with questions and responses
-  const DEMO_SCENARIOS = {
-    security: {
-      question: 'Найди SQL injection уязвимости',
-      response: `<span class="highlight">Анализ кодовой базы...</span>
-
-<span class="success">Найдено 3 потенциальные уязвимости SQL injection:</span>
-
-1. <span class="danger">src/backend/parser/parser.c:1247</span>
-   Небезопасное формирование SQL-запроса через sprintf()
-
-2. <span class="danger">src/backend/commands/copy.c:892</span>
-   Отсутствует валидация параметра filename
-
-3. <span class="warning">src/backend/utils/adt/ruleutils.c:3456</span>
-   Потенциальный SQL injection через конкатенацию
-
-<span class="highlight">Рекомендация:</span> Использовать параметризованные запросы`
-    },
-    architecture: {
-      question: 'Как работает MVCC в PostgreSQL?',
-      response: `<span class="highlight">Анализ архитектуры MVCC...</span>
-
-<span class="success">Multi-Version Concurrency Control (MVCC):</span>
-
-<span class="highlight">Основные компоненты:</span>
-- <span class="success">HeapTupleHeaderData</span> — метаданные версий строк
-- <span class="success">TransactionId (xmin/xmax)</span> — границы видимости
-- <span class="success">Snapshot</span> — согласованное представление данных
-
-<span class="highlight">Ключевые файлы:</span>
-- src/backend/access/heap/heapam.c
-- src/backend/storage/lmgr/lmgr.c
-- src/backend/utils/time/snapmgr.c
-
-<span class="highlight">Data Flow:</span>
-INSERT → xmin = current_xid, xmax = 0
-UPDATE → old: xmax = current_xid, new: xmin = current_xid`
-    },
-    callgraph: {
-      question: 'Покажи callers функции palloc',
-      response: `<span class="highlight">Построение графа вызовов для palloc()...</span>
-
-<span class="success">Найдено 847 прямых вызовов в 234 файлах</span>
-
-<span class="highlight">Топ-10 вызывающих модулей:</span>
-1. src/backend/utils/mmgr/mcxt.c (42 вызова)
-2. src/backend/executor/execMain.c (38 вызовов)
-3. src/backend/parser/parser.c (35 вызовов)
-4. src/backend/catalog/pg_proc.c (28 вызовов)
-5. src/backend/commands/tablecmds.c (25 вызовов)
-
-<span class="highlight">Граф зависимостей:</span>
-palloc() ← MemoryContextAlloc() ← ExecInitExpr()
-         ← makeNode()
-         ← pstrdup()
-
-<span class="success">CPGQL запрос:</span> cpg.method.name("palloc").caller`
-    },
-    deadcode: {
-      question: 'Найди неиспользуемый код',
-      response: `<span class="highlight">Поиск мёртвого кода...</span>
-
-<span class="success">Найдено 12 потенциально неиспользуемых функций:</span>
-
-1. <span class="warning">src/backend/utils/misc/guc.c:old_check_function</span>
-   Последний вызов: git log -1 → 2019-03-15
-
-2. <span class="warning">src/backend/access/heap/heapam.c:heap_getnext_old</span>
-   Закомментированный код, 0 вызовов
-
-3. <span class="warning">src/backend/parser/parse_expr.c:transformIndirection_v1</span>
-   Устаревшая версия, заменена на transformIndirection_v2
-
-<span class="highlight">Экономия:</span>
-- ~450 строк кода можно удалить
-- Потенциальное ускорение компиляции на 2%`
-    }
-  };
-
   // ============================================
   // DOM Elements Cache
   // ============================================
@@ -285,34 +205,52 @@ palloc() ← MemoryContextAlloc() ← ExecInitExpr()
     }, 1500);
   }
 
-  function runDemo(query) {
-    // Find matching scenario
-    let scenario = null;
-    const queryLower = query.toLowerCase();
-
-    if (queryLower.includes('sql') || queryLower.includes('уязвим') || queryLower.includes('injection')) {
-      scenario = DEMO_SCENARIOS.security;
-    } else if (queryLower.includes('mvcc') || queryLower.includes('архитектур') || queryLower.includes('работает')) {
-      scenario = DEMO_SCENARIOS.architecture;
-    } else if (queryLower.includes('caller') || queryLower.includes('вызов') || queryLower.includes('palloc')) {
-      scenario = DEMO_SCENARIOS.callgraph;
-    } else if (queryLower.includes('dead') || queryLower.includes('неиспользуем') || queryLower.includes('мёртв')) {
-      scenario = DEMO_SCENARIOS.deadcode;
-    } else {
-      // Default to security
-      scenario = DEMO_SCENARIOS.security;
-    }
-
+  async function runDemo(query) {
     // Animate pipeline
     animatePipeline();
 
-    // Show response with typing effect
-    DOM.demoOutput.innerHTML = '';
+    // Show loading state
+    DOM.demoOutput.innerHTML = '<span class="highlight">Анализирую...</span>';
     if (DOM.demoCursor) DOM.demoCursor.style.display = 'inline-block';
 
-    typeHTML(DOM.demoOutput, scenario.response, () => {
+    try {
+      // Call the API
+      const response = await fetchWithTimeout(
+        `${CONFIG.apiBaseUrl}/api/v1/demo/chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: query,
+            language: 'ru'
+          })
+        },
+        CONFIG.apiTimeout
+      );
+
+      if (response.status === 429) {
+        DOM.demoOutput.innerHTML = '<span class="warning">Превышен лимит запросов. Подождите минуту.</span>';
+        if (DOM.demoCursor) DOM.demoCursor.style.display = 'none';
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      DOM.demoOutput.innerHTML = '';
+      typeHTML(DOM.demoOutput, escapeHtml(data.answer), () => {
+        if (DOM.demoCursor) DOM.demoCursor.style.display = 'none';
+      });
+
+    } catch (err) {
+      console.warn('API call failed:', err.message);
+      DOM.demoOutput.innerHTML = '<span class="warning">API недоступен. Попробуйте позже.</span>';
       if (DOM.demoCursor) DOM.demoCursor.style.display = 'none';
-    });
+    }
   }
 
   function typeText(element, text, callback) {
@@ -444,9 +382,8 @@ palloc() ← MemoryContextAlloc() ← ExecInitExpr()
       showApiResult(data.answer, data.processing_time_ms);
 
     } catch (err) {
-      console.warn('API call failed, using fallback:', err.message);
-      // Fallback to mock response
-      showMockResponse(query);
+      console.warn('API call failed:', err.message);
+      showApiError();
     }
   }
 
@@ -482,29 +419,9 @@ palloc() ← MemoryContextAlloc() ← ExecInitExpr()
     </div>`;
   }
 
-  // Fallback to mock response
-  function showMockResponse(query) {
-    const scenario = findMatchingScenario(query);
-    setTimeout(() => {
-      DOM.demoResult.innerHTML = '<div class="result-content"><pre>' + scenario.response + '</pre></div>';
-    }, 1000);
-  }
-
-  // Find matching mock scenario
-  function findMatchingScenario(query) {
-    const queryLower = query.toLowerCase();
-
-    if (queryLower.includes('sql') || queryLower.includes('уязвим') || queryLower.includes('injection')) {
-      return DEMO_SCENARIOS.security;
-    } else if (queryLower.includes('mvcc') || queryLower.includes('архитектур') || queryLower.includes('работает')) {
-      return DEMO_SCENARIOS.architecture;
-    } else if (queryLower.includes('caller') || queryLower.includes('вызов') || queryLower.includes('palloc')) {
-      return DEMO_SCENARIOS.callgraph;
-    } else if (queryLower.includes('dead') || queryLower.includes('неиспользуем') || queryLower.includes('мёртв')) {
-      return DEMO_SCENARIOS.deadcode;
-    } else {
-      return DEMO_SCENARIOS.security;
-    }
+  // Show error when API fails
+  function showApiError() {
+    DOM.demoResult.innerHTML = '<div class="result-error"><span class="warning">API недоступен. Попробуйте позже.</span></div>';
   }
 
   // Escape HTML to prevent XSS
@@ -574,16 +491,16 @@ palloc() ← MemoryContextAlloc() ← ExecInitExpr()
 
     DOM.scenarioTabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        const scenario = tab.getAttribute('data-scenario');
+        const query = tab.getAttribute('data-query');
 
         // Update tabs
         DOM.scenarioTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
 
-        // Run demo for scenario
-        if (DEMO_SCENARIOS[scenario]) {
-          DOM.demoInput.value = DEMO_SCENARIOS[scenario].question;
-          runDemo(DEMO_SCENARIOS[scenario].question);
+        // Run demo for query
+        if (query && DOM.demoInput) {
+          DOM.demoInput.value = query;
+          runDemo(query);
         }
       });
     });
