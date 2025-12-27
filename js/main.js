@@ -803,11 +803,11 @@
         };
 
         // Determine API URL based on environment
-        // Leads API is proxied via nginx on port 80
+        // Leads API is proxied via nginx on api.codegraph.ru
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const leadsApiUrl = isLocalhost
           ? 'http://localhost:8001/api/v1/leads'
-          : 'http://89.169.181.22/api/v1/leads';
+          : 'https://api.codegraph.ru/api/v1/leads';
 
         try {
           const response = await fetch(leadsApiUrl, {
