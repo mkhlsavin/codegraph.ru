@@ -93,6 +93,7 @@
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Автоматический код-ревью</a></li>
         <li><a href="../guides/CPG_EXPORT.html">Руководство по экспорту CPG</a></li>
+        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
@@ -117,6 +118,11 @@
         <li><a href="../guides/14-incident-response.html">Сценарий 14: Реагирование на инциденты безопасности</a></li>
         <li><a href="../guides/15-debugging.html">Сценарий 15: Помощь в отладке</a></li>
         <li><a href="../guides/16-entry-points.html">Сценарий 16: Обнаружение точки входа</a></li>
+        <li><a href="../guides/17-file-editing.html">Сценарий 17: Расширенное редактирование файлов</a></li>
+        <li><a href="../guides/18-code-optimization.html">Сценарий 18: Интерактивная оптимизация кода</a></li>
+        <li><a href="../guides/19-standards-check.html">Сценарий 19: Проверка стандартов на основе справочных документов</a></li>
+        <li><a href="../guides/20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
+        <li><a href="../guides/composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
 
@@ -172,9 +178,7 @@
       <!-- Content -->
       <article class="doc-content">
         <h1 id="dokumentatsiya-api">Документация API<a class="heading-anchor" href="#dokumentatsiya-api" title="Link to this section">&para;</a></h1>
-<blockquote class="callout">
-<p>Документация по REST API и WebSocket интерфейсу для CodeGraph.</p>
-</blockquote>
+<p>Документация REST API и WebSocket интерфейса для CodeGraph.</p>
 <h2 id="spravochnik-api">Справочник API<a class="heading-anchor" href="#spravochnik-api" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
@@ -190,33 +194,97 @@
 </tr>
 <tr>
 <td>WebSocket API</td>
-<td>Интерфейс для потоковой передачи в реальном времени</td>
+<td>Интерфейс потоковой передачи в реальном времени</td>
 </tr>
 </tbody>
 </table></div>
 <h2 id="bystryy-start">Быстрый старт<a class="heading-anchor" href="#bystryy-start" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code># Запуск сервера API {#start-the-api-server}
-python -m src.api.cli serve
+<h3 id="zapusk-api-servera">Запуск API-сервера<a class="heading-anchor" href="#zapusk-api-servera" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="w"> </span>run<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+</code></pre></div>
 
-# Проверка работоспособности API {#check-api-health}
-curl http://localhost:8000/health
+<h3 id="poluchenie-tokena-autentifikatsii">Получение токена аутентификации<a class="heading-anchor" href="#poluchenie-tokena-autentifikatsii" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/auth/token<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;password&quot;}&#39;</span>
+</code></pre></div>
 
-# Получение токена аутентификации {#get-auth-token}
-curl -X POST http://localhost:8000/auth/token \
-  -H &quot;Content-Type: application/json&quot; \
-  -d &#39;{&quot;username&quot;: &quot;user&quot;, &quot;password&quot;: &quot;password&quot;}&#39;
+<h3 id="ispolzovanie-tokena">Использование токена<a class="heading-anchor" href="#ispolzovanie-tokena" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/api/v1/scenarios<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span>
 </code></pre></div>
 
 <h2 id="autentifikatsiya">Аутентификация<a class="heading-anchor" href="#autentifikatsiya" title="Link to this section">&para;</a></h2>
-<p>Все конечные точки (кроме <code>/health</code>) требуют аутентификации с использованием JWT:</p>
-<div class="highlight"><pre><span></span><code>curl -H &quot;Authorization: Bearer &lt;token&gt;&quot; \
-  http://localhost:8000/api/v1/scenarios
+<p>Все конечные точки (кроме <code>/health</code>) требуют аутентификации:</p>
+<h3 id="jwt-token">JWT-токен<a class="heading-anchor" href="#jwt-token" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>http://localhost:8000/api/v1/scenarios
 </code></pre></div>
 
-<h2 id="soputstvuyuschaya-dokumentatsiya">Сопутствующая документация<a class="heading-anchor" href="#soputstvuyuschaya-dokumentatsiya" title="Link to this section">&para;</a></h2>
+<h3 id="api-klyuch">API-ключ<a class="heading-anchor" href="#api-klyuch" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;X-API-Key: &lt;api-key&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>http://localhost:8000/api/v1/scenarios
+</code></pre></div>
+
+<h2 id="konechnye-tochki-api">Конечные точки API<a class="heading-anchor" href="#konechnye-tochki-api" title="Link to this section">&para;</a></h2>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Категория</th>
+<th>Метод</th>
+<th>Endpoint</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>POST</td>
+<td><code>/api/v1/auth/token</code></td>
+<td>Получить JWT-токен</td>
+</tr>
+<tr>
+<td>Scenarios</td>
+<td>GET</td>
+<td><code>/api/v1/scenarios</code></td>
+<td>Список сценариев</td>
+</tr>
+<tr>
+<td>Chat</td>
+<td>POST</td>
+<td><code>/api/v1/chat</code></td>
+<td>Отправить сообщение</td>
+</tr>
+<tr>
+<td>Query</td>
+<td>POST</td>
+<td><code>/api/v1/query/execute</code></td>
+<td>Выполнить запрос</td>
+</tr>
+<tr>
+<td>Review</td>
+<td>POST</td>
+<td><code>/api/v1/review/patch</code></td>
+<td>Проверить патч</td>
+</tr>
+<tr>
+<td>Health</td>
+<td>GET</td>
+<td><code>/api/v1/health</code></td>
+<td>Проверка здоровья</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="interaktivnaya-dokumentatsiya">Интерактивная документация<a class="heading-anchor" href="#interaktivnaya-dokumentatsiya" title="Link to this section">&para;</a></h2>
+<p>После запуска сервера:</p>
+<ul>
+<li><strong>Swagger UI</strong>: http://localhost:8000/api/docs</li>
+<li><strong>ReDoc</strong>: http://localhost:8000/api/redoc</li>
+</ul>
+<h2 id="svyazannaya-dokumentatsiya">Связанная документация<a class="heading-anchor" href="#svyazannaya-dokumentatsiya" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="../getting-started/README.html">Начало работы</a></li>
-<li><a href="../guides/en/TUI_USER_GUIDE.html">Руководство пользователя TUI</a></li>
+<li><a href="../guides/en/TUI_USER_GUIDE.html">Руководство TUI</a></li>
 <li><a href="../getting-started/en/CONFIGURATION.html">Конфигурация</a></li>
 </ul>
       </article>
@@ -226,7 +294,7 @@ curl -X POST http://localhost:8000/auth/token \
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-01-08</span>
+        <span>Обновлено: 2026-02-18</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/api/README.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -238,11 +306,15 @@ curl -X POST http://localhost:8000/auth/token \
         <li><a href="#dokumentatsiya-api" class="level-1">Документация API</a></li>
 <li><a href="#spravochnik-api" class="level-2">Справочник API</a></li>
 <li><a href="#bystryy-start" class="level-2">Быстрый старт</a></li>
-<li><a href="#zapusk-servera-api" class="level-1">Запуск сервера API</a></li>
-<li><a href="#proverka-rabotosposobnosti-api" class="level-1">Проверка работоспособности API</a></li>
-<li><a href="#poluchenie-tokena-autentifikatsii" class="level-1">Получение токена аутентификации</a></li>
+<li><a href="#zapusk-api-servera" class="level-3">Запуск API-сервера</a></li>
+<li><a href="#poluchenie-tokena-autentifikatsii" class="level-3">Получение токена аутентификации</a></li>
+<li><a href="#ispolzovanie-tokena" class="level-3">Использование токена</a></li>
 <li><a href="#autentifikatsiya" class="level-2">Аутентификация</a></li>
-<li><a href="#soputstvuyuschaya-dokumentatsiya" class="level-2">Сопутствующая документация</a></li>
+<li><a href="#jwt-token" class="level-3">JWT-токен</a></li>
+<li><a href="#api-klyuch" class="level-3">API-ключ</a></li>
+<li><a href="#konechnye-tochki-api" class="level-2">Конечные точки API</a></li>
+<li><a href="#interaktivnaya-dokumentatsiya" class="level-2">Интерактивная документация</a></li>
+<li><a href="#svyazannaya-dokumentatsiya" class="level-2">Связанная документация</a></li>
       </ul>
     </aside>
   </div>

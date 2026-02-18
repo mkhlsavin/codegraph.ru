@@ -93,6 +93,7 @@
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CPG_EXPORT.html">CPG Export Guide</a></li>
+        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/MONITORING.html">Monitoring Guide</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
@@ -117,6 +118,11 @@
         <li><a href="../guides/14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="../guides/15-debugging.html">Scenario 15: Debugging Assistance</a></li>
         <li><a href="../guides/16-entry-points.html">Scenario 16: Entry Point Discovery</a></li>
+        <li><a href="../guides/17-file-editing.html">Scenario 17: Advanced File Editing</a></li>
+        <li><a href="../guides/18-code-optimization.html">Scenario 18: Interactive Code Optimization</a></li>
+        <li><a href="../guides/19-standards-check.html">Scenario 19: Reference-Guided Standards Check</a></li>
+        <li><a href="../guides/20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
+        <li><a href="../guides/composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
 
@@ -134,6 +140,7 @@
       <div class="doc-sidebar-title">Integrations</div>
       <ul class="doc-sidebar-nav">
         <li><a href="../integrations/index.html">Overview</a></li>
+        <li><a href="../integrations/EXTERNAL_CONTEXT.html">External Context Integration Guide</a></li>
         <li><a href="../integrations/GIGACHAT.html">GigaChat Integration Guide</a></li>
         <li><a href="../integrations/YANDEX_AI_STUDIO.html">Yandex AI Studio Integration Guide</a></li>
       </ul>
@@ -245,7 +252,7 @@
 <li><a href="#duckdb-pgq-query-find-all-identifiers-and-their-references">DuckDB PGQ Query: Find all identifiers and their references</a></li>
 <li><a href="#duckdb-pgq-query-type-hierarchy-inheritance">DuckDB PGQ Query: Type hierarchy (inheritance)</a></li>
 <li><a href="#combined-query-methods-with-most-incoming-calls">Combined Query: Methods with most incoming calls</a></li>
-<li><a href="#migration-from-joern">Migration from Joern</a></li>
+<li><a href="#schema-migration-history">Schema Migration History</a></li>
 <li><a href="#phase-1-critical---completed-">Phase 1 (CRITICAL) - COMPLETED ✓</a></li>
 <li><a href="#phase-2-oop-support---completed-">Phase 2 (OOP SUPPORT) - COMPLETED ✓</a></li>
 <li><a href="#phase-3-namespace-and-file-support---completed-">Phase 3 (NAMESPACE AND FILE SUPPORT) - COMPLETED ✓</a></li>
@@ -277,6 +284,54 @@
 <li><strong>Efficient Indexing</strong>: B-tree indexes on id, full_name, and frequently queried properties</li>
 <li><strong>Batch Processing</strong>: Support for large-scale CPG imports (50K+ methods)</li>
 </ol>
+<h2 id="gocpg-vs-legacy-schema">GoCPG vs Legacy Schema<a class="heading-anchor" href="#gocpg-vs-legacy-schema" title="Link to this section">&para;</a></h2>
+<p>GoCPG generates DuckDB natively and produces additional tables not present in legacy Joern exports:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>GoCPG-only table</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodes_import</code></td>
+<td>Import/include statements with resolved paths</td>
+</tr>
+<tr>
+<td><code>nodes_finding</code></td>
+<td>Static analysis findings (security, quality)</td>
+</tr>
+<tr>
+<td><code>nodes_macro</code></td>
+<td>Preprocessor macros (C/C++)</td>
+</tr>
+<tr>
+<td><code>edges_ddg</code></td>
+<td>Data Dependence Graph edges</td>
+</tr>
+<tr>
+<td><code>edges_pdg</code></td>
+<td>Program Dependence Graph edges</td>
+</tr>
+<tr>
+<td><code>edges_contains</code></td>
+<td>Containment edges (method→node)</td>
+</tr>
+<tr>
+<td><code>edges_parameter_link</code></td>
+<td>Parameter to argument links</td>
+</tr>
+<tr>
+<td><code>edges_eval_type</code></td>
+<td>Type evaluation edges</td>
+</tr>
+</tbody>
+</table></div>
+<p>GoCPG also pre-computes <code>cyclomatic_complexity</code> on <code>nodes_method</code> and <code>method_id</code> on <code>nodes_param</code>.</p>
+<blockquote class="callout">
+<p><strong>Note on <code>cpg_nodes</code></strong>: The materialized <code>cpg_nodes</code> table (UNION ALL of all node tables) is used <strong>only</strong> for the DuckPGQ Property Graph definition. It should <strong>not</strong> be queried directly in application code — use the specific <code>nodes_*</code> tables instead. GoCPG databases do not generate <code>cpg_nodes</code>; the compatibility layer creates it on demand when Property Graph queries are needed.</p>
+</blockquote>
 <h2 id="node-tables">Node Tables<a class="heading-anchor" href="#node-tables" title="Link to this section">&para;</a></h2>
 <h3 id="nodes-method">nodes_method<a class="heading-anchor" href="#nodes-method" title="Link to this section">&para;</a></h3>
 <p>Core table for function/method declarations.</p>
@@ -1578,7 +1633,7 @@ METHOD_REF (closure/lambda)
 - ✅ <strong>Polymorphic edges</strong> (AST, CFG, REF, etc.) via materialized <code>cpg_nodes</code> table
 - ✅ <strong>Typed vertices</strong> for efficient targeted queries
 - ✅ <strong>DuckDB PGQ compatible</strong> (uses tables, not views)
-- ✅ <strong>100% Joern CPG spec v1.1 compliant</strong></p>
+- ✅ <strong>100% CPG spec v1.1 compliant</strong></p>
 <h2 id="example-queries">Example Queries<a class="heading-anchor" href="#example-queries" title="Link to this section">&para;</a></h2>
 <h3 id="standard-sql-query-find-all-calls-to-a-specific-method">Standard SQL Query: Find all calls to a specific method<a class="heading-anchor" href="#standard-sql-query-find-all-calls-to-a-specific-method" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span>
@@ -1650,7 +1705,7 @@ METHOD_REF (closure/lambda)
 <span class="k">LIMIT</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span>
 </code></pre></div>
 
-<h2 id="migration-from-joern">Migration from Joern<a class="heading-anchor" href="#migration-from-joern" title="Link to this section">&para;</a></h2>
+<h2 id="schema-migration-history">Schema Migration History<a class="heading-anchor" href="#schema-migration-history" title="Link to this section">&para;</a></h2>
 <h3 id="phase-1-critical-completed">Phase 1 (CRITICAL) - COMPLETED ✓<a class="heading-anchor" href="#phase-1-critical-completed" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_method (with all properties)</li>
@@ -1703,7 +1758,7 @@ METHOD_REF (closure/lambda)
 </ul>
 <h2 id="changelog">Changelog<a class="heading-anchor" href="#changelog" title="Link to this section">&para;</a></h2>
 <h3 id="v50-2025-11-16-phase-4-complete-compliance">v5.0 (2025-11-16) - Phase 4 Complete Compliance<a class="heading-anchor" href="#v50-2025-11-16-phase-4-complete-compliance" title="Link to this section">&para;</a></h3>
-<p><strong>MAJOR UPDATE: Achieved 100% Joern schema compliance with all remaining features</strong></p>
+<p><strong>MAJOR UPDATE: Achieved 100% CPG schema compliance with all remaining features</strong></p>
 <p><strong>New Node Types:</strong>
 - <code>nodes_unknown</code> (UNKNOWN) - Catch-all for unsupported AST constructs
 - <code>nodes_jump_target</code> (JUMP_TARGET) - Labels for goto/break/continue statements
@@ -1718,14 +1773,14 @@ METHOD_REF (closure/lambda)
 - <code>edges_capture</code> (CAPTURE) - Closure variable capture
 - <code>edges_captured_by</code> (CAPTURED_BY) - Reverse closure capture</p>
 <p><strong>Impact:</strong>
-- <strong>100% Joern schema compliance achieved</strong>
+- <strong>100% CPG schema compliance achieved</strong>
 - Complete AST coverage with UNKNOWN nodes
 - Full generic/template support
 - Closure and lambda analysis enabled
 - Type alias and inheritance resolution
 - Comment preservation for documentation
 - Complete program analysis capabilities</p>
-<p><strong>Compliance:</strong> ~95% → <strong>100% Joern schema</strong></p>
+<p><strong>Compliance:</strong> ~95% → <strong>100% CPG schema</strong></p>
 <h3 id="v40-2025-11-16-phase-3-namespace-and-file-support">v4.0 (2025-11-16) - Phase 3 Namespace and File Support<a class="heading-anchor" href="#v40-2025-11-16-phase-3-namespace-and-file-support" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: Added file mapping, namespace support, and method/type references</strong></p>
 <p><strong>New Node Types:</strong>
@@ -1742,7 +1797,7 @@ METHOD_REF (closure/lambda)
 - Type reflection and generics support
 - Complete source file mapping (IDE integration ready)
 - Cross-file dependency analysis improved</p>
-<p><strong>Compliance:</strong> ~90% → ~95% Joern schema compliance</p>
+<p><strong>Compliance:</strong> ~90% → ~95% CPG schema compliance</p>
 <h3 id="v30-2025-11-16-phase-2-oop-support">v3.0 (2025-11-16) - Phase 2 OOP Support<a class="heading-anchor" href="#v30-2025-11-16-phase-2-oop-support" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: Added OOP analysis support and precise source mapping</strong></p>
 <p><strong>New Node Types:</strong>
@@ -1761,7 +1816,7 @@ METHOD_REF (closure/lambda)
 - Visibility analysis enabled (PUBLIC, PRIVATE, STATIC, etc.)
 - Variable/function name resolution improved
 - Alias analysis enabled (canonical names)</p>
-<p><strong>Compliance:</strong> ~80% → ~90% Joern schema compliance</p>
+<p><strong>Compliance:</strong> ~80% → ~90% CPG schema compliance</p>
 <h3 id="v20-2025-11-16-phase-1-critical-updates">v2.0 (2025-11-16) - Phase 1 Critical Updates<a class="heading-anchor" href="#v20-2025-11-16-phase-1-critical-updates" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: Added critical components for PDG and SSA analysis</strong></p>
 <p><strong>New Node Types:</strong>
@@ -1774,7 +1829,7 @@ METHOD_REF (closure/lambda)
 - SSA analysis now possible
 - Program slicing enabled
 - Security taint analysis improved</p>
-<p><strong>Compliance:</strong> ~70% → ~80% Joern schema compliance</p>
+<p><strong>Compliance:</strong> ~70% → ~80% CPG schema compliance</p>
 <h3 id="v10-2025-11-15-initial-release">v1.0 (2025-11-15) - Initial Release<a class="heading-anchor" href="#v10-2025-11-15-initial-release" title="Link to this section">&para;</a></h3>
 <ul>
 <li>11 node types (METHOD, CALL, IDENTIFIER, LITERAL, LOCAL, PARAM, RETURN, BLOCK, CONTROL_STRUCTURE, TYPE_DECL, METADATA)</li>
@@ -1921,7 +1976,7 @@ METHOD_REF (closure/lambda)
 - Tags enable semantic code search and intelligent analysis</p>
 <h3 id="integration-notes">Integration Notes<a class="heading-anchor" href="#integration-notes" title="Link to this section">&para;</a></h3>
 <p>Tags are enriched post-CPG generation through:
-1. <strong>Static analysis</strong>: Joern tag queries (<code>cpg.method.tag.name(...)</code>)
+1. <strong>Static analysis</strong>: CPG tag queries (<code>cpg.method.tag.name(...)</code>)
 2. <strong>LLM enrichment</strong>: AI-generated function purpose descriptions
 3. <strong>Computed metrics</strong>: Cyclomatic complexity from CFG analysis
 4. <strong>Manual annotation</strong>: Security audit findings</p>
@@ -1944,7 +1999,7 @@ METHOD_REF (closure/lambda)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-01-08</span>
+        <span>Last updated: 2026-02-18</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SCHEMA.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1957,6 +2012,7 @@ METHOD_REF (closure/lambda)
 <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#core-design-principles" class="level-2">Core Design Principles</a></li>
+<li><a href="#gocpg-vs-legacy-schema" class="level-2">GoCPG vs Legacy Schema</a></li>
 <li><a href="#node-tables" class="level-2">Node Tables</a></li>
 <li><a href="#nodes-method" class="level-3">nodes_method</a></li>
 <li><a href="#nodes-call" class="level-3">nodes_call</a></li>
@@ -2020,7 +2076,7 @@ METHOD_REF (closure/lambda)
 <li><a href="#duckdb-pgq-query-find-all-identifiers-and-their-references" class="level-3">DuckDB PGQ Query: Find all identifiers and their references</a></li>
 <li><a href="#duckdb-pgq-query-type-hierarchy-inheritance" class="level-3">DuckDB PGQ Query: Type hierarchy (inheritance)</a></li>
 <li><a href="#combined-query-methods-with-most-incoming-calls" class="level-3">Combined Query: Methods with most incoming calls</a></li>
-<li><a href="#migration-from-joern" class="level-2">Migration from Joern</a></li>
+<li><a href="#schema-migration-history" class="level-2">Schema Migration History</a></li>
 <li><a href="#phase-1-critical-completed" class="level-3">Phase 1 (CRITICAL) - COMPLETED ✓</a></li>
 <li><a href="#phase-2-oop-support-completed" class="level-3">Phase 2 (OOP SUPPORT) - COMPLETED ✓</a></li>
 <li><a href="#phase-3-namespace-and-file-support-completed" class="level-3">Phase 3 (NAMESPACE AND FILE SUPPORT) - COMPLETED ✓</a></li>

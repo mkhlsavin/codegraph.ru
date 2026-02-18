@@ -93,6 +93,7 @@
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="CODE_REVIEW.html">Автоматический код-ревью</a></li>
         <li><a href="CPG_EXPORT.html" class="active">Руководство по экспорту CPG</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
         <li><a href="PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
@@ -117,6 +118,11 @@
         <li><a href="14-incident-response.html">Сценарий 14: Реагирование на инциденты безопасности</a></li>
         <li><a href="15-debugging.html">Сценарий 15: Помощь в отладке</a></li>
         <li><a href="16-entry-points.html">Сценарий 16: Обнаружение точки входа</a></li>
+        <li><a href="17-file-editing.html">Сценарий 17: Расширенное редактирование файлов</a></li>
+        <li><a href="18-code-optimization.html">Сценарий 18: Интерактивная оптимизация кода</a></li>
+        <li><a href="19-standards-check.html">Сценарий 19: Проверка стандартов на основе справочных документов</a></li>
+        <li><a href="20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
+        <li><a href="composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
 
@@ -171,8 +177,13 @@
         <h1 id="rukovodstvo-po-eksportu-cpg">Руководство по экспорту CPG<a class="heading-anchor" href="#rukovodstvo-po-eksportu-cpg" title="Link to this section">&para;</a></h1>
 <p>В этом руководстве описывается создание и экспорт графов свойств кода (Code Property Graphs, CPG) в DuckDB для анализа с помощью CodeGraph.</p>
 <blockquote class="callout">
-<p><strong>Примечание:</strong> Для обычной работы с CodeGraph использование Joern <strong>не требуется</strong>. Данные CPG, как правило, уже предварительно экспортированы в DuckDB.</p>
-<p>Это руководство предназначено для пользователей, которым необходимо создать новые экспортные файлы CPG из исходного кода.</p>
+<p><strong>Устарело:</strong> Модуль <code>src/cpg_export/</code> является устаревшим. Для новых проектов используйте <strong>GoCPG</strong>, который генерирует
+DuckDB напрямую с расширенной схемой (цикломатическая сложность, DDG/PDG рёбра, узлы импорта и т.д.):
+<code>bash
+./gocpg parse --input=/path/to/source --output=cpg.duckdb --lang=c</code>
+Устаревший пайплайн экспорта (Joern сервер → <code>cpg_export</code> → DuckDB) выдаёт <code>DeprecationWarning</code> при запуске.
+Существующие базы данных, созданные устаревшим пайплайном, продолжают работать — слой совместимости
+(<code>src/services/cpg/compatibility.py</code>) автоматически устраняет различия схем.</p>
 </blockquote>
 <h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
 <ul>
@@ -204,6 +215,9 @@
 <li><a href="#inkrementalnye-obnovleniya">Инкрементальные обновления</a></li>
 <li><a href="#proizvoditelnost">Производительность</a></li>
 <li><a href="#vektornye-vlozheniya">Векторные вложения</a></li>
+<li><a href="#obogashchenie-cpg">Обогащение CPG</a></li>
+<li><a href="#funktsii-obogashcheniya">Функции обогащения</a></li>
+<li><a href="#ispolzovanie-cpgenricher">Использование CPGEnricher</a></li>
 <li><a href="#spravochnik-po-sheme">Справочник по схеме</a></li>
 <li><a href="#osnovnye-tablitsy-uzlov">Основные таблицы узлов</a></li>
 <li><a href="#osnovnye-tablitsy-ryober">Основные таблицы рёбер</a></li>
@@ -237,7 +251,7 @@
 <h2 id="predvaritelnye-trebovaniya">Предварительные требования<a class="heading-anchor" href="#predvaritelnye-trebovaniya" title="Link to this section">&para;</a></h2>
 <h3 id="dlya-sozdaniya-novoy-cpg-optsionalno">Для создания новой CPG (опционально)<a class="heading-anchor" href="#dlya-sozdaniya-novoy-cpg-optsionalno" title="Link to this section">&para;</a></h3>
 <ul>
-<li>Установленный <strong>Joern</strong> (только если создание новой CPG из исходного кода)</li>
+<li><strong>GoCPG</strong> бинарный файл (рекомендуется) или устаревшие CPG инструменты</li>
 <li><strong>DuckDB</strong> 0.9.0 и выше</li>
 <li><strong>Python</strong> 3.10 и выше</li>
 </ul>
@@ -272,10 +286,10 @@
 </code></pre></div>
 
 <h3 id="python-api">Python API<a class="heading-anchor" href="#python-api" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">JoernToDuckDBExporter</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGToDuckDBExporter</span>
 
 <span class="c1"># Создание экспортера</span>
-<span class="n">exporter</span> <span class="o">=</span> <span class="n">JoernToDuckDBExporter</span><span class="p">(</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">CPGToDuckDBExporter</span><span class="p">(</span>
     <span class="n">server_endpoint</span><span class="o">=</span><span class="s2">&quot;localhost:8080&quot;</span><span class="p">,</span>
     <span class="n">workspace</span><span class="o">=</span><span class="s2">&quot;myproject.cpg&quot;</span><span class="p">,</span>
     <span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">,</span>
@@ -305,12 +319,12 @@
 <tr>
 <td>&ndash;endpoint</td>
 <td>localhost:8080</td>
-<td>Конечная точка сервера Joern</td>
+<td>Конечная точка сервера CPG (устаревшее)</td>
 </tr>
 <tr>
 <td>&ndash;workspace</td>
 <td>pg17_full.cpg</td>
-<td>Имя рабочей области/CPG в Joern</td>
+<td>Имя рабочей области/CPG (устаревшее)</td>
 </tr>
 <tr>
 <td>&ndash;db</td>
@@ -352,6 +366,21 @@
 <td>False</td>
 <td>Запустить только проверку</td>
 </tr>
+<tr>
+<td>&ndash;defer-indexes</td>
+<td>False</td>
+<td>Создать индексы после загрузки данных (быстрее для bulk import)</td>
+</tr>
+<tr>
+<td>&ndash;temp-disk</td>
+<td>Нет</td>
+<td>Использовать быстрый диск (D:, E:) для временного экспорта</td>
+</tr>
+<tr>
+<td>&ndash;skip-enrichment</td>
+<td>False</td>
+<td>Пропустить фазу обогащения (быстрее экспорт, меньше метаданных)</td>
+</tr>
 </tbody>
 </table></div>
 <h3 id="rasprostranyonnye-komandy">Распространённые команды<a class="heading-anchor" href="#rasprostranyonnye-komandy" title="Link to this section">&para;</a></h3>
@@ -366,12 +395,27 @@
 
 <span class="c1"># Обработка большого кода с меньшими пакетами</span>
 <span class="n">python</span><span class="w"> </span><span class="o">-</span><span class="n">m</span><span class="w"> </span><span class="n">src</span><span class="o">.</span><span class="n">cpg_export</span><span class="o">.</span><span class="n">exporter</span><span class="w"> </span><span class="o">--</span><span class="n">db</span><span class="w"> </span><span class="n">cpg</span><span class="o">.</span><span class="n">duckdb</span><span class="w"> </span><span class="o">--</span><span class="n">batch</span><span class="o">-</span><span class="n">size</span><span class="w"> </span><span class="mi">5000</span>
+
+<span class="c1"># Быстрый экспорт с отложенным созданием индексов (рекомендуется для больших экспортов)</span>
+<span class="n">python</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">cpg_export</span><span class="o">/</span><span class="n">exporter</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">--</span><span class="n">db</span><span class="w"> </span><span class="n">cpg</span><span class="o">.</span><span class="n">duckdb</span><span class="w"> </span><span class="o">--</span><span class="n">defer</span><span class="o">-</span><span class="n">indexes</span>
+
+<span class="c1"># Экспорт на быстрый SSD-диск, затем копирование на целевой путь</span>
+<span class="n">python</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">cpg_export</span><span class="o">/</span><span class="n">exporter</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">--</span><span class="n">db</span><span class="w"> </span><span class="n">cpg</span><span class="o">.</span><span class="n">duckdb</span><span class="w"> </span><span class="o">--</span><span class="n">temp</span><span class="o">-</span><span class="n">disk</span><span class="w"> </span><span class="n">D</span><span class="p">:</span><span class="w"> </span><span class="o">--</span><span class="n">defer</span><span class="o">-</span><span class="n">indexes</span>
+
+<span class="c1"># Полная оптимизация для больших кодовых баз</span>
+<span class="n">python</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">cpg_export</span><span class="o">/</span><span class="n">exporter</span><span class="o">.</span><span class="n">py</span><span class="w"> </span>\
+<span class="w">    </span><span class="o">--</span><span class="n">workspace</span><span class="w"> </span><span class="n">pg17</span><span class="o">.</span><span class="n">cpg</span><span class="w"> </span>\
+<span class="w">    </span><span class="o">--</span><span class="n">db</span><span class="w"> </span><span class="n">cpg</span><span class="o">.</span><span class="n">duckdb</span><span class="w"> </span>\
+<span class="w">    </span><span class="o">--</span><span class="n">temp</span><span class="o">-</span><span class="n">disk</span><span class="w"> </span><span class="n">D</span><span class="p">:</span><span class="w"> </span>\
+<span class="w">    </span><span class="o">--</span><span class="n">defer</span><span class="o">-</span><span class="n">indexes</span><span class="w"> </span>\
+<span class="w">    </span><span class="o">--</span><span class="n">batch</span><span class="o">-</span><span class="n">size</span><span class="w"> </span><span class="mi">20000</span>
 </code></pre></div>
 
 <h2 id="protsess-eksporta">Процесс экспорта<a class="heading-anchor" href="#protsess-eksporta" title="Link to this section">&para;</a></h2>
-<p>Экспортёр выполняет 5-ступенчатый конвейер:</p>
+<p>Экспортёр выполняет 7-ступенчатый конвейер:</p>
 <h3 id="shag-1-initsializatsiya-shemy">Шаг 1: Инициализация схемы<a class="heading-anchor" href="#shag-1-initsializatsiya-shemy" title="Link to this section">&para;</a></h3>
 <p>Создаёт таблицы для всех типов узлов и рёбер CPG. Таблицы создаются с использованием <code>IF NOT EXISTS</code>, чтобы сохранить существующие данные, если только не указан флаг <code>--force</code>.</p>
+<p>Если указан флаг <code>--defer-indexes</code>, индексы на этом этапе не создаются (быстрее для массовой загрузки).</p>
 <h3 id="shag-2-eksport-uzlov">Шаг 2: Экспорт узлов<a class="heading-anchor" href="#shag-2-eksport-uzlov" title="Link to this section">&para;</a></h3>
 <p>Экспортирует все узлы CPG по типам:</p>
 <div class="table-wrapper"><table>
@@ -436,7 +480,9 @@
 </tr>
 </tbody>
 </table></div>
-<h3 id="shag-4-sozdanie-grafa-svoystv">Шаг 4: Создание графа свойств<a class="heading-anchor" href="#shag-4-sozdanie-grafa-svoystv" title="Link to this section">&para;</a></h3>
+<h3 id="shag-4-sozdanie-indeksov-esli-otlozheno">Шаг 4: Создание индексов (если отложено)<a class="heading-anchor" href="#shag-4-sozdanie-indeksov-esli-otlozheno" title="Link to this section">&para;</a></h3>
+<p>Если использовался флаг <code>--defer-indexes</code>, все индексы создаются после завершения загрузки данных. Это значительно быстрее, чем создание индексов во время вставки данных.</p>
+<h3 id="shag-5-sozdanie-grafa-svoystv">Шаг 5: Создание графа свойств<a class="heading-anchor" href="#shag-5-sozdanie-grafa-svoystv" title="Link to this section">&para;</a></h3>
 <p>Создаётся граф свойств DuckDB с именем <code>cpg</code> для выполнения запросов с обходом графа:</p>
 <div class="highlight"><pre><span></span><code><span class="o">--</span><span class="w"> </span><span class="err">Запрос</span><span class="w"> </span><span class="err">с</span><span class="w"> </span><span class="err">использованием</span><span class="w"> </span><span class="err">графа</span><span class="w"> </span><span class="err">свойств</span>
 <span class="n">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
@@ -446,8 +492,20 @@
 <span class="p">)</span>
 </code></pre></div>
 
-<h3 id="shag-5-proverka">Шаг 5: Проверка<a class="heading-anchor" href="#shag-5-proverka" title="Link to this section">&para;</a></h3>
-<p>Сравниваются количества узлов в Joern и DuckDB для подтверждения полноты экспорта:</p>
+<h3 id="shag-6-obogaschenie">Шаг 6: Обогащение<a class="heading-anchor" href="#shag-6-obogaschenie" title="Link to this section">&para;</a></h3>
+<p>Дополняет CPG производными данными и перекрёстными ссылками:</p>
+<ul>
+<li><strong>Связи вызовов</strong>: Связывает узлы вызовов с содержащими их методами</li>
+<li><strong>Связи комментариев</strong>: Связывает комментарии с содержащими их методами</li>
+<li><strong>Докстринги</strong>: Создаёт таблицы для докстрингов методов/типов/членов</li>
+<li><strong>Граф вызовов</strong>: Заполняет <code>edges_call</code> связями метод-метод</li>
+<li><strong>ID вызываемого метода</strong>: Добавляет <code>callee_method_id</code> к узлам вызова</li>
+<li><strong>Классификация комментариев</strong>: Классифицирует комментарии как TODO/FIXME/DOCSTRING/INLINE</li>
+<li><strong>Метрики методов</strong>: Вычисляет и добавляет <code>loc</code> и <code>parameter_count</code></li>
+</ul>
+<p>Пропустите этот шаг с <code>--skip-enrichment</code> для более быстрого экспорта, когда обогащённые данные не нужны.</p>
+<h3 id="shag-7-proverka">Шаг 7: Проверка<a class="heading-anchor" href="#shag-7-proverka" title="Link to this section">&para;</a></h3>
+<p>Сравниваются количества узлов в источнике CPG и DuckDB для подтверждения полноты экспорта:</p>
 <div class="highlight"><pre><span></span><code><span class="o">======================================================================</span>
 <span class="n">ОТЧЁТ</span><span class="w"> </span><span class="n">О</span><span class="w"> </span><span class="n">ПРОВЕРКЕ</span><span class="w"> </span><span class="n">ЭКСПОРТА</span><span class="w"> </span><span class="n">CPG</span>
 <span class="o">======================================================================</span>
@@ -517,24 +575,24 @@
 
 <div class="highlight"><pre><span></span><code><span class="c1"># Python API</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_export</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.execution.joern_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">JoernClient</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.execution.cpg_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGClient</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
 
-<span class="n">joern</span> <span class="o">=</span> <span class="n">JoernClient</span><span class="p">(</span><span class="s2">&quot;localhost:8080&quot;</span><span class="p">,</span> <span class="s2">&quot;myproject.cpg&quot;</span><span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">CPGClient</span><span class="p">(</span><span class="s2">&quot;localhost:8080&quot;</span><span class="p">,</span> <span class="s2">&quot;myproject.cpg&quot;</span><span class="p">)</span>
 <span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span>
 
-<span class="n">results</span> <span class="o">=</span> <span class="n">validate_export</span><span class="p">(</span><span class="n">joern</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">print_report</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">validate_export</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">print_report</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 
 <h3 id="rabota-s-otsutstvuyuschimi-dannymi">Работа с отсутствующими данными<a class="heading-anchor" href="#rabota-s-otsutstvuyuschimi-dannymi" title="Link to this section">&para;</a></h3>
 <p>Если при проверке обнаруживаются отсутствующие записи:</p>
 <ol>
-<li><strong>Проверьте логи Joern</strong> на наличие ошибок парсинга</li>
+<li><strong>Проверьте логи парсинга</strong> на наличие ошибок</li>
 <li><strong>Повторно экспортируйте определённые типы</strong>, если произошёл частичный сбой</li>
 <li><strong>Принудительно пересоздайте</strong> базу, если подозревается повреждение данных</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="c1"># Повторный экспорт только узлов</span>
-<span class="n">exporter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JoernToDuckDBExporter</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">exporter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CPGToDuckDBExporter</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 <span class="n">exporter</span><span class="o">.</span><span class="n">connect_db</span><span class="p">()</span>
 <span class="n">node_stats</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">exporter</span><span class="o">.</span><span class="n">export_nodes_only</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="n">None</span><span class="p">)</span>
 
@@ -550,7 +608,7 @@
 <span class="n">exporter</span> <span class="o">=</span> <span class="n">IncrementalCPGExporter</span><span class="p">(</span>
     <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;/path/to/repo&quot;</span><span class="p">,</span>
     <span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">,</span>
-    <span class="n">joern_path</span><span class="o">=</span><span class="s2">&quot;/path/to/joern&quot;</span>
+    <span class="n">gocpg_path</span><span class="o">=</span><span class="s2">&quot;/path/to/gocpg&quot;</span>
 <span class="p">)</span>
 
 <span class="c1"># Обновление на основе изменений в git</span>
@@ -610,6 +668,94 @@
 </code></pre></div>
 
 <hr />
+<h2 id="obogaschenie-cpg">Обогащение CPG<a class="heading-anchor" href="#obogaschenie-cpg" title="Link to this section">&para;</a></h2>
+<p>Модуль обогащения дополняет CPG производными данными, выходящими за рамки базовой генерации CPG. Сюда входят построение графа вызовов, классификация комментариев и метрики методов.</p>
+<h3 id="funktsii-obogascheniya">Функции обогащения<a class="heading-anchor" href="#funktsii-obogascheniya" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Функция</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enrich_call_containment()</code></td>
+<td>Связывает узлы вызовов с содержащими их методами через <code>method_id</code></td>
+</tr>
+<tr>
+<td><code>enrich_comment_containment()</code></td>
+<td>Связывает комментарии с содержащими их методами</td>
+</tr>
+<tr>
+<td><code>create_docstring_tables()</code></td>
+<td>Создаёт отдельные таблицы для докстрингов методов/типов/членов</td>
+</tr>
+<tr>
+<td><code>build_call_graph()</code></td>
+<td>Заполняет <code>edges_call</code> связями метод-метод</td>
+</tr>
+<tr>
+<td><code>add_callee_method_id()</code></td>
+<td>Добавляет <code>callee_method_id</code> к узлам вызова для прямого поиска метода</td>
+</tr>
+<tr>
+<td><code>classify_comments()</code></td>
+<td>Классифицирует комментарии как TODO, FIXME, DOCSTRING или INLINE</td>
+</tr>
+<tr>
+<td><code>add_method_metrics()</code></td>
+<td>Вычисляет и добавляет <code>loc</code> и <code>parameter_count</code> к методам</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="ispolzovanie-cpgenricher">Использование CPGEnricher<a class="heading-anchor" href="#ispolzovanie-cpgenricher" title="Link to this section">&para;</a></h3>
+<p>Обогащение выполняется автоматически во время экспорта (Шаг 6). Для запуска отдельно:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGEnricher</span>
+
+<span class="c1"># Подключение к существующей базе CPG</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;cpg.duckdb&#39;</span><span class="p">)</span>
+
+<span class="c1"># Создание enricher и запуск всех функций обогащения</span>
+<span class="n">enricher</span> <span class="o">=</span> <span class="n">CPGEnricher</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">enricher</span><span class="o">.</span><span class="n">enrich_all</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Обогащение завершено: </span><span class="si">{</span><span class="n">stats</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Использование через CLI:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Полный экспорт с обогащением (по умолчанию)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<span class="w"> </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span>--workspace<span class="w"> </span>project.cpg
+
+<span class="c1"># Пропустить обогащение для быстрого экспорта</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<span class="w"> </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span>--workspace<span class="w"> </span>project.cpg<span class="w"> </span>--skip-enrichment
+</code></pre></div>
+
+<p><strong>Запросы к обогащённым данным:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Найти методы с TODO-комментариями</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">code</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">todo_comment</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_comment</span><span class="w"> </span><span class="k">c</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">method_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">comment_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;TODO&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Найти методы по количеству строк кода</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">loc</span><span class="p">,</span><span class="w"> </span><span class="n">parameter_count</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">loc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">100</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">loc</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+
+<span class="c1">-- Получить граф вызовов с прямыми ссылками на методы</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">caller</span><span class="p">.</span><span class="n">full_name</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">caller</span><span class="p">,</span>
+<span class="w">    </span><span class="n">callee</span><span class="p">.</span><span class="n">full_name</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">callee</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_call</span><span class="w"> </span><span class="n">nc</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">caller</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">nc</span><span class="p">.</span><span class="n">method_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caller</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">callee</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">nc</span><span class="p">.</span><span class="n">callee_method_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">callee</span><span class="p">.</span><span class="n">id</span>
+<span class="k">LIMIT</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+</code></pre></div>
+
+<hr />
 <h2 id="spravochnik-po-sheme">Справочник по схеме<a class="heading-anchor" href="#spravochnik-po-sheme" title="Link to this section">&para;</a></h2>
 <h3 id="osnovnye-tablitsy-uzlov">Основные таблицы узлов<a class="heading-anchor" href="#osnovnye-tablitsy-uzlov" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
@@ -623,12 +769,12 @@
 <tbody>
 <tr>
 <td>nodes_method</td>
-<td>id, name, full_name, filename, line_number</td>
+<td>id, name, full_name, filename, line_number, loc, parameter_count</td>
 <td>Функции/методы</td>
 </tr>
 <tr>
 <td>nodes_call</td>
-<td>id, name, method_full_name, filename, line_number</td>
+<td>id, name, method_full_name, filename, line_number, callee_method_id</td>
 <td>Места вызовов</td>
 </tr>
 <tr>
@@ -668,8 +814,13 @@
 </tr>
 <tr>
 <td>nodes_type_decl</td>
-<td>id, name, full_name, filename</td>
+<td>id, name, full_name, filename, line_number, column_number</td>
 <td>Объявления типов</td>
+</tr>
+<tr>
+<td>nodes_comment</td>
+<td>id, code, filename, line_number, comment_type</td>
+<td>Комментарии (TODO/FIXME/DOCSTRING/INLINE)</td>
 </tr>
 <tr>
 <td>nodes_file</td>
@@ -792,10 +943,10 @@
 
 <h2 id="ustranenie-nepoladok">Устранение неполадок<a class="heading-anchor" href="#ustranenie-nepoladok" title="Link to this section">&para;</a></h2>
 <h3 id="oshibki-podklyucheniya">Ошибки подключения<a class="heading-anchor" href="#oshibki-podklyucheniya" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="err">Ошибка</span><span class="o">:</span><span class="w"> </span><span class="err">Не</span><span class="w"> </span><span class="err">удалось</span><span class="w"> </span><span class="err">подключиться</span><span class="w"> </span><span class="err">к</span><span class="w"> </span><span class="err">серверу</span><span class="w"> </span><span class="n">Joern</span>
+<div class="highlight"><pre><span></span><code><span class="err">Ошибка</span><span class="o">:</span><span class="w"> </span><span class="err">Не</span><span class="w"> </span><span class="err">удалось</span><span class="w"> </span><span class="err">подключиться</span><span class="w"> </span><span class="err">к</span><span class="w"> </span><span class="err">серверу</span><span class="w"> </span><span class="n">CPG</span>
 </code></pre></div>
 
-<p><strong>Решение:</strong> Убедитесь, что Joern запущен и доступен:</p>
+<p><strong>Решение:</strong> Убедитесь, что сервер CPG запущен и доступен (или используйте GoCPG):</p>
 <div class="highlight"><pre><span></span><code># Проверка подключения
 curl http://localhost:8080/result
 </code></pre></div>
@@ -818,7 +969,7 @@ curl http://localhost:8080/result
 <h3 id="otsutstvuyuschie-uzly">Отсутствующие узлы<a class="heading-anchor" href="#otsutstvuyuschie-uzly" title="Link to this section">&para;</a></h3>
 <p>Если при проверке обнаруживаются отсутствующие узлы:</p>
 <ol>
-<li>Проверьте логи парсинга Joern на наличие ошибок</li>
+<li>Проверьте логи парсинга на наличие ошибок</li>
 <li>Убедитесь, что рабочая область открыта корректно</li>
 <li>Попробуйте принудительное пересоздание: <code>--force</code></li>
 </ol>
@@ -855,19 +1006,30 @@ curl http://localhost:8080/result
 </tr>
 </tbody>
 </table></div>
-<p><strong>Оптимизации:</strong>
-- Использование SSD-накопителя для базы данных
-- Достаточный объём ОЗУ (8 ГБ и более для крупных кодовых баз)
-- Отдельный запуск проверки, если требуется
-- Использование инкрементальной экспорта для обновлений</p>
+<p><strong>Оптимизации:</strong></p>
+<ul>
+<li>
+<p><strong>Используйте <code>--defer-indexes</code></strong> — Создаёт индексы после загрузки всех данных. Это может сократить время экспорта на 30-50% для больших кодовых баз, так как индексы не нужно обновлять при массовых вставках.</p>
+</li>
+<li>
+<p><strong>Используйте <code>--temp-disk</code></strong> — Если целевой диск (C:) медленный (HDD), сначала экспортируйте на быстрый диск (D:, E: с SSD), затем автоматически скопируйте на целевое место. Экспортёр создаёт резервную копию существующей базы данных с меткой времени перед заменой.</p>
+</li>
+</ul>
+<p><code>python src/cpg_export/exporter.py --db cpg.duckdb --temp-disk D: --defer-indexes</code></p>
+<ul>
+<li><strong>SSD-накопитель</strong> — используйте SSD для файлов базы данных</li>
+<li><strong>Достаточный объём ОЗУ</strong> — 8 ГБ и более для крупных кодовых баз</li>
+<li><strong>Увеличенный размер пакета</strong> — используйте <code>--batch-size 20000</code>, если достаточно ОЗУ</li>
+<li><strong>Отдельный запуск проверки</strong>, если требуется</li>
+<li><strong>Использование инкрементального экспорта</strong> для обновлений</li>
+</ul>
 <hr />
 <h2 id="smotrite-takzhe">Смотрите также<a class="heading-anchor" href="#smotrite-takzhe" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="../reference/SQL_QUERY_COOKBOOK.html">Кулинарная книга SQL-запросов</a> — примеры запросов</li>
 <li><a href="../reference/SCHEMA.html">Справочник схемы</a> — справочная информация о схеме базы данных</li>
-<li><a href="https://docs.joern.io/">Документация Joern</a></li>
 <li><a href="https://duckdb.org/docs/">Документация DuckDB</a></li>
-<li><a href="https://cpg.joern.io/">Спецификация CPG v1.1</a></li>
+<li><a href="../../gocpg/docs/">Документация GoCPG</a></li>
 </ul>
       </article>
 
@@ -887,7 +1049,7 @@ curl http://localhost:8080/result
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-01-08</span>
+        <span>Обновлено: 2026-02-18</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/CPG_EXPORT.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -920,12 +1082,17 @@ curl http://localhost:8080/result
 <li><a href="#prinuditelnyy-polnyy-eksport-udalyaet-suschestvuyuschie-dannye" class="level-1">Принудительный полный экспорт (удаляет существующие данные)</a></li>
 <li><a href="#testirovanie-s-ogranichennym-obyomom-dannyh" class="level-1">Тестирование с ограниченным объёмом данных</a></li>
 <li><a href="#obrabotka-bolshogo-koda-s-menshimi-paketami" class="level-1">Обработка большого кода с меньшими пакетами</a></li>
+<li><a href="#bystryy-eksport-s-otlozhennym-sozdaniem-indeksov-rekomenduetsya-dlya-bolshih-eksportov" class="level-1">Быстрый экспорт с отложенным созданием индексов (рекомендуется для больших экспортов)</a></li>
+<li><a href="#eksport-na-bystryy-ssd-disk-zatem-kopirovanie-na-tselevoy-put" class="level-1">Экспорт на быстрый SSD-диск, затем копирование на целевой путь</a></li>
+<li><a href="#polnaya-optimizatsiya-dlya-bolshih-kodovyh-baz" class="level-1">Полная оптимизация для больших кодовых баз</a></li>
 <li><a href="#protsess-eksporta" class="level-2">Процесс экспорта</a></li>
 <li><a href="#shag-1-initsializatsiya-shemy" class="level-3">Шаг 1: Инициализация схемы</a></li>
 <li><a href="#shag-2-eksport-uzlov" class="level-3">Шаг 2: Экспорт узлов</a></li>
 <li><a href="#shag-3-eksport-ryober" class="level-3">Шаг 3: Экспорт рёбер</a></li>
-<li><a href="#shag-4-sozdanie-grafa-svoystv" class="level-3">Шаг 4: Создание графа свойств</a></li>
-<li><a href="#shag-5-proverka" class="level-3">Шаг 5: Проверка</a></li>
+<li><a href="#shag-4-sozdanie-indeksov-esli-otlozheno" class="level-3">Шаг 4: Создание индексов (если отложено)</a></li>
+<li><a href="#shag-5-sozdanie-grafa-svoystv" class="level-3">Шаг 5: Создание графа свойств</a></li>
+<li><a href="#shag-6-obogaschenie" class="level-3">Шаг 6: Обогащение</a></li>
+<li><a href="#shag-7-proverka" class="level-3">Шаг 7: Проверка</a></li>
 <li><a href="#sohranenie-sostoyaniya-i-vozobnovlenie" class="level-2">Сохранение состояния и возобновление</a></li>
 <li><a href="#prosto-zapustite-snova-vozobnovlenie-proizoydyot-avtomaticheski" class="level-1">Просто запустите снова — возобновление произойдёт автоматически</a></li>
 <li><a href="#proverka-progressa" class="level-3">Проверка прогресса</a></li>
@@ -945,6 +1112,13 @@ curl http://localhost:8080/result
 <li><a href="#vektornye-vlozheniya-vector-embeddings" class="level-2">Векторные вложения (Vector Embeddings)</a></li>
 <li><a href="#dobavit-vlozheniya-v-tablitsu-metodov" class="level-1">Добавить вложения в таблицу методов</a></li>
 <li><a href="#semanticheskiy-poisk" class="level-1">Семантический поиск</a></li>
+<li><a href="#obogaschenie-cpg" class="level-2">Обогащение CPG</a></li>
+<li><a href="#funktsii-obogascheniya" class="level-3">Функции обогащения</a></li>
+<li><a href="#ispolzovanie-cpgenricher" class="level-3">Использование CPGEnricher</a></li>
+<li><a href="#podklyuchenie-k-suschestvuyuschey-baze-cpg" class="level-1">Подключение к существующей базе CPG</a></li>
+<li><a href="#sozdanie-enricher-i-zapusk-vseh-funktsiy-obogascheniya" class="level-1">Создание enricher и запуск всех функций обогащения</a></li>
+<li><a href="#polnyy-eksport-s-obogascheniem-po-umolchaniyu" class="level-1">Полный экспорт с обогащением (по умолчанию)</a></li>
+<li><a href="#propustit-obogaschenie-dlya-bystrogo-eksporta" class="level-1">Пропустить обогащение для быстрого экспорта</a></li>
 <li><a href="#spravochnik-po-sheme" class="level-2">Справочник по схеме</a></li>
 <li><a href="#osnovnye-tablitsy-uzlov" class="level-3">Основные таблицы узлов</a></li>
 <li><a href="#osnovnye-tablitsy-ryober" class="level-3">Основные таблицы рёбер</a></li>

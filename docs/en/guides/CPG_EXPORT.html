@@ -93,6 +93,7 @@
         <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CPG_EXPORT.html" class="active">CPG Export Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="PROJECT_IMPORT.html">Importing a New Codebase</a></li>
@@ -117,6 +118,11 @@
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Assistance</a></li>
         <li><a href="16-entry-points.html">Scenario 16: Entry Point Discovery</a></li>
+        <li><a href="17-file-editing.html">Scenario 17: Advanced File Editing</a></li>
+        <li><a href="18-code-optimization.html">Scenario 18: Interactive Code Optimization</a></li>
+        <li><a href="19-standards-check.html">Scenario 19: Reference-Guided Standards Check</a></li>
+        <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
+        <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
 
@@ -171,8 +177,13 @@
         <h1 id="cpg-export-guide">CPG Export Guide<a class="heading-anchor" href="#cpg-export-guide" title="Link to this section">&para;</a></h1>
 <p>This guide covers creating and exporting Code Property Graphs (CPG) to DuckDB for analysis with CodeGraph.</p>
 <blockquote class="callout">
-<p><strong>Note:</strong> For regular CodeGraph operation, Joern is <strong>not required</strong>. CPG data is typically pre-exported to DuckDB.
-This guide is for users who need to create new CPG exports from source code.</p>
+<p><strong>Deprecated:</strong> The <code>src/cpg_export/</code> module is deprecated. For new projects, use <strong>GoCPG</strong> which generates
+DuckDB natively with richer schema (cyclomatic complexity, DDG/PDG edges, import nodes, etc.):
+<code>bash
+./gocpg parse --input=/path/to/source --output=cpg.duckdb --lang=c</code>
+The legacy export pipeline (Joern server → <code>cpg_export</code> → DuckDB) emits a <code>DeprecationWarning</code> at runtime.
+Existing databases produced by the legacy pipeline continue to work — the compatibility layer
+(<code>src/services/cpg/compatibility.py</code>) bridges schema differences automatically.</p>
 </blockquote>
 <h2 id="table-of-contents">Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
@@ -204,6 +215,9 @@ This guide is for users who need to create new CPG exports from source code.</p>
 <li><a href="#incremental-updates">Incremental Updates</a></li>
 <li><a href="#performance">Performance</a></li>
 <li><a href="#vector-embeddings">Vector Embeddings</a></li>
+<li><a href="#cpg-enrichment">CPG Enrichment</a></li>
+<li><a href="#enrichment-functions">Enrichment Functions</a></li>
+<li><a href="#using-cpgenricher">Using CPGEnricher</a></li>
 <li><a href="#schema-reference">Schema Reference</a></li>
 <li><a href="#core-node-tables">Core Node Tables</a></li>
 <li><a href="#core-edge-tables">Core Edge Tables</a></li>
@@ -237,7 +251,7 @@ This guide is for users who need to create new CPG exports from source code.</p>
 <h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h2>
 <h3 id="for-new-cpg-creation-optional">For New CPG Creation (Optional)<a class="heading-anchor" href="#for-new-cpg-creation-optional" title="Link to this section">&para;</a></h3>
 <ul>
-<li><strong>Joern</strong> installation (only if creating new CPG from source code)</li>
+<li><strong>GoCPG</strong> binary (recommended) or legacy CPG tools</li>
 <li><strong>DuckDB</strong> 0.9.0+</li>
 <li><strong>Python</strong> 3.10+</li>
 </ul>
@@ -273,10 +287,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 </code></pre></div>
 
 <h3 id="python-api">Python API<a class="heading-anchor" href="#python-api" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">JoernToDuckDBExporter</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGToDuckDBExporter</span>
 
 <span class="c1"># Create exporter</span>
-<span class="n">exporter</span> <span class="o">=</span> <span class="n">JoernToDuckDBExporter</span><span class="p">(</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">CPGToDuckDBExporter</span><span class="p">(</span>
     <span class="n">server_endpoint</span><span class="o">=</span><span class="s2">&quot;localhost:8080&quot;</span><span class="p">,</span>
     <span class="n">workspace</span><span class="o">=</span><span class="s2">&quot;myproject.cpg&quot;</span><span class="p">,</span>
     <span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">,</span>
@@ -306,12 +320,12 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 <tr>
 <td><code>--endpoint</code></td>
 <td><code>localhost:8080</code></td>
-<td>Joern server endpoint</td>
+<td>CPG server endpoint (legacy)</td>
 </tr>
 <tr>
 <td><code>--workspace</code></td>
 <td><code>pg17_full.cpg</code></td>
-<td>Workspace/CPG name in Joern</td>
+<td>Workspace/CPG name (legacy)</td>
 </tr>
 <tr>
 <td><code>--db</code></td>
@@ -353,6 +367,21 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 <td>False</td>
 <td>Run validation only</td>
 </tr>
+<tr>
+<td><code>--defer-indexes</code></td>
+<td>False</td>
+<td>Create indexes after data load (faster bulk import)</td>
+</tr>
+<tr>
+<td><code>--temp-disk</code></td>
+<td>None</td>
+<td>Use fast disk (D:, E:) for temp export, then copy</td>
+</tr>
+<tr>
+<td><code>--skip-enrichment</code></td>
+<td>False</td>
+<td>Skip enrichment phase (faster export, less metadata)</td>
+</tr>
 </tbody>
 </table></div>
 <h3 id="common-commands">Common Commands<a class="heading-anchor" href="#common-commands" title="Link to this section">&para;</a></h3>
@@ -367,13 +396,28 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 
 <span class="c1"># Large codebase with smaller batches</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<span class="w"> </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span>--batch-size<span class="w"> </span><span class="m">5000</span>
+
+<span class="c1"># Fast export with deferred indexes (recommended for large exports)</span>
+python<span class="w"> </span>src/cpg_export/exporter.py<span class="w"> </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span>--defer-indexes
+
+<span class="c1"># Export using fast SSD disk, then copy to final location</span>
+python<span class="w"> </span>src/cpg_export/exporter.py<span class="w"> </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span>--temp-disk<span class="w"> </span>D:<span class="w"> </span>--defer-indexes
+
+<span class="c1"># Full optimization for large codebases</span>
+python<span class="w"> </span>src/cpg_export/exporter.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--workspace<span class="w"> </span>pg17.cpg<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--temp-disk<span class="w"> </span>D:<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--defer-indexes<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--batch-size<span class="w"> </span><span class="m">20000</span>
 </code></pre></div>
 
 <hr />
 <h2 id="export-process">Export Process<a class="heading-anchor" href="#export-process" title="Link to this section">&para;</a></h2>
-<p>The exporter runs a 5-step pipeline:</p>
+<p>The exporter runs a 7-step pipeline:</p>
 <h3 id="step-1-schema-initialization">Step 1: Schema Initialization<a class="heading-anchor" href="#step-1-schema-initialization" title="Link to this section">&para;</a></h3>
 <p>Creates tables for all CPG node and edge types. Tables are created with <code>IF NOT EXISTS</code> to preserve existing data unless <code>--force</code> is used.</p>
+<p>If <code>--defer-indexes</code> is specified, indexes are not created at this step (faster for bulk loading).</p>
 <h3 id="step-2-node-export">Step 2: Node Export<a class="heading-anchor" href="#step-2-node-export" title="Link to this section">&para;</a></h3>
 <p>Exports all CPG nodes by type:</p>
 <div class="table-wrapper"><table>
@@ -438,7 +482,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 </tr>
 </tbody>
 </table></div>
-<h3 id="step-4-property-graph-creation">Step 4: Property Graph Creation<a class="heading-anchor" href="#step-4-property-graph-creation" title="Link to this section">&para;</a></h3>
+<h3 id="step-4-index-creation-if-deferred">Step 4: Index Creation (if deferred)<a class="heading-anchor" href="#step-4-index-creation-if-deferred" title="Link to this section">&para;</a></h3>
+<p>If <code>--defer-indexes</code> was used, all indexes are created after data loading completes. This is significantly faster than creating indexes during data insertion.</p>
+<h3 id="step-5-property-graph-creation">Step 5: Property Graph Creation<a class="heading-anchor" href="#step-5-property-graph-creation" title="Link to this section">&para;</a></h3>
 <p>Creates a DuckDB Property Graph named <code>cpg</code> for graph traversal queries:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Query using property graph</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
@@ -448,8 +494,20 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 <span class="p">)</span>
 </code></pre></div>
 
-<h3 id="step-5-validation">Step 5: Validation<a class="heading-anchor" href="#step-5-validation" title="Link to this section">&para;</a></h3>
-<p>Compares counts between Joern and DuckDB to ensure complete export:</p>
+<h3 id="step-6-enrichment">Step 6: Enrichment<a class="heading-anchor" href="#step-6-enrichment" title="Link to this section">&para;</a></h3>
+<p>Enhances the CPG with derived data and cross-references:</p>
+<ul>
+<li><strong>Call containment</strong>: Links call nodes to their containing methods</li>
+<li><strong>Comment containment</strong>: Links comments to their containing methods</li>
+<li><strong>Docstrings</strong>: Creates tables for method/type/member docstrings</li>
+<li><strong>Call graph</strong>: Populates <code>edges_call</code> with method-to-method calls</li>
+<li><strong>Callee method ID</strong>: Adds direct method references to call nodes</li>
+<li><strong>Comment classification</strong>: Classifies comments as TODO/FIXME/DOCSTRING/INLINE</li>
+<li><strong>Method metrics</strong>: Adds LOC (lines of code) and parameter count</li>
+</ul>
+<p>Skip this step with <code>--skip-enrichment</code> for faster exports when enriched data is not needed.</p>
+<h3 id="step-7-validation">Step 7: Validation<a class="heading-anchor" href="#step-7-validation" title="Link to this section">&para;</a></h3>
+<p>Compares counts between the CPG source and DuckDB to ensure complete export:</p>
 <div class="highlight"><pre><span></span><code><span class="o">======================================================================</span>
 <span class="n">CPG</span><span class="w"> </span><span class="n">EXPORT</span><span class="w"> </span><span class="n">VALIDATION</span><span class="w"> </span><span class="n">REPORT</span>
 <span class="o">======================================================================</span>
@@ -520,24 +578,24 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 
 <div class="highlight"><pre><span></span><code><span class="c1"># Python API</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_export</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.execution.joern_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">JoernClient</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.execution.cpg_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGClient</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
 
-<span class="n">joern</span> <span class="o">=</span> <span class="n">JoernClient</span><span class="p">(</span><span class="s2">&quot;localhost:8080&quot;</span><span class="p">,</span> <span class="s2">&quot;myproject.cpg&quot;</span><span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">CPGClient</span><span class="p">(</span><span class="s2">&quot;localhost:8080&quot;</span><span class="p">,</span> <span class="s2">&quot;myproject.cpg&quot;</span><span class="p">)</span>
 <span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span>
 
-<span class="n">results</span> <span class="o">=</span> <span class="n">validate_export</span><span class="p">(</span><span class="n">joern</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">print_report</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">validate_export</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">print_report</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 
 <h3 id="handling-missing-data">Handling Missing Data<a class="heading-anchor" href="#handling-missing-data" title="Link to this section">&para;</a></h3>
 <p>If validation shows missing records:</p>
 <ol>
-<li><strong>Check Joern logs</strong> for parse errors</li>
+<li><strong>Check parse logs</strong> for errors</li>
 <li><strong>Re-export specific types</strong> if partial failure</li>
 <li><strong>Force recreate</strong> if data corruption suspected</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="c1"># Re-export only nodes</span>
-<span class="n">exporter</span> <span class="o">=</span> <span class="n">JoernToDuckDBExporter</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">CPGToDuckDBExporter</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
 <span class="n">exporter</span><span class="o">.</span><span class="n">connect_db</span><span class="p">()</span>
 <span class="n">node_stats</span> <span class="o">=</span> <span class="n">exporter</span><span class="o">.</span><span class="n">export_nodes_only</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
@@ -553,7 +611,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 <span class="n">exporter</span> <span class="o">=</span> <span class="n">IncrementalCPGExporter</span><span class="p">(</span>
     <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;/path/to/repo&quot;</span><span class="p">,</span>
     <span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">,</span>
-    <span class="n">joern_path</span><span class="o">=</span><span class="s2">&quot;/path/to/joern&quot;</span>
+    <span class="n">gocpg_path</span><span class="o">=</span><span class="s2">&quot;/path/to/gocpg&quot;</span>
 <span class="p">)</span>
 
 <span class="c1"># Update from git changes</span>
@@ -613,6 +671,94 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 </code></pre></div>
 
 <hr />
+<h2 id="cpg-enrichment">CPG Enrichment<a class="heading-anchor" href="#cpg-enrichment" title="Link to this section">&para;</a></h2>
+<p>The enrichment module enhances the CPG with derived data beyond the base CPG generation. This includes call graph construction, comment classification, and method metrics.</p>
+<h3 id="enrichment-functions">Enrichment Functions<a class="heading-anchor" href="#enrichment-functions" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enrich_call_containment()</code></td>
+<td>Links call nodes to their containing methods via <code>method_id</code></td>
+</tr>
+<tr>
+<td><code>enrich_comment_containment()</code></td>
+<td>Links comments to their containing methods</td>
+</tr>
+<tr>
+<td><code>create_docstring_tables()</code></td>
+<td>Creates separate tables for method/type/member docstrings</td>
+</tr>
+<tr>
+<td><code>build_call_graph()</code></td>
+<td>Populates <code>edges_call</code> with method-to-method relationships</td>
+</tr>
+<tr>
+<td><code>add_callee_method_id()</code></td>
+<td>Adds <code>callee_method_id</code> to call nodes for direct method lookup</td>
+</tr>
+<tr>
+<td><code>classify_comments()</code></td>
+<td>Classifies comments as TODO, FIXME, DOCSTRING, or INLINE</td>
+</tr>
+<tr>
+<td><code>add_method_metrics()</code></td>
+<td>Calculates and adds <code>loc</code> and <code>parameter_count</code> to methods</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="using-cpgenricher">Using CPGEnricher<a class="heading-anchor" href="#using-cpgenricher" title="Link to this section">&para;</a></h3>
+<p>Enrichment runs automatically during export (Step 6). To run separately:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.cpg_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGEnricher</span>
+
+<span class="c1"># Connect to existing CPG database</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;cpg.duckdb&#39;</span><span class="p">)</span>
+
+<span class="c1"># Create enricher and run all enrichment functions</span>
+<span class="n">enricher</span> <span class="o">=</span> <span class="n">CPGEnricher</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">enricher</span><span class="o">.</span><span class="n">enrich_all</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enrichment complete: </span><span class="si">{</span><span class="n">stats</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>CLI Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full export with enrichment (default)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<span class="w"> </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span>--workspace<span class="w"> </span>project.cpg
+
+<span class="c1"># Skip enrichment for faster export</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<span class="w"> </span>--db<span class="w"> </span>cpg.duckdb<span class="w"> </span>--workspace<span class="w"> </span>project.cpg<span class="w"> </span>--skip-enrichment
+</code></pre></div>
+
+<p><strong>Query enriched data:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Find methods with TODO comments</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">code</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">todo_comment</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_comment</span><span class="w"> </span><span class="k">c</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">method_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">comment_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;TODO&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Find methods by lines of code</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">loc</span><span class="p">,</span><span class="w"> </span><span class="n">parameter_count</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">loc</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">100</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">loc</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+
+<span class="c1">-- Get call graph with direct method references</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">caller</span><span class="p">.</span><span class="n">full_name</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">caller</span><span class="p">,</span>
+<span class="w">    </span><span class="n">callee</span><span class="p">.</span><span class="n">full_name</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">callee</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_call</span><span class="w"> </span><span class="n">nc</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">caller</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">nc</span><span class="p">.</span><span class="n">method_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caller</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">callee</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">nc</span><span class="p">.</span><span class="n">callee_method_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">callee</span><span class="p">.</span><span class="n">id</span>
+<span class="k">LIMIT</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+</code></pre></div>
+
+<hr />
 <h2 id="schema-reference">Schema Reference<a class="heading-anchor" href="#schema-reference" title="Link to this section">&para;</a></h2>
 <h3 id="core-node-tables">Core Node Tables<a class="heading-anchor" href="#core-node-tables" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
@@ -626,12 +772,12 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 <tbody>
 <tr>
 <td><code>nodes_method</code></td>
-<td>id, name, full_name, filename, line_number</td>
+<td>id, name, full_name, filename, line_number, loc, parameter_count</td>
 <td>Functions/methods</td>
 </tr>
 <tr>
 <td><code>nodes_call</code></td>
-<td>id, name, method_full_name, filename, line_number</td>
+<td>id, name, method_full_name, filename, line_number, callee_method_id</td>
 <td>Call sites</td>
 </tr>
 <tr>
@@ -671,8 +817,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 </tr>
 <tr>
 <td><code>nodes_type_decl</code></td>
-<td>id, name, full_name, filename</td>
+<td>id, name, full_name, filename, line_number, column_number</td>
 <td>Type declarations</td>
+</tr>
+<tr>
+<td><code>nodes_comment</code></td>
+<td>id, code, filename, line_number, comment_type</td>
+<td>Comments (TODO/FIXME/DOCSTRING/INLINE)</td>
 </tr>
 <tr>
 <td><code>nodes_file</code></td>
@@ -796,10 +947,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cpg_export.exporter<
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
 <h3 id="connection-errors">Connection Errors<a class="heading-anchor" href="#connection-errors" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">Error</span><span class="o">:</span><span class="w"> </span><span class="n">Could</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">connect</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">Joern</span><span class="w"> </span><span class="n">server</span>
+<div class="highlight"><pre><span></span><code><span class="n">Error</span><span class="o">:</span><span class="w"> </span><span class="n">Could</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">connect</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="n">server</span>
 </code></pre></div>
 
-<p><strong>Solution:</strong> Verify Joern is running and accessible:</p>
+<p><strong>Solution:</strong> Verify the CPG server is running and accessible (or use GoCPG instead):</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Test connection</span>
 curl<span class="w"> </span>http://localhost:8080/result
 </code></pre></div>
@@ -822,7 +973,7 @@ curl<span class="w"> </span>http://localhost:8080/result
 <h3 id="missing-nodes">Missing Nodes<a class="heading-anchor" href="#missing-nodes" title="Link to this section">&para;</a></h3>
 <p>If validation shows missing nodes:</p>
 <ol>
-<li>Check Joern parse logs for errors</li>
+<li>Check parse logs for errors</li>
 <li>Verify workspace is correctly opened</li>
 <li>Try force recreate: <code>--force</code></li>
 </ol>
@@ -859,19 +1010,31 @@ curl<span class="w"> </span>http://localhost:8080/result
 </tr>
 </tbody>
 </table></div>
-<p><strong>Optimizations:</strong>
-- SSD storage for database
-- Adequate RAM (8GB+ for large codebases)
-- Run validation separately if needed
-- Use incremental exports for updates</p>
+<p><strong>Optimizations:</strong></p>
+<ul>
+<li>
+<p><strong>Use <code>--defer-indexes</code></strong> - Creates indexes after all data is loaded. This can reduce export time by 30-50% for large codebases because indexes don&rsquo;t need to be updated during bulk inserts.</p>
+</li>
+<li>
+<p><strong>Use <code>--temp-disk</code></strong> - If your target disk (C:) is slow (HDD), export to a fast disk (D:, E: with SSD) first, then automatically copy to the final location. The exporter creates a timestamped backup of the existing database before replacement.</p>
+</li>
+</ul>
+<p><code>bash
+  python src/cpg_export/exporter.py --db cpg.duckdb --temp-disk D: --defer-indexes</code></p>
+<ul>
+<li><strong>SSD storage</strong> - Use SSD for database files</li>
+<li><strong>Adequate RAM</strong> - 8GB+ for large codebases</li>
+<li><strong>Larger batch size</strong> - Use <code>--batch-size 20000</code> if you have enough RAM</li>
+<li><strong>Run validation separately</strong> if needed</li>
+<li><strong>Use incremental exports</strong> for updates</li>
+</ul>
 <hr />
 <h2 id="see-also">See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook</a> - Example queries</li>
 <li><a href="../reference/SCHEMA.html">Schema Reference</a> - Database schema reference</li>
-<li><a href="https://docs.joern.io/">Joern Documentation</a></li>
 <li><a href="https://duckdb.org/docs/">DuckDB Documentation</a></li>
-<li><a href="https://cpg.joern.io/">CPG Specification v1.1</a></li>
+<li><a href="../../gocpg/docs/">GoCPG Documentation</a></li>
 </ul>
       </article>
 
@@ -891,7 +1054,7 @@ curl<span class="w"> </span>http://localhost:8080/result
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-01-08</span>
+        <span>Last updated: 2026-02-18</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/CPG_EXPORT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -924,12 +1087,17 @@ curl<span class="w"> </span>http://localhost:8080/result
 <li><a href="#force-fresh-export-drops-existing-data" class="level-1">Force fresh export (drops existing data)</a></li>
 <li><a href="#test-with-limited-data" class="level-1">Test with limited data</a></li>
 <li><a href="#large-codebase-with-smaller-batches" class="level-1">Large codebase with smaller batches</a></li>
+<li><a href="#fast-export-with-deferred-indexes-recommended-for-large-exports" class="level-1">Fast export with deferred indexes (recommended for large exports)</a></li>
+<li><a href="#export-using-fast-ssd-disk-then-copy-to-final-location" class="level-1">Export using fast SSD disk, then copy to final location</a></li>
+<li><a href="#full-optimization-for-large-codebases" class="level-1">Full optimization for large codebases</a></li>
 <li><a href="#export-process" class="level-2">Export Process</a></li>
 <li><a href="#step-1-schema-initialization" class="level-3">Step 1: Schema Initialization</a></li>
 <li><a href="#step-2-node-export" class="level-3">Step 2: Node Export</a></li>
 <li><a href="#step-3-edge-export" class="level-3">Step 3: Edge Export</a></li>
-<li><a href="#step-4-property-graph-creation" class="level-3">Step 4: Property Graph Creation</a></li>
-<li><a href="#step-5-validation" class="level-3">Step 5: Validation</a></li>
+<li><a href="#step-4-index-creation-if-deferred" class="level-3">Step 4: Index Creation (if deferred)</a></li>
+<li><a href="#step-5-property-graph-creation" class="level-3">Step 5: Property Graph Creation</a></li>
+<li><a href="#step-6-enrichment" class="level-3">Step 6: Enrichment</a></li>
+<li><a href="#step-7-validation" class="level-3">Step 7: Validation</a></li>
 <li><a href="#checkpointresume" class="level-2">Checkpoint/Resume</a></li>
 <li><a href="#simply-run-again-will-resume-automatically" class="level-1">Simply run again - will resume automatically</a></li>
 <li><a href="#check-progress" class="level-3">Check Progress</a></li>
@@ -949,6 +1117,13 @@ curl<span class="w"> </span>http://localhost:8080/result
 <li><a href="#vector-embeddings" class="level-2">Vector Embeddings</a></li>
 <li><a href="#add-embeddings-to-methods-table" class="level-1">Add embeddings to methods table</a></li>
 <li><a href="#semantic-search" class="level-1">Semantic search</a></li>
+<li><a href="#cpg-enrichment" class="level-2">CPG Enrichment</a></li>
+<li><a href="#enrichment-functions" class="level-3">Enrichment Functions</a></li>
+<li><a href="#using-cpgenricher" class="level-3">Using CPGEnricher</a></li>
+<li><a href="#connect-to-existing-cpg-database" class="level-1">Connect to existing CPG database</a></li>
+<li><a href="#create-enricher-and-run-all-enrichment-functions" class="level-1">Create enricher and run all enrichment functions</a></li>
+<li><a href="#full-export-with-enrichment-default" class="level-1">Full export with enrichment (default)</a></li>
+<li><a href="#skip-enrichment-for-faster-export" class="level-1">Skip enrichment for faster export</a></li>
 <li><a href="#schema-reference" class="level-2">Schema Reference</a></li>
 <li><a href="#core-node-tables" class="level-3">Core Node Tables</a></li>
 <li><a href="#core-edge-tables" class="level-3">Core Edge Tables</a></li>

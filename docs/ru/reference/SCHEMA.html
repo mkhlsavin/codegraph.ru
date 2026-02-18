@@ -93,6 +93,7 @@
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Автоматический код-ревью</a></li>
         <li><a href="../guides/CPG_EXPORT.html">Руководство по экспорту CPG</a></li>
+        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
@@ -117,6 +118,11 @@
         <li><a href="../guides/14-incident-response.html">Сценарий 14: Реагирование на инциденты безопасности</a></li>
         <li><a href="../guides/15-debugging.html">Сценарий 15: Помощь в отладке</a></li>
         <li><a href="../guides/16-entry-points.html">Сценарий 16: Обнаружение точки входа</a></li>
+        <li><a href="../guides/17-file-editing.html">Сценарий 17: Расширенное редактирование файлов</a></li>
+        <li><a href="../guides/18-code-optimization.html">Сценарий 18: Интерактивная оптимизация кода</a></li>
+        <li><a href="../guides/19-standards-check.html">Сценарий 19: Проверка стандартов на основе справочных документов</a></li>
+        <li><a href="../guides/20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
+        <li><a href="../guides/composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
 
@@ -134,6 +140,7 @@
       <div class="doc-sidebar-title">Интеграции</div>
       <ul class="doc-sidebar-nav">
         <li><a href="../integrations/index.html">Обзор</a></li>
+        <li><a href="../integrations/EXTERNAL_CONTEXT.html">Руководство по интеграции внешнего контекста</a></li>
         <li><a href="../integrations/GIGACHAT.html">Руководство по интеграции GigaChat</a></li>
         <li><a href="../integrations/YANDEX_AI_STUDIO.html">Руководство по интеграции Yandex AI Studio</a></li>
       </ul>
@@ -245,7 +252,7 @@
 <li><a href="#duckdb-pgq-query-find-all-identifiers-and-their-references">DuckDB PGQ-запрос: Поиск всех идентификаторов и их ссылок</a></li>
 <li><a href="#duckdb-pgq-query-type-hierarchy-inheritance">DuckDB PGQ-запрос: Иерархия типов (наследование)</a></li>
 <li><a href="#combined-query-methods-with-most-incoming-calls">Комбинированный запрос: Методы с наибольшим количеством входящих вызовов</a></li>
-<li><a href="#migration-from-joern">Миграция с Joern</a></li>
+<li><a href="#schema-migration-history">История миграции схемы</a></li>
 <li><a href="#phase-1-critical---completed-">Этап 1 (КРИТИЧЕСКИЙ) — ЗАВЕРШЁН ✓</a></li>
 <li><a href="#phase-2-oop-support---completed-">Этап 2 (ПОДДЕРЖКА ООП) — ЗАВЕРШЁН ✓</a></li>
 <li><a href="#phase-3-namespace-and-file-support---completed-">Этап 3 (ПОДДЕРЖКА ПРОСТРАНСТВ ИМЁН И ФАЙЛОВ) — ЗАВЕРШЁН ✓</a></li>
@@ -277,6 +284,54 @@
 <li><strong>Эффективное индексирование</strong>: Индексы B-дерева по полям id, full_name и другим часто используемым свойствам</li>
 <li><strong>Пакетная обработка</strong>: Поддержка массового импорта CPG (50K+ методов)</li>
 </ol>
+<h2 id="gocpg-vs-ustarevshaya-shema">GoCPG vs устаревшая схема<a class="heading-anchor" href="#gocpg-vs-ustarevshaya-shema" title="Link to this section">&para;</a></h2>
+<p>GoCPG генерирует DuckDB напрямую и создаёт дополнительные таблицы, отсутствующие в устаревших экспортах Joern:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Таблица только в GoCPG</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodes_import</code></td>
+<td>Операторы импорта/включения с разрешёнными путями</td>
+</tr>
+<tr>
+<td><code>nodes_finding</code></td>
+<td>Результаты статического анализа (безопасность, качество)</td>
+</tr>
+<tr>
+<td><code>nodes_macro</code></td>
+<td>Макросы препроцессора (C/C++)</td>
+</tr>
+<tr>
+<td><code>edges_ddg</code></td>
+<td>Рёбра графа зависимостей по данным</td>
+</tr>
+<tr>
+<td><code>edges_pdg</code></td>
+<td>Рёбра графа программных зависимостей</td>
+</tr>
+<tr>
+<td><code>edges_contains</code></td>
+<td>Рёбра вложенности (метод→узел)</td>
+</tr>
+<tr>
+<td><code>edges_parameter_link</code></td>
+<td>Связи параметров с аргументами</td>
+</tr>
+<tr>
+<td><code>edges_eval_type</code></td>
+<td>Рёбра вычисления типов</td>
+</tr>
+</tbody>
+</table></div>
+<p>GoCPG также предварительно вычисляет <code>cyclomatic_complexity</code> в <code>nodes_method</code> и <code>method_id</code> в <code>nodes_param</code>.</p>
+<blockquote class="callout">
+<p><strong>Примечание о <code>cpg_nodes</code></strong>: Материализованная таблица <code>cpg_nodes</code> (UNION ALL всех таблиц узлов) используется <strong>только</strong> для определения графа свойств DuckPGQ. Её <strong>не следует</strong> использовать в прикладном коде — используйте конкретные таблицы <code>nodes_*</code>. Базы данных GoCPG не генерируют <code>cpg_nodes</code>; слой совместимости создаёт её по требованию, когда нужны запросы к графу свойств.</p>
+</blockquote>
 <h2 id="node-tables">Таблицы узлов<a class="heading-anchor" href="#node-tables" title="Link to this section">&para;</a></h2>
 <h3 id="nodes-method">nodes_method<a class="heading-anchor" href="#nodes-method" title="Link to this section">&para;</a></h3>
 <p>Основная таблица для объявлений функций/методов.</p>
@@ -1255,7 +1310,7 @@ METHOD_REF (замыкание/лямбда)
 - ✅ <strong>Полиморфные рёбра</strong> (AST, CFG, REF и т.д.) через материализованную таблицу <code>cpg_nodes</code>
 - ✅ <strong>Типизированные вершины</strong> для эффективных целевых запросов
 - ✅ <strong>Совместимо с DuckDB PGQ</strong> (используются таблицы, а не представления)
-- ✅ <strong>Полное соответствие спецификации Joern CPG v1.1</strong></p>
+- ✅ <strong>Полное соответствие спецификации CPG v1.1</strong></p>
 <h2 id="example-queries">Примеры запросов<a class="heading-anchor" href="#example-queries" title="Link to this section">&para;</a></h2>
 <h3 id="standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda">Стандартный SQL-запрос: Найти все вызовы определённого метода<a class="heading-anchor" href="#standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="nt">c</span><span class="o">.*,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">name</span><span class="o">,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">filename</span><span class="o">,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">line_number</span>
@@ -1327,7 +1382,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="nt">LIMIT</span><span class="w"> </span><span class="nt">10</span><span class="o">;</span>
 </code></pre></div>
 
-<h2 id="migration-from-joern">Миграция с Joern<a class="heading-anchor" href="#migration-from-joern" title="Link to this section">&para;</a></h2>
+<h2 id="schema-migration-history">История миграции схемы<a class="heading-anchor" href="#schema-migration-history" title="Link to this section">&para;</a></h2>
 <h3 id="phase-1-critical---completed-">Этап 1 (КРИТИЧЕСКИЙ) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-1-critical---completed-" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_method (со всеми свойствами)</li>
@@ -1380,7 +1435,7 @@ METHOD_REF (замыкание/лямбда)
 </ul>
 <h2 id="changelog">Журнал изменений<a class="heading-anchor" href="#changelog" title="Link to this section">&para;</a></h2>
 <h3 id="v50-2025-11-16---phase-4-complete-compliance">v5.0 (2025-11-16) — Завершение четвёртого этапа: полное соответствие схеме<a class="heading-anchor" href="#v50-2025-11-16---phase-4-complete-compliance" title="Link to this section">&para;</a></h3>
-<p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Достигнуто 100% соответствие схеме Joern со всеми оставшимися функциями</strong></p>
+<p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Достигнуто 100% соответствие схеме CPG со всеми оставшимися функциями</strong></p>
 <p><strong>Новые типы узлов:</strong>
 - <code>nodes_unknown</code> (UNKNOWN) — универсальный тип для неподдерживаемых конструкций AST
 - <code>nodes_jump_target</code> (JUMP_TARGET) — метки для операторов goto/break/continue
@@ -1395,14 +1450,14 @@ METHOD_REF (замыкание/лямбда)
 - <code>edges_capture</code> (CAPTURE) — захват переменных в замыканиях
 - <code>edges_captured_by</code> (CAPTURED_BY) — обратные связи захвата в замыканиях</p>
 <p><strong>Влияние:</strong>
-- <strong>Достигнуто 100% соответствие схеме Joern</strong>
+- <strong>Достигнуто 100% соответствие схеме CPG</strong>
 - Полное покрытие AST с использованием узлов UNKNOWN
 - Полная поддержка дженериков и шаблонов
 - Включён анализ замыканий и лямбд
 - Поддержка разрешения псевдонимов и наследования типов
 - Сохранение комментариев для документации
 - Полноценные возможности анализа программ</p>
-<p><strong>Соответствие:</strong> ~95% → <strong>100% схеме Joern</strong></p>
+<p><strong>Соответствие:</strong> ~95% → <strong>100% схеме CPG</strong></p>
 <h3 id="v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov">v4.0 (2025-11-16) — Третий этап: поддержка пространств имён и файлов<a class="heading-anchor" href="#v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлено сопоставление с файлами, поддержка пространств имён и ссылок на методы/типы</strong></p>
 <p><strong>Новые типы узлов:</strong>
@@ -1419,7 +1474,7 @@ METHOD_REF (замыкание/лямбда)
 - Поддержка рефлексии и дженериков
 - Полное сопоставление с исходными файлами (готово к интеграции с IDE)
 - Улучшен анализ межфайловых зависимостей</p>
-<p><strong>Соответствие:</strong> ~90% → ~95% схеме Joern</p>
+<p><strong>Соответствие:</strong> ~90% → ~95% схеме CPG</p>
 <h3 id="v30-2025-11-16-vtoroy-etap-podderzhka-oop">v3.0 (2025-11-16) — Второй этап: поддержка ООП<a class="heading-anchor" href="#v30-2025-11-16-vtoroy-etap-podderzhka-oop" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлена поддержка анализа ООП и точное сопоставление с исходным кодом</strong></p>
 <p><strong>Новые типы узлов:</strong>
@@ -1438,7 +1493,7 @@ METHOD_REF (замыкание/лямбда)
 - Включён анализ видимости (PUBLIC, PRIVATE, STATIC и т.д.)
 - Улучшено разрешение имён переменных и функций
 - Включён анализ псевдонимов (канонические имена)</p>
-<p><strong>Соответствие:</strong> ~80% → ~90% схеме Joern</p>
+<p><strong>Соответствие:</strong> ~80% → ~90% схеме CPG</p>
 <h3 id="v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya">v2.0 (2025-11-16) — Первый этап: критические обновления<a class="heading-anchor" href="#v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлены критически важные компоненты для анализа PDG и SSA</strong></p>
 <p><strong>Новые типы узлов:</strong>
@@ -1451,7 +1506,7 @@ METHOD_REF (замыкание/лямбда)
 - Теперь возможен анализ SSA
 - Включено программное срезание (program slicing)
 - Улучшен анализ утечки данных (taint analysis)</p>
-<p><strong>Соответствие:</strong> ~70% → ~80% схеме Joern</p>
+<p><strong>Соответствие:</strong> ~70% → ~80% схеме CPG</p>
 <h3 id="v10-2025-11-15---initial-release">v1.0 (2025-11-15) — Первоначальный выпуск<a class="heading-anchor" href="#v10-2025-11-15---initial-release" title="Link to this section">&para;</a></h3>
 <ul>
 <li>11 типов узлов (METHOD, CALL, IDENTIFIER, LITERAL, LOCAL, PARAM, RETURN, BLOCK, CONTROL_STRUCTURE, TYPE_DECL, METADATA)</li>
@@ -1598,7 +1653,7 @@ METHOD_REF (замыкание/лямбда)
 - Теги позволяют выполнять семантический поиск по коду и интеллектуальный анализ</p>
 <h3 id="integration-notes">Примечания по интеграции<a class="heading-anchor" href="#integration-notes" title="Link to this section">&para;</a></h3>
 <p>Теги добавляются после генерации CPG с помощью:
-1. <strong>Статического анализа</strong>: Запросы тегов в Joern (<code>cpg.method.tag.name(...)</code>)
+1. <strong>Статического анализа</strong>: Запросы тегов CPG (<code>cpg.method.tag.name(...)</code>)
 2. <strong>Обогащения с помощью ИИ</strong>: Генерация описаний назначения функций с помощью LLM
 3. <strong>Вычисляемых метрик</strong>: Цикломатическая сложность, полученная из анализа CFG
 4. <strong>Ручной аннотации</strong>: Результаты аудита безопасности</p>
@@ -1621,7 +1676,7 @@ METHOD_REF (замыкание/лямбда)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-01-08</span>
+        <span>Обновлено: 2026-02-18</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SCHEMA.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1634,6 +1689,7 @@ METHOD_REF (замыкание/лямбда)
 <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#obzor" class="level-2">Обзор</a></li>
 <li><a href="#osnovnye-printsipy-proektirovaniya" class="level-2">Основные принципы проектирования</a></li>
+<li><a href="#gocpg-vs-ustarevshaya-shema" class="level-2">GoCPG vs устаревшая схема</a></li>
 <li><a href="#tablitsy-uzlov" class="level-2">Таблицы узлов</a></li>
 <li><a href="#nodes-method" class="level-3">nodes_method</a></li>
 <li><a href="#nodes-call" class="level-3">nodes_call</a></li>
@@ -1685,7 +1741,7 @@ METHOD_REF (замыкание/лямбда)
 <li><a href="#duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki" class="level-3">DuckDB PGQ-запрос: Найти все идентификаторы и их ссылки</a></li>
 <li><a href="#duckdb-pgq-zapros-ierarhiya-tipov-nasledovanie" class="level-3">DuckDB PGQ-запрос: Иерархия типов (наследование)</a></li>
 <li><a href="#kombinirovannyy-zapros-metody-s-naibolshim-kolichestvom-vhodyaschih-vyzovov" class="level-3">Комбинированный запрос: Методы с наибольшим количеством входящих вызовов</a></li>
-<li><a href="#migratsiya-s-joern" class="level-2">Миграция с Joern</a></li>
+<li><a href="#istoriya-migratsii-shemy" class="level-2">История миграции схемы</a></li>
 <li><a href="#etap-1-kriticheskiy-zavershyon" class="level-3">Этап 1 (КРИТИЧЕСКИЙ) — ЗАВЕРШЁН ✓</a></li>
 <li><a href="#etap-2-podderzhka-oop-zavershyon" class="level-3">Этап 2 (ПОДДЕРЖКА ООП) — ЗАВЕРШЁН ✓</a></li>
 <li><a href="#etap-3-podderzhka-prostranstv-imyon-i-faylov-zavershyon" class="level-3">Этап 3 (ПОДДЕРЖКА ПРОСТРАНСТВ ИМЁН И ФАЙЛОВ) — ЗАВЕРШЁН ✓</a></li>

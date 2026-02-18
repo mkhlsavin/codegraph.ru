@@ -93,6 +93,7 @@
         <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CPG_EXPORT.html">CPG Export Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="PROJECT_IMPORT.html" class="active">Importing a New Codebase</a></li>
@@ -117,6 +118,11 @@
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Assistance</a></li>
         <li><a href="16-entry-points.html">Scenario 16: Entry Point Discovery</a></li>
+        <li><a href="17-file-editing.html">Scenario 17: Advanced File Editing</a></li>
+        <li><a href="18-code-optimization.html">Scenario 18: Interactive Code Optimization</a></li>
+        <li><a href="19-standards-check.html">Scenario 19: Reference-Guided Standards Check</a></li>
+        <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
+        <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
 
@@ -181,7 +187,7 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <li><a href="#cli-usage">CLI Usage</a></li>
 <li><a href="#full-pipeline-single-command">Full Pipeline (Single Command)</a></li>
 <li><a href="#docker-support">Docker Support</a></li>
-<li><a href="#joern-server-management">Joern Server Management</a></li>
+<li><a href="#gocpg-server-management">GoCPG Server Management</a></li>
 <li><a href="#project-management">Project Management</a></li>
 <li><a href="#step-by-step-import">Step-by-Step Import</a></li>
 <li><a href="#list-supported-languages">List Supported Languages</a></li>
@@ -193,13 +199,13 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <li><a href="#cancel-import">Cancel Import</a></li>
 <li><a href="#run-individual-step">Run Individual Step</a></li>
 <li><a href="#import-with-docker">Import with Docker</a></li>
-<li><a href="#joern-server-management">Joern Server Management</a></li>
+<li><a href="#gocpg-server-management">GoCPG Server Management</a></li>
 <li><a href="#project-management">Project Management</a></li>
 <li><a href="#websocket-for-progress-tracking">WebSocket for Progress Tracking</a></li>
 <li><a href="#import-parameters">Import Parameters</a></li>
 <li><a href="#import-modes">Import Modes</a></li>
 <li><a href="#cloning-options">Cloning Options</a></li>
-<li><a href="#joern-options">Joern Options</a></li>
+<li><a href="#gocpg-options">GoCPG Options</a></li>
 <li><a href="#documentation-options">Documentation Options</a></li>
 <li><a href="#import-result">Import Result</a></li>
 <li><a href="#result-structure-projectimportresult">Result Structure (ProjectImportResult)</a></li>
@@ -218,20 +224,20 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <li><a href="#configuration-promptsyaml">Configuration: prompts.yaml</a></li>
 <li><a href="#activating-domain-plugin">Activating Domain Plugin</a></li>
 <li><a href="#handling-large-repositories">Handling Large Repositories</a></li>
-<li><a href="#llvm-millions-of-lines-of-code">LLVM (Millions of Lines of Code)</a></li>
+<li><a href="#large-cc-projects">Large C/C++ Projects</a></li>
 <li><a href="#recommendations">Recommendations</a></li>
 <li><a href="#python-api">Python API</a></li>
 <li><a href="#running-individual-steps">Running Individual Steps</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
-<li><a href="#joern-frontend-not-found">Joern Frontend Not Found</a></li>
-<li><a href="#insufficient-memory-for-joern">Insufficient Memory for Joern</a></li>
+<li><a href="#gocpg-frontend-not-found">GoCPG Frontend Not Found</a></li>
+<li><a href="#insufficient-memory-for-gocpg">Insufficient Memory for GoCPG</a></li>
 <li><a href="#language-not-detected">Language Not Detected</a></li>
 <li><a href="#cpg-validation-failed">CPG Validation Failed</a></li>
 <li><a href="#configuration-configyaml">Configuration (config.yaml)</a></li>
 <li><a href="#component-architecture">Component Architecture</a></li>
-<li><a href="#joernservermanager">JoernServerManager</a></li>
+<li><a href="#gocpgservermanager">GoCPGServerManager</a></li>
 <li><a href="#projectregistry">ProjectRegistry</a></li>
-<li><a href="#localjoernrunner-dockerjoernrunner">LocalJoernRunner / DockerJoernRunner</a></li>
+<li><a href="#localgocpgrunner--dockergocpgrunner">LocalGoCPGRunner / DockerGoCPGRunner</a></li>
 <li><a href="#see-also">See Also</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
@@ -239,7 +245,7 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <ol>
 <li><strong>Clone</strong> - repository cloning</li>
 <li><strong>Detect Language</strong> - programming language detection</li>
-<li><strong>Create CPG</strong> - Code Property Graph creation (requires Joern for source parsing)</li>
+<li><strong>Create CPG</strong> - Code Property Graph creation (using GoCPG for source parsing)</li>
 <li><strong>Export to DuckDB</strong> - graph export to SQL database</li>
 <li><strong>Import Source Code</strong> - full source file content import into DuckDB</li>
 <li><strong>Validate</strong> - CPG integrity validation</li>
@@ -252,7 +258,7 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <thead>
 <tr>
 <th>Language</th>
-<th>Joern Frontend</th>
+<th>GoCPG Frontend</th>
 <th>File Extensions</th>
 <th>Description</th>
 </tr>
@@ -313,22 +319,10 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <td>Python source code</td>
 </tr>
 <tr>
-<td>Ruby</td>
-<td>rubysrc2cpg</td>
-<td><code>.rb</code></td>
-<td>Ruby source code</td>
-</tr>
-<tr>
-<td>Swift</td>
-<td>swiftsrc2cpg</td>
-<td><code>.swift</code></td>
-<td>Swift source code</td>
-</tr>
-<tr>
-<td>Ghidra (binary)</td>
-<td>ghidra2cpg</td>
-<td><code>.exe</code>, <code>.dll</code>, <code>.so</code>, <code>.dylib</code>, <code>.bin</code>, <code>.elf</code></td>
-<td>Binary file analysis</td>
+<td>1C:Enterprise</td>
+<td>onec2cpg</td>
+<td><code>.bsl</code>, <code>.os</code></td>
+<td>1C:Enterprise (BSL/SDBL)</td>
 </tr>
 </tbody>
 </table></div>
@@ -337,8 +331,8 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <h3 id="full-pipeline-single-command">Full Pipeline (Single Command)<a class="heading-anchor" href="#full-pipeline-single-command" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import from GitHub repository</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--repo<span class="w"> </span>https://github.com/llvm/llvm-project<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--branch<span class="w"> </span>main<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repo<span class="w"> </span>https://github.com/postgres/postgres<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--branch<span class="w"> </span>master<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--shallow<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--language<span class="w"> </span>c
 
@@ -349,8 +343,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <span class="c1"># With selective import (only specific directories)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--repo<span class="w"> </span>https://github.com/llvm/llvm-project<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--include<span class="w"> </span>llvm/lib<span class="w"> </span>llvm/include<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repo<span class="w"> </span>https://github.com/postgres/postgres<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--include<span class="w"> </span>src/backend<span class="w"> </span>src/include<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--exclude<span class="w"> </span><span class="nb">test</span><span class="w"> </span>tests
 
 <span class="c1"># Import using Docker</span>
@@ -360,8 +354,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <h3 id="docker-support">Docker Support<a class="heading-anchor" href="#docker-support" title="Link to this section">&para;</a></h3>
-<p>The system supports running Joern in a Docker container for cross-platform operation:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Import with Docker (no local Joern installation required)</span>
+<p>The system supports running GoCPG in a Docker container for cross-platform operation:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Import with Docker (no local GoCPG build required)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--repo<span class="w"> </span>https://github.com/example/project<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--docker
@@ -370,19 +364,19 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--repo<span class="w"> </span>https://github.com/example/project<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--docker-image<span class="w"> </span>ghcr.io/joernio/joern:v4.0.0
+<span class="w">    </span>--docker-image<span class="w"> </span>codegraph/gocpg:v4.0.0
 </code></pre></div>
 
 <p><strong>Docker Advantages:</strong>
-- No local Joern installation required
+- No local GoCPG build required
 - Consistent behavior across all platforms (Windows, Linux, macOS)
 - Isolated execution environment
 - Automatic resource management</p>
-<h3 id="joern-server-management">Joern Server Management<a class="heading-anchor" href="#joern-server-management" title="Link to this section">&para;</a></h3>
+<h3 id="gocpg-server-management">GoCPG Server Management<a class="heading-anchor" href="#gocpg-server-management" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Server status</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>server<span class="w"> </span>status
 
-<span class="c1"># Start server (local Joern)</span>
+<span class="c1"># Start server (local GoCPG)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>server<span class="w"> </span>start
 
 <span class="c1"># Start server in Docker</span>
@@ -400,6 +394,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>projects<span class="w"> </span>info<span class="w"> </span>my_project
 
 <span class="c1"># Activate project (set as current)</span>
+<span class="c1"># When a project has a `domain` field, the corresponding domain plugin is activated automatically.</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>projects<span class="w"> </span>activate<span class="w"> </span>my_project
 
 <span class="c1"># Delete project (metadata only)</span>
@@ -409,6 +404,23 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>projects<span class="w"> </span>delete<span class="w"> </span>my_project<span class="w"> </span>--delete-files
 </code></pre></div>
 
+<p>Projects are registered in <code>config.yaml</code> under <code>projects.registry</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">projects</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">active</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span>
+<span class="w">  </span><span class="nt">registry</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">postgres</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/projects/postgres.duckdb</span>
+<span class="w">      </span><span class="nt">source_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/source</span>
+<span class="w">      </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql_v2</span><span class="w">    </span><span class="c1"># Auto-activates domain plugin on switch</span>
+<span class="w">    </span><span class="nt">my_python_app</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/projects/myapp.duckdb</span>
+<span class="w">      </span><span class="nt">source_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/myapp</span>
+<span class="w">      </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python_generic</span>
+</code></pre></div>
+
+<p>The <code>domain</code> field is optional. When set, switching to a project automatically activates the corresponding domain plugin (e.g., <code>postgresql_v2</code>, <code>python_generic</code>). ChromaDB vector collections are also isolated per project.</p>
 <h3 id="step-by-step-import">Step-by-Step Import<a class="heading-anchor" href="#step-by-step-import" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># 1. Clone repository</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>clone<span class="w"> </span><span class="se">\</span>
@@ -460,15 +472,15 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;C&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;extensions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.h&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.cpp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.hpp&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;joern_command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c2cpg&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;joern_flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;C&quot;</span>
+<span class="w">      </span><span class="nt">&quot;gocpg_frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;gocpg_lang&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;C&quot;</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;java&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JAVA&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;extensions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.java&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;joern_command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;javasrc2cpg&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;joern_flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JAVASRC&quot;</span>
+<span class="w">      </span><span class="nt">&quot;gocpg_frontend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;java&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;gocpg_lang&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JAVA&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
@@ -479,12 +491,12 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="err">Content-Type: application/json</span>
 
 <span class="err">{</span>
-<span class="err">  &quot;repo_url&quot;: &quot;https://github.com/llvm/llvm-project&quot;,</span>
-<span class="err">  &quot;branch&quot;: &quot;main&quot;,</span>
+<span class="err">  &quot;repo_url&quot;: &quot;https://github.com/postgres/postgres&quot;,</span>
+<span class="err">  &quot;branch&quot;: &quot;master&quot;,</span>
 <span class="err">  &quot;shallow_clone&quot;: true,</span>
 <span class="err">  &quot;language&quot;: null,</span>
 <span class="err">  &quot;mode&quot;: &quot;full&quot;,</span>
-<span class="err">  &quot;include_paths&quot;: [&quot;llvm/lib&quot;, &quot;llvm/include&quot;],</span>
+<span class="err">  &quot;include_paths&quot;: [&quot;src/backend&quot;, &quot;src/include&quot;],</span>
 <span class="err">  &quot;exclude_paths&quot;: [&quot;test&quot;, &quot;tests&quot;],</span>
 <span class="err">  &quot;create_domain_plugin&quot;: true,</span>
 <span class="err">  &quot;import_docs&quot;: true</span>
@@ -506,7 +518,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <p><strong>Response:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;550e8400-e29b-41d4-a716-446655440000&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;llvm-project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;postgres&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;in_progress&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Clone Repository&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">},</span>
@@ -518,7 +530,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Import Documentation&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Setup Domain Plugin&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;current_step&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;joern_import&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;current_step&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gocpg_parse&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;overall_progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">35</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-12-09T10:00:00Z&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;updated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-12-09T10:05:00Z&quot;</span>
@@ -553,11 +565,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="err">  &quot;repo_url&quot;: &quot;https://github.com/example/project&quot;,</span>
 <span class="err">  &quot;branch&quot;: &quot;main&quot;,</span>
 <span class="err">  &quot;use_docker&quot;: true,</span>
-<span class="err">  &quot;docker_image&quot;: &quot;ghcr.io/joernio/joern:latest&quot;</span>
+<span class="err">  &quot;docker_image&quot;: &quot;codegraph/gocpg:latest&quot;</span>
 <span class="err">}</span>
 </code></pre></div>
 
-<h3 id="joern-server-management_1">Joern Server Management<a class="heading-anchor" href="#joern-server-management_1" title="Link to this section">&para;</a></h3>
+<h3 id="gocpg-server-management_1">GoCPG Server Management<a class="heading-anchor" href="#gocpg-server-management_1" title="Link to this section">&para;</a></h3>
 <p><strong>Get server status:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/import/server/status</span>
 </code></pre></div>
@@ -578,7 +590,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <span class="err">{</span>
 <span class="err">  &quot;use_docker&quot;: true,</span>
-<span class="err">  &quot;docker_image&quot;: &quot;ghcr.io/joernio/joern:latest&quot;</span>
+<span class="err">  &quot;docker_image&quot;: &quot;codegraph/gocpg:latest&quot;</span>
 <span class="err">}</span>
 </code></pre></div>
 
@@ -688,7 +700,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </tr>
 </tbody>
 </table></div>
-<h3 id="joern-options">Joern Options<a class="heading-anchor" href="#joern-options" title="Link to this section">&para;</a></h3>
+<h3 id="gocpg-options">GoCPG Options<a class="heading-anchor" href="#gocpg-options" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -699,9 +711,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </thead>
 <tbody>
 <tr>
-<td><code>joern_memory_gb</code></td>
+<td><code>gocpg_memory_gb</code></td>
 <td><code>16</code></td>
-<td>Memory for Joern (GB)</td>
+<td>Memory for GoCPG (GB)</td>
 </tr>
 <tr>
 <td><code>batch_size</code></td>
@@ -711,12 +723,12 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <tr>
 <td><code>use_docker</code></td>
 <td><code>false</code></td>
-<td>Use Docker for Joern</td>
+<td>Use Docker for GoCPG</td>
 </tr>
 <tr>
 <td><code>docker_image</code></td>
-<td><code>ghcr.io/joernio/joern:latest</code></td>
-<td>Joern Docker image</td>
+<td><code>codegraph/gocpg:latest</code></td>
+<td>GoCPG Docker image</td>
 </tr>
 </tbody>
 </table></div>
@@ -751,15 +763,15 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <h2 id="import-result">Import Result<a class="heading-anchor" href="#import-result" title="Link to this section">&para;</a></h2>
 <p>After successful import, the following are created:</p>
 <div class="highlight"><pre><span></span><code>workspace/
-├── llvm-project/           # Source code
-├── llvm-project.cpg        # Joern CPG file
-└── llvm-project.duckdb     # DuckDB database (graph)
+├── postgres/               # Source code
+├── postgres.duckdb         # GoCPG CPG database
+└── postgres.duckdb         # DuckDB database (graph)
 
 chromadb_storage/
-└── llvm_project_documentation/  # ChromaDB collection
+└── postgres_documentation/  # ChromaDB collection
 
 src/domains/
-└── llvm_project/           # Domain Plugin
+└── postgres/               # Domain Plugin
     ├── __init__.py
     ├── plugin.py
     ├── subsystems.yaml
@@ -768,10 +780,10 @@ src/domains/
 
 <h3 id="result-structure-projectimportresult">Result Structure (ProjectImportResult)<a class="heading-anchor" href="#result-structure-projectimportresult" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;cpg_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/llvm-project.cpg&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;duckdb_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/llvm-project.duckdb&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;domain_plugin_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./src/domains/llvm_project&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;chromadb_collection&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;llvm_project_documentation&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cpg_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/postgres.cpg&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;duckdb_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/postgres.duckdb&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;domain_plugin_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./src/domains/postgres&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;chromadb_collection&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;postgres_documentation&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;chromadb_stats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;readme_indexed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;docs_indexed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">230</span><span class="p">,</span>
@@ -882,10 +894,6 @@ src/domains/
 <td><code>.rs</code></td>
 </tr>
 <tr>
-<td>Ruby</td>
-<td><code>.rb</code></td>
-</tr>
-<tr>
 <td>PHP</td>
 <td><code>.php</code></td>
 </tr>
@@ -898,8 +906,8 @@ src/domains/
 <td><code>.kt</code>, <code>.kts</code></td>
 </tr>
 <tr>
-<td>Swift</td>
-<td><code>.swift</code></td>
+<td>1C:Enterprise</td>
+<td><code>.bsl</code>, <code>.os</code></td>
 </tr>
 <tr>
 <td>Scala</td>
@@ -966,16 +974,16 @@ src/domains/
 <h2 id="domain-plugin">Domain Plugin<a class="heading-anchor" href="#domain-plugin" title="Link to this section">&para;</a></h2>
 <p>A plugin is automatically generated for working with the new project.</p>
 <h3 id="plugin-structure">Plugin Structure<a class="heading-anchor" href="#plugin-structure" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># src/domains/llvm_project/plugin.py</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># src/domains/my_project/plugin.py</span>
 
-<span class="k">class</span><span class="w"> </span><span class="nc">LlvmProjectPlugin</span><span class="p">(</span><span class="n">DomainPlugin</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyProjectPlugin</span><span class="p">(</span><span class="n">DomainPlugin</span><span class="p">):</span>
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;llvm_project&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;my_project&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">display_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;Llvm Project&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;My Project&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_load_subsystems</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SubsystemInfo</span><span class="p">]:</span>
         <span class="c1"># Load from subsystems.yaml</span>
@@ -1014,13 +1022,13 @@ src/domains/
 <div class="highlight"><pre><span></span><code><span class="nt">prompts</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">onboarding</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">system</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">      </span><span class="no">You are a Llvm Project expert helping developers understand the codebase.</span>
+<span class="w">      </span><span class="no">You are a My Project expert helping developers understand the codebase.</span>
 <span class="w">    </span><span class="nt">user_template</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">      </span><span class="no">Help me understand the following aspect: {query}</span>
 
 <span class="w">  </span><span class="nt">security</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">system</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">      </span><span class="no">You are a security expert analyzing Llvm Project (C) code.</span>
+<span class="w">      </span><span class="no">You are a security expert analyzing My Project (C) code.</span>
 <span class="w">    </span><span class="nt">user_template</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">      </span><span class="no">Analyze the following code for security vulnerabilities:</span>
 <span class="w">      </span><span class="no">{code}</span>
@@ -1031,36 +1039,39 @@ src/domains/
 <p>After creating the plugin, add it to the configuration:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
 <span class="nt">domains</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">active</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;llvm_project&quot;</span>
+<span class="w">  </span><span class="nt">active</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;my_project&quot;</span>
 <span class="w">  </span><span class="nt">available</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">llvm_project</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql_v2</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my_project</span>
 </code></pre></div>
 
 <p>Or programmatically:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.domains</span><span class="w"> </span><span class="kn">import</span> <span class="n">DomainRegistry</span>
 
-<span class="n">DomainRegistry</span><span class="o">.</span><span class="n">activate</span><span class="p">(</span><span class="s2">&quot;llvm_project&quot;</span><span class="p">)</span>
+<span class="n">DomainRegistry</span><span class="o">.</span><span class="n">activate</span><span class="p">(</span><span class="s2">&quot;my_project&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <hr />
 <h2 id="handling-large-repositories">Handling Large Repositories<a class="heading-anchor" href="#handling-large-repositories" title="Link to this section">&para;</a></h2>
-<h3 id="llvm-millions-of-lines-of-code">LLVM (Millions of Lines of Code)<a class="heading-anchor" href="#llvm-millions-of-lines-of-code" title="Link to this section">&para;</a></h3>
+<h3 id="large-cc-projects">Large C/C++ Projects<a class="heading-anchor" href="#large-cc-projects" title="Link to this section">&para;</a></h3>
+<blockquote class="callout">
+<p><strong>Note:</strong> Large C/C++ projects use the <code>generic_cpp</code> domain plugin for analysis.</p>
+</blockquote>
 <div class="highlight"><pre><span></span><code><span class="c1"># Use shallow clone</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--repo<span class="w"> </span>https://github.com/llvm/llvm-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repo<span class="w"> </span>https://github.com/postgres/postgres<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--shallow<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--depth<span class="w"> </span><span class="m">1</span>
 
 <span class="c1"># Or selective import</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--repo<span class="w"> </span>https://github.com/llvm/llvm-project<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--include<span class="w"> </span>llvm/lib/Target/X86<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repo<span class="w"> </span>https://github.com/postgres/postgres<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--include<span class="w"> </span>src/backend/executor<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--mode<span class="w"> </span>selective
 
-<span class="c1"># Increase memory for Joern</span>
+<span class="c1"># Increase memory for GoCPG</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--repo<span class="w"> </span>https://github.com/llvm/llvm-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repo<span class="w"> </span>https://github.com/postgres/postgres<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--memory<span class="w"> </span><span class="m">32</span>
 </code></pre></div>
 
@@ -1069,7 +1080,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><strong>Use shallow clone</strong> to save space and time</li>
 <li><strong>Select needed directories</strong> via <code>--include</code></li>
 <li><strong>Exclude tests</strong> via <code>--exclude test tests</code></li>
-<li><strong>Increase Joern memory</strong> for large projects (16-32GB)</li>
+<li><strong>Increase GoCPG memory</strong> for large projects (16-32GB)</li>
 </ol>
 <hr />
 <h2 id="python-api">Python API<a class="heading-anchor" href="#python-api" title="Link to this section">&para;</a></h2>
@@ -1129,16 +1140,16 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
-<h3 id="joern-frontend-not-found">Joern Frontend Not Found<a class="heading-anchor" href="#joern-frontend-not-found" title="Link to this section">&para;</a></h3>
+<h3 id="gocpg-frontend-not-found">GoCPG Frontend Not Found<a class="heading-anchor" href="#gocpg-frontend-not-found" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">RuntimeError</span><span class="o">:</span><span class="w"> </span><span class="n">Frontend</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">found</span><span class="w"> </span><span class="n">at</span><span class="w"> </span><span class="n">expected</span><span class="w"> </span><span class="n">paths</span>
 </code></pre></div>
 
-<p><strong>Solution:</strong> Check <code>JOERN_HOME</code> or specify explicitly:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">JOERN_HOME</span><span class="o">=</span>/path/to/joern
+<p><strong>Solution:</strong> Check <code>GOCPG_HOME</code> or specify explicitly:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">GOCPG_PATH</span><span class="o">=</span>/path/to/gocpg
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span>--repo<span class="w"> </span>...
 </code></pre></div>
 
-<h3 id="insufficient-memory-for-joern">Insufficient Memory for Joern<a class="heading-anchor" href="#insufficient-memory-for-joern" title="Link to this section">&para;</a></h3>
+<h3 id="insufficient-memory-for-gocpg">Insufficient Memory for GoCPG<a class="heading-anchor" href="#insufficient-memory-for-gocpg" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>java.lang.OutOfMemoryError: Java heap space
 </code></pre></div>
 
@@ -1160,19 +1171,19 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <p><strong>Solution:</strong> Check:
 1. Source code path is correct
-2. Joern frontend matches the language
+2. GoCPG frontend matches the language
 3. Files are not excluded by patterns</p>
 <hr />
 <h2 id="configuration-configyaml">Configuration (config.yaml)<a class="heading-anchor" href="#configuration-configyaml" title="Link to this section">&para;</a></h2>
 <p>Settings for the <code>project_import</code> module in <code>config.yaml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">project_import</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">joern</span><span class="p">:</span>
-<span class="w">    </span><span class="c1"># Path to local Joern installation (optional if using Docker)</span>
-<span class="w">    </span><span class="nt">home</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${JOERN_HOME}</span>
-<span class="w">    </span><span class="c1"># Use Docker instead of local Joern</span>
+<span class="w">  </span><span class="nt">gocpg</span><span class="p">:</span>
+<span class="w">    </span><span class="c1"># Path to local GoCPG binary (optional if using Docker)</span>
+<span class="w">    </span><span class="nt">home</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${GOCPG_HOME}</span>
+<span class="w">    </span><span class="c1"># Use Docker instead of local GoCPG</span>
 <span class="w">    </span><span class="nt">use_docker</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="c1"># Docker image for Joern</span>
-<span class="w">    </span><span class="nt">docker_image</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ghcr.io/joernio/joern:latest&quot;</span>
+<span class="w">    </span><span class="c1"># Docker image for GoCPG</span>
+<span class="w">    </span><span class="nt">docker_image</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;codegraph/gocpg:latest&quot;</span>
 <span class="w">    </span><span class="c1"># Server connection timeout (seconds)</span>
 <span class="w">    </span><span class="nt">server_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
 <span class="w">    </span><span class="c1"># JVM memory (GB)</span>
@@ -1204,12 +1215,12 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <hr />
 <h2 id="component-architecture">Component Architecture<a class="heading-anchor" href="#component-architecture" title="Link to this section">&para;</a></h2>
-<h3 id="joernservermanager">JoernServerManager<a class="heading-anchor" href="#joernservermanager" title="Link to this section">&para;</a></h3>
-<p>Central component for managing the Joern server:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">JoernServerManager</span>
+<h3 id="gocpgservermanager">GoCPGServerManager<a class="heading-anchor" href="#gocpgservermanager" title="Link to this section">&para;</a></h3>
+<p>Central component for managing the GoCPG server:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">GoCPGServerManager</span>
 
 <span class="c1"># Create manager</span>
-<span class="n">manager</span> <span class="o">=</span> <span class="n">JoernServerManager</span><span class="p">(</span><span class="n">use_docker</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">GoCPGServerManager</span><span class="p">(</span><span class="n">use_docker</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Start server</span>
 <span class="k">await</span> <span class="n">manager</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
@@ -1236,15 +1247,15 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
     <span class="k">await</span> <span class="n">registry</span><span class="o">.</span><span class="n">delete_project</span><span class="p">(</span><span class="s2">&quot;old_project&quot;</span><span class="p">,</span> <span class="n">delete_files</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="localjoernrunner-dockerjoernrunner">LocalJoernRunner / DockerJoernRunner<a class="heading-anchor" href="#localjoernrunner-dockerjoernrunner" title="Link to this section">&para;</a></h3>
-<p>Runners for executing Joern commands:</p>
+<h3 id="localgocpgrunner-dockergocpgrunner">LocalGoCPGRunner / DockerGoCPGRunner<a class="heading-anchor" href="#localgocpgrunner-dockergocpgrunner" title="Link to this section">&para;</a></h3>
+<p>Runners for executing GoCPG commands:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Local execution</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalJoernRunner</span>
-<span class="n">runner</span> <span class="o">=</span> <span class="n">LocalJoernRunner</span><span class="p">(</span><span class="n">joern_home</span><span class="o">=</span><span class="s2">&quot;/path/to/joern&quot;</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalGoCPGRunner</span>
+<span class="n">runner</span> <span class="o">=</span> <span class="n">LocalGoCPGRunner</span><span class="p">(</span><span class="n">gocpg_path</span><span class="o">=</span><span class="s2">&quot;/path/to/gocpg&quot;</span><span class="p">)</span>
 
 <span class="c1"># Docker execution</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">DockerJoernRunner</span>
-<span class="n">runner</span> <span class="o">=</span> <span class="n">DockerJoernRunner</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="s2">&quot;ghcr.io/joernio/joern:latest&quot;</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">DockerGoCPGRunner</span>
+<span class="n">runner</span> <span class="o">=</span> <span class="n">DockerGoCPGRunner</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="s2">&quot;codegraph/gocpg:latest&quot;</span><span class="p">)</span>
 
 <span class="c1"># Run frontend</span>
 <span class="k">await</span> <span class="n">runner</span><span class="o">.</span><span class="n">run_frontend</span><span class="p">(</span><span class="s2">&quot;pysrc2cpg&quot;</span><span class="p">,</span> <span class="n">source_path</span><span class="p">,</span> <span class="n">output_cpg</span><span class="p">)</span>
@@ -1275,7 +1286,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-01-08</span>
+        <span>Last updated: 2026-02-18</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/PROJECT_IMPORT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1295,17 +1306,18 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#with-selective-import-only-specific-directories" class="level-1">With selective import (only specific directories)</a></li>
 <li><a href="#import-using-docker" class="level-1">Import using Docker</a></li>
 <li><a href="#docker-support" class="level-3">Docker Support</a></li>
-<li><a href="#import-with-docker-no-local-joern-installation-required" class="level-1">Import with Docker (no local Joern installation required)</a></li>
+<li><a href="#import-with-docker-no-local-gocpg-build-required" class="level-1">Import with Docker (no local GoCPG build required)</a></li>
 <li><a href="#with-specific-docker-image" class="level-1">With specific Docker image</a></li>
-<li><a href="#joern-server-management" class="level-3">Joern Server Management</a></li>
+<li><a href="#gocpg-server-management" class="level-3">GoCPG Server Management</a></li>
 <li><a href="#server-status" class="level-1">Server status</a></li>
-<li><a href="#start-server-local-joern" class="level-1">Start server (local Joern)</a></li>
+<li><a href="#start-server-local-gocpg" class="level-1">Start server (local GoCPG)</a></li>
 <li><a href="#start-server-in-docker" class="level-1">Start server in Docker</a></li>
 <li><a href="#stop-server" class="level-1">Stop server</a></li>
 <li><a href="#project-management" class="level-3">Project Management</a></li>
 <li><a href="#list-all-imported-projects" class="level-1">List all imported projects</a></li>
 <li><a href="#project-information" class="level-1">Project information</a></li>
 <li><a href="#activate-project-set-as-current" class="level-1">Activate project (set as current)</a></li>
+<li><a href="#when-a-project-has-a-domain-field-the-corresponding-domain-plugin-is-activated-automatically" class="level-1">When a project has a `domain` field, the corresponding domain plugin is activated automatically.</a></li>
 <li><a href="#delete-project-metadata-only" class="level-1">Delete project (metadata only)</a></li>
 <li><a href="#delete-project-with-files-cpg-duckdb" class="level-1">Delete project with files (CPG, DuckDB)</a></li>
 <li><a href="#step-by-step-import" class="level-3">Step-by-Step Import</a></li>
@@ -1325,13 +1337,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#cancel-import" class="level-3">Cancel Import</a></li>
 <li><a href="#run-individual-step" class="level-3">Run Individual Step</a></li>
 <li><a href="#import-with-docker" class="level-3">Import with Docker</a></li>
-<li><a href="#joern-server-management" class="level-3">Joern Server Management</a></li>
+<li><a href="#gocpg-server-management" class="level-3">GoCPG Server Management</a></li>
 <li><a href="#project-management" class="level-3">Project Management</a></li>
 <li><a href="#websocket-for-progress-tracking" class="level-2">WebSocket for Progress Tracking</a></li>
 <li><a href="#import-parameters" class="level-2">Import Parameters</a></li>
 <li><a href="#import-modes" class="level-3">Import Modes</a></li>
 <li><a href="#cloning-options" class="level-3">Cloning Options</a></li>
-<li><a href="#joern-options" class="level-3">Joern Options</a></li>
+<li><a href="#gocpg-options" class="level-3">GoCPG Options</a></li>
 <li><a href="#documentation-options" class="level-3">Documentation Options</a></li>
 <li><a href="#import-result" class="level-2">Import Result</a></li>
 <li><a href="#result-structure-projectimportresult" class="level-3">Result Structure (ProjectImportResult)</a></li>
@@ -1346,16 +1358,16 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#import-statistics" class="level-3">Import Statistics</a></li>
 <li><a href="#domain-plugin" class="level-2">Domain Plugin</a></li>
 <li><a href="#plugin-structure" class="level-3">Plugin Structure</a></li>
-<li><a href="#srcdomainsllvm-projectpluginpy" class="level-1">src/domains/llvm_project/plugin.py</a></li>
+<li><a href="#srcdomainsmy-projectpluginpy" class="level-1">src/domains/my_project/plugin.py</a></li>
 <li><a href="#configuration-subsystemsyaml" class="level-3">Configuration: subsystems.yaml</a></li>
 <li><a href="#configuration-promptsyaml" class="level-3">Configuration: prompts.yaml</a></li>
 <li><a href="#activating-domain-plugin" class="level-2">Activating Domain Plugin</a></li>
 <li><a href="#configyaml" class="level-1">config.yaml</a></li>
 <li><a href="#handling-large-repositories" class="level-2">Handling Large Repositories</a></li>
-<li><a href="#llvm-millions-of-lines-of-code" class="level-3">LLVM (Millions of Lines of Code)</a></li>
+<li><a href="#large-cc-projects" class="level-3">Large C/C++ Projects</a></li>
 <li><a href="#use-shallow-clone" class="level-1">Use shallow clone</a></li>
 <li><a href="#or-selective-import" class="level-1">Or selective import</a></li>
-<li><a href="#increase-memory-for-joern" class="level-1">Increase memory for Joern</a></li>
+<li><a href="#increase-memory-for-gocpg" class="level-1">Increase memory for GoCPG</a></li>
 <li><a href="#recommendations" class="level-3">Recommendations</a></li>
 <li><a href="#python-api" class="level-2">Python API</a></li>
 <li><a href="#create-request" class="level-1">Create request</a></li>
@@ -1364,19 +1376,19 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#step-context" class="level-1">Step context</a></li>
 <li><a href="#run-validation-step" class="level-1">Run validation step</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
-<li><a href="#joern-frontend-not-found" class="level-3">Joern Frontend Not Found</a></li>
-<li><a href="#insufficient-memory-for-joern" class="level-3">Insufficient Memory for Joern</a></li>
+<li><a href="#gocpg-frontend-not-found" class="level-3">GoCPG Frontend Not Found</a></li>
+<li><a href="#insufficient-memory-for-gocpg" class="level-3">Insufficient Memory for GoCPG</a></li>
 <li><a href="#language-not-detected" class="level-3">Language Not Detected</a></li>
 <li><a href="#cpg-validation-failed" class="level-3">CPG Validation Failed</a></li>
 <li><a href="#configuration-configyaml" class="level-2">Configuration (config.yaml)</a></li>
 <li><a href="#component-architecture" class="level-2">Component Architecture</a></li>
-<li><a href="#joernservermanager" class="level-3">JoernServerManager</a></li>
+<li><a href="#gocpgservermanager" class="level-3">GoCPGServerManager</a></li>
 <li><a href="#create-manager" class="level-1">Create manager</a></li>
 <li><a href="#start-server" class="level-1">Start server</a></li>
 <li><a href="#get-client" class="level-1">Get client</a></li>
 <li><a href="#stop-server" class="level-1">Stop server</a></li>
 <li><a href="#projectregistry" class="level-3">ProjectRegistry</a></li>
-<li><a href="#localjoernrunner-dockerjoernrunner" class="level-3">LocalJoernRunner / DockerJoernRunner</a></li>
+<li><a href="#localgocpgrunner-dockergocpgrunner" class="level-3">LocalGoCPGRunner / DockerGoCPGRunner</a></li>
 <li><a href="#local-execution" class="level-1">Local execution</a></li>
 <li><a href="#docker-execution" class="level-1">Docker execution</a></li>
 <li><a href="#run-frontend" class="level-1">Run frontend</a></li>

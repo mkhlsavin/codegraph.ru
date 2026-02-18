@@ -93,6 +93,7 @@
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CPG_EXPORT.html">CPG Export Guide</a></li>
+        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/MONITORING.html">Monitoring Guide</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
@@ -117,6 +118,11 @@
         <li><a href="../guides/14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="../guides/15-debugging.html">Scenario 15: Debugging Assistance</a></li>
         <li><a href="../guides/16-entry-points.html">Scenario 16: Entry Point Discovery</a></li>
+        <li><a href="../guides/17-file-editing.html">Scenario 17: Advanced File Editing</a></li>
+        <li><a href="../guides/18-code-optimization.html">Scenario 18: Interactive Code Optimization</a></li>
+        <li><a href="../guides/19-standards-check.html">Scenario 19: Reference-Guided Standards Check</a></li>
+        <li><a href="../guides/20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
+        <li><a href="../guides/composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
 
@@ -172,9 +178,26 @@
       <!-- Content -->
       <article class="doc-content">
         <h1 id="api-documentation">API Documentation<a class="heading-anchor" href="#api-documentation" title="Link to this section">&para;</a></h1>
-<blockquote class="callout">
 <p>REST API and WebSocket interface documentation for CodeGraph.</p>
-</blockquote>
+<h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────┐
+│                      API Clients                             │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+    ┌───────────┐       ┌───────────┐       ┌───────────┐
+    │  REST API │       │ WebSocket │       │  GraphQL  │
+    │   (HTTP)  │       │  (WS)     │       │  (Future) │
+    └───────────┘       └───────────┘       └───────────┘
+          │                   │
+          ▼                   ▼
+    ┌─────────────────────────────────────────────────┐
+    │              CodeGraph Backend                   │
+    │     Auth | Scenarios | Query | Chat | Review    │
+    └─────────────────────────────────────────────────┘
+</code></pre></div>
+
 <h2 id="api-reference">API Reference<a class="heading-anchor" href="#api-reference" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
@@ -195,24 +218,221 @@
 </tbody>
 </table></div>
 <h2 id="quick-start">Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Start the API server</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="w"> </span>serve
+<h3 id="start-api-server">Start API Server<a class="heading-anchor" href="#start-api-server" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="w"> </span>run<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+</code></pre></div>
 
-<span class="c1"># Check API health</span>
-curl<span class="w"> </span>http://localhost:8000/health
-
-<span class="c1"># Get auth token</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/auth/token<span class="w"> </span><span class="se">\</span>
+<h3 id="get-authentication-token">Get Authentication Token<a class="heading-anchor" href="#get-authentication-token" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/auth/token<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;user&quot;, &quot;password&quot;: &quot;password&quot;}&#39;</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;password&quot;}&#39;</span>
+</code></pre></div>
+
+<h3 id="use-token-for-requests">Use Token for Requests<a class="heading-anchor" href="#use-token-for-requests" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/api/v1/scenarios<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span>
 </code></pre></div>
 
 <h2 id="authentication">Authentication<a class="heading-anchor" href="#authentication" title="Link to this section">&para;</a></h2>
-<p>All endpoints (except <code>/health</code>) require JWT authentication:</p>
+<p>All endpoints (except <code>/health</code>) require authentication:</p>
+<h3 id="jwt-token">JWT Token<a class="heading-anchor" href="#jwt-token" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>http://localhost:8000/api/v1/scenarios
 </code></pre></div>
 
+<h3 id="api-key">API Key<a class="heading-anchor" href="#api-key" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;X-API-Key: &lt;api-key&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>http://localhost:8000/api/v1/scenarios
+</code></pre></div>
+
+<h2 id="api-endpoints">API Endpoints<a class="heading-anchor" href="#api-endpoints" title="Link to this section">&para;</a></h2>
+<h3 id="authentication_1">Authentication<a class="heading-anchor" href="#authentication_1" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/token</code></td>
+<td>Get JWT token</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/refresh</code></td>
+<td>Refresh token</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/api-keys</code></td>
+<td>Create API key</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/auth/me</code></td>
+<td>Get current user</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="scenarios">Scenarios<a class="heading-anchor" href="#scenarios" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/scenarios</code></td>
+<td>List scenarios</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/scenarios/{id}</code></td>
+<td>Get scenario</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/scenarios/{id}/query</code></td>
+<td>Execute query</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="chat">Chat<a class="heading-anchor" href="#chat" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/chat</code></td>
+<td>Send message</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/chat/stream</code></td>
+<td>Stream response</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/chat/history</code></td>
+<td>Get history</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="query">Query<a class="heading-anchor" href="#query" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/query/execute</code></td>
+<td>Execute query</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/query/cpgql</code></td>
+<td>Execute CPGQL</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="review">Review<a class="heading-anchor" href="#review" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/review/patch</code></td>
+<td>Review patch</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/review/pr</code></td>
+<td>Review PR</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="documentation-generation">Documentation Generation<a class="heading-anchor" href="#documentation-generation" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/documentation/generate</code></td>
+<td>Generate full documentation</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/documentation/generate/{section}</code></td>
+<td>Generate single section</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/documentation/stats</code></td>
+<td>Get ChromaDB stats</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/documentation/search</code></td>
+<td>Semantic search in docs</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="websocket">WebSocket<a class="heading-anchor" href="#websocket" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/ws/chat</code></td>
+<td>Real-time chat</td>
+</tr>
+<tr>
+<td><code>/api/v1/ws/jobs/{id}</code></td>
+<td>Job progress</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="interactive-documentation">Interactive Documentation<a class="heading-anchor" href="#interactive-documentation" title="Link to this section">&para;</a></h2>
+<p>After starting the server:</p>
+<ul>
+<li><strong>Swagger UI</strong>: http://localhost:8000/api/docs</li>
+<li><strong>ReDoc</strong>: http://localhost:8000/api/redoc</li>
+</ul>
 <h2 id="related-documentation">Related Documentation<a class="heading-anchor" href="#related-documentation" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="../getting-started/README.html">Getting Started</a></li>
@@ -226,7 +446,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-01-08</span>
+        <span>Last updated: 2026-02-18</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/api/README.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -236,12 +456,24 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#api-documentation" class="level-1">API Documentation</a></li>
+<li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#api-reference" class="level-2">API Reference</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#start-the-api-server" class="level-1">Start the API server</a></li>
-<li><a href="#check-api-health" class="level-1">Check API health</a></li>
-<li><a href="#get-auth-token" class="level-1">Get auth token</a></li>
+<li><a href="#start-api-server" class="level-3">Start API Server</a></li>
+<li><a href="#get-authentication-token" class="level-3">Get Authentication Token</a></li>
+<li><a href="#use-token-for-requests" class="level-3">Use Token for Requests</a></li>
 <li><a href="#authentication" class="level-2">Authentication</a></li>
+<li><a href="#jwt-token" class="level-3">JWT Token</a></li>
+<li><a href="#api-key" class="level-3">API Key</a></li>
+<li><a href="#api-endpoints" class="level-2">API Endpoints</a></li>
+<li><a href="#authentication" class="level-3">Authentication</a></li>
+<li><a href="#scenarios" class="level-3">Scenarios</a></li>
+<li><a href="#chat" class="level-3">Chat</a></li>
+<li><a href="#query" class="level-3">Query</a></li>
+<li><a href="#review" class="level-3">Review</a></li>
+<li><a href="#documentation-generation" class="level-3">Documentation Generation</a></li>
+<li><a href="#websocket" class="level-3">WebSocket</a></li>
+<li><a href="#interactive-documentation" class="level-2">Interactive Documentation</a></li>
 <li><a href="#related-documentation" class="level-2">Related Documentation</a></li>
       </ul>
     </aside>
