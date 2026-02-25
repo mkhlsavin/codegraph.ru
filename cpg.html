@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CPG — следующий уровень анализа кода после AST. Узнайте, почему CodeGraph находит уязвимости, невидимые традиционным SAST. Технический deep-dive.">
+  <meta name="keywords" content="Code Property Graph, CPG, граф свойств кода, CPG vs AST, Joern альтернатива, taint analysis CPG, CodeGraph">
+  <meta property="og:title" content="Что такое Code Property Graph и зачем он нужен | CodeGraph">
+  <meta property="og:description" content="CPG — следующий уровень анализа кода после AST. Технический deep-dive в архитектуру CodeGraph.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://codegraph.ru/cpg.html">
+  <meta property="og:image" content="https://codegraph.ru/assets/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Что такое Code Property Graph и зачем он нужен | CodeGraph">
+  <meta name="twitter:description" content="CPG — следующий уровень анализа кода после AST. Узнайте, почему CodeGraph находит уязвимости, невидимые традиционным SAST.">
+  <meta name="twitter:image" content="https://codegraph.ru/assets/og-image.png">
+  <link rel="canonical" href="https://codegraph.ru/cpg.html">
+  <link rel="alternate" hreflang="ru" href="https://codegraph.ru/cpg.html">
+  <link rel="alternate" hreflang="x-default" href="https://codegraph.ru/cpg.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Code Property Graph: следующее поколение анализа кода",
+    "description": "CPG — следующий уровень анализа кода после AST. Технический deep-dive.",
+    "url": "https://codegraph.ru/cpg.html",
+    "publisher": {
+      "@type": "Organization",
+      "name": "CodeGraph",
+      "url": "https://codegraph.ru"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Главная", "item": "https://codegraph.ru/"},
+      {"@type": "ListItem", "position": 2, "name": "CPG", "item": "https://codegraph.ru/cpg.html"}
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Что такое Code Property Graph?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Code Property Graph (CPG) — единая структура данных, объединяющая AST (синтаксис), CFG (поток управления), PDG (зависимости по данным) и DDG (зависимости по данным между инструкциями) в один queryable граф для глубокого анализа кода."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Чем CPG отличается от AST?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "AST отражает только синтаксическую структуру кода. CPG дополняет AST графом потока управления и зависимостей по данным, что позволяет отслеживать межпроцедурные потоки данных и находить уязвимости, невидимые для AST-based инструментов."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Чем CodeGraph отличается от Joern?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "CodeGraph написан на Go (без JVM), использует DuckDB вместо OverflowDB, поддерживает 11 языков (vs 6 у Joern), работает в 3-5x быстрее, имеет встроенный структурный поиск с YAML-правилами и production-ready инкрементальные обновления."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Какие языки программирования поддерживает CPG-анализ CodeGraph?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "CodeGraph поддерживает 11 языков: C, C++, Go, Python, JavaScript, TypeScript, Java, Kotlin, C#, PHP, 1С:Предприятие."
+        }
+      }
+    ]
+  }
+  </script>
+  <title>Что такое Code Property Graph и зачем он нужен | CodeGraph</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+<header class="header">
+  <nav class="nav container">
+    <a href="index.html" class="logo">
+      <img src="assets/svg/logo.svg" alt="CodeGraph" width="160" height="40">
+    </a>
+    <ul class="nav-list">
+      <li><a href="index.html#problems" class="nav-link">Проблемы</a></li>
+      <li><a href="index.html#solution" class="nav-link">Решение</a></li>
+      <li><a href="index.html#features" class="nav-link">Возможности</a></li>
+      <li><a href="index.html#integrations" class="nav-link">Интеграции</a></li>
+      <li><a href="docs/ru/index.html" class="nav-link">Документация</a></li>
+      <li><a href="index.html#faq" class="nav-link">FAQ</a></li>
+    </ul>
+    <div class="header-actions">
+      <button class="theme-toggle" aria-label="Переключить тему">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <a href="index.html#demo" class="btn btn-primary">Запросить демо</a>
+    </div>
+    <button class="mobile-menu-toggle" aria-label="Menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </nav>
+  <nav class="mobile-nav">
+    <ul class="mobile-nav-list">
+      <li><a href="index.html#problems" class="mobile-nav-link">Проблемы</a></li>
+      <li><a href="index.html#solution" class="mobile-nav-link">Решение</a></li>
+      <li><a href="index.html#features" class="mobile-nav-link">Возможности</a></li>
+      <li><a href="index.html#integrations" class="mobile-nav-link">Интеграции</a></li>
+      <li><a href="docs/ru/index.html" class="mobile-nav-link">Документация</a></li>
+      <li><a href="index.html#faq" class="mobile-nav-link">FAQ</a></li>
+      <li><a href="index.html#demo" class="btn btn-primary" style="margin-top: 1rem;">Запросить демо</a></li>
+    </ul>
+  </nav>
+</header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container hero-content">
+        <div class="hero-text">
+          <h1 class="hero-title animate-fade-in">
+            Code Property Graph: <span class="highlight">следующее поколение</span> анализа кода
+          </h1>
+          <p class="hero-subtitle animate-fade-in-delay">
+            AST + CFG + PDG + DDG в едином queryable графе. 30 аналитических пассов. 11 языков. 2-3 мс на запрос.
+          </p>
+          <div class="hero-actions animate-fade-in-delay-2">
+            <a href="docs/ru/index.html" class="btn btn-primary btn-lg">Изучить технологию</a>
+            <a href="index.html#demo" class="btn btn-outline btn-lg">Запросить демо</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Что такое CPG -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title">Что такое Code Property Graph</h2>
+        <p class="section-subtitle">Единая структура данных для глубокого анализа кода</p>
+        <div class="features-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2rem;margin-top:3rem;">
+          <div class="feature-card">
+            <h3>AST — синтаксис</h3>
+            <p>Abstract Syntax Tree отражает структуру кода: функции, вызовы, переменные, операторы. Это то, что видят SonarQube и Semgrep.</p>
+          </div>
+          <div class="feature-card">
+            <h3>CFG — поток управления</h3>
+            <p>Control Flow Graph показывает порядок выполнения инструкций: ветвления, циклы, условия. Без CFG невозможен анализ достижимости.</p>
+          </div>
+          <div class="feature-card">
+            <h3>PDG — зависимости</h3>
+            <p>Program Dependence Graph связывает данные с управлением: какая переменная от чего зависит, какие инструкции влияют друг на друга.</p>
+          </div>
+          <div class="feature-card">
+            <h3>DDG — потоки данных</h3>
+            <p>Data Dependency Graph прослеживает, как значения переменных распространяются между инструкциями и функциями — основа для taint analysis.</p>
+          </div>
+        </div>
+        <p style="text-align:center;margin-top:2rem;color:var(--text-secondary);max-width:700px;margin-left:auto;margin-right:auto;">
+          CPG объединяет все четыре графа в единую структуру. Это позволяет задавать вопросы, которые невозможны на уровне отдельных представлений: «Существует ли путь от пользовательского ввода до SQL-запроса без валидации?»
+        </p>
+      </div>
+    </section>
+
+    <!-- Почему CPG лучше AST -->
+    <section class="section" style="background:var(--bg-secondary);">
+      <div class="container">
+        <h2 class="section-title">Почему CPG находит то, что AST пропускает</h2>
+        <p class="section-subtitle">Pattern matching видит синтаксис. CPG видит семантику.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:2rem;margin-top:3rem;">
+          <div class="feature-card">
+            <h3>AST-based инструменты</h3>
+            <ul style="margin-top:1rem;line-height:1.8;">
+              <li>Сопоставляют шаблоны с деревом синтаксиса</li>
+              <li>Не видят межпроцедурные зависимости</li>
+              <li>Не отслеживают потоки данных между файлами</li>
+              <li>Не знают, прошли ли данные валидацию</li>
+              <li><strong>Результат: 80-91% ложных срабатываний</strong></li>
+            </ul>
+          </div>
+          <div class="feature-card">
+            <h3>CPG-based анализ (CodeGraph)</h3>
+            <ul style="margin-top:1rem;line-height:1.8;">
+              <li>Строит полный граф зависимостей по данным</li>
+              <li>Межпроцедурный taint analysis: source → sink</li>
+              <li>Видит пути данных через 5-10 функций в разных файлах</li>
+              <li>Учитывает валидацию, санитизацию, type conversion</li>
+              <li><strong>Результат: 12% ложных срабатываний</strong></li>
+            </ul>
+          </div>
+        </div>
+        <div class="feature-card" style="margin-top:2rem;max-width:800px;margin-left:auto;margin-right:auto;">
+          <h3>Пример: SQL-инъекция через 3 функции</h3>
+          <p style="margin-top:1rem;">Функция <code>get_input()</code> в файле A читает пользовательский ввод. Функция <code>process()</code> в файле B передаёт его дальше. Функция <code>query()</code> в файле C вставляет в SQL-запрос.</p>
+          <p style="margin-top:0.5rem;"><strong>AST-based SAST</strong>: Не видит связи между тремя файлами. Уязвимость пропущена.</p>
+          <p style="margin-top:0.5rem;"><strong>CPG (CodeGraph)</strong>: Строит taint-путь: <code>get_input() → process() → query() → PQexec()</code>. Уязвимость найдена за 2,3 мс.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Архитектура -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title">Архитектура CodeGraph</h2>
+        <p class="section-subtitle">Нативный Go-бинарник. Без JVM. 30 аналитических пассов.</p>
+        <div class="feature-card" style="max-width:800px;margin:2rem auto;font-family:'JetBrains Mono',monospace;font-size:0.9rem;line-height:1.6;">
+          <pre style="overflow-x:auto;">Source Files → Frontend (per-file) → DiffGraph → Pass Pipeline (DAG) → DuckDB
+                   │                                    │
+            Orchestrator                         CPGGraph (in-memory)
+       (parallel workers per file)           (zero SQL during passes)
+
+Фазы пассов:
+ 1. Base: MetaData, File, Namespace
+ 2. Types: TypeNode, TypeDecl, Inheritance
+ 3. Control Flow: CFG, Dominator, PostDominator, CDG
+ 4. Import Resolution + Call Graph
+ 5. Data Flow: ReachingDef, Interprocedural ReachingDef
+ 6. Type Propagation + Return Type Propagation
+ 7. PDG + DDG
+ 8. Enrichment: Metrics, Comments, Containment
+ 9. Pattern Matching (70+ YAML rules)</pre>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;margin-top:2rem;">
+          <div class="feature-card" style="text-align:center;">
+            <div style="font-size:2.5rem;font-weight:700;color:var(--primary);">30</div>
+            <div>аналитических пассов</div>
+          </div>
+          <div class="feature-card" style="text-align:center;">
+            <div style="font-size:2.5rem;font-weight:700;color:var(--primary);">11</div>
+            <div>языков программирования</div>
+          </div>
+          <div class="feature-card" style="text-align:center;">
+            <div style="font-size:2.5rem;font-weight:700;color:var(--primary);">2-3 мс</div>
+            <div>время запроса</div>
+          </div>
+          <div class="feature-card" style="text-align:center;">
+            <div style="font-size:2.5rem;font-weight:700;color:var(--primary);">~30 мин</div>
+            <div>индексация 1M строк</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Сравнение с Joern -->
+    <section class="section" style="background:var(--bg-secondary);">
+      <div class="container">
+        <h2 class="section-title">CodeGraph vs Joern</h2>
+        <p class="section-subtitle">Production-ready CPG без JVM</p>
+        <div style="overflow-x:auto;margin-top:2rem;">
+          <table style="width:100%;border-collapse:collapse;text-align:left;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--border);">
+                <th style="padding:1rem;">Критерий</th>
+                <th style="padding:1rem;">Joern</th>
+                <th style="padding:1rem;">CodeGraph</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.75rem 1rem;">Рантайм</td>
+                <td style="padding:0.75rem 1rem;">JVM (Scala)</td>
+                <td style="padding:0.75rem 1rem;"><strong>Нативный Go (без JVM)</strong></td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.75rem 1rem;">Хранилище</td>
+                <td style="padding:0.75rem 1rem;">OverflowDB (in-memory)</td>
+                <td style="padding:0.75rem 1rem;"><strong>DuckDB (персистентный)</strong></td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.75rem 1rem;">Языки</td>
+                <td style="padding:0.75rem 1rem;">6 (C, C++, Java, JS, Python, PHP)</td>
+                <td style="padding:0.75rem 1rem;"><strong>11 (+ Go, TS, Kotlin, C#, 1С)</strong></td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.75rem 1rem;">Инкрементальные обновления</td>
+                <td style="padding:0.75rem 1rem;">Нет (полный перепарсинг)</td>
+                <td style="padding:0.75rem 1rem;"><strong>Да (git diff-based, секунды)</strong></td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.75rem 1rem;">Структурный поиск</td>
+                <td style="padding:0.75rem 1rem;">Через Scala DSL</td>
+                <td style="padding:0.75rem 1rem;"><strong>YAML-правила (70+ готовых)</strong></td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.75rem 1rem;">CI/CD интеграция</td>
+                <td style="padding:0.75rem 1rem;">Ручная настройка</td>
+                <td style="padding:0.75rem 1rem;"><strong>Готовые GitHub Actions / GitLab CI</strong></td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:0.75rem 1rem;">Enterprise (DLP, SIEM, RBAC)</td>
+                <td style="padding:0.75rem 1rem;">Нет</td>
+                <td style="padding:0.75rem 1rem;"><strong>Встроено</strong></td>
+              </tr>
+              <tr>
+                <td style="padding:0.75rem 1rem;">Производительность</td>
+                <td style="padding:0.75rem 1rem;">Базовая</td>
+                <td style="padding:0.75rem 1rem;"><strong>3-5x быстрее (нет JVM overhead)</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section" id="faq">
+      <div class="container">
+        <h2 class="section-title">Вопросы и ответы</h2>
+        <div class="faq-list" style="max-width:800px;margin:2rem auto 0;">
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Что такое Code Property Graph?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>Code Property Graph (CPG) — единая структура данных, объединяющая AST (синтаксис), CFG (поток управления), PDG (зависимости по управлению) и DDG (зависимости по данным) в один граф. Это позволяет анализировать код на глубинном уровне: отслеживать потоки данных между функциями, находить уязвимости через taint analysis, выявлять архитектурные зависимости.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Чем CPG отличается от простого AST?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>AST отражает только синтаксическую структуру кода — «что написано». CPG добавляет два критичных измерения: поток управления (CFG) — «как выполняется», и зависимости по данным (PDG/DDG) — «откуда что зависит». Без этих измерений невозможен межпроцедурный анализ: инструмент не может отследить, что пользовательский ввод из файла A проходит через функцию в файле B и попадает в SQL-запрос в файле C.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Чем CodeGraph отличается от Joern?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>Joern — академический CPG-инструмент на JVM (Scala). CodeGraph — production-ready решение на Go: нативный бинарник без JVM, DuckDB вместо in-memory OverflowDB, 11 языков (vs 6), инкрементальные обновления за секунды, 70+ YAML-правил для структурного поиска, встроенные enterprise-функции (DLP, SIEM, RBAC). Производительность в 3-5x выше за счёт отсутствия JVM overhead.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Какие языки программирования поддерживаются?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p><strong>11 языков</strong> на промышленном уровне: C, C++, Go, Python, JavaScript, TypeScript, Java, Kotlin, C#, PHP, 1С:Предприятие. Каждый фронтенд генерирует полный CPG с поддержкой межпроцедурного анализа.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section id="cta" class="section cta">
+      <div class="container">
+        <div class="cta-content" style="text-align:center;max-width:700px;margin:0 auto;">
+          <h2 class="section-title" style="color:#fff;">Готовы изучить CPG?</h2>
+          <p style="color:rgba(255,255,255,0.85);font-size:1.1rem;margin-bottom:2rem;">
+            Посмотрите, как Code Property Graph работает на вашей кодовой базе. 11 языков, 30 аналитических пассов, результат за минуты.
+          </p>
+          <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+            <a href="docs/ru/index.html" class="btn btn-primary btn-lg">Изучить технологию</a>
+            <a href="index.html#demo" class="btn btn-outline btn-lg" style="border-color:#fff;color:#fff;">Запросить демо</a>
+          </div>
+          <div style="margin-top:1.5rem;">
+            <a href="whitepaper.html" style="color:rgba(255,255,255,0.7);text-decoration:underline;">Читать Whitepaper</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <a href="index.html" class="footer-logo">
+          <img src="assets/svg/logo.svg" alt="CodeGraph" width="160" height="40">
+        </a>
+        <p class="footer-description">AI-копилот для анализа исходного кода</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-links-group">
+          <h4>Продукт</h4>
+          <ul class="footer-links-list">
+            <li><a href="index.html#features" class="footer-link">Возможности</a></li>
+            <li><a href="index.html#integrations" class="footer-link">Интеграции</a></li>
+            <li><a href="index.html#architecture" class="footer-link">Архитектура</a></li>
+            <li><a href="index.html#faq" class="footer-link">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-links-group">
+          <h4>Документация</h4>
+          <ul class="footer-links-list">
+            <li><a href="docs/ru/getting-started/index.html" class="footer-link">Начало работы</a></li>
+            <li><a href="docs/ru/guides/index.html" class="footer-link">Руководства</a></li>
+            <li><a href="docs/ru/api/index.html" class="footer-link">API</a></li>
+            <li><a href="docs/ru/enterprise/index.html" class="footer-link">Enterprise</a></li>
+          </ul>
+        </div>
+        <div class="footer-links-group">
+          <h4>Ресурсы</h4>
+          <ul class="footer-links-list">
+            <li><a href="whitepaper.html" class="footer-link">Whitepaper</a></li>
+            <li><a href="docs/en/index.html" class="footer-link">Документация (EN)</a></li>
+          </ul>
+        </div>
+        <div class="footer-links-group">
+          <h4>Контакты</h4>
+          <ul class="footer-links-list">
+            <li><a href="mailto:hello@codegraph.ru" class="footer-link">hello@codegraph.ru</a></li>
+            <li><a href="https://t.me/codegraph_ru" class="footer-link" target="_blank" rel="noopener">Telegram</a></li>
+            <li><a href="https://github.com/mkhlsavin/codegraph.ru" class="footer-link" target="_blank" rel="noopener">GitHub</a></li>
+          </ul>
+          <div class="footer-social">
+            <a href="https://t.me/codegraph" class="footer-social-link" target="_blank" rel="noopener" aria-label="Telegram">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+              </svg>
+            </a>
+            <a href="https://github.com/codegraph" class="footer-social-link" target="_blank" rel="noopener" aria-label="GitHub">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; 2024-2026 CodeGraph. Все права защищены.</p>
+    </div>
+  </div>
+</footer>
+
+  <!-- Scripts -->
+  <script src="js/main.min.js"></script>
+  <!-- Yandex.Metrika counter — replace XXXXXX with actual counter ID -->
+  <script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r)return;}
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+    ym(XXXXXX,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});
+  </script>
+  <noscript><div><img src="https://mc.yandex.ru/watch/XXXXXX" style="position:absolute;left:-9999px;" alt=""/></div></noscript>
+</body>
+</html>
