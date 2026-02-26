@@ -92,8 +92,9 @@
         <li><a href="../guides/BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Автоматический код-ревью</a></li>
-        <li><a href="../guides/CPG_EXPORT.html">Руководство по экспорту CPG</a></li>
-        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="../guides/DOGFOODING.html">Руководство по догфудингу: анализ коммитов на базе CPG</a></li>
         <li><a href="../guides/MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
@@ -103,6 +104,7 @@
         <li><a href="../guides/TROUBLESHOOTING.html">Руководство по устранению неполадок</a></li>
         <li><a href="../guides/TUI_USER_GUIDE.html">Руководство пользователя CodeGraph</a></li>
         <li><a href="../guides/01-onboarding.html">Сценарий 01: Ввод нового разработчика</a></li>
+        <li><a href="../guides/02-security-audit-autofix.html">Аудит безопасности: Автоисправление</a></li>
         <li><a href="../guides/02-security-audit.html">Сценарий 02: Аудит безопасности</a></li>
         <li><a href="../guides/03-documentation.html">Сценарий 03: Генерация документации</a></li>
         <li><a href="../guides/04-feature-development.html">Сценарий 04: Разработка функций</a></li>
@@ -131,6 +133,7 @@
       <ul class="doc-sidebar-nav">
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
+        <li><a href="../api/DEMO_API.html">Демо API</a></li>
         <li><a href="../api/REST_API.html">Документация по REST API CodeGraph</a></li>
         <li><a href="../api/WEBSOCKET_API.html">Справочная документация по WebSocket API</a></li>
       </ul>
@@ -140,6 +143,7 @@
       <div class="doc-sidebar-title">Интеграции</div>
       <ul class="doc-sidebar-nav">
         <li><a href="../integrations/index.html">Обзор</a></li>
+        <li><a href="../integrations/CLAUDE_CODE_GIT.html">Руководство по интеграции Claude Code и Git</a></li>
         <li><a href="../integrations/EXTERNAL_CONTEXT.html">Руководство по интеграции внешнего контекста</a></li>
         <li><a href="../integrations/GIGACHAT.html">Руководство по интеграции GigaChat</a></li>
         <li><a href="../integrations/YANDEX_AI_STUDIO.html">Руководство по интеграции Yandex AI Studio</a></li>
@@ -153,10 +157,13 @@
         <li><a href="AGENTS.html">Справочник агентов</a></li>
         <li><a href="ANALYSIS_MODULES.html">Справочник модулей анализа</a></li>
         <li><a href="API.html">Справочник API</a></li>
+        <li><a href="APPROVAL_ENGINE.html">Механизм подтверждения операций</a></li>
+        <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
         <li><a href="HYPOTHESIS_SYSTEM.html">Справочная система гипотез</a></li>
         <li><a href="SCHEMA.html" class="active">Дизайн схемы DuckDB CPG (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Модуль корпоративной безопасности</a></li>
         <li><a href="SQL_QUERY_COOKBOOK.html">Кулинарная книга SQL-запросов для DuckDB CPG</a></li>
+        <li><a href="SYMBOLIC_EXECUTION.html">Символьное выполнение (Z3 SMT Solver)</a></li>
         <li><a href="WORKFLOWS.html">Справочник по рабочим процессам</a></li>
       </ul>
     </div>
@@ -188,68 +195,60 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <h1 id="dizayn-shemy-duckdb-cpg-cpg-spec-v11">Дизайн схемы DuckDB CPG (CPG Spec v1.1)<a class="heading-anchor" href="#dizayn-shemy-duckdb-cpg-cpg-spec-v11" title="Link to this section">&para;</a></h1>
-<h2 id="table-of-contents">Содержание<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+        <h1  id="dizayn-shemy-duckdb-cpg-cpg-spec-v11"><span id="dizayn_shemy_duckdb_cpg_cpg_spec_v11"></span>Дизайн схемы DuckDB CPG (CPG Spec v1.1)<a class="heading-anchor" href="#dizayn-shemy-duckdb-cpg-cpg-spec-v11" title="Link to this section">&para;</a></h1>
+<h2  id="table-of-contents"><span id="soderzhanie"></span><span id="table_of_contents"></span>Содержание<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#table-of-contents">Содержание</a></li>
 <li><a href="#overview">Обзор</a></li>
 <li><a href="#core-design-principles">Основные принципы проектирования</a></li>
 <li><a href="#node-tables">Таблицы узлов</a></li>
-<li><a href="#nodes_method">nodes_method</a></li>
-<li><a href="#nodes_call">nodes_call</a></li>
-<li><a href="#nodes_identifier">nodes_identifier</a></li>
-<li><a href="#nodes_field_identifier">nodes_field_identifier</a></li>
-<li><a href="#nodes_literal">nodes_literal</a></li>
-<li><a href="#nodes_local">nodes_local</a></li>
-<li><a href="#nodes_param">nodes_param</a></li>
-<li><a href="#nodes_param_out">nodes_param_out</a></li>
-<li><a href="#nodes_method_return">nodes_method_return</a></li>
-<li><a href="#nodes_return">nodes_return</a></li>
-<li><a href="#nodes_block">nodes_block</a></li>
-<li><a href="#nodes_control_structure">nodes_control_structure</a></li>
-<li><a href="#nodes_member">nodes_member</a></li>
-<li><a href="#nodes_type_decl">nodes_type_decl</a></li>
-<li><a href="#nodes_metadata">nodes_metadata</a></li>
-<li><a href="#nodes_file">nodes_file</a></li>
-<li><a href="#nodes_namespace_block">nodes_namespace_block</a></li>
-<li><a href="#nodes_method_ref">nodes_method_ref</a></li>
-<li><a href="#nodes_type_ref">nodes_type_ref</a></li>
-<li><a href="#nodes_unknown">nodes_unknown</a></li>
-<li><a href="#nodes_jump_target">nodes_jump_target</a></li>
-<li><a href="#nodes_type_parameter">nodes_type_parameter</a></li>
-<li><a href="#nodes_type_argument">nodes_type_argument</a></li>
-<li><a href="#nodes_binding">nodes_binding</a></li>
-<li><a href="#nodes_closure_binding">nodes_closure_binding</a></li>
-<li><a href="#nodes_comment">nodes_comment</a></li>
+<li><a href="#nodes-method">nodes_method</a></li>
+<li><a href="#nodes-call">nodes_call</a></li>
+<li><a href="#nodes-identifier">nodes_identifier</a></li>
+<li><a href="#nodes-field-identifier">nodes_field_identifier</a></li>
+<li><a href="#nodes-literal">nodes_literal</a></li>
+<li><a href="#nodes-local">nodes_local</a></li>
+<li><a href="#nodes-param">nodes_param</a></li>
+<li><a href="#nodes-param-out">nodes_param_out</a></li>
+<li><a href="#nodes-method-return">nodes_method_return</a></li>
+<li><a href="#nodes-return">nodes_return</a></li>
+<li><a href="#nodes-block">nodes_block</a></li>
+<li><a href="#nodes-control-structure">nodes_control_structure</a></li>
+<li><a href="#nodes-member">nodes_member</a></li>
+<li><a href="#nodes-type-decl">nodes_type_decl</a></li>
+<li><a href="#nodes-metadata">nodes_metadata</a></li>
+<li><a href="#nodes-file">nodes_file</a></li>
+<li><a href="#nodes-namespace-block">nodes_namespace_block</a></li>
+<li><a href="#nodes-method-ref">nodes_method_ref</a></li>
 <li><a href="#edge-tables">Таблицы рёбер</a></li>
-<li><a href="#edges_ast">edges_ast</a></li>
-<li><a href="#edges_cfg">edges_cfg</a></li>
-<li><a href="#edges_call">edges_call</a></li>
-<li><a href="#edges_ref">edges_ref</a></li>
-<li><a href="#edges_reaching_def">edges_reaching_def</a></li>
-<li><a href="#edges_argument">edges_argument</a></li>
-<li><a href="#edges_receiver">edges_receiver</a></li>
-<li><a href="#edges_condition">edges_condition</a></li>
-<li><a href="#edges_dominate">edges_dominate</a></li>
-<li><a href="#edges_post_dominate">edges_post_dominate</a></li>
-<li><a href="#edges_cdg">edges_cdg</a></li>
-<li><a href="#edges_binds">edges_binds</a></li>
-<li><a href="#edges_binds_to">edges_binds_to</a></li>
-<li><a href="#edges_source_file">edges_source_file</a></li>
-<li><a href="#edges_alias_of">edges_alias_of</a></li>
-<li><a href="#edges_inherits_from">edges_inherits_from</a></li>
-<li><a href="#edges_capture">edges_capture</a></li>
-<li><a href="#edges_captured_by">edges_captured_by</a></li>
+<li><a href="#edges-ast">edges_ast</a></li>
+<li><a href="#edges-cfg">edges_cfg</a></li>
+<li><a href="#edges-call">edges_call</a></li>
+<li><a href="#edges-ref">edges_ref</a></li>
+<li><a href="#edges-reaching-def">edges_reaching_def</a></li>
+<li><a href="#edges-argument">edges_argument</a></li>
+<li><a href="#edges-receiver">edges_receiver</a></li>
+<li><a href="#edges-condition">edges_condition</a></li>
+<li><a href="#edges-dominate">edges_dominate</a></li>
+<li><a href="#edges-post-dominate">edges_post_dominate</a></li>
+<li><a href="#edges-cdg">edges_cdg</a></li>
+<li><a href="#edges-binds">edges_binds</a></li>
+<li><a href="#edges-binds-to">edges_binds_to</a></li>
+<li><a href="#edges-source-file">edges_source_file</a></li>
+<li><a href="#edges-alias-of">edges_alias_of</a></li>
+<li><a href="#edges-inherits-from">edges_inherits_from</a></li>
+<li><a href="#edges-capture">edges_capture</a></li>
+<li><a href="#edges-captured-by">edges_captured_by</a></li>
 <li><a href="#property-graph-definition">Определение графа свойств</a></li>
 <li><a href="#step-1-create-materialized-unified-nodes-table">Шаг 1: Создание материализованной объединённой таблицы узлов</a></li>
 <li><a href="#step-2-create-comprehensive-property-graph">Шаг 2: Создание комплексного графа свойств</a></li>
 <li><a href="#example-queries">Примеры запросов</a></li>
-<li><a href="#standard-sql-query-find-all-calls-to-a-specific-method">Стандартный SQL-запрос: Поиск всех вызовов определённого метода</a></li>
-<li><a href="#duckdb-pgq-query-find-direct-call-chains-caller---callee">DuckDB PGQ-запрос: Поиск прямых цепочек вызовов (вызывающий -&gt; вызываемый)</a></li>
-<li><a href="#duckdb-pgq-query-find-methods-and-their-ast-children">DuckDB PGQ-запрос: Поиск методов и их дочерних элементов в AST</a></li>
-<li><a href="#duckdb-pgq-query-data-flow-paths-using-reaching_def">DuckDB PGQ-запрос: Пути потока данных с использованием REACHING_DEF</a></li>
-<li><a href="#duckdb-pgq-query-cfg-paths-control-flow">DuckDB PGQ-запрос: Пути CFG (управляющий поток)</a></li>
-<li><a href="#duckdb-pgq-query-find-all-identifiers-and-their-references">DuckDB PGQ-запрос: Поиск всех идентификаторов и их ссылок</a></li>
+<li><a href="#standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda">Стандартный SQL-запрос: Поиск всех вызовов определённого метода</a></li>
+<li><a href="#duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-vyzyvaemyy">DuckDB PGQ-запрос: Поиск прямых цепочек вызовов (вызывающий -&gt; вызываемый)</a></li>
+<li><a href="#duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast">DuckDB PGQ-запрос: Поиск методов и их дочерних элементов в AST</a></li>
+<li><a href="#duckdb-pgq-zapros-puti-potoka-dannyh-s-ispolzovaniem-reaching-def">DuckDB PGQ-запрос: Пути потока данных с использованием REACHING_DEF</a></li>
+<li><a href="#duckdb-pgq-zapros-puti-cfg-upravlenie-vypolneniem">DuckDB PGQ-запрос: Пути CFG (управляющий поток)</a></li>
+<li><a href="#duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki">DuckDB PGQ-запрос: Поиск всех идентификаторов и их ссылок</a></li>
 <li><a href="#duckdb-pgq-query-type-hierarchy-inheritance">DuckDB PGQ-запрос: Иерархия типов (наследование)</a></li>
 <li><a href="#combined-query-methods-with-most-incoming-calls">Комбинированный запрос: Методы с наибольшим количеством входящих вызовов</a></li>
 <li><a href="#schema-migration-history">История миграции схемы</a></li>
@@ -257,26 +256,27 @@
 <li><a href="#phase-2-oop-support---completed-">Этап 2 (ПОДДЕРЖКА ООП) — ЗАВЕРШЁН ✓</a></li>
 <li><a href="#phase-3-namespace-and-file-support---completed-">Этап 3 (ПОДДЕРЖКА ПРОСТРАНСТВ ИМЁН И ФАЙЛОВ) — ЗАВЕРШЁН ✓</a></li>
 <li><a href="#phase-4-remaining-features---completed-">Этап 4 (ОСТАВШИЕСЯ ФУНКЦИИ) — ЗАВЕРШЁН ✓</a></li>
-<li><a href="#performance-considerations">Соображения по производительности</a></li>
+<li><a href="#rekomendatsii-po-proizvoditelnosti">Соображения по производительности</a></li>
 <li><a href="#schema-version">Версия схемы</a></li>
 <li><a href="#changelog">Журнал изменений</a></li>
+<li><a href="#v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov">v6.0 (2026-02-26) — Предвычисленные метрики и флаги паттернов</a></li>
 <li><a href="#v50-2025-11-16---phase-4-complete-compliance">v5.0 (2025-11-16) — Полное соответствие Этапу 4</a></li>
-<li><a href="#v40-2025-11-16---phase-3-namespace-and-file-support">v4.0 (2025-11-16) — Поддержка пространств имён и файлов (Этап 3)</a></li>
-<li><a href="#v30-2025-11-16---phase-2-oop-support">v3.0 (2025-11-16) — Поддержка ООП (Этап 2)</a></li>
-<li><a href="#v20-2025-11-16---phase-1-critical-updates">v2.0 (2025-11-16) — Критические обновления (Этап 1)</a></li>
+<li><a href="#v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov">v4.0 (2025-11-16) — Поддержка пространств имён и файлов (Этап 3)</a></li>
+<li><a href="#v30-2025-11-16-vtoroy-etap-podderzhka-oop">v3.0 (2025-11-16) — Поддержка ООП (Этап 2)</a></li>
+<li><a href="#v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya">v2.0 (2025-11-16) — Критические обновления (Этап 1)</a></li>
 <li><a href="#v10-2025-11-15---initial-release">v1.0 (2025-11-15) — Первоначальный выпуск</a></li>
 <li><a href="#extension-semantic-tag-system">Расширение: Система семантических меток</a></li>
 <li><a href="#overview">Обзор</a></li>
-<li><a href="#nodes_tag">nodes_tag</a></li>
-<li><a href="#edges_tagged_by">edges_tagged_by</a></li>
-<li><a href="#tag-categories">Категории меток</a></li>
-<li><a href="#example-tag-queries">Примеры запросов с метками</a></li>
-<li><a href="#tag-statistics">Статистика по меткам</a></li>
+<li><a href="#nodes-tag">nodes_tag</a></li>
+<li><a href="#edges-tagged-by">edges_tagged_by</a></li>
+<li><a href="#kategorii-tegov">Категории меток</a></li>
+<li><a href="#example-queries">Примеры запросов с метками</a></li>
+<li><a href="#statistika-po-tegam">Статистика по меткам</a></li>
 <li><a href="#integration-notes">Примечания по интеграции</a></li>
 </ul>
 <h2 id="overview">Обзор<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
 <p>Эта схема реализует спецификацию Code Property Graph версии 1.1 в DuckDB с использованием расширения duckpgq для эффективного выполнения запросов к графам свойств.</p>
-<h2 id="core-design-principles">Основные принципы проектирования<a class="heading-anchor" href="#core-design-principles" title="Link to this section">&para;</a></h2>
+<h2  id="core-design-principles"><span id="core_design_principles"></span><span id="osnovnye-printsipy-proektirovaniya"></span><span id="osnovnye_printsipy_proektirovaniya"></span>Основные принципы проектирования<a class="heading-anchor" href="#core-design-principles" title="Link to this section">&para;</a></h2>
 <ol>
 <li><strong>Таблицы узлов</strong>: Отдельные таблицы для каждого основного типа узлов (METHOD, CALL, IDENTIFIER и т.д.)</li>
 <li><strong>Таблицы рёбер</strong>: Отдельные таблицы для каждого типа рёбер (AST, CFG, CALL, REF, REACHING_DEF и т.д.)</li>
@@ -284,7 +284,7 @@
 <li><strong>Эффективное индексирование</strong>: Индексы B-дерева по полям id, full_name и другим часто используемым свойствам</li>
 <li><strong>Пакетная обработка</strong>: Поддержка массового импорта CPG (50K+ методов)</li>
 </ol>
-<h2 id="gocpg-vs-ustarevshaya-shema">GoCPG vs устаревшая схема<a class="heading-anchor" href="#gocpg-vs-ustarevshaya-shema" title="Link to this section">&para;</a></h2>
+<h2  id="gocpg-vs-ustarevshaya-shema"><span id="gocpg_vs_ustarevshaya_shema"></span>GoCPG vs устаревшая схема<a class="heading-anchor" href="#gocpg-vs-ustarevshaya-shema" title="Link to this section">&para;</a></h2>
 <p>GoCPG генерирует DuckDB напрямую и создаёт дополнительные таблицы, отсутствующие в устаревших экспортах Joern:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -332,8 +332,8 @@
 <blockquote class="callout">
 <p><strong>Примечание о <code>cpg_nodes</code></strong>: Материализованная таблица <code>cpg_nodes</code> (UNION ALL всех таблиц узлов) используется <strong>только</strong> для определения графа свойств DuckPGQ. Её <strong>не следует</strong> использовать в прикладном коде — используйте конкретные таблицы <code>nodes_*</code>. Базы данных GoCPG не генерируют <code>cpg_nodes</code>; слой совместимости создаёт её по требованию, когда нужны запросы к графу свойств.</p>
 </blockquote>
-<h2 id="node-tables">Таблицы узлов<a class="heading-anchor" href="#node-tables" title="Link to this section">&para;</a></h2>
-<h3 id="nodes-method">nodes_method<a class="heading-anchor" href="#nodes-method" title="Link to this section">&para;</a></h3>
+<h2  id="node-tables"><span id="node_tables"></span><span id="tablitsy-uzlov"></span><span id="tablitsy_uzlov"></span>Таблицы узлов<a class="heading-anchor" href="#node-tables" title="Link to this section">&para;</a></h2>
+<h3  id="nodes-method"><span id="nodes_method"></span>nodes_method<a class="heading-anchor" href="#nodes-method" title="Link to this section">&para;</a></h3>
 <p>Основная таблица для объявлений функций/методов.</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_method</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -353,7 +353,17 @@
 <span class="w">    </span><span class="nx">ast_parent_full_name</span><span class="w"> </span><span class="nx">VARCHAR</span><span class="p">,</span>
 <span class="w">    </span><span class="nx">order_index</span><span class="w"> </span><span class="nx">INTEGER</span><span class="p">,</span>
 <span class="w">    </span><span class="nx">hash</span><span class="w"> </span><span class="nx">VARCHAR</span><span class="p">,</span>
-<span class="w">    </span><span class="nx">modifier</span><span class="w"> </span><span class="nx">VARCHAR</span><span class="p">[]</span><span class="w">       </span><span class="o">--</span><span class="w"> </span><span class="nx">НОВОЕ</span><span class="p">:</span><span class="w"> </span><span class="nx">Модификаторы</span><span class="w"> </span><span class="nx">доступа</span><span class="w"> </span><span class="p">(</span><span class="nx">Фаза</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">modifier</span><span class="w"> </span><span class="nx">VARCHAR</span><span class="p">[],</span><span class="w">      </span><span class="o">--</span><span class="w"> </span><span class="nx">НОВОЕ</span><span class="p">:</span><span class="w"> </span><span class="nx">Модификаторы</span><span class="w"> </span><span class="nx">доступа</span><span class="w"> </span><span class="p">(</span><span class="nx">Фаза</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span>
+<span class="w">    </span><span class="o">--</span><span class="w"> </span><span class="nx">Предвычисленные</span><span class="w"> </span><span class="nx">флаги</span><span class="w"> </span><span class="nx">паттернов</span><span class="w"> </span><span class="nx">и</span><span class="w"> </span><span class="nx">метрики</span><span class="w"> </span><span class="p">(</span><span class="nx">v6</span><span class="m m-Double">.0</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">has_disabled_code</span><span class="w">       </span><span class="nx">BOOLEAN</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="nx">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">has_deprecated</span><span class="w">          </span><span class="nx">BOOLEAN</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="nx">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">has_todo_fixme</span><span class="w">          </span><span class="nx">BOOLEAN</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="nx">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">has_debug_code</span><span class="w">          </span><span class="nx">BOOLEAN</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="nx">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">is_test</span><span class="w">                 </span><span class="nx">BOOLEAN</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="nx">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">is_entry_point</span><span class="w">          </span><span class="nx">BOOLEAN</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="nx">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">cyclomatic_complexity</span><span class="w">   </span><span class="nx">INTEGER</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">fan_in</span><span class="w">                  </span><span class="nx">INTEGER</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">fan_out</span><span class="w">                 </span><span class="nx">INTEGER</span><span class="w"> </span><span class="nx">DEFAULT</span><span class="w"> </span><span class="mi">0</span>
 <span class="p">);</span>
 
 <span class="nx">CREATE</span><span class="w"> </span><span class="nx">INDEX</span><span class="w"> </span><span class="nx">idx_method_full_name</span><span class="w"> </span><span class="nx">ON</span><span class="w"> </span><span class="nx">nodes_method</span><span class="p">(</span><span class="nx">full_name</span><span class="p">);</span>
@@ -371,11 +381,45 @@
 - HASH: Сводный хеш
 - MODIFIER: Модификаторы доступа (Фаза 2 - НОВОЕ!)
   - Значения: STATIC, PUBLIC, PROTECTED, PRIVATE, ABSTRACT, NATIVE, CONSTRUCTOR, VIRTUAL, INTERNAL, FINAL, READONLY, MODULE</p>
+<p><strong>Предвычисленные флаги паттернов</strong> (v6.0 — GoCPG):
+- HAS_DISABLED_CODE: Содержит <code>#if 0</code>, <code>if false</code> или закомментированные блоки
+- HAS_DEPRECATED: Содержит <code>@Deprecated</code>, <code>[[deprecated]]</code> или аналогичные аннотации
+- HAS_TODO_FIXME: Содержит комментарии <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, <code>XXX</code>
+- HAS_DEBUG_CODE: Содержит отладочный вывод, console.log, отладочные операторы
+- IS_TEST: Метод идентифицирован как тестовая функция (кросс-языковое определение)
+- IS_ENTRY_POINT: Метод является точкой входа публичного API (экспортируемый, HTTP-обработчик, main и т.д.)
+- CYCLOMATIC_COMPLEXITY: Цикломатическая сложность по Маккейбу
+- FAN_IN: Количество методов, вызывающих данный метод
+- FAN_OUT: Количество методов, вызываемых данным методом</p>
+<p><strong>Примеры запросов с предвычисленными флагами:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Поиск сложных методов с высоким fan-out (потенциальные «god-методы»)</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="p">,</span><span class="w"> </span><span class="n">fan_out</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">fan_out</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">15</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+
+<span class="c1">-- Поиск устаревших методов, которые всё ещё вызываются</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">fan_in</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">has_deprecated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">TRUE</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">fan_in</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">-- Соотношение тестового и продуктивного кода</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">is_test</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="k">count</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">is_test</span><span class="p">;</span>
+
+<span class="c1">-- Поиск точек входа API с высокой сложностью</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="p">,</span><span class="w"> </span><span class="n">fan_in</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">is_entry_point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">TRUE</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">10</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+</code></pre></div>
+
 <p><strong>Примеры модификаторов:</strong>
 - <code>public void foo()</code> → modifier=[“PUBLIC”]
 - <code>private static int bar()</code> → modifier=[“PRIVATE”, “STATIC”]
 - <code>abstract void baz()</code> → modifier=[“ABSTRACT”]</p>
-<h3 id="nodes-call">nodes_call<a class="heading-anchor" href="#nodes-call" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-call"><span id="nodes_call"></span>nodes_call<a class="heading-anchor" href="#nodes-call" title="Link to this section">&para;</a></h3>
 <p>Представляет вызовы функций/методов.</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_call</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -401,7 +445,7 @@
 - DISPATCH_TYPE: Механизм вызова (STATIC_DISPATCH, DYNAMIC_DISPATCH)
 - TYPE_FULL_NAME: Возвращаемый тип
 - SIGNATURE: Типы параметров</p>
-<h3 id="nodes-identifier">nodes_identifier<a class="heading-anchor" href="#nodes-identifier" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-identifier"><span id="nodes_identifier"></span>nodes_identifier<a class="heading-anchor" href="#nodes-identifier" title="Link to this section">&para;</a></h3>
 <p>Имена переменных и ссылок.</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_identifier</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -423,7 +467,7 @@
 - NAME: Идентификатор переменной
 - TYPE_FULL_NAME: Тип переменной
 - OFFSET/OFFSET_END: Точное расположение в исходном коде (Фаза 2)</p>
-<h3 id="nodes-field-identifier">nodes_field_identifier<a class="heading-anchor" href="#nodes-field-identifier" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-field-identifier"><span id="nodes_field_identifier"></span>nodes_field_identifier<a class="heading-anchor" href="#nodes-field-identifier" title="Link to this section">&para;</a></h3>
 <p>Идентификаторы доступа к полям (ООП — например, obj.field).</p>
 <div class="highlight"><pre><span></span><code>CREATE TABLE nodes_field_identifier (
     id BIGINT PRIMARY KEY,
@@ -450,7 +494,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="n">p.x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">10</span><span class="p">;</span><span class="w">  </span><span class="o">//</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s">&quot;x&quot;</span><span class="w"> </span>—<span class="w"> </span><span class="n">FIELD_IDENTIFIER</span><span class="w"> </span>с<span class="w"> </span><span class="n">canonical_name</span><span class="o">=</span><span class="s">&quot;x&quot;</span>
 </code></pre></div>
 
-<h3 id="nodes-literal">nodes_literal<a class="heading-anchor" href="#nodes-literal" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-literal"><span id="nodes_literal"></span>nodes_literal<a class="heading-anchor" href="#nodes-literal" title="Link to this section">&para;</a></h3>
 <p>Константные значения.</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_literal</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -466,7 +510,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <p><strong>Свойства</strong> (из спецификации CPG):
 - TYPE_FULL_NAME: Тип литерала
 - CODE: Значение литерала</p>
-<h3 id="nodes-local">nodes_local<a class="heading-anchor" href="#nodes-local" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-local"><span id="nodes_local"></span>nodes_local<a class="heading-anchor" href="#nodes-local" title="Link to this section">&para;</a></h3>
 <p>Объявления локальных переменных.</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_local</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -484,7 +528,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <p><strong>Свойства</strong> (из спецификации CPG):
 - NAME: Имя локальной переменной
 - TYPE_FULL_NAME: Объявленный тип</p>
-<h3 id="nodes-param">nodes_param<a class="heading-anchor" href="#nodes-param" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-param"><span id="nodes_param"></span>nodes_param<a class="heading-anchor" href="#nodes-param" title="Link to this section">&para;</a></h3>
 <p>Параметры метода (формальные параметры).</p>
 <div class="highlight"><pre><span></span><code><span class="n">CREATE</span><span class="w"> </span><span class="n">TABLE</span><span class="w"> </span><span class="n">nodes_param</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">BIGINT</span><span class="w"> </span><span class="n">PRIMARY</span><span class="w"> </span><span class="n">KEY</span><span class="p">,</span>
@@ -506,7 +550,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 - INDEX: Позиция параметра
 - IS_VARIADIC: Параметр переменной длины
 - EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING</p>
-<h3 id="nodes-param-out">nodes_param_out<a class="heading-anchor" href="#nodes-param-out" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-param-out"><span id="nodes_param_out"></span>nodes_param_out<a class="heading-anchor" href="#nodes-param-out" title="Link to this section">&para;</a></h3>
 <p>Выходные параметры метода (для анализа SSA/потока данных).</p>
 <div class="highlight"><pre><span></span><code><span class="n">CREATE</span><span class="w"> </span><span class="n">TABLE</span><span class="w"> </span><span class="n">nodes_param_out</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">BIGINT</span><span class="w"> </span><span class="n">PRIMARY</span><span class="w"> </span><span class="n">KEY</span><span class="p">,</span>
@@ -529,7 +573,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 - INDEX: Позиция параметра (совпадает с входным параметром)
 - EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING
 - Требуется для анализа SSA (Static Single Assignment)</p>
-<h3 id="nodes-method-return">nodes_method_return<a class="heading-anchor" href="#nodes-method-return" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-method-return"><span id="nodes_method_return"></span>nodes_method_return<a class="heading-anchor" href="#nodes-method-return" title="Link to this section">&para;</a></h3>
 <p>Параметр возврата метода (формальный возврат).</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_method_return</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -547,7 +591,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 - CODE: Обычно “RET” или пусто
 - EVALUATION_STRATEGY: Способ передачи возвращаемого значения
 - Один на метод (формальный параметр возврата, не оператор return)</p>
-<h3 id="nodes-return">nodes_return<a class="heading-anchor" href="#nodes-return" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-return"><span id="nodes_return"></span>nodes_return<a class="heading-anchor" href="#nodes-return" title="Link to this section">&para;</a></h3>
 <p>Операторы возврата (фактический return в коде).</p>
 <div class="highlight"><pre><span></span><code>CREATE TABLE nodes_return (
     id BIGINT PRIMARY KEY,
@@ -560,7 +604,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 </code></pre></div>
 
 <p><strong>Примечание:</strong> Это узел оператора RETURN. Отличается от METHOD_RETURN, который является формальным параметром возврата.</p>
-<h3 id="nodes-block">nodes_block<a class="heading-anchor" href="#nodes-block" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-block"><span id="nodes_block"></span>nodes_block<a class="heading-anchor" href="#nodes-block" title="Link to this section">&para;</a></h3>
 <p>Составные операторы (блоки кода).</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_block</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -573,7 +617,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="nodes-control-structure">nodes_control_structure<a class="heading-anchor" href="#nodes-control-structure" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-control-structure"><span id="nodes_control_structure"></span>nodes_control_structure<a class="heading-anchor" href="#nodes-control-structure" title="Link to this section">&para;</a></h3>
 <p>Конструкции управления потоком (if, while, for и т.д.).</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_control_structure</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -588,7 +632,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 
 <p><strong>Свойства</strong> (из спецификации CPG):
 - CONTROL_STRUCTURE_TYPE: BREAK, CONTINUE, DO, WHILE, FOR, GOTO, IF, ELSE, TRY, THROW, SWITCH</p>
-<h3 id="nodes-member">nodes_member<a class="heading-anchor" href="#nodes-member" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-member"><span id="nodes_member"></span>nodes_member<a class="heading-anchor" href="#nodes-member" title="Link to this section">&para;</a></h3>
 <p>Члены типов (поля классов/структур).</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_member</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -620,7 +664,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="p">};</span>
 </code></pre></div>
 
-<h3 id="nodes-type-decl">nodes_type_decl<a class="heading-anchor" href="#nodes-type-decl" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-type-decl"><span id="nodes_type_decl"></span>nodes_type_decl<a class="heading-anchor" href="#nodes-type-decl" title="Link to this section">&para;</a></h3>
 <p>Объявления типов (классы, структуры).</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_type_decl</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -655,7 +699,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 - <code>public class Foo</code> → modifier=[“PUBLIC”]
 - <code>private static class Bar</code> → modifier=[“PRIVATE”, “STATIC”]
 - <code>abstract class Baz</code> → modifier=[“ABSTRACT”]</p>
-<h3 id="nodes-metadata">nodes_metadata<a class="heading-anchor" href="#nodes-metadata" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-metadata"><span id="nodes_metadata"></span>nodes_metadata<a class="heading-anchor" href="#nodes-metadata" title="Link to this section">&para;</a></h3>
 <p>Метаданные CPG (требуются спецификацией).</p>
 <div class="highlight"><pre><span></span><code>CREATE TABLE nodes_metadata (
     id BIGINT PRIMARY KEY,
@@ -671,7 +715,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 - VERSION: Версия спецификации CPG
 - OVERLAYS: Применённые оверлеи
 - ROOT: Корневой путь</p>
-<h3 id="nodes-file">nodes_file<a class="heading-anchor" href="#nodes-file" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-file"><span id="nodes_file"></span>nodes_file<a class="heading-anchor" href="#nodes-file" title="Link to this section">&para;</a></h3>
 <p>Узлы исходных файлов (требуются спецификацией).</p>
 <div class="highlight"><pre><span></span><code><span class="nt">CREATE</span><span class="w"> </span><span class="nt">TABLE</span><span class="w"> </span><span class="nt">nodes_file</span><span class="w"> </span><span class="o">(</span>
 <span class="w">    </span><span class="nt">id</span><span class="w"> </span><span class="nt">BIGINT</span><span class="w"> </span><span class="nt">PRIMARY</span><span class="w"> </span><span class="nt">KEY</span><span class="o">,</span>
@@ -700,7 +744,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 </code></pre></div>
 
 <p><strong>Примечание:</strong> Каждый исходный файл ДОЛЖЕН иметь ровно один узел FILE. Узлы FILE служат корнями AST и позволяют переходить от файла ко всем содержащимся в нём элементам кода.</p>
-<h3 id="nodes-namespace-block">nodes_namespace_block<a class="heading-anchor" href="#nodes-namespace-block" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-namespace-block"><span id="nodes_namespace_block"></span>nodes_namespace_block<a class="heading-anchor" href="#nodes-namespace-block" title="Link to this section">&para;</a></h3>
 <p>Узлы блоков пространств имён (области видимости пространств имён).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_namespace_block</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -742,7 +786,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 </code></pre></div>
 
 <p><strong>Примечание:</strong> Узлы NAMESPACE (индексы) автоматически генерируются из узлов NAMESPACE_BLOCK при загрузке CPG.</p>
-<h3 id="nodes-method-ref">nodes_method_ref<a class="heading-anchor" href="#nodes-method-ref" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-method-ref"><span id="nodes_method_ref"></span>nodes_method_ref<a class="heading-anchor" href="#nodes-method-ref" title="Link to this section">&para;</a></h3>
 <p>Узлы ссылок на методы (метод как значение).</p>
 <div class="highlight"><pre><span></span><code><span class="nx">CREATE</span><span class="w"> </span><span class="nx">TABLE</span><span class="w"> </span><span class="nx">nodes_method_ref</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="nx">id</span><span class="w"> </span><span class="nx">BIGINT</span><span class="w"> </span><span class="nx">PRIMARY</span><span class="w"> </span><span class="nx">KEY</span><span class="p">,</span>
@@ -769,8 +813,8 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <p><strong>Назначение:</strong>
 - Представление методов, передаваемых как аргументы (функции высшего порядка)
 - Указ</p>
-<h2 id="edge-tables">Таблицы рёбер<a class="heading-anchor" href="#edge-tables" title="Link to this section">&para;</a></h2>
-<h3 id="edges-ast">edges_ast<a class="heading-anchor" href="#edges-ast" title="Link to this section">&para;</a></h3>
+<h2  id="edge-tables"><span id="edge_tables"></span><span id="tablitsy-ryober"></span><span id="tablitsy_ryober"></span>Таблицы рёбер<a class="heading-anchor" href="#edge-tables" title="Link to this section">&para;</a></h2>
+<h3  id="edges-ast"><span id="edges_ast"></span>edges_ast<a class="heading-anchor" href="#edges-ast" title="Link to this section">&para;</a></h3>
 <p>Рёбра дерева абстрактного синтаксиса (отношения «родитель-потомок»).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_ast</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span>
@@ -782,7 +826,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_ast_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_ast</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-cfg">edges_cfg<a class="heading-anchor" href="#edges-cfg" title="Link to this section">&para;</a></h3>
+<h3  id="edges-cfg"><span id="edges_cfg"></span>edges_cfg<a class="heading-anchor" href="#edges-cfg" title="Link to this section">&para;</a></h3>
 <p>Рёбра графа потока управления (Control Flow Graph).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_cfg</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span>
@@ -794,7 +838,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_cfg_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_cfg</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-call">edges_call<a class="heading-anchor" href="#edges-call" title="Link to this section">&para;</a></h3>
+<h3  id="edges-call"><span id="edges_call"></span>edges_call<a class="heading-anchor" href="#edges-call" title="Link to this section">&para;</a></h3>
 <p>Рёбра от вызова метода к его объявлению.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_call</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- ID узла CALL</span>
@@ -806,7 +850,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_call_edge_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_call</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-ref">edges_ref<a class="heading-anchor" href="#edges-ref" title="Link to this section">&para;</a></h3>
+<h3  id="edges-ref"><span id="edges_ref"></span>edges_ref<a class="heading-anchor" href="#edges-ref" title="Link to this section">&para;</a></h3>
 <p>Рёбра ссылок (идентификатор → объявление).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_ref</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- ID узла IDENTIFIER/CALL</span>
@@ -818,7 +862,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_ref_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_ref</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-reaching-def">edges_reaching_def<a class="heading-anchor" href="#edges-reaching-def" title="Link to this section">&para;</a></h3>
+<h3  id="edges-reaching-def"><span id="edges_reaching_def"></span>edges_reaching_def<a class="heading-anchor" href="#edges-reaching-def" title="Link to this section">&para;</a></h3>
 <p>Рёбра потока данных (достижимые определения).</p>
 <div class="highlight"><pre><span></span><code><span class="n">CREATE</span><span class="w"> </span><span class="n">TABLE</span><span class="w"> </span><span class="n">edges_reaching_def</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span>
@@ -834,7 +878,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 
 <p><strong>Свойства</strong> (из спецификации CPG):
 - VARIABLE: имя отслеживаемой переменной</p>
-<h3 id="edges-argument">edges_argument<a class="heading-anchor" href="#edges-argument" title="Link to this section">&para;</a></h3>
+<h3  id="edges-argument"><span id="edges_argument"></span>edges_argument<a class="heading-anchor" href="#edges-argument" title="Link to this section">&para;</a></h3>
 <p>Рёбра аргументов (вызов → выражения аргументов, возврат → возвращаемое выражение).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_argument</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span>
@@ -846,7 +890,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_argument_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_argument</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-receiver">edges_receiver<a class="heading-anchor" href="#edges-receiver" title="Link to this section">&para;</a></h3>
+<h3  id="edges-receiver"><span id="edges_receiver"></span>edges_receiver<a class="heading-anchor" href="#edges-receiver" title="Link to this section">&para;</a></h3>
 <p>Рёбра получателя (вызов → выражение-получатель).</p>
 <div class="highlight"><pre><span></span><code>CREATE TABLE edges_receiver (
     src BIGINT, -- ID узла CALL
@@ -855,7 +899,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 );
 </code></pre></div>
 
-<h3 id="edges-condition">edges_condition<a class="heading-anchor" href="#edges-condition" title="Link to this section">&para;</a></h3>
+<h3  id="edges-condition"><span id="edges_condition"></span>edges_condition<a class="heading-anchor" href="#edges-condition" title="Link to this section">&para;</a></h3>
 <p>Рёбра условия (управляющая структура → условное выражение).</p>
 <div class="highlight"><pre><span></span><code>CREATE TABLE edges_condition (
     src BIGINT, -- ID узла CONTROL_STRUCTURE
@@ -864,7 +908,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 );
 </code></pre></div>
 
-<h3 id="edges-dominate">edges_dominate<a class="heading-anchor" href="#edges-dominate" title="Link to this section">&para;</a></h3>
+<h3  id="edges-dominate"><span id="edges_dominate"></span>edges_dominate<a class="heading-anchor" href="#edges-dominate" title="Link to this section">&para;</a></h3>
 <p>Рёбра непосредственного доминирования (доминирование в потоке управления).</p>
 <div class="highlight"><pre><span></span><code>CREATE TABLE edges_dominate (
     src BIGINT,
@@ -873,7 +917,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 );
 </code></pre></div>
 
-<h3 id="edges-post-dominate">edges_post_dominate<a class="heading-anchor" href="#edges-post-dominate" title="Link to this section">&para;</a></h3>
+<h3  id="edges-post-dominate"><span id="edges_post_dominate"></span>edges_post_dominate<a class="heading-anchor" href="#edges-post-dominate" title="Link to this section">&para;</a></h3>
 <p>Рёбра пост-доминирования.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_post_dominate</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span>
@@ -885,7 +929,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_post_dominate_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_post_dominate</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-cdg">edges_cdg<a class="heading-anchor" href="#edges-cdg" title="Link to this section">&para;</a></h3>
+<h3  id="edges-cdg"><span id="edges_cdg"></span>edges_cdg<a class="heading-anchor" href="#edges-cdg" title="Link to this section">&para;</a></h3>
 <p>Рёбра графа управляющих зависимостей (CRITICAL для PDG).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_cdg</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- ID узла управляющей структуры (условие/ветвление)</span>
@@ -902,7 +946,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 - Критически важно для построения графа зависимостей программы (PDG = DDG + CDG)
 - Используется для срезов программы, анализа безопасности, оптимизаций компилятора
 - Пример: операторы внутри блока IF зависят по управлению от условия IF</p>
-<h3 id="edges-binds">edges_binds<a class="heading-anchor" href="#edges-binds" title="Link to this section">&para;</a></h3>
+<h3  id="edges-binds"><span id="edges_binds"></span>edges_binds<a class="heading-anchor" href="#edges-binds" title="Link to this section">&para;</a></h3>
 <p>Рёбра привязки имён (связывание имён).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_binds</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- ID узла BINDING</span>
@@ -918,7 +962,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 - Связывает узлы BINDING с их объявлениями
 - Используется для разрешения имён переменных и функций
 - Пример: оператор import связывает имя с фактическим определением</p>
-<h3 id="edges-binds-to">edges_binds_to<a class="heading-anchor" href="#edges-binds-to" title="Link to this section">&para;</a></h3>
+<h3  id="edges-binds-to"><span id="edges_binds_to"></span>edges_binds_to<a class="heading-anchor" href="#edges-binds-to" title="Link to this section">&para;</a></h3>
 <p>Обратные рёбра привязки (использование имён).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_binds_to</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- ID узла ссылки на переменную/функцию</span>
@@ -946,7 +990,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 Ссылка (IDENTIFIER/CALL)
 </code></pre></div>
 
-<h3 id="edges-source-file">edges_source_file<a class="heading-anchor" href="#edges-source-file" title="Link to this section">&para;</a></h3>
+<h3  id="edges-source-file"><span id="edges_source_file"></span>edges_source_file<a class="heading-anchor" href="#edges-source-file" title="Link to this section">&para;</a></h3>
 <p>Рёбра исходного файла (сопоставление узлов с файлом).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_source_file</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- ID любого узла AST</span>
@@ -979,7 +1023,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 2. Загрузчик CPG создаёт узлы FILE для уникальных имён файлов
 3. Загрузчик CPG создаёт рёбра SOURCE_FILE от узлов к узлам FILE
 4. Результат — полное сопоставление файл → код</p>
-<h3 id="edges-alias-of">edges_alias_of<a class="heading-anchor" href="#edges-alias-of" title="Link to this section">&para;</a></h3>
+<h3  id="edges-alias-of"><span id="edges_alias_of"></span>edges_alias_of<a class="heading-anchor" href="#edges-alias-of" title="Link to this section">&para;</a></h3>
 <p>Рёбра псевдонимов типов.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_alias_of</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- Узел TYPE_DECL (псевдоним)</span>
@@ -1014,7 +1058,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 </code></pre></div>
 
 <p><strong>Примечание:</strong> Автоматически генерируется при загрузке CPG на основе свойства ALIAS_TYPE_FULL_NAME.</p>
-<h3 id="edges-inherits-from">edges_inherits_from<a class="heading-anchor" href="#edges-inherits-from" title="Link to this section">&para;</a></h3>
+<h3  id="edges-inherits-from"><span id="edges_inherits_from"></span>edges_inherits_from<a class="heading-anchor" href="#edges-inherits-from" title="Link to this section">&para;</a></h3>
 <p>Рёбра наследования типов.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_inherits_from</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- Узел TYPE_DECL (производный)</span>
@@ -1050,7 +1094,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 </code></pre></div>
 
 <p><strong>Примечание:</strong> Автоматически генерируется при загрузке CPG на основе массива INHERITS_FROM_TYPE_FULL_NAME.</p>
-<h3 id="edges-capture">edges_capture<a class="heading-anchor" href="#edges-capture" title="Link to this section">&para;</a></h3>
+<h3  id="edges-capture"><span id="edges_capture"></span>edges_capture<a class="heading-anchor" href="#edges-capture" title="Link to this section">&para;</a></h3>
 <p>Рёбра захвата замыканий.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_capture</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- Узел METHOD_REF или TYPE_REF</span>
@@ -1084,7 +1128,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 </code></pre></div>
 
 <p><strong>Примечание:</strong> Ребро CAPTURE связывает замыкание с захваченными переменными.</p>
-<h3 id="edges-captured-by">edges_captured_by<a class="heading-anchor" href="#edges-captured-by" title="Link to this section">&para;</a></h3>
+<h3  id="edges-captured-by"><span id="edges_captured_by"></span>edges_captured_by<a class="heading-anchor" href="#edges-captured-by" title="Link to this section">&para;</a></h3>
 <p>Обратные рёбра захвата замыканий.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_captured_by</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- Узел LOCAL или METHOD_PARAMETER_IN</span>
@@ -1129,10 +1173,10 @@ METHOD_REF (замыкание/лямбда)
 </code></pre></div>
 
 <p><strong>Примечание:</strong> CAPTURED_BY связывает захваченную переменную с привязкой замыкания.</p>
-<h2 id="property-graph-definition">Определение графа свойств<a class="heading-anchor" href="#property-graph-definition" title="Link to this section">&para;</a></h2>
+<h2  id="property-graph-definition"><span id="opredelenie-grafa-svoystv"></span><span id="opredelenie_grafa_svoystv"></span><span id="property_graph_definition"></span>Определение графа свойств<a class="heading-anchor" href="#property-graph-definition" title="Link to this section">&para;</a></h2>
 <p>Использование duckpgq для создания объединённого графа свойств с полной поддержкой схемы CPG.</p>
 <p><strong>КЛЮЧЕВАЯ ИДЕЯ</strong>: DuckDB PGQ не поддерживает представления (views) в вершинных таблицах (VERTEX TABLES), но мы можем использовать <strong>материализованные таблицы</strong> вместо них! Это позволяет полностью поддерживать полиморфные рёбра.</p>
-<h3 id="step-1-create-materialized-unified-nodes-table">Шаг 1: Создание материализованной объединённой таблицы узлов<a class="heading-anchor" href="#step-1-create-materialized-unified-nodes-table" title="Link to this section">&para;</a></h3>
+<h3  id="step-1-create-materialized-unified-nodes-table"><span id="shag-1-sozdanie-materializovannoy-obedinyonnoy-tablitsy-uzlov"></span><span id="shag_1_sozdanie_materializovannoy_obedinyonnoy_tablitsy_uzlov"></span><span id="step_1_create_materialized_unified_nodes_table"></span>Шаг 1: Создание материализованной объединённой таблицы узлов<a class="heading-anchor" href="#step-1-create-materialized-unified-nodes-table" title="Link to this section">&para;</a></h3>
 <p><strong>Важно</strong>: Используйте <code>CREATE TABLE</code> (а не <code>CREATE VIEW</code>), чтобы материализовать объединённый набор узлов.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Создание материализованной объединённой таблицы всех узлов CPG для поддержки полиморфных рёбер</span>
 <span class="k">DROP</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">cpg_nodes</span><span class="p">;</span>
@@ -1169,7 +1213,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_cpg_nodes_type</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">cpg_nodes</span><span class="p">(</span><span class="n">node_type</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="step-2-create-comprehensive-property-graph">Шаг 2: Создание комплексного графа свойств<a class="heading-anchor" href="#step-2-create-comprehensive-property-graph" title="Link to this section">&para;</a></h3>
+<h3  id="step-2-create-comprehensive-property-graph"><span id="shag-2-sozdanie-kompleksnogo-grafa-svoystv"></span><span id="shag_2_sozdanie_kompleksnogo_grafa_svoystv"></span><span id="step_2_create_comprehensive_property_graph"></span>Шаг 2: Создание комплексного графа свойств<a class="heading-anchor" href="#step-2-create-comprehensive-property-graph" title="Link to this section">&para;</a></h3>
 <p><strong>Полная реализация</strong> (со всеми типами рёбер, включая полиморфные):</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">PROPERTY</span><span class="w"> </span><span class="k">GRAPH</span><span class="w"> </span><span class="n">cpg</span>
 <span class="n">VERTEX</span><span class="w"> </span><span class="k">TABLES</span><span class="w"> </span><span class="p">(</span>
@@ -1311,8 +1355,8 @@ METHOD_REF (замыкание/лямбда)
 - ✅ <strong>Типизированные вершины</strong> для эффективных целевых запросов
 - ✅ <strong>Совместимо с DuckDB PGQ</strong> (используются таблицы, а не представления)
 - ✅ <strong>Полное соответствие спецификации CPG v1.1</strong></p>
-<h2 id="example-queries">Примеры запросов<a class="heading-anchor" href="#example-queries" title="Link to this section">&para;</a></h2>
-<h3 id="standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda">Стандартный SQL-запрос: Найти все вызовы определённого метода<a class="heading-anchor" href="#standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda" title="Link to this section">&para;</a></h3>
+<h2  id="example-queries"><span id="example_queries"></span><span id="primery-zaprosov"></span><span id="primery_zaprosov"></span>Примеры запросов<a class="heading-anchor" href="#example-queries" title="Link to this section">&para;</a></h2>
+<h3  id="standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda"><span id="standartnyy_sql_zapros_nayti_vse_vyzovy_opredelyonnogo_metoda"></span>Стандартный SQL-запрос: Найти все вызовы определённого метода<a class="heading-anchor" href="#standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="nt">c</span><span class="o">.*,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">name</span><span class="o">,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">filename</span><span class="o">,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">line_number</span>
 <span class="nt">FROM</span><span class="w"> </span><span class="nt">nodes_call</span><span class="w"> </span><span class="nt">c</span>
 <span class="nt">JOIN</span><span class="w"> </span><span class="nt">edges_call</span><span class="w"> </span><span class="nt">ec</span><span class="w"> </span><span class="nt">ON</span><span class="w"> </span><span class="nt">c</span><span class="p">.</span><span class="nc">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nt">ec</span><span class="p">.</span><span class="nc">src</span>
@@ -1320,7 +1364,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="nt">WHERE</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">full_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;com.example.MyClass.myMethod:void()&#39;</span><span class="o">;</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-vyzyvaemyy">DuckDB PGQ-запрос: Найти прямые цепочки вызовов (вызывающий -&gt; вызываемый)<a class="heading-anchor" href="#duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-vyzyvaemyy" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-vyzyvaemyy"><span id="duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-gt-vyzyvaemyy"></span><span id="duckdb_pgq_zapros_nayti_pryamye_tsepochki_vyzovov_vyzyvayuschiy_gt_vyzyvaemyy"></span><span id="duckdb_pgq_zapros_nayti_pryamye_tsepochki_vyzovov_vyzyvayuschiy_vyzyvaemyy"></span>DuckDB PGQ-запрос: Найти прямые цепочки вызовов (вызывающий -&gt; вызываемый)<a class="heading-anchor" href="#duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-vyzyvaemyy" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="nt">FROM</span><span class="w"> </span><span class="nt">GRAPH_TABLE</span><span class="o">(</span><span class="nt">cpg</span>
 <span class="w">    </span><span class="nt">MATCH</span><span class="w"> </span><span class="o">(</span><span class="nt">caller</span><span class="p">:</span><span class="nd">METHOD</span><span class="o">)</span><span class="nt">-</span><span class="cp">[</span><span class="p">:</span><span class="nx">CALLS</span><span class="cp">]</span><span class="nt">-</span><span class="o">(</span><span class="nt">call</span><span class="p">:</span><span class="nd">CALL_NODE</span><span class="o">)</span><span class="nt">-</span><span class="cp">[</span><span class="p">:</span><span class="nx">CALLS</span><span class="cp">]</span><span class="nt">-</span><span class="o">&gt;(</span><span class="nt">callee</span><span class="p">:</span><span class="nd">METHOD</span><span class="o">)</span>
@@ -1329,7 +1373,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="o">);</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast">DuckDB PGQ-запрос: Найти методы и их дочерние узлы AST<a class="heading-anchor" href="#duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast"><span id="duckdb_pgq_zapros_nayti_metody_i_ih_dochernie_uzly_ast"></span>DuckDB PGQ-запрос: Найти методы и их дочерние узлы AST<a class="heading-anchor" href="#duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="nt">FROM</span><span class="w"> </span><span class="nt">GRAPH_TABLE</span><span class="o">(</span><span class="nt">cpg</span>
 <span class="w">    </span><span class="nt">MATCH</span><span class="w"> </span><span class="o">(</span><span class="nt">m</span><span class="p">:</span><span class="nd">METHOD</span><span class="o">)</span><span class="nt">-</span><span class="cp">[</span><span class="p">:</span><span class="nx">AST</span><span class="cp">]</span><span class="nt">-</span><span class="o">&gt;(</span><span class="nt">child</span><span class="p">:</span><span class="nd">CPG_NODE</span><span class="o">)</span>
@@ -1337,7 +1381,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="o">);</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-zapros-puti-potoka-dannyh-s-ispolzovaniem-reaching-def">DuckDB PGQ-запрос: Пути потока данных с использованием REACHING_DEF<a class="heading-anchor" href="#duckdb-pgq-zapros-puti-potoka-dannyh-s-ispolzovaniem-reaching-def" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-zapros-puti-potoka-dannyh-s-ispolzovaniem-reaching-def"><span id="duckdb_pgq_zapros_puti_potoka_dannyh_s_ispolzovaniem_reaching_def"></span>DuckDB PGQ-запрос: Пути потока данных с использованием REACHING_DEF<a class="heading-anchor" href="#duckdb-pgq-zapros-puti-potoka-dannyh-s-ispolzovaniem-reaching-def" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="nt">FROM</span><span class="w"> </span><span class="nt">GRAPH_TABLE</span><span class="o">(</span><span class="nt">cpg</span>
 <span class="w">    </span><span class="nt">MATCH</span><span class="w"> </span><span class="o">(</span><span class="nt">source</span><span class="p">:</span><span class="nd">CPG_NODE</span><span class="o">)</span><span class="nt">-</span><span class="cp">[</span><span class="p">:</span><span class="nx">REACHING_DEF</span><span class="o">*</span><span class="mi">1</span><span class="nx">..5</span><span class="cp">]</span><span class="nt">-</span><span class="o">&gt;(</span><span class="nt">sink</span><span class="p">:</span><span class="nd">CPG_NODE</span><span class="o">)</span>
@@ -1346,7 +1390,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="nt">LIMIT</span><span class="w"> </span><span class="nt">100</span><span class="o">;</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-zapros-puti-cfg-upravlenie-vypolneniem">DuckDB PGQ-запрос: Пути CFG (управление выполнением)<a class="heading-anchor" href="#duckdb-pgq-zapros-puti-cfg-upravlenie-vypolneniem" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-zapros-puti-cfg-upravlenie-vypolneniem"><span id="duckdb_pgq_zapros_puti_cfg_upravlenie_vypolneniem"></span>DuckDB PGQ-запрос: Пути CFG (управление выполнением)<a class="heading-anchor" href="#duckdb-pgq-zapros-puti-cfg-upravlenie-vypolneniem" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="nt">FROM</span><span class="w"> </span><span class="nt">GRAPH_TABLE</span><span class="o">(</span><span class="nt">cpg</span>
 <span class="w">    </span><span class="nt">MATCH</span><span class="w"> </span><span class="o">(</span><span class="nt">start</span><span class="p">:</span><span class="nd">CPG_NODE</span><span class="o">)</span><span class="nt">-</span><span class="cp">[</span><span class="p">:</span><span class="nx">CFG</span><span class="o">*</span><span class="mi">1</span><span class="nx">..3</span><span class="cp">]</span><span class="nt">-</span><span class="o">&gt;(</span><span class="nt">end</span><span class="p">:</span><span class="nd">CPG_NODE</span><span class="o">)</span>
@@ -1355,7 +1399,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="nt">LIMIT</span><span class="w"> </span><span class="nt">100</span><span class="o">;</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki">DuckDB PGQ-запрос: Найти все идентификаторы и их ссылки<a class="heading-anchor" href="#duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki"><span id="duckdb_pgq_zapros_nayti_vse_identifikatory_i_ih_ssylki"></span>DuckDB PGQ-запрос: Найти все идентификаторы и их ссылки<a class="heading-anchor" href="#duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="nt">FROM</span><span class="w"> </span><span class="nt">GRAPH_TABLE</span><span class="o">(</span><span class="nt">cpg</span>
 <span class="w">    </span><span class="nt">MATCH</span><span class="w"> </span><span class="o">(</span><span class="nt">id</span><span class="p">:</span><span class="nd">IDENTIFIER</span><span class="o">)</span><span class="nt">-</span><span class="cp">[</span><span class="p">:</span><span class="nx">REF</span><span class="cp">]</span><span class="nt">-</span><span class="o">&gt;(</span><span class="nt">decl</span><span class="p">:</span><span class="nd">CPG_NODE</span><span class="o">)</span>
@@ -1363,7 +1407,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="o">);</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-query-type-hierarchy-inheritance">DuckDB PGQ-запрос: Иерархия типов (наследование)<a class="heading-anchor" href="#duckdb-pgq-query-type-hierarchy-inheritance" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-query-type-hierarchy-inheritance"><span id="duckdb-pgq-zapros-ierarhiya-tipov-nasledovanie"></span><span id="duckdb_pgq_query_type_hierarchy_inheritance"></span><span id="duckdb_pgq_zapros_ierarhiya_tipov_nasledovanie"></span>DuckDB PGQ-запрос: Иерархия типов (наследование)<a class="heading-anchor" href="#duckdb-pgq-query-type-hierarchy-inheritance" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nx">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="nx">FROM</span><span class="w"> </span><span class="nx">GRAPH_TABLE</span><span class="p">(</span><span class="nx">cpg</span>
 <span class="w">    </span><span class="nx">MATCH</span><span class="w"> </span><span class="p">(</span><span class="nx">derived</span><span class="p">:</span><span class="nx">TYPE_DECL</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="nx">INHERITS_FROM</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="kd">base</span><span class="p">:</span><span class="nx">CPG_NODE</span><span class="p">)</span>
@@ -1371,7 +1415,7 @@ METHOD_REF (замыкание/лямбда)
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="combined-query-methods-with-most-incoming-calls">Комбинированный запрос: Методы с наибольшим количеством входящих вызовов<a class="heading-anchor" href="#combined-query-methods-with-most-incoming-calls" title="Link to this section">&para;</a></h3>
+<h3  id="combined-query-methods-with-most-incoming-calls"><span id="combined_query_methods_with_most_incoming_calls"></span><span id="kombinirovannyy-zapros-metody-s-naibolshim-kolichestvom-vhodyaschih-vyzovov"></span><span id="kombinirovannyy_zapros_metody_s_naibolshim_kolichestvom_vhodyaschih_vyzovov"></span>Комбинированный запрос: Методы с наибольшим количеством входящих вызовов<a class="heading-anchor" href="#combined-query-methods-with-most-incoming-calls" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">full_name</span><span class="o">,</span><span class="w"> </span><span class="nt">COUNT</span><span class="o">(*)</span><span class="w"> </span><span class="nt">as</span><span class="w"> </span><span class="nt">call_count</span>
 <span class="nt">FROM</span><span class="w"> </span><span class="nt">GRAPH_TABLE</span><span class="o">(</span><span class="nt">cpg</span>
 <span class="w">    </span><span class="nt">MATCH</span><span class="w"> </span><span class="o">(</span><span class="nt">c</span><span class="p">:</span><span class="nd">CALL_NODE</span><span class="o">)</span><span class="nt">-</span><span class="cp">[</span><span class="p">:</span><span class="nx">CALLS</span><span class="cp">]</span><span class="nt">-</span><span class="o">&gt;(</span><span class="nt">m</span><span class="p">:</span><span class="nd">METHOD</span><span class="o">)</span>
@@ -1382,8 +1426,8 @@ METHOD_REF (замыкание/лямбда)
 <span class="nt">LIMIT</span><span class="w"> </span><span class="nt">10</span><span class="o">;</span>
 </code></pre></div>
 
-<h2 id="schema-migration-history">История миграции схемы<a class="heading-anchor" href="#schema-migration-history" title="Link to this section">&para;</a></h2>
-<h3 id="phase-1-critical---completed-">Этап 1 (КРИТИЧЕСКИЙ) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-1-critical---completed-" title="Link to this section">&para;</a></h3>
+<h2  id="schema-migration-history"><span id="istoriya-migratsii-shemy"></span><span id="istoriya_migratsii_shemy"></span><span id="schema_migration_history"></span>История миграции схемы<a class="heading-anchor" href="#schema-migration-history" title="Link to this section">&para;</a></h2>
+<h3  id="phase-1-critical---completed-"><span id="etap-1-kriticheskiy-zavershyon"></span><span id="etap_1_kriticheskiy_zavershyon"></span><span id="phase_1_critical___completed_"></span>Этап 1 (КРИТИЧЕСКИЙ) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-1-critical---completed-" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_method (со всеми свойствами)</li>
 <li>✓ nodes_call (с method_full_name, name, signature)</li>
@@ -1392,7 +1436,7 @@ METHOD_REF (замыкание/лямбда)
 <li>✓ nodes_method_return (METHOD_RETURN) — НОВОЕ!</li>
 <li>✓ edges_cdg (граф управляющих зависимостей, Control Dependence Graph) — НОВОЕ!</li>
 </ul>
-<h3 id="phase-2-oop-support---completed-">Этап 2 (ПОДДЕРЖКА ООП) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-2-oop-support---completed-" title="Link to this section">&para;</a></h3>
+<h3  id="phase-2-oop-support---completed-"><span id="etap-2-podderzhka-oop-zavershyon"></span><span id="etap_2_podderzhka_oop_zavershyon"></span><span id="phase_2_oop_support___completed_"></span>Этап 2 (ПОДДЕРЖКА ООП) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-2-oop-support---completed-" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_field_identifier (FIELD_IDENTIFIER) — НОВОЕ!</li>
 <li>✓ nodes_member (MEMBER) — НОВОЕ!</li>
@@ -1401,7 +1445,7 @@ METHOD_REF (замыкание/лямбда)
 <li>✓ edges_binds (BINDS) — НОВОЕ!</li>
 <li>✓ edges_binds_to (BINDS_TO) — НОВОЕ!</li>
 </ul>
-<h3 id="phase-3-namespace-and-file-support---completed-">Этап 3 (ПОДДЕРЖКА ПРОСТРАНСТВ ИМЁН И ФАЙЛОВ) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-3-namespace-and-file-support---completed-" title="Link to this section">&para;</a></h3>
+<h3  id="phase-3-namespace-and-file-support---completed-"><span id="etap-3-podderzhka-prostranstv-imyon-i-faylov-zavershyon"></span><span id="etap_3_podderzhka_prostranstv_imyon_i_faylov_zavershyon"></span><span id="phase_3_namespace_and_file_support___completed_"></span>Этап 3 (ПОДДЕРЖКА ПРОСТРАНСТВ ИМЁН И ФАЙЛОВ) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-3-namespace-and-file-support---completed-" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_file (FILE) — НОВОЕ!</li>
 <li>✓ nodes_namespace_block (NAMESPACE_BLOCK) — НОВОЕ!</li>
@@ -1409,7 +1453,7 @@ METHOD_REF (замыкание/лямбда)
 <li>✓ nodes_type_ref (TYPE_REF) — НОВОЕ!</li>
 <li>✓ edges_source_file (SOURCE_FILE) — НОВОЕ!</li>
 </ul>
-<h3 id="phase-4-remaining-features---completed-">Этап 4 (ОСТАВШИЕСЯ ФУНКЦИИ) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-4-remaining-features---completed-" title="Link to this section">&para;</a></h3>
+<h3  id="phase-4-remaining-features---completed-"><span id="etap-4-ostavshiesya-funktsii-zavershyon"></span><span id="etap_4_ostavshiesya_funktsii_zavershyon"></span><span id="phase_4_remaining_features___completed_"></span>Этап 4 (ОСТАВШИЕСЯ ФУНКЦИИ) — ЗАВЕРШЁН ✓<a class="heading-anchor" href="#phase-4-remaining-features---completed-" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ Экспорт рёбер AST</li>
 <li>✓ Экспорт рёбер CFG</li>
@@ -1417,7 +1461,7 @@ METHOD_REF (замыкание/лямбда)
 <li>✓ Экспорт дополнительных типов узлов (UNKNOWN, JUMP_TARGET, TYPE_PARAMETER, TYPE_ARGUMENT, BINDING, CLOSURE_BINDING, COMMENT)</li>
 <li>✓ Экспорт оставшихся рёбер (ALIAS_OF, INHERITS_FROM, CAPTURE, CAPTURED_BY)</li>
 </ul>
-<h2 id="rekomendatsii-po-proizvoditelnosti">Рекомендации по производительности<a class="heading-anchor" href="#rekomendatsii-po-proizvoditelnosti" title="Link to this section">&para;</a></h2>
+<h2  id="rekomendatsii-po-proizvoditelnosti"><span id="rekomendatsii_po_proizvoditelnosti"></span>Рекомендации по производительности<a class="heading-anchor" href="#rekomendatsii-po-proizvoditelnosti" title="Link to this section">&para;</a></h2>
 <ol>
 <li><strong>Пакетная обработка</strong>: Используйте пакеты по 10 000 строк для операций INSERT</li>
 <li><strong>Индексирование</strong>: Создавайте индексы после массовой загрузки для ускорения импорта</li>
@@ -1425,16 +1469,33 @@ METHOD_REF (замыкание/лямбда)
 <li><strong>Сжатие</strong>: Используйте автоматическое сжатие DuckDB для столбцов типа TEXT</li>
 <li><strong>Память</strong>: Настройте лимит памяти DuckDB в зависимости от размера CPG</li>
 </ol>
-<h2 id="schema-version">Версия схемы<a class="heading-anchor" href="#schema-version" title="Link to this section">&para;</a></h2>
+<h2  id="schema-version"><span id="schema_version"></span><span id="versiya-shemy"></span><span id="versiya_shemy"></span>Версия схемы<a class="heading-anchor" href="#schema-version" title="Link to this section">&para;</a></h2>
 <ul>
 <li>Спецификация CPG: v1.1</li>
-<li>DuckDB: 1.1.3+</li>
+<li>DuckDB: 1.4.2+</li>
 <li>duckpgq: Последняя стабильная версия</li>
-<li>Версия схемы: 5.0 (Завершена полная совместимость с фазой 4)</li>
-<li>Последнее обновление: 2025-11-16</li>
+<li>Версия схемы: 6.0 (Предвычисленные метрики и флаги паттернов)</li>
+<li>Последнее обновление: 2026-02-26</li>
 </ul>
-<h2 id="changelog">Журнал изменений<a class="heading-anchor" href="#changelog" title="Link to this section">&para;</a></h2>
-<h3 id="v50-2025-11-16---phase-4-complete-compliance">v5.0 (2025-11-16) — Завершение четвёртого этапа: полное соответствие схеме<a class="heading-anchor" href="#v50-2025-11-16---phase-4-complete-compliance" title="Link to this section">&para;</a></h3>
+<h2  id="changelog"><span id="zhurnal-izmeneniy"></span><span id="zhurnal_izmeneniy"></span>Журнал изменений<a class="heading-anchor" href="#changelog" title="Link to this section">&para;</a></h2>
+<h3  id="v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov"><span id="v60_2026_02_26_predvychislennye_metriki_i_flagi_patternov"></span>v6.0 (2026-02-26) — Предвычисленные метрики и флаги паттернов<a class="heading-anchor" href="#v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov" title="Link to this section">&para;</a></h3>
+<p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлены предвычисленные булевые флаги и метрики в nodes_method для быстрых запросов</strong></p>
+<p><strong>Новые столбцы nodes_method:</strong>
+- <code>has_disabled_code</code> (BOOLEAN) — обнаруживает <code>#if 0</code>, <code>if false</code>, закомментированные блоки
+- <code>has_deprecated</code> (BOOLEAN) — обнаруживает <code>@Deprecated</code>, <code>[[deprecated]]</code>
+- <code>has_todo_fixme</code> (BOOLEAN) — обнаруживает <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, <code>XXX</code>
+- <code>has_debug_code</code> (BOOLEAN) — обнаруживает отладочный вывод, console.log
+- <code>is_test</code> (BOOLEAN) — кросс-языковое определение тестовых функций (11 языков)
+- <code>is_entry_point</code> (BOOLEAN) — определение точек входа публичного API (экспортируемые, HTTP-обработчики, main)
+- <code>cyclomatic_complexity</code> (INTEGER) — цикломатическая сложность по Маккейбу
+- <code>fan_in</code> (INTEGER) — количество вызывающих методов
+- <code>fan_out</code> (INTEGER) — количество вызываемых методов</p>
+<p><strong>Влияние:</strong>
+- <strong>В 10-100 раз быстрее</strong> запросы по паттернам по сравнению со сканированием LIKE по столбцам code/name
+- Кросс-языковое обнаружение тестовых файлов (pytest, JUnit, Go testing и др.)
+- Предвычисленные метрики обеспечивают мгновенный анализ сложности и связности
+- Требуется DuckDB 1.4.2+ для расширения DuckPGQ</p>
+<h3  id="v50-2025-11-16---phase-4-complete-compliance"><span id="v50-2025-11-16-zavershenie-chetvyortogo-etapa-polnoe-sootvetstvie-sheme"></span><span id="v50_2025_11_16___phase_4_complete_compliance"></span><span id="v50_2025_11_16_zavershenie_chetvyortogo_etapa_polnoe_sootvetstvie_sheme"></span>v5.0 (2025-11-16) — Завершение четвёртого этапа: полное соответствие схеме<a class="heading-anchor" href="#v50-2025-11-16---phase-4-complete-compliance" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Достигнуто 100% соответствие схеме CPG со всеми оставшимися функциями</strong></p>
 <p><strong>Новые типы узлов:</strong>
 - <code>nodes_unknown</code> (UNKNOWN) — универсальный тип для неподдерживаемых конструкций AST
@@ -1458,7 +1519,7 @@ METHOD_REF (замыкание/лямбда)
 - Сохранение комментариев для документации
 - Полноценные возможности анализа программ</p>
 <p><strong>Соответствие:</strong> ~95% → <strong>100% схеме CPG</strong></p>
-<h3 id="v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov">v4.0 (2025-11-16) — Третий этап: поддержка пространств имён и файлов<a class="heading-anchor" href="#v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov" title="Link to this section">&para;</a></h3>
+<h3  id="v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov"><span id="v40_2025_11_16_tretiy_etap_podderzhka_prostranstv_imyon_i_faylov"></span>v4.0 (2025-11-16) — Третий этап: поддержка пространств имён и файлов<a class="heading-anchor" href="#v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлено сопоставление с файлами, поддержка пространств имён и ссылок на методы/типы</strong></p>
 <p><strong>Новые типы узлов:</strong>
 - <code>nodes_file</code> (FILE) — узлы исходных файлов для индексации по файлам
@@ -1475,7 +1536,7 @@ METHOD_REF (замыкание/лямбда)
 - Полное сопоставление с исходными файлами (готово к интеграции с IDE)
 - Улучшен анализ межфайловых зависимостей</p>
 <p><strong>Соответствие:</strong> ~90% → ~95% схеме CPG</p>
-<h3 id="v30-2025-11-16-vtoroy-etap-podderzhka-oop">v3.0 (2025-11-16) — Второй этап: поддержка ООП<a class="heading-anchor" href="#v30-2025-11-16-vtoroy-etap-podderzhka-oop" title="Link to this section">&para;</a></h3>
+<h3  id="v30-2025-11-16-vtoroy-etap-podderzhka-oop"><span id="v30_2025_11_16_vtoroy_etap_podderzhka_oop"></span>v3.0 (2025-11-16) — Второй этап: поддержка ООП<a class="heading-anchor" href="#v30-2025-11-16-vtoroy-etap-podderzhka-oop" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлена поддержка анализа ООП и точное сопоставление с исходным кодом</strong></p>
 <p><strong>Новые типы узлов:</strong>
 - <code>nodes_field_identifier</code> (FIELD_IDENTIFIER) — узлы доступа к полям для ООП
@@ -1494,7 +1555,7 @@ METHOD_REF (замыкание/лямбда)
 - Улучшено разрешение имён переменных и функций
 - Включён анализ псевдонимов (канонические имена)</p>
 <p><strong>Соответствие:</strong> ~80% → ~90% схеме CPG</p>
-<h3 id="v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya">v2.0 (2025-11-16) — Первый этап: критические обновления<a class="heading-anchor" href="#v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya" title="Link to this section">&para;</a></h3>
+<h3  id="v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya"><span id="v20_2025_11_16_pervyy_etap_kriticheskie_obnovleniya"></span>v2.0 (2025-11-16) — Первый этап: критические обновления<a class="heading-anchor" href="#v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлены критически важные компоненты для анализа PDG и SSA</strong></p>
 <p><strong>Новые типы узлов:</strong>
 - <code>nodes_param_out</code> (METHOD_PARAMETER_OUT) — выходные параметры для анализа SSA
@@ -1507,16 +1568,16 @@ METHOD_REF (замыкание/лямбда)
 - Включено программное срезание (program slicing)
 - Улучшен анализ утечки данных (taint analysis)</p>
 <p><strong>Соответствие:</strong> ~70% → ~80% схеме CPG</p>
-<h3 id="v10-2025-11-15---initial-release">v1.0 (2025-11-15) — Первоначальный выпуск<a class="heading-anchor" href="#v10-2025-11-15---initial-release" title="Link to this section">&para;</a></h3>
+<h3  id="v10-2025-11-15---initial-release"><span id="v10-2025-11-15-pervonachalnyy-vypusk"></span><span id="v10_2025_11_15___initial_release"></span><span id="v10_2025_11_15_pervonachalnyy_vypusk"></span>v1.0 (2025-11-15) — Первоначальный выпуск<a class="heading-anchor" href="#v10-2025-11-15---initial-release" title="Link to this section">&para;</a></h3>
 <ul>
 <li>11 типов узлов (METHOD, CALL, IDENTIFIER, LITERAL, LOCAL, PARAM, RETURN, BLOCK, CONTROL_STRUCTURE, TYPE_DECL, METADATA)</li>
 <li>10 типов рёбер (AST, CFG, CALL, REF, REACHING_DEF, ARGUMENT, RECEIVER, CONDITION, DOMINATE, POST_DOMINATE)</li>
 </ul>
 <hr />
-<h2 id="extension-semantic-tag-system">Расширение: Система семантических тегов<a class="heading-anchor" href="#extension-semantic-tag-system" title="Link to this section">&para;</a></h2>
+<h2  id="extension-semantic-tag-system"><span id="extension_semantic_tag_system"></span><span id="rasshirenie-sistema-semanticheskih-tegov"></span><span id="rasshirenie_sistema_semanticheskih_tegov"></span>Расширение: Система семантических тегов<a class="heading-anchor" href="#extension-semantic-tag-system" title="Link to this section">&para;</a></h2>
 <h3 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h3>
 <p>Система тегов расширяет CPG за счёт семантических аннотаций для методов и других элементов кода. Теги — это пользовательские расширения (не входящие в спецификацию CPG v1.1), которые позволяют выполнять семантический поиск, классификацию кода и интеллектуальный анализ.</p>
-<h3 id="nodes-tag">nodes_tag<a class="heading-anchor" href="#nodes-tag" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-tag"><span id="nodes_tag"></span>nodes_tag<a class="heading-anchor" href="#nodes-tag" title="Link to this section">&para;</a></h3>
 <p>Хранит определения тегов (семантические метки для элементов кода).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_tag</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -1531,7 +1592,7 @@ METHOD_REF (замыкание/лямбда)
 <p><strong>Свойства:</strong>
 - NAME: Идентификатор категории тега (уникальное семантическое измерение)
 - VALUE: Значение тега в рамках этой категории</p>
-<h3 id="edges-tagged-by">edges_tagged_by<a class="heading-anchor" href="#edges-tagged-by" title="Link to this section">&para;</a></h3>
+<h3  id="edges-tagged-by"><span id="edges_tagged_by"></span>edges_tagged_by<a class="heading-anchor" href="#edges-tagged-by" title="Link to this section">&para;</a></h3>
 <p>Связывает элементы кода с их семантическими тегами.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="n">BIGINT</span><span class="p">,</span><span class="w">                </span><span class="c1">-- Идентификатор исходного узла (обычно METHOD)</span>
@@ -1546,7 +1607,7 @@ METHOD_REF (замыкание/лямбда)
 <p><strong>Связь:</strong>
 - Источник: любой узел CPG (обычно nodes_method)
 - Назначение: запись в nodes_tag</p>
-<h3 id="kategorii-tegov">Категории тегов<a class="heading-anchor" href="#kategorii-tegov" title="Link to this section">&para;</a></h3>
+<h3  id="kategorii-tegov"><span id="kategorii_tegov"></span>Категории тегов<a class="heading-anchor" href="#kategorii-tegov" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -1608,7 +1669,7 @@ METHOD_REF (замыкание/лямбда)
 </tr>
 </tbody>
 </table></div>
-<h3 id="primery-zaprosov-k-tegam">Примеры запросов к тегам<a class="heading-anchor" href="#primery-zaprosov-k-tegam" title="Link to this section">&para;</a></h3>
+<h3  id="primery-zaprosov-k-tegam"><span id="primery_zaprosov_k_tegam"></span>Примеры запросов к тегам<a class="heading-anchor" href="#primery-zaprosov-k-tegam" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Найти все методы с критическим уровнем угрозы безопасности</span>
 <span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="err">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
@@ -1646,18 +1707,20 @@ METHOD_REF (замыкание/лямбда)
 <span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
 </code></pre></div>
 
-<h3 id="statistika-po-tegam">Статистика по тегам<a class="heading-anchor" href="#statistika-po-tegam" title="Link to this section">&para;</a></h3>
+<h3  id="statistika-po-tegam"><span id="statistika_po_tegam"></span>Статистика по тегам<a class="heading-anchor" href="#statistika-po-tegam" title="Link to this section">&para;</a></h3>
 <p>В текущей базе данных содержится приблизительно:
 - <strong>15,68 млн тегов</strong> в рамках <strong>98 категорий</strong>
 - Основные категории: subsystem-name, security-risk, function-purpose
 - Теги позволяют выполнять семантический поиск по коду и интеллектуальный анализ</p>
-<h3 id="integration-notes">Примечания по интеграции<a class="heading-anchor" href="#integration-notes" title="Link to this section">&para;</a></h3>
+<h3  id="integration-notes"><span id="integration_notes"></span><span id="primechaniya-po-integratsii"></span><span id="primechaniya_po_integratsii"></span>Примечания по интеграции<a class="heading-anchor" href="#integration-notes" title="Link to this section">&para;</a></h3>
 <p>Теги добавляются после генерации CPG с помощью:
 1. <strong>Статического анализа</strong>: Запросы тегов CPG (<code>cpg.method.tag.name(...)</code>)
 2. <strong>Обогащения с помощью ИИ</strong>: Генерация описаний назначения функций с помощью LLM
 3. <strong>Вычисляемых метрик</strong>: Цикломатическая сложность, полученная из анализа CFG
 4. <strong>Ручной аннотации</strong>: Результаты аудита безопасности</p>
 <p>Теги расширяют CPG без изменения основной схемы, обеспечивая совместимость со стандартными инструментами CPG и позволяя выполнять расширенный семантический анализ.</p>
+<hr />
+<p><em>Последнее обновление: 2026-02-26</em></p>
       </article>
 
       <!-- Page Navigation -->
@@ -1676,7 +1739,7 @@ METHOD_REF (замыкание/лямбда)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-02-18</span>
+        <span>Обновлено: 2026-02-27</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SCHEMA.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1686,11 +1749,11 @@ METHOD_REF (замыкание/лямбда)
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#dizayn-shemy-duckdb-cpg-cpg-spec-v11" class="level-1">Дизайн схемы DuckDB CPG (CPG Spec v1.1)</a></li>
-<li><a href="#soderzhanie" class="level-2">Содержание</a></li>
-<li><a href="#obzor" class="level-2">Обзор</a></li>
-<li><a href="#osnovnye-printsipy-proektirovaniya" class="level-2">Основные принципы проектирования</a></li>
+<li><a href="#table-of-contents" class="level-2">Содержание</a></li>
+<li><a href="#overview" class="level-2">Обзор</a></li>
+<li><a href="#core-design-principles" class="level-2">Основные принципы проектирования</a></li>
 <li><a href="#gocpg-vs-ustarevshaya-shema" class="level-2">GoCPG vs устаревшая схема</a></li>
-<li><a href="#tablitsy-uzlov" class="level-2">Таблицы узлов</a></li>
+<li><a href="#node-tables" class="level-2">Таблицы узлов</a></li>
 <li><a href="#nodes-method" class="level-3">nodes_method</a></li>
 <li><a href="#nodes-call" class="level-3">nodes_call</a></li>
 <li><a href="#nodes-identifier" class="level-3">nodes_identifier</a></li>
@@ -1709,7 +1772,7 @@ METHOD_REF (замыкание/лямбда)
 <li><a href="#nodes-file" class="level-3">nodes_file</a></li>
 <li><a href="#nodes-namespace-block" class="level-3">nodes_namespace_block</a></li>
 <li><a href="#nodes-method-ref" class="level-3">nodes_method_ref</a></li>
-<li><a href="#tablitsy-ryober" class="level-2">Таблицы рёбер</a></li>
+<li><a href="#edge-tables" class="level-2">Таблицы рёбер</a></li>
 <li><a href="#edges-ast" class="level-3">edges_ast</a></li>
 <li><a href="#edges-cfg" class="level-3">edges_cfg</a></li>
 <li><a href="#edges-call" class="level-3">edges_call</a></li>
@@ -1728,40 +1791,40 @@ METHOD_REF (замыкание/лямбда)
 <li><a href="#edges-inherits-from" class="level-3">edges_inherits_from</a></li>
 <li><a href="#edges-capture" class="level-3">edges_capture</a></li>
 <li><a href="#edges-captured-by" class="level-3">edges_captured_by</a></li>
-<li><a href="#local-count-captured-by-closure-binding" class="level-1">LOCAL "count" --CAPTURED_BY--> CLOSURE_BINDING</a></li>
-<li><a href="#opredelenie-grafa-svoystv" class="level-2">Определение графа свойств</a></li>
-<li><a href="#shag-1-sozdanie-materializovannoy-obedinyonnoy-tablitsy-uzlov" class="level-3">Шаг 1: Создание материализованной объединённой таблицы узлов</a></li>
-<li><a href="#shag-2-sozdanie-kompleksnogo-grafa-svoystv" class="level-3">Шаг 2: Создание комплексного графа свойств</a></li>
-<li><a href="#primery-zaprosov" class="level-2">Примеры запросов</a></li>
+<li><a href="#property-graph-definition" class="level-2">Определение графа свойств</a></li>
+<li><a href="#step-1-create-materialized-unified-nodes-table" class="level-3">Шаг 1: Создание материализованной объединённой таблицы узлов</a></li>
+<li><a href="#step-2-create-comprehensive-property-graph" class="level-3">Шаг 2: Создание комплексного графа свойств</a></li>
+<li><a href="#example-queries" class="level-2">Примеры запросов</a></li>
 <li><a href="#standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda" class="level-3">Стандартный SQL-запрос: Найти все вызовы определённого метода</a></li>
 <li><a href="#duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-vyzyvaemyy" class="level-3">DuckDB PGQ-запрос: Найти прямые цепочки вызовов (вызывающий -> вызываемый)</a></li>
 <li><a href="#duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast" class="level-3">DuckDB PGQ-запрос: Найти методы и их дочерние узлы AST</a></li>
 <li><a href="#duckdb-pgq-zapros-puti-potoka-dannyh-s-ispolzovaniem-reaching-def" class="level-3">DuckDB PGQ-запрос: Пути потока данных с использованием REACHING_DEF</a></li>
 <li><a href="#duckdb-pgq-zapros-puti-cfg-upravlenie-vypolneniem" class="level-3">DuckDB PGQ-запрос: Пути CFG (управление выполнением)</a></li>
 <li><a href="#duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki" class="level-3">DuckDB PGQ-запрос: Найти все идентификаторы и их ссылки</a></li>
-<li><a href="#duckdb-pgq-zapros-ierarhiya-tipov-nasledovanie" class="level-3">DuckDB PGQ-запрос: Иерархия типов (наследование)</a></li>
-<li><a href="#kombinirovannyy-zapros-metody-s-naibolshim-kolichestvom-vhodyaschih-vyzovov" class="level-3">Комбинированный запрос: Методы с наибольшим количеством входящих вызовов</a></li>
-<li><a href="#istoriya-migratsii-shemy" class="level-2">История миграции схемы</a></li>
-<li><a href="#etap-1-kriticheskiy-zavershyon" class="level-3">Этап 1 (КРИТИЧЕСКИЙ) — ЗАВЕРШЁН ✓</a></li>
-<li><a href="#etap-2-podderzhka-oop-zavershyon" class="level-3">Этап 2 (ПОДДЕРЖКА ООП) — ЗАВЕРШЁН ✓</a></li>
-<li><a href="#etap-3-podderzhka-prostranstv-imyon-i-faylov-zavershyon" class="level-3">Этап 3 (ПОДДЕРЖКА ПРОСТРАНСТВ ИМЁН И ФАЙЛОВ) — ЗАВЕРШЁН ✓</a></li>
-<li><a href="#etap-4-ostavshiesya-funktsii-zavershyon" class="level-3">Этап 4 (ОСТАВШИЕСЯ ФУНКЦИИ) — ЗАВЕРШЁН ✓</a></li>
+<li><a href="#duckdb-pgq-query-type-hierarchy-inheritance" class="level-3">DuckDB PGQ-запрос: Иерархия типов (наследование)</a></li>
+<li><a href="#combined-query-methods-with-most-incoming-calls" class="level-3">Комбинированный запрос: Методы с наибольшим количеством входящих вызовов</a></li>
+<li><a href="#schema-migration-history" class="level-2">История миграции схемы</a></li>
+<li><a href="#phase-1-critical---completed-" class="level-3">Этап 1 (КРИТИЧЕСКИЙ) — ЗАВЕРШЁН ✓</a></li>
+<li><a href="#phase-2-oop-support---completed-" class="level-3">Этап 2 (ПОДДЕРЖКА ООП) — ЗАВЕРШЁН ✓</a></li>
+<li><a href="#phase-3-namespace-and-file-support---completed-" class="level-3">Этап 3 (ПОДДЕРЖКА ПРОСТРАНСТВ ИМЁН И ФАЙЛОВ) — ЗАВЕРШЁН ✓</a></li>
+<li><a href="#phase-4-remaining-features---completed-" class="level-3">Этап 4 (ОСТАВШИЕСЯ ФУНКЦИИ) — ЗАВЕРШЁН ✓</a></li>
 <li><a href="#rekomendatsii-po-proizvoditelnosti" class="level-2">Рекомендации по производительности</a></li>
-<li><a href="#versiya-shemy" class="level-2">Версия схемы</a></li>
-<li><a href="#zhurnal-izmeneniy" class="level-2">Журнал изменений</a></li>
-<li><a href="#v50-2025-11-16-zavershenie-chetvyortogo-etapa-polnoe-sootvetstvie-sheme" class="level-3">v5.0 (2025-11-16) — Завершение четвёртого этапа: полное соответствие схеме</a></li>
+<li><a href="#schema-version" class="level-2">Версия схемы</a></li>
+<li><a href="#changelog" class="level-2">Журнал изменений</a></li>
+<li><a href="#v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov" class="level-3">v6.0 (2026-02-26) — Предвычисленные метрики и флаги паттернов</a></li>
+<li><a href="#v50-2025-11-16---phase-4-complete-compliance" class="level-3">v5.0 (2025-11-16) — Завершение четвёртого этапа: полное соответствие схеме</a></li>
 <li><a href="#v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov" class="level-3">v4.0 (2025-11-16) — Третий этап: поддержка пространств имён и файлов</a></li>
 <li><a href="#v30-2025-11-16-vtoroy-etap-podderzhka-oop" class="level-3">v3.0 (2025-11-16) — Второй этап: поддержка ООП</a></li>
 <li><a href="#v20-2025-11-16-pervyy-etap-kriticheskie-obnovleniya" class="level-3">v2.0 (2025-11-16) — Первый этап: критические обновления</a></li>
-<li><a href="#v10-2025-11-15-pervonachalnyy-vypusk" class="level-3">v1.0 (2025-11-15) — Первоначальный выпуск</a></li>
-<li><a href="#rasshirenie-sistema-semanticheskih-tegov" class="level-2">Расширение: Система семантических тегов</a></li>
+<li><a href="#v10-2025-11-15---initial-release" class="level-3">v1.0 (2025-11-15) — Первоначальный выпуск</a></li>
+<li><a href="#extension-semantic-tag-system" class="level-2">Расширение: Система семантических тегов</a></li>
 <li><a href="#obzor" class="level-3">Обзор</a></li>
 <li><a href="#nodes-tag" class="level-3">nodes_tag</a></li>
 <li><a href="#edges-tagged-by" class="level-3">edges_tagged_by</a></li>
 <li><a href="#kategorii-tegov" class="level-3">Категории тегов</a></li>
 <li><a href="#primery-zaprosov-k-tegam" class="level-3">Примеры запросов к тегам</a></li>
 <li><a href="#statistika-po-tegam" class="level-3">Статистика по тегам</a></li>
-<li><a href="#primechaniya-po-integratsii" class="level-3">Примечания по интеграции</a></li>
+<li><a href="#integration-notes" class="level-3">Примечания по интеграции</a></li>
       </ul>
     </aside>
   </div>
@@ -1780,6 +1843,7 @@ METHOD_REF (замыкание/лямбда)
             <ul class="footer-links-list">
               <li><a href="../../../index.html#features" class="footer-link">Возможности</a></li>
               <li><a href="../../../index.html#integrations" class="footer-link">Интеграции</a></li>
+              <li><a href="../../../index.html#architecture" class="footer-link">Архитектура</a></li>
               <li><a href="../../../index.html#faq" class="footer-link">FAQ</a></li>
             </ul>
           </div>
@@ -1796,6 +1860,7 @@ METHOD_REF (замыкание/лямбда)
             <h4>Ресурсы</h4>
             <ul class="footer-links-list">
               <li><a href="../../../whitepaper.html" class="footer-link">Whitepaper</a></li>
+              <li><a href="../../../docs/en/index.html" class="footer-link">Docs (EN)</a></li>
             </ul>
           </div>
           <div class="footer-links-group">

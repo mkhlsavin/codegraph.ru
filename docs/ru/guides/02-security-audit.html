@@ -92,8 +92,9 @@
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="CODE_REVIEW.html">Автоматический код-ревью</a></li>
-        <li><a href="CPG_EXPORT.html">Руководство по экспорту CPG</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DOGFOODING.html">Руководство по догфудингу: анализ коммитов на базе CPG</a></li>
         <li><a href="MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
         <li><a href="PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
@@ -103,6 +104,7 @@
         <li><a href="TROUBLESHOOTING.html">Руководство по устранению неполадок</a></li>
         <li><a href="TUI_USER_GUIDE.html">Руководство пользователя CodeGraph</a></li>
         <li><a href="01-onboarding.html">Сценарий 01: Ввод нового разработчика</a></li>
+        <li><a href="02-security-audit-autofix.html">Аудит безопасности: Автоисправление</a></li>
         <li><a href="02-security-audit.html" class="active">Сценарий 02: Аудит безопасности</a></li>
         <li><a href="03-documentation.html">Сценарий 03: Генерация документации</a></li>
         <li><a href="04-feature-development.html">Сценарий 04: Разработка функций</a></li>
@@ -174,7 +176,7 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <h1 id="stsenariy-02-audit-bezopasnosti">Сценарий 02: Аудит безопасности<a class="heading-anchor" href="#stsenariy-02-audit-bezopasnosti" title="Link to this section">&para;</a></h1>
+        <h1  id="stsenariy-02-audit-bezopasnosti"><span id="stsenariy_02_audit_bezopasnosti"></span>Сценарий 02: Аудит безопасности<a class="heading-anchor" href="#stsenariy-02-audit-bezopasnosti" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
 <p>Инженер по безопасности выполняет оценку уязвимостей и проверку усиления кода.</p>
 </blockquote>
@@ -188,7 +190,7 @@
 <li><a href="#identify-entry-points">Определение точек входа</a></li>
 <li><a href="#trace-data-flow">Отслеживание потока данных</a></li>
 <li><a href="#d3fend-source-code-hardening">Усиление безопасности исходного кода по D3FEND</a></li>
-<li><a href="#full-hardening-audit">Полный аудит усиления безопасности</a></li>
+<li><a href="#politika-audita-usileniya-zaschity">Полный аудит усиления безопасности</a></li>
 <li><a href="#check-unsafe-functions-d3-tl">Проверка небезопасных функций (D3-TL)</a></li>
 <li><a href="#check-null-pointer-safety-d3-npc">Проверка безопасности указателей на NULL (D3-NPC)</a></li>
 <li><a href="#language-specific-security-patterns">Языковые шаблоны безопасности</a></li>
@@ -197,17 +199,17 @@
 <li><a href="#capec-attack-patterns-15-patterns">Шаблоны атак CAPEC (более 15 шаблонов)</a></li>
 <li><a href="#pythondjango-example">Пример Python/Django</a></li>
 <li><a href="#javascripttypescript-example">Пример JavaScript/TypeScript</a></li>
-<li><a href="#go-example">Пример Go</a></li>
+<li><a href="#primer-dlya-go">Пример Go</a></li>
 <li><a href="#cli-security-reports">Отчёты безопасности в CLI</a></li>
 <li><a href="#related-scenarios">Связанные сценарии</a></li>
 </ul>
-<h2 id="quick-start">Быстрый старт<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
+<h2  id="quick-start"><span id="bystryy-start"></span><span id="bystryy_start"></span><span id="quick_start"></span>Быстрый старт<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code># Выберите сценарий аудита безопасности
 /select 02
 </code></pre></div>
 
-<h2 id="vulnerability-scanning">Сканирование уязвимостей<a class="heading-anchor" href="#vulnerability-scanning" title="Link to this section">&para;</a></h2>
-<h3 id="sql-injection-detection">Обнаружение SQL-инъекций<a class="heading-anchor" href="#sql-injection-detection" title="Link to this section">&para;</a></h3>
+<h2  id="vulnerability-scanning"><span id="skanirovanie-uyazvimostey"></span><span id="skanirovanie_uyazvimostey"></span><span id="vulnerability_scanning"></span>Сканирование уязвимостей<a class="heading-anchor" href="#vulnerability-scanning" title="Link to this section">&para;</a></h2>
+<h3  id="sql-injection-detection"><span id="obnaruzhenie-sql-inektsiy"></span><span id="obnaruzhenie_sql_inektsiy"></span><span id="sql_injection_detection"></span>Обнаружение SQL-инъекций<a class="heading-anchor" href="#sql-injection-detection" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nt">Поиск</span><span class="w"> </span><span class="nt">уязвимостей</span><span class="o">,</span><span class="w"> </span><span class="nt">связанных</span><span class="w"> </span><span class="nt">с</span><span class="w"> </span><span class="nt">SQL-инъекциями</span>
 
 <span class="err">╭───────────────</span><span class="w"> </span><span class="nt">Результаты</span><span class="w"> </span><span class="nt">анализа</span><span class="w"> </span><span class="nt">безопасности</span><span class="w"> </span><span class="err">─────────────────────────╮</span>
@@ -229,13 +231,13 @@
 <span class="err">╰────────────────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
 
-<h3 id="buffer-overflow-detection">Обнаружение переполнения буфера<a class="heading-anchor" href="#buffer-overflow-detection" title="Link to this section">&para;</a></h3>
+<h3  id="buffer-overflow-detection"><span id="buffer_overflow_detection"></span><span id="obnaruzhenie-perepolneniya-bufera"></span><span id="obnaruzhenie_perepolneniya_bufera"></span>Обнаружение переполнения буфера<a class="heading-anchor" href="#buffer-overflow-detection" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span>Поиск<span class="w"> </span>рисков<span class="w"> </span>переполнения<span class="w"> </span>буфера<span class="w"> </span>в<span class="w"> </span>строковых<span class="w"> </span>функциях
 <span class="o">&gt;</span><span class="w"> </span>Показать<span class="w"> </span>функции,<span class="w"> </span>использующие<span class="w"> </span><span class="k">sprintf</span><span class="w"> </span>без<span class="w"> </span>проверки<span class="w"> </span>границ
 </code></pre></div>
 
-<h2 id="taint-flow-analysis">Анализ потока заслуживающих доверия данных (Taint Flow Analysis)<a class="heading-anchor" href="#taint-flow-analysis" title="Link to this section">&para;</a></h2>
-<h3 id="identify-entry-points">Определение точек входа<a class="heading-anchor" href="#identify-entry-points" title="Link to this section">&para;</a></h3>
+<h2  id="taint-flow-analysis"><span id="analiz-potoka-zasluzhivayuschih-doveriya-dannyh-taint-flow-analysis"></span><span id="analiz_potoka_zasluzhivayuschih_doveriya_dannyh_taint_flow_analysis"></span><span id="taint_flow_analysis"></span>Анализ потока заслуживающих доверия данных (Taint Flow Analysis)<a class="heading-anchor" href="#taint-flow-analysis" title="Link to this section">&para;</a></h2>
+<h3  id="identify-entry-points"><span id="identify_entry_points"></span><span id="opredelenie-tochek-vhoda"></span><span id="opredelenie_tochek_vhoda"></span>Определение точек входа<a class="heading-anchor" href="#identify-entry-points" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Найти</span><span class="w"> </span><span class="nx">все</span><span class="w"> </span><span class="nx">внешние</span><span class="w"> </span><span class="nx">точки</span><span class="w"> </span><span class="nx">входа</span>
 
 <span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Точки</span><span class="w"> </span><span class="nx">входа</span><span class="w"> </span><span class="err">──────────────────────────────╮</span>
@@ -259,7 +261,7 @@
 <span class="err">╰───────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
 
-<h3 id="trace-data-flow">Отслеживание потока данных<a class="heading-anchor" href="#trace-data-flow" title="Link to this section">&para;</a></h3>
+<h3  id="trace-data-flow"><span id="otslezhivanie-potoka-dannyh"></span><span id="otslezhivanie_potoka_dannyh"></span><span id="trace_data_flow"></span>Отслеживание потока данных<a class="heading-anchor" href="#trace-data-flow" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Отслеживание</span><span class="w"> </span><span class="nx">потока</span><span class="w"> </span><span class="nx">данных</span><span class="w"> </span><span class="nx">от</span><span class="w"> </span><span class="nx">PQgetvalue</span><span class="w"> </span><span class="nx">до</span><span class="w"> </span><span class="nx">выполнения</span><span class="w"> </span><span class="nx">SQL</span>
 
 <span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Поток</span><span class="w"> </span><span class="nx">заслуживающих</span><span class="w"> </span><span class="nx">доверия</span><span class="w"> </span><span class="nx">данных</span><span class="w"> </span><span class="err">────────╮</span>
@@ -280,7 +282,7 @@
 <span class="err">╰───────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
 
-<h2 id="d3fend-source-code-hardening">Усиление защиты исходного кода D3FEND<a class="heading-anchor" href="#d3fend-source-code-hardening" title="Link to this section">&para;</a></h2>
+<h2  id="d3fend-source-code-hardening"><span id="d3fend_source_code_hardening"></span><span id="usilenie-zaschity-ishodnogo-koda-d3fend"></span><span id="usilenie_zaschity_ishodnogo_koda_d3fend"></span>Усиление защиты исходного кода D3FEND<a class="heading-anchor" href="#d3fend-source-code-hardening" title="Link to this section">&para;</a></h2>
 <p>Модуль D3FEND анализирует код на соответствие 11 методикам MITRE D3FEND по усилению защиты исходного кода:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -336,7 +338,7 @@
 </tr>
 </tbody>
 </table></div>
-<h3 id="politika-audita-usileniya-zaschity">Политика аудита усиления защиты<a class="heading-anchor" href="#politika-audita-usileniya-zaschity" title="Link to this section">&para;</a></h3>
+<h3  id="politika-audita-usileniya-zaschity"><span id="politika_audita_usileniya_zaschity"></span>Политика аудита усиления защиты<a class="heading-anchor" href="#politika-audita-usileniya-zaschity" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="o">&gt;</span> <span class="err">Запуск</span> <span class="err">проверки</span> <span class="err">соответствия</span> <span class="err">усилению</span> <span class="err">защиты</span> <span class="n">D3FEND</span>
 
 <span class="err">╭───────────────</span> <span class="err">Отчет</span> <span class="err">о</span> <span class="err">соответствии</span> <span class="n">D3FEND</span> <span class="err">─────────────────────╮</span>
@@ -359,7 +361,7 @@
 <span class="err">╰───────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
 
-<h3 id="check-unsafe-functions-d3-tl">Проверка небезопасных функций (D3-TL)<a class="heading-anchor" href="#check-unsafe-functions-d3-tl" title="Link to this section">&para;</a></h3>
+<h3  id="check-unsafe-functions-d3-tl"><span id="check_unsafe_functions_d3_tl"></span><span id="proverka-nebezopasnyh-funktsiy-d3-tl"></span><span id="proverka_nebezopasnyh_funktsiy_d3_tl"></span>Проверка небезопасных функций (D3-TL)<a class="heading-anchor" href="#check-unsafe-functions-d3-tl" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="err">Проверка</span><span class="w"> </span><span class="err">использования</span><span class="w"> </span><span class="err">небезопасных</span><span class="w"> </span><span class="err">функций</span><span class="w"> </span><span class="p">(</span><span class="n">D3</span><span class="o">-</span><span class="n">TL</span><span class="w"> </span><span class="err">Доверенные</span><span class="w"> </span><span class="err">библиотеки</span><span class="p">)</span>
 
 <span class="err">╭───────────────</span><span class="w"> </span><span class="n">D3</span><span class="o">-</span><span class="n">TL</span><span class="p">:</span><span class="w"> </span><span class="err">Доверенные</span><span class="w"> </span><span class="err">библиотеки</span><span class="w"> </span><span class="err">──────────────────╮</span>
@@ -378,7 +380,7 @@
 <span class="err">╰───────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
 
-<h3 id="check-null-pointer-safety-d3-npc">Проверка безопасности нулевых указателей (D3-NPC)<a class="heading-anchor" href="#check-null-pointer-safety-d3-npc" title="Link to this section">&para;</a></h3>
+<h3  id="check-null-pointer-safety-d3-npc"><span id="check_null_pointer_safety_d3_npc"></span><span id="proverka-bezopasnosti-nulevyh-ukazateley-d3-npc"></span><span id="proverka_bezopasnosti_nulevyh_ukazateley_d3_npc"></span>Проверка безопасности нулевых указателей (D3-NPC)<a class="heading-anchor" href="#check-null-pointer-safety-d3-npc" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nt">Поиск</span><span class="w"> </span><span class="nt">уязвимостей</span><span class="o">,</span><span class="w"> </span><span class="nt">связанных</span><span class="w"> </span><span class="nt">с</span><span class="w"> </span><span class="nt">нулевыми</span><span class="w"> </span><span class="nt">указателями</span><span class="w"> </span><span class="o">(</span><span class="nt">D3-NPC</span><span class="o">)</span>
 
 <span class="err">╭───────────────</span><span class="w"> </span><span class="nt">D3-NPC</span><span class="o">:</span><span class="w"> </span><span class="nt">Проверка</span><span class="w"> </span><span class="nt">на</span><span class="w"> </span><span class="nt">нулевой</span><span class="w"> </span><span class="nt">указатель</span><span class="w"> </span><span class="err">─────────╮</span>
@@ -399,9 +401,9 @@
 <span class="err">╰───────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
 
-<h2 id="language-specific-security-patterns">Языковые шаблоны безопасности<a class="heading-anchor" href="#language-specific-security-patterns" title="Link to this section">&para;</a></h2>
+<h2  id="language-specific-security-patterns"><span id="language_specific_security_patterns"></span><span id="yazykovye-shablony-bezopasnosti"></span><span id="yazykovye_shablony_bezopasnosti"></span>Языковые шаблоны безопасности<a class="heading-anchor" href="#language-specific-security-patterns" title="Link to this section">&para;</a></h2>
 <p>CodeGraph поддерживает анализ безопасности для нескольких языков программирования с отображением на CWE/CAPEC.</p>
-<h3 id="supported-languages-and-vulnerability-patterns">Поддерживаемые языки и шаблоны уязвимостей<a class="heading-anchor" href="#supported-languages-and-vulnerability-patterns" title="Link to this section">&para;</a></h3>
+<h3  id="supported-languages-and-vulnerability-patterns"><span id="podderzhivaemye-yazyki-i-shablony-uyazvimostey"></span><span id="podderzhivaemye_yazyki_i_shablony_uyazvimostey"></span><span id="supported_languages_and_vulnerability_patterns"></span>Поддерживаемые языки и шаблоны уязвимостей<a class="heading-anchor" href="#supported-languages-and-vulnerability-patterns" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -463,7 +465,7 @@
 </tr>
 </tbody>
 </table></div>
-<h3 id="cwe-database-coverage-30-cwes">Охват базы данных CWE (более 30 CWE)<a class="heading-anchor" href="#cwe-database-coverage-30-cwes" title="Link to this section">&para;</a></h3>
+<h3  id="cwe-database-coverage-30-cwes"><span id="cwe_database_coverage_30_cwes"></span><span id="ohvat-bazy-dannyh-cwe-bolee-30-cwe"></span><span id="ohvat_bazy_dannyh_cwe_bolee_30_cwe"></span>Охват базы данных CWE (более 30 CWE)<a class="heading-anchor" href="#cwe-database-coverage-30-cwes" title="Link to this section">&para;</a></h3>
 <p><strong>Уязвимости типа Инъекции:</strong>
 - CWE-78: Инъекция команд ОС
 - CWE-89: SQL-инъекция
@@ -485,7 +487,7 @@
 - CWE-798: Жестко заданные учетные данные
 - CWE-284: Неправильный контроль доступа
 - CWE-862: Отсутствие авторизации</p>
-<h3 id="capec-attack-patterns-15-patterns">Шаблоны атак CAPEC (более 15 шаблонов)<a class="heading-anchor" href="#capec-attack-patterns-15-patterns" title="Link to this section">&para;</a></h3>
+<h3  id="capec-attack-patterns-15-patterns"><span id="capec_attack_patterns_15_patterns"></span><span id="shablony-atak-capec-bolee-15-shablonov"></span><span id="shablony_atak_capec_bolee_15_shablonov"></span>Шаблоны атак CAPEC (более 15 шаблонов)<a class="heading-anchor" href="#capec-attack-patterns-15-patterns" title="Link to this section">&para;</a></h3>
 <ul>
 <li>CAPEC-66: SQL-инъекция</li>
 <li>CAPEC-86: XSS через HTTP-заголовки</li>
@@ -495,7 +497,7 @@
 <li>CAPEC-586: Инъекция объектов (десериализация)</li>
 <li>CAPEC-664: Подделка запросов на стороне сервера (SSRF)</li>
 </ul>
-<h3 id="pythondjango-example">Пример для Python/Django<a class="heading-anchor" href="#pythondjango-example" title="Link to this section">&para;</a></h3>
+<h3  id="pythondjango-example"><span id="primer-dlya-pythondjango"></span><span id="primer_dlya_pythondjango"></span><span id="pythondjango_example"></span>Пример для Python/Django<a class="heading-anchor" href="#pythondjango-example" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="gh">#</span> Переключиться на проект Django
 /project switch my_django_app
 
@@ -505,19 +507,19 @@
 <span class="k">&gt; </span><span class="ge">Найти точки входа без защиты CSRF</span>
 </code></pre></div>
 
-<h3 id="javascripttypescript-example">Пример для JavaScript/TypeScript<a class="heading-anchor" href="#javascripttypescript-example" title="Link to this section">&para;</a></h3>
+<h3  id="javascripttypescript-example"><span id="javascripttypescript_example"></span><span id="primer-dlya-javascripttypescript"></span><span id="primer_dlya_javascripttypescript"></span>Пример для JavaScript/TypeScript<a class="heading-anchor" href="#javascripttypescript-example" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>&gt; Найти уязвимости к загрязнению прототипа
 &gt; Проверить использование innerHTML на предмет XSS
 &gt; Найти вызовы eval() с пользовательским вводом
 </code></pre></div>
 
-<h3 id="primer-dlya-go">Пример для Go<a class="heading-anchor" href="#primer-dlya-go" title="Link to this section">&para;</a></h3>
+<h3  id="primer-dlya-go"><span id="primer_dlya_go"></span>Пример для Go<a class="heading-anchor" href="#primer-dlya-go" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>&gt; Найти гонки данных в goroutines
 &gt; Проверить запросы к базе данных на наличие SQL-инъекций
 &gt; Найти небезопасные конфигурации TLS
 </code></pre></div>
 
-<h2 id="cli-security-reports">Отчёты безопасности CLI<a class="heading-anchor" href="#cli-security-reports" title="Link to this section">&para;</a></h2>
+<h2  id="cli-security-reports"><span id="cli_security_reports"></span><span id="otchyoty-bezopasnosti-cli"></span><span id="otchyoty_bezopasnosti_cli"></span>Отчёты безопасности CLI<a class="heading-anchor" href="#cli-security-reports" title="Link to this section">&para;</a></h2>
 <p>Генерация полных отчётов безопасности:</p>
 <div class="highlight"><pre><span></span><code><span class="err">#</span><span class="w"> </span><span class="nx">Автоопределение</span><span class="w"> </span><span class="nx">языка</span>
 <span class="nx">python</span><span class="w"> </span><span class="o">-</span><span class="nx">m</span><span class="w"> </span><span class="nx">src</span><span class="p">.</span><span class="nx">cli</span><span class="p">.</span><span class="nx">security_audit</span><span class="w"> </span><span class="nx">full</span><span class="w"> </span>\
@@ -538,11 +540,43 @@
 - <code>security_report.md</code> — Человекочитаемый отчёт
 - <code>security_report.json</code> — Машиночитаемый формат для CI/CD
 - <code>security_report.sarif</code> — Формат оповещений безопасности GitHub</p>
-<h2 id="related-scenarios">Связанные сценарии<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
+<h2  id="sootvetstvie-owasp-top-10"><span id="sootvetstvie_owasp_top_10"></span>Соответствие OWASP Top 10<a class="heading-anchor" href="#sootvetstvie-owasp-top-10" title="Link to this section">&para;</a></h2>
+<p>Результаты аудита безопасности автоматически обогащаются маппингом OWASP Top 10 2021:</p>
 <ul>
-<li><a href="./08-compliance.html">Соответствие требованиям</a> — Проверка соответствия нормативным требованиям</li>
-<li><a href="./14-incident-response.html">Реагирование на инциденты</a> — Расследование после нарушения безопасности</li>
-<li><a href="./16-entry-points.html">Точки входа</a> — Картирование поверхности атаки</li>
+<li>Каждая находка получает тег <code>OWASP-Axx</code> (например, <code>OWASP-A03</code> для инъекций)</li>
+<li>Таблица соответствия показывает статус pass/fail по каждой категории OWASP</li>
+<li>Экспорт SARIF включает теги OWASP на правилах <code>reportingDescriptor</code></li>
+</ul>
+<p>Пример вывода соответствия:</p>
+<div class="highlight"><pre><span></span><code>| Категория OWASP | Статус | Находки |
+|-----------------|--------|---------|
+| A01 Нарушение контроля доступа | PASS | 0 |
+| A02 Криптографические ошибки | FAIL | 2 |
+| A03 Инъекции | FAIL | 5 |
+| ... | ... | ... |
+</code></pre></div>
+
+<h2  id="vizualizatsiya-putey-zarazheniya"><span id="vizualizatsiya_putey_zarazheniya"></span>Визуализация путей заражения<a class="heading-anchor" href="#vizualizatsiya-putey-zarazheniya" title="Link to this section">&para;</a></h2>
+<p>Результаты анализа заражения включают Mermaid-диаграммы путей эксплуатации:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">graph</span><span class="w"> </span><span class="n">LR</span>
+<span class="w">    </span><span class="n">src</span><span class="p">[</span><span class="s">&quot;user_input()&quot;</span><span class="p">]</span><span class="o">:::</span><span class="n">source</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">proc</span><span class="p">[</span><span class="s">&quot;process_data()&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="n">proc</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">sink</span><span class="p">[</span><span class="s">&quot;exec_sql()&quot;</span><span class="p">]</span><span class="o">:::</span><span class="n">sink</span>
+<span class="w">    </span><span class="n">classDef</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="n">fill</span><span class="o">:</span><span class="err">#</span><span class="n">f90</span><span class="p">,</span><span class="n">stroke</span><span class="o">:</span><span class="err">#</span><span class="mi">333</span>
+<span class="w">    </span><span class="n">classDef</span><span class="w"> </span><span class="n">sink</span><span class="w"> </span><span class="n">fill</span><span class="o">:</span><span class="err">#</span><span class="n">f33</span><span class="p">,</span><span class="n">stroke</span><span class="o">:</span><span class="err">#</span><span class="mi">333</span>
+<span class="w">    </span><span class="n">classDef</span><span class="w"> </span><span class="n">sanitizer</span><span class="w"> </span><span class="n">fill</span><span class="o">:</span><span class="err">#</span><span class="mi">3</span><span class="n">c3</span><span class="p">,</span><span class="n">stroke</span><span class="o">:</span><span class="err">#</span><span class="mi">333</span>
+</code></pre></div>
+
+<ul>
+<li><strong>Оранжевые</strong> узлы: источники заражения (точки ввода пользовательских данных)</li>
+<li><strong>Красные</strong> узлы: приёмники заражения (опасные операции)</li>
+<li><strong>Зелёные</strong> узлы: санитайзеры (функции валидации/экранирования)</li>
+</ul>
+<p>MCP-инструмент <code>codegraph_taint_analysis</code> возвращает структурированный массив <code>taint_paths</code> с узлами источника, приёмника и промежуточными узлами. Экспорт SARIF включает <code>codeFlows</code> согласно SARIF 2.1.0 §3.36.</p>
+<h2  id="related-scenarios"><span id="related_scenarios"></span><span id="svyazannye-stsenarii"></span><span id="svyazannye_stsenarii"></span>Связанные сценарии<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="08-compliance.html">Соответствие требованиям</a> — Проверка соответствия нормативным требованиям</li>
+<li><a href="14-incident-response.html">Реагирование на инциденты</a> — Расследование после нарушения безопасности</li>
+<li><a href="16-entry-points.html">Точки входа</a> — Картирование поверхности атаки</li>
 </ul>
       </article>
 
@@ -554,15 +588,15 @@
         <span class="doc-page-nav-title">Сценарий 01: Ввод нового разработчика</span>
       </a>
 
-      <a href="03-documentation.html" class="doc-page-nav-next">
+      <a href="02-security-audit-autofix.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Вперед</span>
-        <span class="doc-page-nav-title">Сценарий 03: Генерация документации</span>
+        <span class="doc-page-nav-title">Аудит безопасности: Автоисправление</span>
       </a>
     </nav>
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-02-18</span>
+        <span>Обновлено: 2026-02-27</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/02-security-audit.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -573,33 +607,28 @@
       <ul class="doc-toc-list">
         <li><a href="#stsenariy-02-audit-bezopasnosti" class="level-1">Сценарий 02: Аудит безопасности</a></li>
 <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
-<li><a href="#bystryy-start" class="level-2">Быстрый старт</a></li>
-<li><a href="#vyberite-stsenariy-audita-bezopasnosti" class="level-1">Выберите сценарий аудита безопасности</a></li>
-<li><a href="#skanirovanie-uyazvimostey" class="level-2">Сканирование уязвимостей</a></li>
-<li><a href="#obnaruzhenie-sql-inektsiy" class="level-3">Обнаружение SQL-инъекций</a></li>
-<li><a href="#obnaruzhenie-perepolneniya-bufera" class="level-3">Обнаружение переполнения буфера</a></li>
-<li><a href="#analiz-potoka-zasluzhivayuschih-doveriya-dannyh-taint-flow-analysis" class="level-2">Анализ потока заслуживающих доверия данных (Taint Flow Analysis)</a></li>
-<li><a href="#opredelenie-tochek-vhoda" class="level-3">Определение точек входа</a></li>
-<li><a href="#otslezhivanie-potoka-dannyh" class="level-3">Отслеживание потока данных</a></li>
-<li><a href="#usilenie-zaschity-ishodnogo-koda-d3fend" class="level-2">Усиление защиты исходного кода D3FEND</a></li>
+<li><a href="#quick-start" class="level-2">Быстрый старт</a></li>
+<li><a href="#vulnerability-scanning" class="level-2">Сканирование уязвимостей</a></li>
+<li><a href="#sql-injection-detection" class="level-3">Обнаружение SQL-инъекций</a></li>
+<li><a href="#buffer-overflow-detection" class="level-3">Обнаружение переполнения буфера</a></li>
+<li><a href="#taint-flow-analysis" class="level-2">Анализ потока заслуживающих доверия данных (Taint Flow Analysis)</a></li>
+<li><a href="#identify-entry-points" class="level-3">Определение точек входа</a></li>
+<li><a href="#trace-data-flow" class="level-3">Отслеживание потока данных</a></li>
+<li><a href="#d3fend-source-code-hardening" class="level-2">Усиление защиты исходного кода D3FEND</a></li>
 <li><a href="#politika-audita-usileniya-zaschity" class="level-3">Политика аудита усиления защиты</a></li>
-<li><a href="#proverka-nebezopasnyh-funktsiy-d3-tl" class="level-3">Проверка небезопасных функций (D3-TL)</a></li>
-<li><a href="#proverka-bezopasnosti-nulevyh-ukazateley-d3-npc" class="level-3">Проверка безопасности нулевых указателей (D3-NPC)</a></li>
-<li><a href="#yazykovye-shablony-bezopasnosti" class="level-2">Языковые шаблоны безопасности</a></li>
-<li><a href="#podderzhivaemye-yazyki-i-shablony-uyazvimostey" class="level-3">Поддерживаемые языки и шаблоны уязвимостей</a></li>
-<li><a href="#ohvat-bazy-dannyh-cwe-bolee-30-cwe" class="level-3">Охват базы данных CWE (более 30 CWE)</a></li>
-<li><a href="#shablony-atak-capec-bolee-15-shablonov" class="level-3">Шаблоны атак CAPEC (более 15 шаблонов)</a></li>
-<li><a href="#primer-dlya-pythondjango" class="level-3">Пример для Python/Django</a></li>
-<li><a href="#pereklyuchitsya-na-proekt-django" class="level-1">Переключиться на проект Django</a></li>
-<li><a href="#zapustit-proverku-bezopasnosti" class="level-1">Запустить проверку безопасности</a></li>
-<li><a href="#primer-dlya-javascripttypescript" class="level-3">Пример для JavaScript/TypeScript</a></li>
+<li><a href="#check-unsafe-functions-d3-tl" class="level-3">Проверка небезопасных функций (D3-TL)</a></li>
+<li><a href="#check-null-pointer-safety-d3-npc" class="level-3">Проверка безопасности нулевых указателей (D3-NPC)</a></li>
+<li><a href="#language-specific-security-patterns" class="level-2">Языковые шаблоны безопасности</a></li>
+<li><a href="#supported-languages-and-vulnerability-patterns" class="level-3">Поддерживаемые языки и шаблоны уязвимостей</a></li>
+<li><a href="#cwe-database-coverage-30-cwes" class="level-3">Охват базы данных CWE (более 30 CWE)</a></li>
+<li><a href="#capec-attack-patterns-15-patterns" class="level-3">Шаблоны атак CAPEC (более 15 шаблонов)</a></li>
+<li><a href="#pythondjango-example" class="level-3">Пример для Python/Django</a></li>
+<li><a href="#javascripttypescript-example" class="level-3">Пример для JavaScript/TypeScript</a></li>
 <li><a href="#primer-dlya-go" class="level-3">Пример для Go</a></li>
-<li><a href="#otchyoty-bezopasnosti-cli" class="level-2">Отчёты безопасности CLI</a></li>
-<li><a href="#avtoopredelenie-yazyka" class="level-1">Автоопределение языка</a></li>
-<li><a href="#yavnoe-ukazanie-yazyka" class="level-1">Явное указание языка</a></li>
-<li><a href="#dostupnye-yazyki-auto-c-cpp-python-javascript-typescript" class="level-1">Доступные языки: auto, c, cpp, python, javascript, typescript,</a></li>
-<li><a href="#go-csharp-kotlin-java-php-onec" class="level-1">go, csharp, kotlin, java, php, onec</a></li>
-<li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>
+<li><a href="#cli-security-reports" class="level-2">Отчёты безопасности CLI</a></li>
+<li><a href="#sootvetstvie-owasp-top-10" class="level-2">Соответствие OWASP Top 10</a></li>
+<li><a href="#vizualizatsiya-putey-zarazheniya" class="level-2">Визуализация путей заражения</a></li>
+<li><a href="#related-scenarios" class="level-2">Связанные сценарии</a></li>
       </ul>
     </aside>
   </div>
@@ -618,6 +647,7 @@
             <ul class="footer-links-list">
               <li><a href="../../../index.html#features" class="footer-link">Возможности</a></li>
               <li><a href="../../../index.html#integrations" class="footer-link">Интеграции</a></li>
+              <li><a href="../../../index.html#architecture" class="footer-link">Архитектура</a></li>
               <li><a href="../../../index.html#faq" class="footer-link">FAQ</a></li>
             </ul>
           </div>
@@ -634,6 +664,7 @@
             <h4>Ресурсы</h4>
             <ul class="footer-links-list">
               <li><a href="../../../whitepaper.html" class="footer-link">Whitepaper</a></li>
+              <li><a href="../../../docs/en/index.html" class="footer-link">Docs (EN)</a></li>
             </ul>
           </div>
           <div class="footer-links-group">

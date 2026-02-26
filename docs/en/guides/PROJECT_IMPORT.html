@@ -92,8 +92,9 @@
         <li><a href="BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
-        <li><a href="CPG_EXPORT.html">CPG Export Guide</a></li>
+        <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="PROJECT_IMPORT.html" class="active">Importing a New Codebase</a></li>
@@ -103,6 +104,7 @@
         <li><a href="TROUBLESHOOTING.html">Troubleshooting Guide</a></li>
         <li><a href="TUI_USER_GUIDE.html">CodeGraph User Guide</a></li>
         <li><a href="01-onboarding.html">Scenario 01: Developer Onboarding</a></li>
+        <li><a href="02-security-audit-autofix.html">Security Audit: Autofix</a></li>
         <li><a href="02-security-audit.html">Scenario 02: Security Audit</a></li>
         <li><a href="03-documentation.html">Scenario 03: Documentation Generation</a></li>
         <li><a href="04-feature-development.html">Scenario 04: Feature Development</a></li>
@@ -174,20 +176,19 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <h1 id="importing-a-new-codebase">Importing a New Codebase<a class="heading-anchor" href="#importing-a-new-codebase" title="Link to this section">&para;</a></h1>
+        <h1  id="importing-a-new-codebase"><span id="importing_a_new_codebase"></span>Importing a New Codebase<a class="heading-anchor" href="#importing-a-new-codebase" title="Link to this section">&para;</a></h1>
 <p>Guide to importing new projects into the CodeGraph system.</p>
 <blockquote class="callout">
 <p><strong>Note:</strong> This guide covers creating new CPG data from source code. For using existing CPG data,
 simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to point to your DuckDB file.</p>
 </blockquote>
-<h2 id="table-of-contents">Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#supported-languages">Supported Languages</a></li>
 <li><a href="#cli-usage">CLI Usage</a></li>
 <li><a href="#full-pipeline-single-command">Full Pipeline (Single Command)</a></li>
 <li><a href="#docker-support">Docker Support</a></li>
-<li><a href="#gocpg-server-management">GoCPG Server Management</a></li>
 <li><a href="#project-management">Project Management</a></li>
 <li><a href="#step-by-step-import">Step-by-Step Import</a></li>
 <li><a href="#list-supported-languages">List Supported Languages</a></li>
@@ -199,7 +200,6 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <li><a href="#cancel-import">Cancel Import</a></li>
 <li><a href="#run-individual-step">Run Individual Step</a></li>
 <li><a href="#import-with-docker">Import with Docker</a></li>
-<li><a href="#gocpg-server-management">GoCPG Server Management</a></li>
 <li><a href="#project-management">Project Management</a></li>
 <li><a href="#websocket-for-progress-tracking">WebSocket for Progress Tracking</a></li>
 <li><a href="#import-parameters">Import Parameters</a></li>
@@ -230,14 +230,13 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <li><a href="#running-individual-steps">Running Individual Steps</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 <li><a href="#gocpg-frontend-not-found">GoCPG Frontend Not Found</a></li>
-<li><a href="#insufficient-memory-for-gocpg">Insufficient Memory for GoCPG</a></li>
+<li><a href="#gocpg-process-failure">GoCPG Process Failure</a></li>
 <li><a href="#language-not-detected">Language Not Detected</a></li>
 <li><a href="#cpg-validation-failed">CPG Validation Failed</a></li>
 <li><a href="#configuration-configyaml">Configuration (config.yaml)</a></li>
 <li><a href="#component-architecture">Component Architecture</a></li>
-<li><a href="#gocpgservermanager">GoCPGServerManager</a></li>
 <li><a href="#projectregistry">ProjectRegistry</a></li>
-<li><a href="#localgocpgrunner--dockergocpgrunner">LocalGoCPGRunner / DockerGoCPGRunner</a></li>
+<li><a href="#localgocpgrunner-dockergocpgrunner">LocalGoCPGRunner / DockerGoCPGRunner</a></li>
 <li><a href="#see-also">See Also</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
@@ -245,20 +244,18 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <ol>
 <li><strong>Clone</strong> - repository cloning</li>
 <li><strong>Detect Language</strong> - programming language detection</li>
-<li><strong>Create CPG</strong> - Code Property Graph creation (using GoCPG for source parsing)</li>
-<li><strong>Export to DuckDB</strong> - graph export to SQL database</li>
+<li><strong>Create CPG</strong> - Code Property Graph creation (GoCPG outputs DuckDB directly)</li>
 <li><strong>Import Source Code</strong> - full source file content import into DuckDB</li>
 <li><strong>Validate</strong> - CPG integrity validation</li>
 <li><strong>Import Docs</strong> - documentation indexing into ChromaDB</li>
 <li><strong>Create Plugin</strong> - Domain Plugin generation</li>
 </ol>
 <hr />
-<h2 id="supported-languages">Supported Languages<a class="heading-anchor" href="#supported-languages" title="Link to this section">&para;</a></h2>
+<h2  id="supported-languages"><span id="supported_languages"></span>Supported Languages<a class="heading-anchor" href="#supported-languages" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Language</th>
-<th>GoCPG Frontend</th>
 <th>File Extensions</th>
 <th>Description</th>
 </tr>
@@ -266,69 +263,54 @@ simply configure the <code>cpg.db_path</code> in <code>config.yaml</code> to poi
 <tbody>
 <tr>
 <td>C/C++</td>
-<td>c2cpg</td>
 <td><code>.c</code>, <code>.h</code>, <code>.cpp</code>, <code>.hpp</code>, <code>.cc</code>, <code>.cxx</code></td>
 <td>C/C++ source code</td>
 </tr>
 <tr>
 <td>C#</td>
-<td>csharp2cpg</td>
 <td><code>.cs</code></td>
 <td>C# source code</td>
 </tr>
 <tr>
 <td>Go</td>
-<td>gosrc2cpg</td>
 <td><code>.go</code></td>
 <td>Go source code</td>
 </tr>
 <tr>
-<td>Java (source)</td>
-<td>javasrc2cpg</td>
+<td>Java</td>
 <td><code>.java</code></td>
 <td>Java source code</td>
 </tr>
 <tr>
-<td>Java (bytecode)</td>
-<td>jimple2cpg</td>
-<td><code>.class</code>, <code>.jar</code>, <code>.war</code>, <code>.ear</code></td>
-<td>Java bytecode via Jimple IR</td>
-</tr>
-<tr>
 <td>JavaScript/TypeScript</td>
-<td>jssrc2cpg</td>
 <td><code>.js</code>, <code>.jsx</code>, <code>.ts</code>, <code>.tsx</code>, <code>.mjs</code></td>
 <td>JavaScript/TypeScript</td>
 </tr>
 <tr>
 <td>Kotlin</td>
-<td>kotlin2cpg</td>
 <td><code>.kt</code>, <code>.kts</code></td>
 <td>Kotlin source code</td>
 </tr>
 <tr>
 <td>PHP</td>
-<td>php2cpg</td>
 <td><code>.php</code></td>
 <td>PHP source code</td>
 </tr>
 <tr>
 <td>Python</td>
-<td>pysrc2cpg</td>
 <td><code>.py</code>, <code>.pyw</code></td>
 <td>Python source code</td>
 </tr>
 <tr>
 <td>1C:Enterprise</td>
-<td>onec2cpg</td>
 <td><code>.bsl</code>, <code>.os</code></td>
 <td>1C:Enterprise (BSL/SDBL)</td>
 </tr>
 </tbody>
 </table></div>
 <hr />
-<h2 id="cli-usage">CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
-<h3 id="full-pipeline-single-command">Full Pipeline (Single Command)<a class="heading-anchor" href="#full-pipeline-single-command" title="Link to this section">&para;</a></h3>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<h3  id="full-pipeline-single-command"><span id="full_pipeline_single_command"></span>Full Pipeline (Single Command)<a class="heading-anchor" href="#full-pipeline-single-command" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import from GitHub repository</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--repo<span class="w"> </span>https://github.com/postgres/postgres<span class="w"> </span><span class="se">\</span>
@@ -353,7 +335,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">    </span>--docker
 </code></pre></div>
 
-<h3 id="docker-support">Docker Support<a class="heading-anchor" href="#docker-support" title="Link to this section">&para;</a></h3>
+<h3  id="docker-support"><span id="docker_support"></span>Docker Support<a class="heading-anchor" href="#docker-support" title="Link to this section">&para;</a></h3>
 <p>The system supports running GoCPG in a Docker container for cross-platform operation:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import with Docker (no local GoCPG build required)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
@@ -372,21 +354,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 - Consistent behavior across all platforms (Windows, Linux, macOS)
 - Isolated execution environment
 - Automatic resource management</p>
-<h3 id="gocpg-server-management">GoCPG Server Management<a class="heading-anchor" href="#gocpg-server-management" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Server status</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>server<span class="w"> </span>status
-
-<span class="c1"># Start server (local GoCPG)</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>server<span class="w"> </span>start
-
-<span class="c1"># Start server in Docker</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>server<span class="w"> </span>start<span class="w"> </span>--docker
-
-<span class="c1"># Stop server</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>server<span class="w"> </span>stop
-</code></pre></div>
-
-<h3 id="project-management">Project Management<a class="heading-anchor" href="#project-management" title="Link to this section">&para;</a></h3>
+<h3  id="project-management"><span id="project_management"></span>Project Management<a class="heading-anchor" href="#project-management" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># List all imported projects</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>projects<span class="w"> </span>list
 
@@ -421,7 +389,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <p>The <code>domain</code> field is optional. When set, switching to a project automatically activates the corresponding domain plugin (e.g., <code>postgresql_v2</code>, <code>python_generic</code>). ChromaDB vector collections are also isolated per project.</p>
-<h3 id="step-by-step-import">Step-by-Step Import<a class="heading-anchor" href="#step-by-step-import" title="Link to this section">&para;</a></h3>
+<h3  id="step-by-step-import"><span id="step_by_step_import"></span>Step-by-Step Import<a class="heading-anchor" href="#step-by-step-import" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># 1. Clone repository</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>clone<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--repo<span class="w"> </span>https://github.com/org/repo<span class="w"> </span><span class="se">\</span>
@@ -432,36 +400,33 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="c1"># 2. Detect language</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>detect<span class="w"> </span>--path<span class="w"> </span>./workspace/repo
 
-<span class="c1"># 3. Create CPG</span>
+<span class="c1"># 3. Create CPG (outputs DuckDB directly)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>cpg<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--path<span class="w"> </span>./workspace/repo<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--language<span class="w"> </span>c
 
-<span class="c1"># 4. Export to DuckDB</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--cpg<span class="w"> </span>./workspace/repo.cpg
-
-<span class="c1"># 5. Validate</span>
+<span class="c1"># 4. Validate</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>validate<span class="w"> </span>--db<span class="w"> </span>./workspace/repo.duckdb
 
-<span class="c1"># 6. Import documentation</span>
+<span class="c1"># 5. Import documentation</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>docs<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--path<span class="w"> </span>./workspace/repo<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--db<span class="w"> </span>./workspace/repo.duckdb
 
-<span class="c1"># 7. Create Domain Plugin</span>
+<span class="c1"># 6. Create Domain Plugin</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>domain<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--path<span class="w"> </span>./workspace/repo<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--name<span class="w"> </span>my_project<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--db<span class="w"> </span>./workspace/repo.duckdb
 </code></pre></div>
 
-<h3 id="list-supported-languages">List Supported Languages<a class="heading-anchor" href="#list-supported-languages" title="Link to this section">&para;</a></h3>
+<h3  id="list-supported-languages"><span id="list_supported_languages"></span>List Supported Languages<a class="heading-anchor" href="#list-supported-languages" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>languages
 </code></pre></div>
 
 <hr />
-<h2 id="rest-api-usage">REST API Usage<a class="heading-anchor" href="#rest-api-usage" title="Link to this section">&para;</a></h2>
-<h3 id="get-list-of-supported-languages">Get List of Supported Languages<a class="heading-anchor" href="#get-list-of-supported-languages" title="Link to this section">&para;</a></h3>
+<h2  id="rest-api-usage"><span id="rest_api_usage"></span>REST API Usage<a class="heading-anchor" href="#rest-api-usage" title="Link to this section">&para;</a></h2>
+<h3  id="get-list-of-supported-languages"><span id="get_list_of_supported_languages"></span>Get List of Supported Languages<a class="heading-anchor" href="#get-list-of-supported-languages" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/import/languages</span>
 </code></pre></div>
 
@@ -486,7 +451,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="p">}</span>
 </code></pre></div>
 
-<h3 id="start-import-asynchronous">Start Import (Asynchronous)<a class="heading-anchor" href="#start-import-asynchronous" title="Link to this section">&para;</a></h3>
+<h3  id="start-import-asynchronous"><span id="start_import_asynchronous"></span>Start Import (Asynchronous)<a class="heading-anchor" href="#start-import-asynchronous" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/import/start</span>
 <span class="err">Content-Type: application/json</span>
 
@@ -511,7 +476,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="p">}</span>
 </code></pre></div>
 
-<h3 id="check-import-status">Check Import Status<a class="heading-anchor" href="#check-import-status" title="Link to this section">&para;</a></h3>
+<h3  id="check-import-status"><span id="check_import_status"></span>Check Import Status<a class="heading-anchor" href="#check-import-status" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/import/status/{job_id}</span>
 </code></pre></div>
 
@@ -524,7 +489,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Clone Repository&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Detect Language&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Create CPG&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;in_progress&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Creating CPG nodes...&quot;</span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Export to DuckDB&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Import Source Code&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Validate CPG&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Import Documentation&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;progress&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
@@ -537,15 +501,15 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="p">}</span>
 </code></pre></div>
 
-<h3 id="list-all-import-jobs">List All Import Jobs<a class="heading-anchor" href="#list-all-import-jobs" title="Link to this section">&para;</a></h3>
+<h3  id="list-all-import-jobs"><span id="list_all_import_jobs"></span>List All Import Jobs<a class="heading-anchor" href="#list-all-import-jobs" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/import/jobs?status_filter=in_progress&amp;limit=10</span>
 </code></pre></div>
 
-<h3 id="cancel-import">Cancel Import<a class="heading-anchor" href="#cancel-import" title="Link to this section">&para;</a></h3>
+<h3  id="cancel-import"><span id="cancel_import"></span>Cancel Import<a class="heading-anchor" href="#cancel-import" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">DELETE /api/v1/import/cancel/{job_id}</span>
 </code></pre></div>
 
-<h3 id="run-individual-step">Run Individual Step<a class="heading-anchor" href="#run-individual-step" title="Link to this section">&para;</a></h3>
+<h3  id="run-individual-step"><span id="run_individual_step"></span>Run Individual Step<a class="heading-anchor" href="#run-individual-step" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/import/step</span>
 <span class="err">Content-Type: application/json</span>
 
@@ -557,7 +521,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="err">}</span>
 </code></pre></div>
 
-<h3 id="import-with-docker">Import with Docker<a class="heading-anchor" href="#import-with-docker" title="Link to this section">&para;</a></h3>
+<h3  id="import-with-docker"><span id="import_with_docker"></span>Import with Docker<a class="heading-anchor" href="#import-with-docker" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/import/start</span>
 <span class="err">Content-Type: application/json</span>
 
@@ -569,36 +533,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="err">}</span>
 </code></pre></div>
 
-<h3 id="gocpg-server-management_1">GoCPG Server Management<a class="heading-anchor" href="#gocpg-server-management_1" title="Link to this section">&para;</a></h3>
-<p><strong>Get server status:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/import/server/status</span>
-</code></pre></div>
-
-<p><strong>Response:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;docker&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;container_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8080</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;uptime_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3600</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Start server:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/import/server/start</span>
-<span class="err">Content-Type: application/json</span>
-
-<span class="err">{</span>
-<span class="err">  &quot;use_docker&quot;: true,</span>
-<span class="err">  &quot;docker_image&quot;: &quot;codegraph/gocpg:latest&quot;</span>
-<span class="err">}</span>
-</code></pre></div>
-
-<p><strong>Stop server:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/import/server/stop</span>
-</code></pre></div>
-
-<h3 id="project-management_1">Project Management<a class="heading-anchor" href="#project-management_1" title="Link to this section">&para;</a></h3>
+<h3  id="project-management_1"><span id="project_management_1"></span>Project Management<a class="heading-anchor" href="#project-management_1" title="Link to this section">&para;</a></h3>
 <p><strong>List projects:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/import/projects</span>
 </code></pre></div>
@@ -628,7 +563,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <hr />
-<h2 id="websocket-for-progress-tracking">WebSocket for Progress Tracking<a class="heading-anchor" href="#websocket-for-progress-tracking" title="Link to this section">&para;</a></h2>
+<h2  id="websocket-for-progress-tracking"><span id="websocket_for_progress_tracking"></span>WebSocket for Progress Tracking<a class="heading-anchor" href="#websocket-for-progress-tracking" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/api/v1/ws/jobs/550e8400-e29b-41d4-a716-446655440000&#39;</span><span class="p">);</span>
 
 <span class="nx">ws</span><span class="p">.</span><span class="nx">onmessage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
@@ -649,8 +584,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <hr />
-<h2 id="import-parameters">Import Parameters<a class="heading-anchor" href="#import-parameters" title="Link to this section">&para;</a></h2>
-<h3 id="import-modes">Import Modes<a class="heading-anchor" href="#import-modes" title="Link to this section">&para;</a></h3>
+<h2  id="import-parameters"><span id="import_parameters"></span>Import Parameters<a class="heading-anchor" href="#import-parameters" title="Link to this section">&para;</a></h2>
+<h3  id="import-modes"><span id="import_modes"></span>Import Modes<a class="heading-anchor" href="#import-modes" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -673,7 +608,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </tr>
 </tbody>
 </table></div>
-<h3 id="cloning-options">Cloning Options<a class="heading-anchor" href="#cloning-options" title="Link to this section">&para;</a></h3>
+<h3  id="cloning-options"><span id="cloning_options"></span>Cloning Options<a class="heading-anchor" href="#cloning-options" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -700,7 +635,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </tr>
 </tbody>
 </table></div>
-<h3 id="gocpg-options">GoCPG Options<a class="heading-anchor" href="#gocpg-options" title="Link to this section">&para;</a></h3>
+<h3  id="gocpg-options"><span id="gocpg_options"></span>GoCPG Options<a class="heading-anchor" href="#gocpg-options" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -732,7 +667,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </tr>
 </tbody>
 </table></div>
-<h3 id="documentation-options">Documentation Options<a class="heading-anchor" href="#documentation-options" title="Link to this section">&para;</a></h3>
+<h3  id="documentation-options"><span id="documentation_options"></span>Documentation Options<a class="heading-anchor" href="#documentation-options" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -760,7 +695,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </tbody>
 </table></div>
 <hr />
-<h2 id="import-result">Import Result<a class="heading-anchor" href="#import-result" title="Link to this section">&para;</a></h2>
+<h2  id="import-result"><span id="import_result"></span>Import Result<a class="heading-anchor" href="#import-result" title="Link to this section">&para;</a></h2>
 <p>After successful import, the following are created:</p>
 <div class="highlight"><pre><span></span><code>workspace/
 ├── postgres/               # Source code
@@ -778,7 +713,7 @@ src/domains/
     └── prompts.yaml
 </code></pre></div>
 
-<h3 id="result-structure-projectimportresult">Result Structure (ProjectImportResult)<a class="heading-anchor" href="#result-structure-projectimportresult" title="Link to this section">&para;</a></h3>
+<h3  id="result-structure-projectimportresult"><span id="result_structure_projectimportresult"></span>Result Structure (ProjectImportResult)<a class="heading-anchor" href="#result-structure-projectimportresult" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;cpg_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/postgres.cpg&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;duckdb_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/postgres.duckdb&quot;</span><span class="p">,</span>
@@ -809,8 +744,8 @@ src/domains/
 </code></pre></div>
 
 <hr />
-<h2 id="cpg-validation">CPG Validation<a class="heading-anchor" href="#cpg-validation" title="Link to this section">&para;</a></h2>
-<h3 id="quality-score-0-100">Quality Score (0-100)<a class="heading-anchor" href="#quality-score-0-100" title="Link to this section">&para;</a></h3>
+<h2  id="cpg-validation"><span id="cpg_validation"></span>CPG Validation<a class="heading-anchor" href="#cpg-validation" title="Link to this section">&para;</a></h2>
+<h3  id="quality-score-0-100"><span id="quality_score_0_100"></span>Quality Score (0-100)<a class="heading-anchor" href="#quality-score-0-100" title="Link to this section">&para;</a></h3>
 <p>Quality assessment of the imported CPG:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -842,7 +777,7 @@ src/domains/
 </tr>
 </tbody>
 </table></div>
-<h3 id="checked-metrics">Checked Metrics<a class="heading-anchor" href="#checked-metrics" title="Link to this section">&para;</a></h3>
+<h3  id="checked-metrics"><span id="checked_metrics"></span>Checked Metrics<a class="heading-anchor" href="#checked-metrics" title="Link to this section">&para;</a></h3>
 <ul>
 <li><code>methods_exist</code> - number of methods</li>
 <li><code>calls_exist</code> - number of calls</li>
@@ -851,16 +786,16 @@ src/domains/
 <li><code>methods_with_files</code> - methods linked to files</li>
 </ul>
 <hr />
-<h2 id="source-code-import">Source Code Import<a class="heading-anchor" href="#source-code-import" title="Link to this section">&para;</a></h2>
+<h2  id="source-code-import"><span id="source_code_import"></span>Source Code Import<a class="heading-anchor" href="#source-code-import" title="Link to this section">&para;</a></h2>
 <p>The <code>SourceContentStep</code> imports full source code content into <code>nodes_file.content</code> for code navigation and analysis.</p>
-<h3 id="how-it-works">How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h3>
+<h3  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h3>
 <ol>
 <li>Reads files from <code>source_path</code> specified in project configuration</li>
 <li>Populates <code>nodes_file.content</code> with full file contents</li>
 <li>Automatically normalizes file paths for JOIN compatibility with <code>nodes_method</code></li>
 <li>Detects programming language from file extension</li>
 </ol>
-<h3 id="supported-file-extensions">Supported File Extensions<a class="heading-anchor" href="#supported-file-extensions" title="Link to this section">&para;</a></h3>
+<h3  id="supported-file-extensions"><span id="supported_file_extensions"></span>Supported File Extensions<a class="heading-anchor" href="#supported-file-extensions" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -927,9 +862,9 @@ src/domains/
 </tr>
 </tbody>
 </table></div>
-<h3 id="file-size-limit">File Size Limit<a class="heading-anchor" href="#file-size-limit" title="Link to this section">&para;</a></h3>
+<h3  id="file-size-limit"><span id="file_size_limit"></span>File Size Limit<a class="heading-anchor" href="#file-size-limit" title="Link to this section">&para;</a></h3>
 <p>Files larger than <strong>500 KB</strong> are skipped to keep database size manageable. This limit covers most source files while excluding large generated or binary files.</p>
-<h3 id="path-normalization">Path Normalization<a class="heading-anchor" href="#path-normalization" title="Link to this section">&para;</a></h3>
+<h3  id="path-normalization"><span id="path_normalization"></span>Path Normalization<a class="heading-anchor" href="#path-normalization" title="Link to this section">&para;</a></h3>
 <p>File paths in <code>nodes_file.name</code> are automatically normalized to match <code>nodes_method.filename</code> format. Common prefixes like <code>src/</code> are stripped to enable direct JOINs:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Get method source code by line number</span>
 <span class="k">SELECT</span>
@@ -942,7 +877,7 @@ src/domains/
 <span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;exec_simple_query&#39;</span><span class="p">;</span>
 </code></pre></div>
 
-<h3 id="import-statistics">Import Statistics<a class="heading-anchor" href="#import-statistics" title="Link to this section">&para;</a></h3>
+<h3  id="import-statistics"><span id="import_statistics"></span>Import Statistics<a class="heading-anchor" href="#import-statistics" title="Link to this section">&para;</a></h3>
 <p>After import, the following statistics are available:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -971,9 +906,9 @@ src/domains/
 </tbody>
 </table></div>
 <hr />
-<h2 id="domain-plugin">Domain Plugin<a class="heading-anchor" href="#domain-plugin" title="Link to this section">&para;</a></h2>
+<h2  id="domain-plugin"><span id="domain_plugin"></span>Domain Plugin<a class="heading-anchor" href="#domain-plugin" title="Link to this section">&para;</a></h2>
 <p>A plugin is automatically generated for working with the new project.</p>
-<h3 id="plugin-structure">Plugin Structure<a class="heading-anchor" href="#plugin-structure" title="Link to this section">&para;</a></h3>
+<h3  id="plugin-structure"><span id="plugin_structure"></span>Plugin Structure<a class="heading-anchor" href="#plugin-structure" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># src/domains/my_project/plugin.py</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MyProjectPlugin</span><span class="p">(</span><span class="n">DomainPlugin</span><span class="p">):</span>
@@ -997,7 +932,7 @@ src/domains/
         <span class="p">}</span>
 </code></pre></div>
 
-<h3 id="configuration-subsystemsyaml">Configuration: subsystems.yaml<a class="heading-anchor" href="#configuration-subsystemsyaml" title="Link to this section">&para;</a></h3>
+<h3  id="configuration-subsystemsyaml"><span id="configuration_subsystemsyaml"></span>Configuration: subsystems.yaml<a class="heading-anchor" href="#configuration-subsystemsyaml" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">subsystems</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">core</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Core</span><span class="nv"> </span><span class="s">application</span><span class="nv"> </span><span class="s">logic&quot;</span>
@@ -1018,7 +953,7 @@ src/domains/
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;helper&quot;</span>
 </code></pre></div>
 
-<h3 id="configuration-promptsyaml">Configuration: prompts.yaml<a class="heading-anchor" href="#configuration-promptsyaml" title="Link to this section">&para;</a></h3>
+<h3  id="configuration-promptsyaml"><span id="configuration_promptsyaml"></span>Configuration: prompts.yaml<a class="heading-anchor" href="#configuration-promptsyaml" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">prompts</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">onboarding</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">system</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
@@ -1035,7 +970,7 @@ src/domains/
 </code></pre></div>
 
 <hr />
-<h2 id="activating-domain-plugin">Activating Domain Plugin<a class="heading-anchor" href="#activating-domain-plugin" title="Link to this section">&para;</a></h2>
+<h2  id="activating-domain-plugin"><span id="activating_domain_plugin"></span>Activating Domain Plugin<a class="heading-anchor" href="#activating-domain-plugin" title="Link to this section">&para;</a></h2>
 <p>After creating the plugin, add it to the configuration:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
 <span class="nt">domains</span><span class="p">:</span>
@@ -1052,8 +987,8 @@ src/domains/
 </code></pre></div>
 
 <hr />
-<h2 id="handling-large-repositories">Handling Large Repositories<a class="heading-anchor" href="#handling-large-repositories" title="Link to this section">&para;</a></h2>
-<h3 id="large-cc-projects">Large C/C++ Projects<a class="heading-anchor" href="#large-cc-projects" title="Link to this section">&para;</a></h3>
+<h2  id="handling-large-repositories"><span id="handling_large_repositories"></span>Handling Large Repositories<a class="heading-anchor" href="#handling-large-repositories" title="Link to this section">&para;</a></h2>
+<h3  id="large-cc-projects"><span id="large_cc_projects"></span>Large C/C++ Projects<a class="heading-anchor" href="#large-cc-projects" title="Link to this section">&para;</a></h3>
 <blockquote class="callout">
 <p><strong>Note:</strong> Large C/C++ projects use the <code>generic_cpp</code> domain plugin for analysis.</p>
 </blockquote>
@@ -1083,7 +1018,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><strong>Increase GoCPG memory</strong> for large projects (16-32GB)</li>
 </ol>
 <hr />
-<h2 id="python-api">Python API<a class="heading-anchor" href="#python-api" title="Link to this section">&para;</a></h2>
+<h2  id="python-api"><span id="python_api"></span>Python API<a class="heading-anchor" href="#python-api" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ProjectImportPipeline</span><span class="p">,</span>
     <span class="n">ProjectImportRequest</span><span class="p">,</span>
@@ -1121,7 +1056,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">run_import</span><span class="p">())</span>
 </code></pre></div>
 
-<h3 id="running-individual-steps">Running Individual Steps<a class="heading-anchor" href="#running-individual-steps" title="Link to this section">&para;</a></h3>
+<h3  id="running-individual-steps"><span id="running_individual_steps"></span>Running Individual Steps<a class="heading-anchor" href="#running-individual-steps" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectImportPipeline</span>
 
 <span class="n">pipeline</span> <span class="o">=</span> <span class="n">ProjectImportPipeline</span><span class="p">()</span>
@@ -1140,7 +1075,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
-<h3 id="gocpg-frontend-not-found">GoCPG Frontend Not Found<a class="heading-anchor" href="#gocpg-frontend-not-found" title="Link to this section">&para;</a></h3>
+<h3  id="gocpg-frontend-not-found"><span id="gocpg_frontend_not_found"></span>GoCPG Frontend Not Found<a class="heading-anchor" href="#gocpg-frontend-not-found" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">RuntimeError</span><span class="o">:</span><span class="w"> </span><span class="n">Frontend</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">found</span><span class="w"> </span><span class="n">at</span><span class="w"> </span><span class="n">expected</span><span class="w"> </span><span class="n">paths</span>
 </code></pre></div>
 
@@ -1149,15 +1084,14 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span>--repo<span class="w"> </span>...
 </code></pre></div>
 
-<h3 id="insufficient-memory-for-gocpg">Insufficient Memory for GoCPG<a class="heading-anchor" href="#insufficient-memory-for-gocpg" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>java.lang.OutOfMemoryError: Java heap space
-</code></pre></div>
-
-<p><strong>Solution:</strong> Increase memory:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span>--repo<span class="w"> </span>...<span class="w"> </span>--memory<span class="w"> </span><span class="m">32</span>
-</code></pre></div>
-
-<h3 id="language-not-detected">Language Not Detected<a class="heading-anchor" href="#language-not-detected" title="Link to this section">&para;</a></h3>
+<h3  id="gocpg-process-failure"><span id="gocpg_process_failure"></span>GoCPG Process Failure<a class="heading-anchor" href="#gocpg-process-failure" title="Link to this section">&para;</a></h3>
+<p><strong>Error:</strong> GoCPG binary exits with non-zero code</p>
+<p><strong>Solution:</strong>
+- Check available disk space for DuckDB output
+- Verify source path is accessible: <code>ls &lt;source_path&gt;</code>
+- Run with verbose logging: <code>gocpg parse --input=&lt;path&gt; --output=&lt;db&gt; --lang=c -v</code>
+- Increase memory allocation if processing a large codebase: <code>--memory 32</code></p>
+<h3  id="language-not-detected"><span id="language_not_detected"></span>Language Not Detected<a class="heading-anchor" href="#language-not-detected" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">ValueError</span><span class="o">:</span><span class="w"> </span><span class="n">No</span><span class="w"> </span><span class="n">supported</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="n">files</span><span class="w"> </span><span class="n">found</span>
 </code></pre></div>
 
@@ -1165,7 +1099,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>full<span class="w"> </span>--repo<span class="w"> </span>...<span class="w"> </span>--language<span class="w"> </span>java
 </code></pre></div>
 
-<h3 id="cpg-validation-failed">CPG Validation Failed<a class="heading-anchor" href="#cpg-validation-failed" title="Link to this section">&para;</a></h3>
+<h3  id="cpg-validation-failed"><span id="cpg_validation_failed"></span>CPG Validation Failed<a class="heading-anchor" href="#cpg-validation-failed" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>Validation errors: [&#39;methods_exist: expected &gt;= 1, got 0&#39;]
 </code></pre></div>
 
@@ -1174,7 +1108,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 2. GoCPG frontend matches the language
 3. Files are not excluded by patterns</p>
 <hr />
-<h2 id="configuration-configyaml">Configuration (config.yaml)<a class="heading-anchor" href="#configuration-configyaml" title="Link to this section">&para;</a></h2>
+<h2  id="configuration-configyaml"><span id="configuration_configyaml"></span>Configuration (config.yaml)<a class="heading-anchor" href="#configuration-configyaml" title="Link to this section">&para;</a></h2>
 <p>Settings for the <code>project_import</code> module in <code>config.yaml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">project_import</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">gocpg</span><span class="p">:</span>
@@ -1184,9 +1118,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">    </span><span class="nt">use_docker</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="w">    </span><span class="c1"># Docker image for GoCPG</span>
 <span class="w">    </span><span class="nt">docker_image</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;codegraph/gocpg:latest&quot;</span>
-<span class="w">    </span><span class="c1"># Server connection timeout (seconds)</span>
-<span class="w">    </span><span class="nt">server_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-<span class="w">    </span><span class="c1"># JVM memory (GB)</span>
+<span class="w">    </span><span class="c1"># Memory limit (GB)</span>
 <span class="w">    </span><span class="nt">memory_gb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
 
 <span class="w">  </span><span class="nt">workspace</span><span class="p">:</span>
@@ -1214,24 +1146,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <hr />
-<h2 id="component-architecture">Component Architecture<a class="heading-anchor" href="#component-architecture" title="Link to this section">&para;</a></h2>
-<h3 id="gocpgservermanager">GoCPGServerManager<a class="heading-anchor" href="#gocpgservermanager" title="Link to this section">&para;</a></h3>
-<p>Central component for managing the GoCPG server:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">GoCPGServerManager</span>
-
-<span class="c1"># Create manager</span>
-<span class="n">manager</span> <span class="o">=</span> <span class="n">GoCPGServerManager</span><span class="p">(</span><span class="n">use_docker</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-<span class="c1"># Start server</span>
-<span class="k">await</span> <span class="n">manager</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-
-<span class="c1"># Get client</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_client</span><span class="p">()</span>
-
-<span class="c1"># Stop server</span>
-<span class="k">await</span> <span class="n">manager</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-</code></pre></div>
-
+<h2  id="component-architecture"><span id="component_architecture"></span>Component Architecture<a class="heading-anchor" href="#component-architecture" title="Link to this section">&para;</a></h2>
 <h3 id="projectregistry">ProjectRegistry<a class="heading-anchor" href="#projectregistry" title="Link to this section">&para;</a></h3>
 <p>Project registry in PostgreSQL:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectRegistry</span>
@@ -1247,7 +1162,19 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
     <span class="k">await</span> <span class="n">registry</span><span class="o">.</span><span class="n">delete_project</span><span class="p">(</span><span class="s2">&quot;old_project&quot;</span><span class="p">,</span> <span class="n">delete_files</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 
-<h3 id="localgocpgrunner-dockergocpgrunner">LocalGoCPGRunner / DockerGoCPGRunner<a class="heading-anchor" href="#localgocpgrunner-dockergocpgrunner" title="Link to this section">&para;</a></h3>
+<h3  id="gocpgclient-unified-wrapper"><span id="gocpgclient_unified_wrapper"></span>GoCPGClient (Unified Wrapper)<a class="heading-anchor" href="#gocpgclient-unified-wrapper" title="Link to this section">&para;</a></h3>
+<p>As an alternative to direct subprocess calls via runners, the <code>GoCPGClient</code> provides a unified async Python wrapper for all GoCPG commands with Pydantic result models:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.gocpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">GoCPGClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">GoCPGClient</span><span class="p">()</span>  <span class="c1"># auto-detects binary path from config.yaml</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">input_path</span><span class="o">=</span><span class="s2">&quot;/src&quot;</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">&quot;c&quot;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">input_path</span><span class="o">=</span><span class="s2">&quot;/src&quot;</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ci_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">ci_update</span><span class="p">(</span><span class="n">input_path</span><span class="o">=</span><span class="s2">&quot;/src&quot;</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">,</span> <span class="n">base_ref</span><span class="o">=</span><span class="s2">&quot;origin/main&quot;</span><span class="p">)</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">stats</span><span class="p">()</span>
+</code></pre></div>
+
+<p>See <code>src/services/gocpg/</code> for the full client API (17 async methods, 12 Pydantic models).</p>
+<h3  id="localgocpgrunner-dockergocpgrunner"><span id="localgocpgrunner_dockergocpgrunner"></span>LocalGoCPGRunner / DockerGoCPGRunner<a class="heading-anchor" href="#localgocpgrunner-dockergocpgrunner" title="Link to this section">&para;</a></h3>
 <p>Runners for executing GoCPG commands:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Local execution</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalGoCPGRunner</span>
@@ -1257,15 +1184,15 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.project_import</span><span class="w"> </span><span class="kn">import</span> <span class="n">DockerGoCPGRunner</span>
 <span class="n">runner</span> <span class="o">=</span> <span class="n">DockerGoCPGRunner</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="s2">&quot;codegraph/gocpg:latest&quot;</span><span class="p">)</span>
 
-<span class="c1"># Run frontend</span>
-<span class="k">await</span> <span class="n">runner</span><span class="o">.</span><span class="n">run_frontend</span><span class="p">(</span><span class="s2">&quot;pysrc2cpg&quot;</span><span class="p">,</span> <span class="n">source_path</span><span class="p">,</span> <span class="n">output_cpg</span><span class="p">)</span>
+<span class="c1"># Run parse</span>
+<span class="k">await</span> <span class="n">runner</span><span class="o">.</span><span class="n">run_parse</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="n">output_db</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <hr />
-<h2 id="see-also">See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
+<h2  id="see-also"><span id="see_also"></span>See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="../api/REST_API.html">REST API Documentation</a> - HTTP API endpoints</li>
-<li><a href="../reference/API.html">API Reference</a> - Python API</li>
+<li><a href="../../api/REST_API.html">REST API Documentation</a> - HTTP API endpoints</li>
+<li><a href="../../reference/API.html">API Reference</a> - Python API</li>
 <li><a href="SCENARIOS.html">Scenarios Guide</a> - Analysis scenarios</li>
 </ul>
       </article>
@@ -1278,15 +1205,15 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
         <span class="doc-page-nav-title">User Guide</span>
       </a>
 
-      <a href="CPG_EXPORT.html" class="doc-page-nav-next">
+      <a href="CODE_REVIEW.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Next</span>
-        <span class="doc-page-nav-title">CPG Export Guide</span>
+        <span class="doc-page-nav-title">Automated Code Review</span>
       </a>
     </nav>
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-02-18</span>
+        <span>Last updated: 2026-02-27</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/PROJECT_IMPORT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1301,33 +1228,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#supported-languages" class="level-2">Supported Languages</a></li>
 <li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
 <li><a href="#full-pipeline-single-command" class="level-3">Full Pipeline (Single Command)</a></li>
-<li><a href="#import-from-github-repository" class="level-1">Import from GitHub repository</a></li>
-<li><a href="#import-local-project" class="level-1">Import local project</a></li>
-<li><a href="#with-selective-import-only-specific-directories" class="level-1">With selective import (only specific directories)</a></li>
-<li><a href="#import-using-docker" class="level-1">Import using Docker</a></li>
 <li><a href="#docker-support" class="level-3">Docker Support</a></li>
-<li><a href="#import-with-docker-no-local-gocpg-build-required" class="level-1">Import with Docker (no local GoCPG build required)</a></li>
-<li><a href="#with-specific-docker-image" class="level-1">With specific Docker image</a></li>
-<li><a href="#gocpg-server-management" class="level-3">GoCPG Server Management</a></li>
-<li><a href="#server-status" class="level-1">Server status</a></li>
-<li><a href="#start-server-local-gocpg" class="level-1">Start server (local GoCPG)</a></li>
-<li><a href="#start-server-in-docker" class="level-1">Start server in Docker</a></li>
-<li><a href="#stop-server" class="level-1">Stop server</a></li>
 <li><a href="#project-management" class="level-3">Project Management</a></li>
-<li><a href="#list-all-imported-projects" class="level-1">List all imported projects</a></li>
-<li><a href="#project-information" class="level-1">Project information</a></li>
-<li><a href="#activate-project-set-as-current" class="level-1">Activate project (set as current)</a></li>
-<li><a href="#when-a-project-has-a-domain-field-the-corresponding-domain-plugin-is-activated-automatically" class="level-1">When a project has a `domain` field, the corresponding domain plugin is activated automatically.</a></li>
-<li><a href="#delete-project-metadata-only" class="level-1">Delete project (metadata only)</a></li>
-<li><a href="#delete-project-with-files-cpg-duckdb" class="level-1">Delete project with files (CPG, DuckDB)</a></li>
 <li><a href="#step-by-step-import" class="level-3">Step-by-Step Import</a></li>
-<li><a href="#1-clone-repository" class="level-1">1. Clone repository</a></li>
-<li><a href="#2-detect-language" class="level-1">2. Detect language</a></li>
-<li><a href="#3-create-cpg" class="level-1">3. Create CPG</a></li>
-<li><a href="#4-export-to-duckdb" class="level-1">4. Export to DuckDB</a></li>
-<li><a href="#5-validate" class="level-1">5. Validate</a></li>
-<li><a href="#6-import-documentation" class="level-1">6. Import documentation</a></li>
-<li><a href="#7-create-domain-plugin" class="level-1">7. Create Domain Plugin</a></li>
 <li><a href="#list-supported-languages" class="level-3">List Supported Languages</a></li>
 <li><a href="#rest-api-usage" class="level-2">REST API Usage</a></li>
 <li><a href="#get-list-of-supported-languages" class="level-3">Get List of Supported Languages</a></li>
@@ -1337,7 +1240,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#cancel-import" class="level-3">Cancel Import</a></li>
 <li><a href="#run-individual-step" class="level-3">Run Individual Step</a></li>
 <li><a href="#import-with-docker" class="level-3">Import with Docker</a></li>
-<li><a href="#gocpg-server-management" class="level-3">GoCPG Server Management</a></li>
 <li><a href="#project-management" class="level-3">Project Management</a></li>
 <li><a href="#websocket-for-progress-tracking" class="level-2">WebSocket for Progress Tracking</a></li>
 <li><a href="#import-parameters" class="level-2">Import Parameters</a></li>
@@ -1358,40 +1260,24 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#import-statistics" class="level-3">Import Statistics</a></li>
 <li><a href="#domain-plugin" class="level-2">Domain Plugin</a></li>
 <li><a href="#plugin-structure" class="level-3">Plugin Structure</a></li>
-<li><a href="#srcdomainsmy-projectpluginpy" class="level-1">src/domains/my_project/plugin.py</a></li>
 <li><a href="#configuration-subsystemsyaml" class="level-3">Configuration: subsystems.yaml</a></li>
 <li><a href="#configuration-promptsyaml" class="level-3">Configuration: prompts.yaml</a></li>
 <li><a href="#activating-domain-plugin" class="level-2">Activating Domain Plugin</a></li>
-<li><a href="#configyaml" class="level-1">config.yaml</a></li>
 <li><a href="#handling-large-repositories" class="level-2">Handling Large Repositories</a></li>
 <li><a href="#large-cc-projects" class="level-3">Large C/C++ Projects</a></li>
-<li><a href="#use-shallow-clone" class="level-1">Use shallow clone</a></li>
-<li><a href="#or-selective-import" class="level-1">Or selective import</a></li>
-<li><a href="#increase-memory-for-gocpg" class="level-1">Increase memory for GoCPG</a></li>
 <li><a href="#recommendations" class="level-3">Recommendations</a></li>
 <li><a href="#python-api" class="level-2">Python API</a></li>
-<li><a href="#create-request" class="level-1">Create request</a></li>
-<li><a href="#run-pipeline" class="level-1">Run pipeline</a></li>
 <li><a href="#running-individual-steps" class="level-3">Running Individual Steps</a></li>
-<li><a href="#step-context" class="level-1">Step context</a></li>
-<li><a href="#run-validation-step" class="level-1">Run validation step</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
 <li><a href="#gocpg-frontend-not-found" class="level-3">GoCPG Frontend Not Found</a></li>
-<li><a href="#insufficient-memory-for-gocpg" class="level-3">Insufficient Memory for GoCPG</a></li>
+<li><a href="#gocpg-process-failure" class="level-3">GoCPG Process Failure</a></li>
 <li><a href="#language-not-detected" class="level-3">Language Not Detected</a></li>
 <li><a href="#cpg-validation-failed" class="level-3">CPG Validation Failed</a></li>
 <li><a href="#configuration-configyaml" class="level-2">Configuration (config.yaml)</a></li>
 <li><a href="#component-architecture" class="level-2">Component Architecture</a></li>
-<li><a href="#gocpgservermanager" class="level-3">GoCPGServerManager</a></li>
-<li><a href="#create-manager" class="level-1">Create manager</a></li>
-<li><a href="#start-server" class="level-1">Start server</a></li>
-<li><a href="#get-client" class="level-1">Get client</a></li>
-<li><a href="#stop-server" class="level-1">Stop server</a></li>
 <li><a href="#projectregistry" class="level-3">ProjectRegistry</a></li>
+<li><a href="#gocpgclient-unified-wrapper" class="level-3">GoCPGClient (Unified Wrapper)</a></li>
 <li><a href="#localgocpgrunner-dockergocpgrunner" class="level-3">LocalGoCPGRunner / DockerGoCPGRunner</a></li>
-<li><a href="#local-execution" class="level-1">Local execution</a></li>
-<li><a href="#docker-execution" class="level-1">Docker execution</a></li>
-<li><a href="#run-frontend" class="level-1">Run frontend</a></li>
 <li><a href="#see-also" class="level-2">See Also</a></li>
       </ul>
     </aside>
@@ -1411,6 +1297,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
             <ul class="footer-links-list">
               <li><a href="../../../index.html#features" class="footer-link">Features</a></li>
               <li><a href="../../../index.html#integrations" class="footer-link">Integrations</a></li>
+              <li><a href="../../../index.html#architecture" class="footer-link">Architecture</a></li>
               <li><a href="../../../index.html#faq" class="footer-link">FAQ</a></li>
             </ul>
           </div>
@@ -1427,6 +1314,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
             <h4>Resources</h4>
             <ul class="footer-links-list">
               <li><a href="../../../whitepaper.html" class="footer-link">Whitepaper</a></li>
+              <li><a href="../../../docs/en/index.html" class="footer-link">Docs (EN)</a></li>
             </ul>
           </div>
           <div class="footer-links-group">

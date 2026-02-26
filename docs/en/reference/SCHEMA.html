@@ -92,8 +92,9 @@
         <li><a href="../guides/BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
-        <li><a href="../guides/CPG_EXPORT.html">CPG Export Guide</a></li>
+        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/MONITORING.html">Monitoring Guide</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
@@ -103,6 +104,7 @@
         <li><a href="../guides/TROUBLESHOOTING.html">Troubleshooting Guide</a></li>
         <li><a href="../guides/TUI_USER_GUIDE.html">CodeGraph User Guide</a></li>
         <li><a href="../guides/01-onboarding.html">Scenario 01: Developer Onboarding</a></li>
+        <li><a href="../guides/02-security-audit-autofix.html">Security Audit: Autofix</a></li>
         <li><a href="../guides/02-security-audit.html">Scenario 02: Security Audit</a></li>
         <li><a href="../guides/03-documentation.html">Scenario 03: Documentation Generation</a></li>
         <li><a href="../guides/04-feature-development.html">Scenario 04: Feature Development</a></li>
@@ -131,6 +133,7 @@
       <ul class="doc-sidebar-nav">
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
+        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/REST_API.html">CodeGraph REST API Documentation</a></li>
         <li><a href="../api/WEBSOCKET_API.html">WebSocket API Reference</a></li>
       </ul>
@@ -140,6 +143,7 @@
       <div class="doc-sidebar-title">Integrations</div>
       <ul class="doc-sidebar-nav">
         <li><a href="../integrations/index.html">Overview</a></li>
+        <li><a href="../integrations/CLAUDE_CODE_GIT.html">Claude Code & Git Integration Guide</a></li>
         <li><a href="../integrations/EXTERNAL_CONTEXT.html">External Context Integration Guide</a></li>
         <li><a href="../integrations/GIGACHAT.html">GigaChat Integration Guide</a></li>
         <li><a href="../integrations/YANDEX_AI_STUDIO.html">Yandex AI Studio Integration Guide</a></li>
@@ -153,10 +157,13 @@
         <li><a href="AGENTS.html">Agents Reference</a></li>
         <li><a href="ANALYSIS_MODULES.html">Analysis Modules Reference</a></li>
         <li><a href="API.html">API Reference</a></li>
+        <li><a href="APPROVAL_ENGINE.html">Approval Engine</a></li>
+        <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="HYPOTHESIS_SYSTEM.html">Hypothesis System Reference</a></li>
         <li><a href="SCHEMA.html" class="active">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Enterprise Security Module</a></li>
         <li><a href="SQL_QUERY_COOKBOOK.html">SQL Query Cookbook for DuckDB CPG</a></li>
+        <li><a href="SYMBOLIC_EXECUTION.html">Symbolic Execution (Z3 SMT Solver)</a></li>
         <li><a href="WORKFLOWS.html">Workflows Reference</a></li>
       </ul>
     </div>
@@ -188,87 +195,88 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <h1 id="duckdb-cpg-schema-design-cpg-spec-v11">DuckDB CPG Schema Design (CPG Spec v1.1)<a class="heading-anchor" href="#duckdb-cpg-schema-design-cpg-spec-v11" title="Link to this section">&para;</a></h1>
-<h2 id="table-of-contents">Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+        <h1  id="duckdb-cpg-schema-design-cpg-spec-v11"><span id="duckdb_cpg_schema_design_cpg_spec_v11"></span>DuckDB CPG Schema Design (CPG Spec v1.1)<a class="heading-anchor" href="#duckdb-cpg-schema-design-cpg-spec-v11" title="Link to this section">&para;</a></h1>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#table-of-contents">Table of Contents</a></li>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#core-design-principles">Core Design Principles</a></li>
 <li><a href="#node-tables">Node Tables</a></li>
-<li><a href="#nodes_method">nodes_method</a></li>
-<li><a href="#nodes_call">nodes_call</a></li>
-<li><a href="#nodes_identifier">nodes_identifier</a></li>
-<li><a href="#nodes_field_identifier">nodes_field_identifier</a></li>
-<li><a href="#nodes_literal">nodes_literal</a></li>
-<li><a href="#nodes_local">nodes_local</a></li>
-<li><a href="#nodes_param">nodes_param</a></li>
-<li><a href="#nodes_param_out">nodes_param_out</a></li>
-<li><a href="#nodes_method_return">nodes_method_return</a></li>
-<li><a href="#nodes_return">nodes_return</a></li>
-<li><a href="#nodes_block">nodes_block</a></li>
-<li><a href="#nodes_control_structure">nodes_control_structure</a></li>
-<li><a href="#nodes_member">nodes_member</a></li>
-<li><a href="#nodes_type_decl">nodes_type_decl</a></li>
-<li><a href="#nodes_metadata">nodes_metadata</a></li>
-<li><a href="#nodes_file">nodes_file</a></li>
-<li><a href="#nodes_namespace_block">nodes_namespace_block</a></li>
-<li><a href="#nodes_method_ref">nodes_method_ref</a></li>
-<li><a href="#nodes_type_ref">nodes_type_ref</a></li>
-<li><a href="#nodes_unknown">nodes_unknown</a></li>
-<li><a href="#nodes_jump_target">nodes_jump_target</a></li>
-<li><a href="#nodes_type_parameter">nodes_type_parameter</a></li>
-<li><a href="#nodes_type_argument">nodes_type_argument</a></li>
-<li><a href="#nodes_binding">nodes_binding</a></li>
-<li><a href="#nodes_closure_binding">nodes_closure_binding</a></li>
-<li><a href="#nodes_comment">nodes_comment</a></li>
+<li><a href="#nodes-method">nodes_method</a></li>
+<li><a href="#nodes-call">nodes_call</a></li>
+<li><a href="#nodes-identifier">nodes_identifier</a></li>
+<li><a href="#nodes-field-identifier">nodes_field_identifier</a></li>
+<li><a href="#nodes-literal">nodes_literal</a></li>
+<li><a href="#nodes-local">nodes_local</a></li>
+<li><a href="#nodes-param">nodes_param</a></li>
+<li><a href="#nodes-param-out">nodes_param_out</a></li>
+<li><a href="#nodes-method-return">nodes_method_return</a></li>
+<li><a href="#nodes-return">nodes_return</a></li>
+<li><a href="#nodes-block">nodes_block</a></li>
+<li><a href="#nodes-control-structure">nodes_control_structure</a></li>
+<li><a href="#nodes-member">nodes_member</a></li>
+<li><a href="#nodes-type-decl">nodes_type_decl</a></li>
+<li><a href="#nodes-metadata">nodes_metadata</a></li>
+<li><a href="#nodes-file">nodes_file</a></li>
+<li><a href="#nodes-namespace-block">nodes_namespace_block</a></li>
+<li><a href="#nodes-method-ref">nodes_method_ref</a></li>
+<li><a href="#nodes-type-ref">nodes_type_ref</a></li>
+<li><a href="#nodes-unknown">nodes_unknown</a></li>
+<li><a href="#nodes-jump-target">nodes_jump_target</a></li>
+<li><a href="#nodes-type-parameter">nodes_type_parameter</a></li>
+<li><a href="#nodes-type-argument">nodes_type_argument</a></li>
+<li><a href="#nodes-binding">nodes_binding</a></li>
+<li><a href="#nodes-closure-binding">nodes_closure_binding</a></li>
+<li><a href="#nodes-comment">nodes_comment</a></li>
 <li><a href="#edge-tables">Edge Tables</a></li>
-<li><a href="#edges_ast">edges_ast</a></li>
-<li><a href="#edges_cfg">edges_cfg</a></li>
-<li><a href="#edges_call">edges_call</a></li>
-<li><a href="#edges_ref">edges_ref</a></li>
-<li><a href="#edges_reaching_def">edges_reaching_def</a></li>
-<li><a href="#edges_argument">edges_argument</a></li>
-<li><a href="#edges_receiver">edges_receiver</a></li>
-<li><a href="#edges_condition">edges_condition</a></li>
-<li><a href="#edges_dominate">edges_dominate</a></li>
-<li><a href="#edges_post_dominate">edges_post_dominate</a></li>
-<li><a href="#edges_cdg">edges_cdg</a></li>
-<li><a href="#edges_binds">edges_binds</a></li>
-<li><a href="#edges_binds_to">edges_binds_to</a></li>
-<li><a href="#edges_source_file">edges_source_file</a></li>
-<li><a href="#edges_alias_of">edges_alias_of</a></li>
-<li><a href="#edges_inherits_from">edges_inherits_from</a></li>
-<li><a href="#edges_capture">edges_capture</a></li>
-<li><a href="#edges_captured_by">edges_captured_by</a></li>
+<li><a href="#edges-ast">edges_ast</a></li>
+<li><a href="#edges-cfg">edges_cfg</a></li>
+<li><a href="#edges-call">edges_call</a></li>
+<li><a href="#edges-ref">edges_ref</a></li>
+<li><a href="#edges-reaching-def">edges_reaching_def</a></li>
+<li><a href="#edges-argument">edges_argument</a></li>
+<li><a href="#edges-receiver">edges_receiver</a></li>
+<li><a href="#edges-condition">edges_condition</a></li>
+<li><a href="#edges-dominate">edges_dominate</a></li>
+<li><a href="#edges-post-dominate">edges_post_dominate</a></li>
+<li><a href="#edges-cdg">edges_cdg</a></li>
+<li><a href="#edges-binds">edges_binds</a></li>
+<li><a href="#edges-binds-to">edges_binds_to</a></li>
+<li><a href="#edges-source-file">edges_source_file</a></li>
+<li><a href="#edges-alias-of">edges_alias_of</a></li>
+<li><a href="#edges-inherits-from">edges_inherits_from</a></li>
+<li><a href="#edges-capture">edges_capture</a></li>
+<li><a href="#edges-captured-by">edges_captured_by</a></li>
 <li><a href="#property-graph-definition">Property Graph Definition</a></li>
 <li><a href="#step-1-create-materialized-unified-nodes-table">Step 1: Create Materialized Unified Nodes Table</a></li>
 <li><a href="#step-2-create-comprehensive-property-graph">Step 2: Create Comprehensive Property Graph</a></li>
 <li><a href="#example-queries">Example Queries</a></li>
 <li><a href="#standard-sql-query-find-all-calls-to-a-specific-method">Standard SQL Query: Find all calls to a specific method</a></li>
-<li><a href="#duckdb-pgq-query-find-direct-call-chains-caller---callee">DuckDB PGQ Query: Find direct call chains (caller -&gt; callee)</a></li>
+<li><a href="#duckdb-pgq-query-find-direct-call-chains-caller-callee">DuckDB PGQ Query: Find direct call chains (caller -&gt; callee)</a></li>
 <li><a href="#duckdb-pgq-query-find-methods-and-their-ast-children">DuckDB PGQ Query: Find methods and their AST children</a></li>
-<li><a href="#duckdb-pgq-query-data-flow-paths-using-reaching_def">DuckDB PGQ Query: Data flow paths using REACHING_DEF</a></li>
+<li><a href="#duckdb-pgq-query-data-flow-paths-using-reaching-def">DuckDB PGQ Query: Data flow paths using REACHING_DEF</a></li>
 <li><a href="#duckdb-pgq-query-cfg-paths-control-flow">DuckDB PGQ Query: CFG paths (control flow)</a></li>
 <li><a href="#duckdb-pgq-query-find-all-identifiers-and-their-references">DuckDB PGQ Query: Find all identifiers and their references</a></li>
 <li><a href="#duckdb-pgq-query-type-hierarchy-inheritance">DuckDB PGQ Query: Type hierarchy (inheritance)</a></li>
 <li><a href="#combined-query-methods-with-most-incoming-calls">Combined Query: Methods with most incoming calls</a></li>
 <li><a href="#schema-migration-history">Schema Migration History</a></li>
-<li><a href="#phase-1-critical---completed-">Phase 1 (CRITICAL) - COMPLETED ✓</a></li>
-<li><a href="#phase-2-oop-support---completed-">Phase 2 (OOP SUPPORT) - COMPLETED ✓</a></li>
-<li><a href="#phase-3-namespace-and-file-support---completed-">Phase 3 (NAMESPACE AND FILE SUPPORT) - COMPLETED ✓</a></li>
-<li><a href="#phase-4-remaining-features---completed-">Phase 4 (REMAINING FEATURES) - COMPLETED ✓</a></li>
+<li><a href="#phase-1-critical-completed">Phase 1 (CRITICAL) - COMPLETED ✓</a></li>
+<li><a href="#phase-2-oop-support-completed">Phase 2 (OOP SUPPORT) - COMPLETED ✓</a></li>
+<li><a href="#phase-3-namespace-and-file-support-completed">Phase 3 (NAMESPACE AND FILE SUPPORT) - COMPLETED ✓</a></li>
+<li><a href="#phase-4-remaining-features-completed">Phase 4 (REMAINING FEATURES) - COMPLETED ✓</a></li>
 <li><a href="#performance-considerations">Performance Considerations</a></li>
 <li><a href="#schema-version">Schema Version</a></li>
 <li><a href="#changelog">Changelog</a></li>
-<li><a href="#v50-2025-11-16---phase-4-complete-compliance">v5.0 (2025-11-16) - Phase 4 Complete Compliance</a></li>
-<li><a href="#v40-2025-11-16---phase-3-namespace-and-file-support">v4.0 (2025-11-16) - Phase 3 Namespace and File Support</a></li>
-<li><a href="#v30-2025-11-16---phase-2-oop-support">v3.0 (2025-11-16) - Phase 2 OOP Support</a></li>
-<li><a href="#v20-2025-11-16---phase-1-critical-updates">v2.0 (2025-11-16) - Phase 1 Critical Updates</a></li>
-<li><a href="#v10-2025-11-15---initial-release">v1.0 (2025-11-15) - Initial Release</a></li>
+<li><a href="#v60-2026-02-26-pre-computed-metrics-pattern-flags">v6.0 (2026-02-26) - Pre-computed Metrics &amp; Pattern Flags</a></li>
+<li><a href="#v50-2025-11-16-phase-4-complete-compliance">v5.0 (2025-11-16) - Phase 4 Complete Compliance</a></li>
+<li><a href="#v40-2025-11-16-phase-3-namespace-and-file-support">v4.0 (2025-11-16) - Phase 3 Namespace and File Support</a></li>
+<li><a href="#v30-2025-11-16-phase-2-oop-support">v3.0 (2025-11-16) - Phase 2 OOP Support</a></li>
+<li><a href="#v20-2025-11-16-phase-1-critical-updates">v2.0 (2025-11-16) - Phase 1 Critical Updates</a></li>
+<li><a href="#v10-2025-11-15-initial-release">v1.0 (2025-11-15) - Initial Release</a></li>
 <li><a href="#extension-semantic-tag-system">Extension: Semantic Tag System</a></li>
 <li><a href="#overview">Overview</a></li>
-<li><a href="#nodes_tag">nodes_tag</a></li>
-<li><a href="#edges_tagged_by">edges_tagged_by</a></li>
+<li><a href="#nodes-tag">nodes_tag</a></li>
+<li><a href="#edges-tagged-by">edges_tagged_by</a></li>
 <li><a href="#tag-categories">Tag Categories</a></li>
 <li><a href="#example-tag-queries">Example Tag Queries</a></li>
 <li><a href="#tag-statistics">Tag Statistics</a></li>
@@ -276,7 +284,7 @@
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
 <p>This schema implements the Code Property Graph specification v1.1 in DuckDB using the duckpgq extension for efficient property graph queries.</p>
-<h2 id="core-design-principles">Core Design Principles<a class="heading-anchor" href="#core-design-principles" title="Link to this section">&para;</a></h2>
+<h2  id="core-design-principles"><span id="core_design_principles"></span>Core Design Principles<a class="heading-anchor" href="#core-design-principles" title="Link to this section">&para;</a></h2>
 <ol>
 <li><strong>Node Tables</strong>: Separate tables for each major node type (METHOD, CALL, IDENTIFIER, etc.)</li>
 <li><strong>Edge Tables</strong>: Separate tables for each edge type (AST, CFG, CALL, REF, REACHING_DEF, etc.)</li>
@@ -284,7 +292,7 @@
 <li><strong>Efficient Indexing</strong>: B-tree indexes on id, full_name, and frequently queried properties</li>
 <li><strong>Batch Processing</strong>: Support for large-scale CPG imports (50K+ methods)</li>
 </ol>
-<h2 id="gocpg-vs-legacy-schema">GoCPG vs Legacy Schema<a class="heading-anchor" href="#gocpg-vs-legacy-schema" title="Link to this section">&para;</a></h2>
+<h2  id="gocpg-vs-legacy-schema"><span id="gocpg_vs_legacy_schema"></span>GoCPG vs Legacy Schema<a class="heading-anchor" href="#gocpg-vs-legacy-schema" title="Link to this section">&para;</a></h2>
 <p>GoCPG generates DuckDB natively and produces additional tables not present in legacy Joern exports:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -332,8 +340,8 @@
 <blockquote class="callout">
 <p><strong>Note on <code>cpg_nodes</code></strong>: The materialized <code>cpg_nodes</code> table (UNION ALL of all node tables) is used <strong>only</strong> for the DuckPGQ Property Graph definition. It should <strong>not</strong> be queried directly in application code — use the specific <code>nodes_*</code> tables instead. GoCPG databases do not generate <code>cpg_nodes</code>; the compatibility layer creates it on demand when Property Graph queries are needed.</p>
 </blockquote>
-<h2 id="node-tables">Node Tables<a class="heading-anchor" href="#node-tables" title="Link to this section">&para;</a></h2>
-<h3 id="nodes-method">nodes_method<a class="heading-anchor" href="#nodes-method" title="Link to this section">&para;</a></h3>
+<h2  id="node-tables"><span id="node_tables"></span>Node Tables<a class="heading-anchor" href="#node-tables" title="Link to this section">&para;</a></h2>
+<h3  id="nodes-method"><span id="nodes_method"></span>nodes_method<a class="heading-anchor" href="#nodes-method" title="Link to this section">&para;</a></h3>
 <p>Core table for function/method declarations.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -353,7 +361,17 @@
 <span class="w">    </span><span class="n">ast_parent_full_name</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">,</span>
 <span class="w">    </span><span class="n">order_index</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
 <span class="w">    </span><span class="n">hash</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">,</span>
-<span class="w">    </span><span class="n">modifier</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">[]</span><span class="w">       </span><span class="c1">-- NEW: Access modifiers (Phase 2)</span>
+<span class="w">    </span><span class="n">modifier</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">[],</span><span class="w">      </span><span class="c1">-- NEW: Access modifiers (Phase 2)</span>
+<span class="w">    </span><span class="c1">-- Pre-computed pattern flags and metrics (v6.0)</span>
+<span class="w">    </span><span class="n">has_disabled_code</span><span class="w">       </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">has_deprecated</span><span class="w">          </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">has_todo_fixme</span><span class="w">          </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">has_debug_code</span><span class="w">          </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">is_test</span><span class="w">                 </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">is_entry_point</span><span class="w">          </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cyclomatic_complexity</span><span class="w">   </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">fan_in</span><span class="w">                  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">fan_out</span><span class="w">                 </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span>
 <span class="p">);</span>
 
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_method_full_name</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">nodes_method</span><span class="p">(</span><span class="n">full_name</span><span class="p">);</span>
@@ -371,11 +389,45 @@
 - HASH: Summary hash
 - MODIFIER: Access modifiers (Phase 2 - NEW!)
   - Values: STATIC, PUBLIC, PROTECTED, PRIVATE, ABSTRACT, NATIVE, CONSTRUCTOR, VIRTUAL, INTERNAL, FINAL, READONLY, MODULE</p>
+<p><strong>Pre-computed Pattern Flags</strong> (v6.0 — GoCPG):
+- HAS_DISABLED_CODE: Contains <code>#if 0</code>, <code>if false</code>, or commented-out blocks
+- HAS_DEPRECATED: Contains <code>@Deprecated</code>, <code>[[deprecated]]</code>, or similar annotations
+- HAS_TODO_FIXME: Contains <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, or <code>XXX</code> comments
+- HAS_DEBUG_CODE: Contains debug prints, console.log, or debugging statements
+- IS_TEST: Method identified as a test function (cross-language detection)
+- IS_ENTRY_POINT: Method is a public API entry point (exported, HTTP handler, main, etc.)
+- CYCLOMATIC_COMPLEXITY: McCabe cyclomatic complexity metric
+- FAN_IN: Number of methods that call this method
+- FAN_OUT: Number of methods called by this method</p>
+<p><strong>Pre-computed Pattern Flag Queries:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Find complex methods with high fan-out (potential god methods)</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="p">,</span><span class="w"> </span><span class="n">fan_out</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">fan_out</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">15</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+
+<span class="c1">-- Find deprecated methods still being called</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">fan_in</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">has_deprecated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">TRUE</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">fan_in</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="c1">-- Find test vs production code ratio</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">is_test</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="k">count</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">is_test</span><span class="p">;</span>
+
+<span class="c1">-- Find public API entry points with high complexity</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="p">,</span><span class="w"> </span><span class="n">fan_in</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">is_entry_point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">TRUE</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">10</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+</code></pre></div>
+
 <p><strong>Modifier Examples:</strong>
 - <code>public void foo()</code> → modifier=[&ldquo;PUBLIC&rdquo;]
 - <code>private static int bar()</code> → modifier=[&ldquo;PRIVATE&rdquo;, &ldquo;STATIC&rdquo;]
 - <code>abstract void baz()</code> → modifier=[&ldquo;ABSTRACT&rdquo;]</p>
-<h3 id="nodes-call">nodes_call<a class="heading-anchor" href="#nodes-call" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-call"><span id="nodes_call"></span>nodes_call<a class="heading-anchor" href="#nodes-call" title="Link to this section">&para;</a></h3>
 <p>Represents function/method invocations.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_call</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -401,7 +453,7 @@
 - DISPATCH_TYPE: Call mechanism (STATIC_DISPATCH, DYNAMIC_DISPATCH)
 - TYPE_FULL_NAME: Return type
 - SIGNATURE: Parameter types</p>
-<h3 id="nodes-identifier">nodes_identifier<a class="heading-anchor" href="#nodes-identifier" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-identifier"><span id="nodes_identifier"></span>nodes_identifier<a class="heading-anchor" href="#nodes-identifier" title="Link to this section">&para;</a></h3>
 <p>Variable and reference names.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_identifier</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -423,7 +475,7 @@
 - NAME: Variable identifier
 - TYPE_FULL_NAME: Variable type
 - OFFSET/OFFSET_END: Precise source location (Phase 2)</p>
-<h3 id="nodes-field-identifier">nodes_field_identifier<a class="heading-anchor" href="#nodes-field-identifier" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-field-identifier"><span id="nodes_field_identifier"></span>nodes_field_identifier<a class="heading-anchor" href="#nodes-field-identifier" title="Link to this section">&para;</a></h3>
 <p>Field access identifiers (OOP - e.g., obj.field).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_field_identifier</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -450,7 +502,7 @@
 <span class="n">p</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span><span class="w">  </span><span class="c1">// &lt;- &quot;x&quot; is FIELD_IDENTIFIER with canonical_name=&quot;x&quot;</span>
 </code></pre></div>
 
-<h3 id="nodes-literal">nodes_literal<a class="heading-anchor" href="#nodes-literal" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-literal"><span id="nodes_literal"></span>nodes_literal<a class="heading-anchor" href="#nodes-literal" title="Link to this section">&para;</a></h3>
 <p>Constant values.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_literal</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -466,7 +518,7 @@
 <p><strong>Properties</strong> (from CPG spec):
 - TYPE_FULL_NAME: Literal type
 - CODE: Literal value</p>
-<h3 id="nodes-local">nodes_local<a class="heading-anchor" href="#nodes-local" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-local"><span id="nodes_local"></span>nodes_local<a class="heading-anchor" href="#nodes-local" title="Link to this section">&para;</a></h3>
 <p>Local variable declarations.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_local</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -484,7 +536,7 @@
 <p><strong>Properties</strong> (from CPG spec):
 - NAME: Local variable name
 - TYPE_FULL_NAME: Declared type</p>
-<h3 id="nodes-param">nodes_param<a class="heading-anchor" href="#nodes-param" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-param"><span id="nodes_param"></span>nodes_param<a class="heading-anchor" href="#nodes-param" title="Link to this section">&para;</a></h3>
 <p>Method parameters (formal parameters).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_param</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -506,7 +558,7 @@
 - INDEX: Parameter position
 - IS_VARIADIC: Variable-length parameter
 - EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING</p>
-<h3 id="nodes-param-out">nodes_param_out<a class="heading-anchor" href="#nodes-param-out" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-param-out"><span id="nodes_param_out"></span>nodes_param_out<a class="heading-anchor" href="#nodes-param-out" title="Link to this section">&para;</a></h3>
 <p>Method output parameters (for SSA/data flow analysis).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_param_out</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -529,7 +581,7 @@
 - INDEX: Parameter position (matches input parameter)
 - EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING
 - Required for SSA (Static Single Assignment) analysis</p>
-<h3 id="nodes-method-return">nodes_method_return<a class="heading-anchor" href="#nodes-method-return" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-method-return"><span id="nodes_method_return"></span>nodes_method_return<a class="heading-anchor" href="#nodes-method-return" title="Link to this section">&para;</a></h3>
 <p>Method return parameter (formal return).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_method_return</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -547,7 +599,7 @@
 - CODE: Typically &ldquo;RET&rdquo; or empty
 - EVALUATION_STRATEGY: How return value is passed
 - One per method (formal return parameter, not return statement)</p>
-<h3 id="nodes-return">nodes_return<a class="heading-anchor" href="#nodes-return" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-return"><span id="nodes_return"></span>nodes_return<a class="heading-anchor" href="#nodes-return" title="Link to this section">&para;</a></h3>
 <p>Return statements (actual return in code).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_return</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -560,7 +612,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> This is the RETURN statement node. Different from METHOD_RETURN which is the formal return parameter.</p>
-<h3 id="nodes-block">nodes_block<a class="heading-anchor" href="#nodes-block" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-block"><span id="nodes_block"></span>nodes_block<a class="heading-anchor" href="#nodes-block" title="Link to this section">&para;</a></h3>
 <p>Compound statements (code blocks).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_block</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -573,7 +625,7 @@
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="nodes-control-structure">nodes_control_structure<a class="heading-anchor" href="#nodes-control-structure" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-control-structure"><span id="nodes_control_structure"></span>nodes_control_structure<a class="heading-anchor" href="#nodes-control-structure" title="Link to this section">&para;</a></h3>
 <p>Control flow constructs (if, while, for, etc.).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_control_structure</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -588,7 +640,7 @@
 
 <p><strong>Properties</strong> (from CPG spec):
 - CONTROL_STRUCTURE_TYPE: BREAK, CONTINUE, DO, WHILE, FOR, GOTO, IF, ELSE, TRY, THROW, SWITCH</p>
-<h3 id="nodes-member">nodes_member<a class="heading-anchor" href="#nodes-member" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-member"><span id="nodes_member"></span>nodes_member<a class="heading-anchor" href="#nodes-member" title="Link to this section">&para;</a></h3>
 <p>Type members (fields of classes/structs).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_member</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -620,7 +672,7 @@
 <span class="p">};</span>
 </code></pre></div>
 
-<h3 id="nodes-type-decl">nodes_type_decl<a class="heading-anchor" href="#nodes-type-decl" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-type-decl"><span id="nodes_type_decl"></span>nodes_type_decl<a class="heading-anchor" href="#nodes-type-decl" title="Link to this section">&para;</a></h3>
 <p>Type declarations (classes, structs).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_type_decl</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -655,7 +707,7 @@
 - <code>public class Foo</code> → modifier=[&ldquo;PUBLIC&rdquo;]
 - <code>private static class Bar</code> → modifier=[&ldquo;PRIVATE&rdquo;, &ldquo;STATIC&rdquo;]
 - <code>abstract class Baz</code> → modifier=[&ldquo;ABSTRACT&rdquo;]</p>
-<h3 id="nodes-metadata">nodes_metadata<a class="heading-anchor" href="#nodes-metadata" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-metadata"><span id="nodes_metadata"></span>nodes_metadata<a class="heading-anchor" href="#nodes-metadata" title="Link to this section">&para;</a></h3>
 <p>CPG metadata (required by spec).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_metadata</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -671,7 +723,7 @@
 - VERSION: CPG spec version
 - OVERLAYS: Applied overlays
 - ROOT: Root path</p>
-<h3 id="nodes-file">nodes_file<a class="heading-anchor" href="#nodes-file" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-file"><span id="nodes_file"></span>nodes_file<a class="heading-anchor" href="#nodes-file" title="Link to this section">&para;</a></h3>
 <p>Source file nodes (required by spec).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_file</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -700,7 +752,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> Each source file SHOULD have exactly one FILE node. FILE nodes serve as AST roots and allow navigation from file to all contained code elements.</p>
-<h3 id="nodes-namespace-block">nodes_namespace_block<a class="heading-anchor" href="#nodes-namespace-block" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-namespace-block"><span id="nodes_namespace_block"></span>nodes_namespace_block<a class="heading-anchor" href="#nodes-namespace-block" title="Link to this section">&para;</a></h3>
 <p>Namespace block nodes (namespace scopes).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_namespace_block</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -742,7 +794,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> NAMESPACE nodes (indices) are auto-generated from NAMESPACE_BLOCK nodes when CPG is loaded.</p>
-<h3 id="nodes-method-ref">nodes_method_ref<a class="heading-anchor" href="#nodes-method-ref" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-method-ref"><span id="nodes_method_ref"></span>nodes_method_ref<a class="heading-anchor" href="#nodes-method-ref" title="Link to this section">&para;</a></h3>
 <p>Method reference nodes (method as value).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_method_ref</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -787,7 +839,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> METHOD_REF is used when a method is referenced but not called at that location.</p>
-<h3 id="nodes-type-ref">nodes_type_ref<a class="heading-anchor" href="#nodes-type-ref" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-type-ref"><span id="nodes_type_ref"></span>nodes_type_ref<a class="heading-anchor" href="#nodes-type-ref" title="Link to this section">&para;</a></h3>
 <p>Type reference nodes (type as value).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_type_ref</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -829,7 +881,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> TYPE_REF is used when a type is referenced as a value, not when creating an instance.</p>
-<h3 id="nodes-unknown">nodes_unknown<a class="heading-anchor" href="#nodes-unknown" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-unknown"><span id="nodes_unknown"></span>nodes_unknown<a class="heading-anchor" href="#nodes-unknown" title="Link to this section">&para;</a></h3>
 <p>Unknown AST nodes (catch-all for unsupported constructs).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_unknown</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -868,7 +920,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> UNKNOWN should be used sparingly - prefer proper node types when available.</p>
-<h3 id="nodes-jump-target">nodes_jump_target<a class="heading-anchor" href="#nodes-jump-target" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-jump-target"><span id="nodes_jump_target"></span>nodes_jump_target<a class="heading-anchor" href="#nodes-jump-target" title="Link to this section">&para;</a></h3>
 <p>Jump targets (labels for goto/break/continue).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_jump_target</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -910,7 +962,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> Modern languages discourage goto, but it&rsquo;s common in C/assembly.</p>
-<h3 id="nodes-type-parameter">nodes_type_parameter<a class="heading-anchor" href="#nodes-type-parameter" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-type-parameter"><span id="nodes_type_parameter"></span>nodes_type_parameter<a class="heading-anchor" href="#nodes-type-parameter" title="Link to this section">&para;</a></h3>
 <p>Type parameters (generics/templates formal parameters).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_type_parameter</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -945,7 +997,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> TYPE_PARAMETER is the formal parameter, TYPE_ARGUMENT is the actual type used.</p>
-<h3 id="nodes-type-argument">nodes_type_argument<a class="heading-anchor" href="#nodes-type-argument" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-type-argument"><span id="nodes_type_argument"></span>nodes_type_argument<a class="heading-anchor" href="#nodes-type-argument" title="Link to this section">&para;</a></h3>
 <p>Type arguments (generics/templates actual arguments).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_type_argument</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -975,7 +1027,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> TYPE_ARGUMENT instances bind to TYPE_PARAMETER declarations.</p>
-<h3 id="nodes-binding">nodes_binding<a class="heading-anchor" href="#nodes-binding" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-binding"><span id="nodes_binding"></span>nodes_binding<a class="heading-anchor" href="#nodes-binding" title="Link to this section">&para;</a></h3>
 <p>Name-signature bindings (method resolution).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_binding</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -1013,7 +1065,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> BINDING connects TYPE_DECL to METHOD via BINDS and REF edges.</p>
-<h3 id="nodes-closure-binding">nodes_closure_binding<a class="heading-anchor" href="#nodes-closure-binding" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-closure-binding"><span id="nodes_closure_binding"></span>nodes_closure_binding<a class="heading-anchor" href="#nodes-closure-binding" title="Link to this section">&para;</a></h3>
 <p>Closure variable capture (lambda/closure bindings).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_closure_binding</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -1051,7 +1103,7 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> CLOSURE_BINDING connects to LOCAL via CAPTURED_BY and to METHOD_REF via CAPTURE.</p>
-<h3 id="nodes-comment">nodes_comment<a class="heading-anchor" href="#nodes-comment" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-comment"><span id="nodes_comment"></span>nodes_comment<a class="heading-anchor" href="#nodes-comment" title="Link to this section">&para;</a></h3>
 <p>Source code comments.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_comment</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -1091,8 +1143,8 @@
 </code></pre></div>
 
 <p><strong>Note:</strong> Comments are AST nodes connected to FILE via AST edges.</p>
-<h2 id="edge-tables">Edge Tables<a class="heading-anchor" href="#edge-tables" title="Link to this section">&para;</a></h2>
-<h3 id="edges-ast">edges_ast<a class="heading-anchor" href="#edges-ast" title="Link to this section">&para;</a></h3>
+<h2  id="edge-tables"><span id="edge_tables"></span>Edge Tables<a class="heading-anchor" href="#edge-tables" title="Link to this section">&para;</a></h2>
+<h3  id="edges-ast"><span id="edges_ast"></span>edges_ast<a class="heading-anchor" href="#edges-ast" title="Link to this section">&para;</a></h3>
 <p>Abstract Syntax Tree edges (parent-child relationships).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_ast</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span>
@@ -1104,7 +1156,7 @@
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_ast_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_ast</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-cfg">edges_cfg<a class="heading-anchor" href="#edges-cfg" title="Link to this section">&para;</a></h3>
+<h3  id="edges-cfg"><span id="edges_cfg"></span>edges_cfg<a class="heading-anchor" href="#edges-cfg" title="Link to this section">&para;</a></h3>
 <p>Control Flow Graph edges.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_cfg</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span>
@@ -1116,7 +1168,7 @@
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_cfg_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_cfg</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-call">edges_call<a class="heading-anchor" href="#edges-call" title="Link to this section">&para;</a></h3>
+<h3  id="edges-call"><span id="edges_call"></span>edges_call<a class="heading-anchor" href="#edges-call" title="Link to this section">&para;</a></h3>
 <p>Call site to method declaration edges.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_call</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- CALL node id</span>
@@ -1128,7 +1180,7 @@
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_call_edge_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_call</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-ref">edges_ref<a class="heading-anchor" href="#edges-ref" title="Link to this section">&para;</a></h3>
+<h3  id="edges-ref"><span id="edges_ref"></span>edges_ref<a class="heading-anchor" href="#edges-ref" title="Link to this section">&para;</a></h3>
 <p>Reference edges (identifier to declaration).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_ref</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- IDENTIFIER/CALL node id</span>
@@ -1140,7 +1192,7 @@
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_ref_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_ref</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-reaching-def">edges_reaching_def<a class="heading-anchor" href="#edges-reaching-def" title="Link to this section">&para;</a></h3>
+<h3  id="edges-reaching-def"><span id="edges_reaching_def"></span>edges_reaching_def<a class="heading-anchor" href="#edges-reaching-def" title="Link to this section">&para;</a></h3>
 <p>Data flow edges (reaching definitions).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_reaching_def</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span>
@@ -1156,7 +1208,7 @@
 
 <p><strong>Properties</strong> (from CPG spec):
 - VARIABLE: Variable name being tracked</p>
-<h3 id="edges-argument">edges_argument<a class="heading-anchor" href="#edges-argument" title="Link to this section">&para;</a></h3>
+<h3  id="edges-argument"><span id="edges_argument"></span>edges_argument<a class="heading-anchor" href="#edges-argument" title="Link to this section">&para;</a></h3>
 <p>Argument edges (call to argument expressions, return to returned expression).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_argument</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span>
@@ -1168,7 +1220,7 @@
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_argument_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_argument</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-receiver">edges_receiver<a class="heading-anchor" href="#edges-receiver" title="Link to this section">&para;</a></h3>
+<h3  id="edges-receiver"><span id="edges_receiver"></span>edges_receiver<a class="heading-anchor" href="#edges-receiver" title="Link to this section">&para;</a></h3>
 <p>Receiver edges (call to receiver object).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_receiver</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- CALL node id</span>
@@ -1177,7 +1229,7 @@
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-condition">edges_condition<a class="heading-anchor" href="#edges-condition" title="Link to this section">&para;</a></h3>
+<h3  id="edges-condition"><span id="edges_condition"></span>edges_condition<a class="heading-anchor" href="#edges-condition" title="Link to this section">&para;</a></h3>
 <p>Condition edges (control structure to conditional expression).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_condition</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- CONTROL_STRUCTURE node id</span>
@@ -1186,7 +1238,7 @@
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-dominate">edges_dominate<a class="heading-anchor" href="#edges-dominate" title="Link to this section">&para;</a></h3>
+<h3  id="edges-dominate"><span id="edges_dominate"></span>edges_dominate<a class="heading-anchor" href="#edges-dominate" title="Link to this section">&para;</a></h3>
 <p>Immediate dominator edges (control flow domination).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_dominate</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span>
@@ -1195,7 +1247,7 @@
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-post-dominate">edges_post_dominate<a class="heading-anchor" href="#edges-post-dominate" title="Link to this section">&para;</a></h3>
+<h3  id="edges-post-dominate"><span id="edges_post_dominate"></span>edges_post_dominate<a class="heading-anchor" href="#edges-post-dominate" title="Link to this section">&para;</a></h3>
 <p>Post-dominator edges.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_post_dominate</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span>
@@ -1207,7 +1259,7 @@
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_post_dominate_dst</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">edges_post_dominate</span><span class="p">(</span><span class="n">dst</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="edges-cdg">edges_cdg<a class="heading-anchor" href="#edges-cdg" title="Link to this section">&para;</a></h3>
+<h3  id="edges-cdg"><span id="edges_cdg"></span>edges_cdg<a class="heading-anchor" href="#edges-cdg" title="Link to this section">&para;</a></h3>
 <p>Control Dependence Graph edges (CRITICAL for PDG).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_cdg</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- Control structure node id (condition/branch)</span>
@@ -1224,7 +1276,7 @@
 - Essential for Program Dependence Graph (PDG = DDG + CDG)
 - Used for program slicing, security analysis, compiler optimizations
 - Example: statements inside IF block are control-dependent on IF condition</p>
-<h3 id="edges-binds">edges_binds<a class="heading-anchor" href="#edges-binds" title="Link to this section">&para;</a></h3>
+<h3  id="edges-binds"><span id="edges_binds"></span>edges_binds<a class="heading-anchor" href="#edges-binds" title="Link to this section">&para;</a></h3>
 <p>Binding edges (name bindings).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_binds</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- BINDING node id</span>
@@ -1240,7 +1292,7 @@
 - Connects BINDING nodes to their declarations
 - Used for variable/function name resolution
 - Example: import statement binds name to actual definition</p>
-<h3 id="edges-binds-to">edges_binds_to<a class="heading-anchor" href="#edges-binds-to" title="Link to this section">&para;</a></h3>
+<h3  id="edges-binds-to"><span id="edges_binds_to"></span>edges_binds_to<a class="heading-anchor" href="#edges-binds-to" title="Link to this section">&para;</a></h3>
 <p>Reverse binding edges (name uses).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_binds_to</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w"> </span><span class="c1">-- Variable/function reference node id</span>
@@ -1268,7 +1320,7 @@
 Reference (IDENTIFIER/CALL)
 </code></pre></div>
 
-<h3 id="edges-source-file">edges_source_file<a class="heading-anchor" href="#edges-source-file" title="Link to this section">&para;</a></h3>
+<h3  id="edges-source-file"><span id="edges_source_file"></span>edges_source_file<a class="heading-anchor" href="#edges-source-file" title="Link to this section">&para;</a></h3>
 <p>Source file edges (node to file mapping).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_source_file</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- Any AST node id</span>
@@ -1301,7 +1353,7 @@ Reference (IDENTIFIER/CALL)
 2. CPG loader creates FILE nodes for unique filenames
 3. CPG loader creates SOURCE_FILE edges from nodes to FILE nodes
 4. Results in complete file→code mapping</p>
-<h3 id="edges-alias-of">edges_alias_of<a class="heading-anchor" href="#edges-alias-of" title="Link to this section">&para;</a></h3>
+<h3  id="edges-alias-of"><span id="edges_alias_of"></span>edges_alias_of<a class="heading-anchor" href="#edges-alias-of" title="Link to this section">&para;</a></h3>
 <p>Type alias edges.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_alias_of</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- TYPE_DECL node (alias)</span>
@@ -1336,7 +1388,7 @@ Reference (IDENTIFIER/CALL)
 </code></pre></div>
 
 <p><strong>Note:</strong> Auto-generated when CPG is loaded based on ALIAS_TYPE_FULL_NAME property.</p>
-<h3 id="edges-inherits-from">edges_inherits_from<a class="heading-anchor" href="#edges-inherits-from" title="Link to this section">&para;</a></h3>
+<h3  id="edges-inherits-from"><span id="edges_inherits_from"></span>edges_inherits_from<a class="heading-anchor" href="#edges-inherits-from" title="Link to this section">&para;</a></h3>
 <p>Type inheritance edges.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_inherits_from</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- TYPE_DECL node (derived)</span>
@@ -1372,7 +1424,7 @@ Reference (IDENTIFIER/CALL)
 </code></pre></div>
 
 <p><strong>Note:</strong> Auto-generated when CPG is loaded based on INHERITS_FROM_TYPE_FULL_NAME array.</p>
-<h3 id="edges-capture">edges_capture<a class="heading-anchor" href="#edges-capture" title="Link to this section">&para;</a></h3>
+<h3  id="edges-capture"><span id="edges_capture"></span>edges_capture<a class="heading-anchor" href="#edges-capture" title="Link to this section">&para;</a></h3>
 <p>Closure capture edges.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_capture</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- METHOD_REF or TYPE_REF node</span>
@@ -1406,7 +1458,7 @@ Reference (IDENTIFIER/CALL)
 </code></pre></div>
 
 <p><strong>Note:</strong> CAPTURE edge connects closure to its captured variables.</p>
-<h3 id="edges-captured-by">edges_captured_by<a class="heading-anchor" href="#edges-captured-by" title="Link to this section">&para;</a></h3>
+<h3  id="edges-captured-by"><span id="edges_captured_by"></span>edges_captured_by<a class="heading-anchor" href="#edges-captured-by" title="Link to this section">&para;</a></h3>
 <p>Reverse closure capture edges.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_captured_by</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w">  </span><span class="c1">-- LOCAL or METHOD_PARAMETER_IN node</span>
@@ -1451,11 +1503,11 @@ METHOD_REF (closure/lambda)
 </code></pre></div>
 
 <p><strong>Note:</strong> CAPTURED_BY connects captured variable to closure binding.</p>
-<h2 id="property-graph-definition">Property Graph Definition<a class="heading-anchor" href="#property-graph-definition" title="Link to this section">&para;</a></h2>
+<h2  id="property-graph-definition"><span id="property_graph_definition"></span>Property Graph Definition<a class="heading-anchor" href="#property-graph-definition" title="Link to this section">&para;</a></h2>
 <p>Using duckpgq to create a unified property graph with full CPG schema support.</p>
 <p><strong>KEY INSIGHT</strong>: DuckDB PGQ does not support views in VERTEX TABLES, but we can use
 <strong>materialized tables</strong> instead! This allows full support for polymorphic edges.</p>
-<h3 id="step-1-create-materialized-unified-nodes-table">Step 1: Create Materialized Unified Nodes Table<a class="heading-anchor" href="#step-1-create-materialized-unified-nodes-table" title="Link to this section">&para;</a></h3>
+<h3  id="step-1-create-materialized-unified-nodes-table"><span id="step_1_create_materialized_unified_nodes_table"></span>Step 1: Create Materialized Unified Nodes Table<a class="heading-anchor" href="#step-1-create-materialized-unified-nodes-table" title="Link to this section">&para;</a></h3>
 <p><strong>Important</strong>: Use <code>CREATE TABLE</code> (not <code>CREATE VIEW</code>) to materialize the unified node set.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Create materialized unified table of all CPG nodes for polymorphic edge support</span>
 <span class="k">DROP</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">cpg_nodes</span><span class="p">;</span>
@@ -1492,7 +1544,7 @@ METHOD_REF (closure/lambda)
 <span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_cpg_nodes_type</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">cpg_nodes</span><span class="p">(</span><span class="n">node_type</span><span class="p">);</span>
 </code></pre></div>
 
-<h3 id="step-2-create-comprehensive-property-graph">Step 2: Create Comprehensive Property Graph<a class="heading-anchor" href="#step-2-create-comprehensive-property-graph" title="Link to this section">&para;</a></h3>
+<h3  id="step-2-create-comprehensive-property-graph"><span id="step_2_create_comprehensive_property_graph"></span>Step 2: Create Comprehensive Property Graph<a class="heading-anchor" href="#step-2-create-comprehensive-property-graph" title="Link to this section">&para;</a></h3>
 <p><strong>Full Implementation</strong> (with ALL edge types including polymorphic edges):</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="n">PROPERTY</span><span class="w"> </span><span class="n">GRAPH</span><span class="w"> </span><span class="n">cpg</span>
 <span class="n">VERTEX</span><span class="w"> </span><span class="n">TABLES</span><span class="w"> </span><span class="p">(</span>
@@ -1634,8 +1686,8 @@ METHOD_REF (closure/lambda)
 - ✅ <strong>Typed vertices</strong> for efficient targeted queries
 - ✅ <strong>DuckDB PGQ compatible</strong> (uses tables, not views)
 - ✅ <strong>100% CPG spec v1.1 compliant</strong></p>
-<h2 id="example-queries">Example Queries<a class="heading-anchor" href="#example-queries" title="Link to this section">&para;</a></h2>
-<h3 id="standard-sql-query-find-all-calls-to-a-specific-method">Standard SQL Query: Find all calls to a specific method<a class="heading-anchor" href="#standard-sql-query-find-all-calls-to-a-specific-method" title="Link to this section">&para;</a></h3>
+<h2  id="example-queries"><span id="example_queries"></span>Example Queries<a class="heading-anchor" href="#example-queries" title="Link to this section">&para;</a></h2>
+<h3  id="standard-sql-query-find-all-calls-to-a-specific-method"><span id="standard_sql_query_find_all_calls_to_a_specific_method"></span>Standard SQL Query: Find all calls to a specific method<a class="heading-anchor" href="#standard-sql-query-find-all-calls-to-a-specific-method" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_call</span><span class="w"> </span><span class="k">c</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">edges_call</span><span class="w"> </span><span class="n">ec</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ec</span><span class="p">.</span><span class="n">src</span>
@@ -1643,7 +1695,7 @@ METHOD_REF (closure/lambda)
 <span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;com.example.MyClass.myMethod:void()&#39;</span><span class="p">;</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-query-find-direct-call-chains-caller-callee">DuckDB PGQ Query: Find direct call chains (caller -&gt; callee)<a class="heading-anchor" href="#duckdb-pgq-query-find-direct-call-chains-caller-callee" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-query-find-direct-call-chains-caller-callee"><span id="duckdb-pgq-query-find-direct-call-chains-caller-gt-callee"></span><span id="duckdb_pgq_query_find_direct_call_chains_caller_callee"></span><span id="duckdb_pgq_query_find_direct_call_chains_caller_gt_callee"></span>DuckDB PGQ Query: Find direct call chains (caller -&gt; callee)<a class="heading-anchor" href="#duckdb-pgq-query-find-direct-call-chains-caller-callee" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
 <span class="w">    </span><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">caller</span><span class="p">:</span><span class="k">METHOD</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="n">CALLS</span><span class="p">]</span><span class="o">-</span><span class="p">(</span><span class="k">call</span><span class="p">:</span><span class="n">CALL_NODE</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="n">CALLS</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="n">callee</span><span class="p">:</span><span class="k">METHOD</span><span class="p">)</span>
@@ -1652,7 +1704,7 @@ METHOD_REF (closure/lambda)
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-query-find-methods-and-their-ast-children">DuckDB PGQ Query: Find methods and their AST children<a class="heading-anchor" href="#duckdb-pgq-query-find-methods-and-their-ast-children" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-query-find-methods-and-their-ast-children"><span id="duckdb_pgq_query_find_methods_and_their_ast_children"></span>DuckDB PGQ Query: Find methods and their AST children<a class="heading-anchor" href="#duckdb-pgq-query-find-methods-and-their-ast-children" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
 <span class="w">    </span><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">m</span><span class="p">:</span><span class="k">METHOD</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="n">AST</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="n">child</span><span class="p">:</span><span class="n">CPG_NODE</span><span class="p">)</span>
@@ -1660,7 +1712,7 @@ METHOD_REF (closure/lambda)
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-query-data-flow-paths-using-reaching-def">DuckDB PGQ Query: Data flow paths using REACHING_DEF<a class="heading-anchor" href="#duckdb-pgq-query-data-flow-paths-using-reaching-def" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-query-data-flow-paths-using-reaching-def"><span id="duckdb_pgq_query_data_flow_paths_using_reaching_def"></span>DuckDB PGQ Query: Data flow paths using REACHING_DEF<a class="heading-anchor" href="#duckdb-pgq-query-data-flow-paths-using-reaching-def" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
 <span class="w">    </span><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="k">source</span><span class="p">:</span><span class="n">CPG_NODE</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="n">REACHING_DEF</span><span class="o">*</span><span class="mi">1</span><span class="p">..</span><span class="mi">5</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="n">sink</span><span class="p">:</span><span class="n">CPG_NODE</span><span class="p">)</span>
@@ -1669,7 +1721,7 @@ METHOD_REF (closure/lambda)
 <span class="k">LIMIT</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-query-cfg-paths-control-flow">DuckDB PGQ Query: CFG paths (control flow)<a class="heading-anchor" href="#duckdb-pgq-query-cfg-paths-control-flow" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-query-cfg-paths-control-flow"><span id="duckdb_pgq_query_cfg_paths_control_flow"></span>DuckDB PGQ Query: CFG paths (control flow)<a class="heading-anchor" href="#duckdb-pgq-query-cfg-paths-control-flow" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
 <span class="w">    </span><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="k">start</span><span class="p">:</span><span class="n">CPG_NODE</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="n">CFG</span><span class="o">*</span><span class="mi">1</span><span class="p">..</span><span class="mi">3</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="k">end</span><span class="p">:</span><span class="n">CPG_NODE</span><span class="p">)</span>
@@ -1678,7 +1730,7 @@ METHOD_REF (closure/lambda)
 <span class="k">LIMIT</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-query-find-all-identifiers-and-their-references">DuckDB PGQ Query: Find all identifiers and their references<a class="heading-anchor" href="#duckdb-pgq-query-find-all-identifiers-and-their-references" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-query-find-all-identifiers-and-their-references"><span id="duckdb_pgq_query_find_all_identifiers_and_their_references"></span>DuckDB PGQ Query: Find all identifiers and their references<a class="heading-anchor" href="#duckdb-pgq-query-find-all-identifiers-and-their-references" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
 <span class="w">    </span><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">:</span><span class="n">IDENTIFIER</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="k">REF</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="n">decl</span><span class="p">:</span><span class="n">CPG_NODE</span><span class="p">)</span>
@@ -1686,7 +1738,7 @@ METHOD_REF (closure/lambda)
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="duckdb-pgq-query-type-hierarchy-inheritance">DuckDB PGQ Query: Type hierarchy (inheritance)<a class="heading-anchor" href="#duckdb-pgq-query-type-hierarchy-inheritance" title="Link to this section">&para;</a></h3>
+<h3  id="duckdb-pgq-query-type-hierarchy-inheritance"><span id="duckdb_pgq_query_type_hierarchy_inheritance"></span>DuckDB PGQ Query: Type hierarchy (inheritance)<a class="heading-anchor" href="#duckdb-pgq-query-type-hierarchy-inheritance" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
 <span class="w">    </span><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">derived</span><span class="p">:</span><span class="n">TYPE_DECL</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="n">INHERITS_FROM</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="n">base</span><span class="p">:</span><span class="n">CPG_NODE</span><span class="p">)</span>
@@ -1694,7 +1746,7 @@ METHOD_REF (closure/lambda)
 <span class="p">);</span>
 </code></pre></div>
 
-<h3 id="combined-query-methods-with-most-incoming-calls">Combined Query: Methods with most incoming calls<a class="heading-anchor" href="#combined-query-methods-with-most-incoming-calls" title="Link to this section">&para;</a></h3>
+<h3  id="combined-query-methods-with-most-incoming-calls"><span id="combined_query_methods_with_most_incoming_calls"></span>Combined Query: Methods with most incoming calls<a class="heading-anchor" href="#combined-query-methods-with-most-incoming-calls" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">call_count</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
 <span class="w">    </span><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="k">c</span><span class="p">:</span><span class="n">CALL_NODE</span><span class="p">)</span><span class="o">-</span><span class="p">[:</span><span class="n">CALLS</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">(</span><span class="n">m</span><span class="p">:</span><span class="k">METHOD</span><span class="p">)</span>
@@ -1705,8 +1757,8 @@ METHOD_REF (closure/lambda)
 <span class="k">LIMIT</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span>
 </code></pre></div>
 
-<h2 id="schema-migration-history">Schema Migration History<a class="heading-anchor" href="#schema-migration-history" title="Link to this section">&para;</a></h2>
-<h3 id="phase-1-critical-completed">Phase 1 (CRITICAL) - COMPLETED ✓<a class="heading-anchor" href="#phase-1-critical-completed" title="Link to this section">&para;</a></h3>
+<h2  id="schema-migration-history"><span id="schema_migration_history"></span>Schema Migration History<a class="heading-anchor" href="#schema-migration-history" title="Link to this section">&para;</a></h2>
+<h3  id="phase-1-critical-completed"><span id="phase_1_critical_completed"></span>Phase 1 (CRITICAL) - COMPLETED ✓<a class="heading-anchor" href="#phase-1-critical-completed" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_method (with all properties)</li>
 <li>✓ nodes_call (with method_full_name, name, signature)</li>
@@ -1715,7 +1767,7 @@ METHOD_REF (closure/lambda)
 <li>✓ nodes_method_return (METHOD_RETURN) - NEW!</li>
 <li>✓ edges_cdg (Control Dependence Graph) - NEW!</li>
 </ul>
-<h3 id="phase-2-oop-support-completed">Phase 2 (OOP SUPPORT) - COMPLETED ✓<a class="heading-anchor" href="#phase-2-oop-support-completed" title="Link to this section">&para;</a></h3>
+<h3  id="phase-2-oop-support-completed"><span id="phase_2_oop_support_completed"></span>Phase 2 (OOP SUPPORT) - COMPLETED ✓<a class="heading-anchor" href="#phase-2-oop-support-completed" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_field_identifier (FIELD_IDENTIFIER) - NEW!</li>
 <li>✓ nodes_member (MEMBER) - NEW!</li>
@@ -1724,7 +1776,7 @@ METHOD_REF (closure/lambda)
 <li>✓ edges_binds (BINDS) - NEW!</li>
 <li>✓ edges_binds_to (BINDS_TO) - NEW!</li>
 </ul>
-<h3 id="phase-3-namespace-and-file-support-completed">Phase 3 (NAMESPACE AND FILE SUPPORT) - COMPLETED ✓<a class="heading-anchor" href="#phase-3-namespace-and-file-support-completed" title="Link to this section">&para;</a></h3>
+<h3  id="phase-3-namespace-and-file-support-completed"><span id="phase_3_namespace_and_file_support_completed"></span>Phase 3 (NAMESPACE AND FILE SUPPORT) - COMPLETED ✓<a class="heading-anchor" href="#phase-3-namespace-and-file-support-completed" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ nodes_file (FILE) - NEW!</li>
 <li>✓ nodes_namespace_block (NAMESPACE_BLOCK) - NEW!</li>
@@ -1732,7 +1784,7 @@ METHOD_REF (closure/lambda)
 <li>✓ nodes_type_ref (TYPE_REF) - NEW!</li>
 <li>✓ edges_source_file (SOURCE_FILE) - NEW!</li>
 </ul>
-<h3 id="phase-4-remaining-features-completed">Phase 4 (REMAINING FEATURES) - COMPLETED ✓<a class="heading-anchor" href="#phase-4-remaining-features-completed" title="Link to this section">&para;</a></h3>
+<h3  id="phase-4-remaining-features-completed"><span id="phase_4_remaining_features_completed"></span>Phase 4 (REMAINING FEATURES) - COMPLETED ✓<a class="heading-anchor" href="#phase-4-remaining-features-completed" title="Link to this section">&para;</a></h3>
 <ul>
 <li>✓ Export AST edges</li>
 <li>✓ Export CFG edges</li>
@@ -1740,7 +1792,7 @@ METHOD_REF (closure/lambda)
 <li>✓ Export additional node types (UNKNOWN, JUMP_TARGET, TYPE_PARAMETER, TYPE_ARGUMENT, BINDING, CLOSURE_BINDING, COMMENT)</li>
 <li>✓ Export remaining edges (ALIAS_OF, INHERITS_FROM, CAPTURE, CAPTURED_BY)</li>
 </ul>
-<h2 id="performance-considerations">Performance Considerations<a class="heading-anchor" href="#performance-considerations" title="Link to this section">&para;</a></h2>
+<h2  id="performance-considerations"><span id="performance_considerations"></span>Performance Considerations<a class="heading-anchor" href="#performance-considerations" title="Link to this section">&para;</a></h2>
 <ol>
 <li><strong>Batching</strong>: Use 10,000 row batches for INSERT operations</li>
 <li><strong>Indexing</strong>: Create indexes after bulk load for faster imports</li>
@@ -1748,16 +1800,33 @@ METHOD_REF (closure/lambda)
 <li><strong>Compression</strong>: Use DuckDB&rsquo;s automatic compression for TEXT columns</li>
 <li><strong>Memory</strong>: Configure DuckDB memory limit based on CPG size</li>
 </ol>
-<h2 id="schema-version">Schema Version<a class="heading-anchor" href="#schema-version" title="Link to this section">&para;</a></h2>
+<h2  id="schema-version"><span id="schema_version"></span>Schema Version<a class="heading-anchor" href="#schema-version" title="Link to this section">&para;</a></h2>
 <ul>
 <li>CPG Spec: v1.1</li>
-<li>DuckDB: 1.1.3+</li>
+<li>DuckDB: 1.4.2+</li>
 <li>duckpgq: Latest stable</li>
-<li>Schema Version: 5.0 (Phase 4 Complete Compliance)</li>
-<li>Last Updated: 2025-11-16</li>
+<li>Schema Version: 6.0 (Pre-computed Metrics &amp; Pattern Flags)</li>
+<li>Last Updated: 2026-02-26</li>
 </ul>
 <h2 id="changelog">Changelog<a class="heading-anchor" href="#changelog" title="Link to this section">&para;</a></h2>
-<h3 id="v50-2025-11-16-phase-4-complete-compliance">v5.0 (2025-11-16) - Phase 4 Complete Compliance<a class="heading-anchor" href="#v50-2025-11-16-phase-4-complete-compliance" title="Link to this section">&para;</a></h3>
+<h3  id="v60-2026-02-26-pre-computed-metrics-pattern-flags"><span id="v60-2026-02-26-pre-computed-metrics-amp-pattern-flags"></span><span id="v60_2026_02_26_pre_computed_metrics_amp_pattern_flags"></span><span id="v60_2026_02_26_pre_computed_metrics_pattern_flags"></span>v6.0 (2026-02-26) - Pre-computed Metrics &amp; Pattern Flags<a class="heading-anchor" href="#v60-2026-02-26-pre-computed-metrics-pattern-flags" title="Link to this section">&para;</a></h3>
+<p><strong>MAJOR UPDATE: Added pre-computed boolean flags and metrics to nodes_method for fast queries</strong></p>
+<p><strong>New nodes_method Columns:</strong>
+- <code>has_disabled_code</code> (BOOLEAN) — Detects <code>#if 0</code>, <code>if false</code>, commented-out blocks
+- <code>has_deprecated</code> (BOOLEAN) — Detects <code>@Deprecated</code>, <code>[[deprecated]]</code> annotations
+- <code>has_todo_fixme</code> (BOOLEAN) — Detects <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, <code>XXX</code> comments
+- <code>has_debug_code</code> (BOOLEAN) — Detects debug prints, console.log, debugging statements
+- <code>is_test</code> (BOOLEAN) — Cross-language test function detection (11 languages)
+- <code>is_entry_point</code> (BOOLEAN) — Public API entry point detection (exported, HTTP handler, main)
+- <code>cyclomatic_complexity</code> (INTEGER) — McCabe cyclomatic complexity metric
+- <code>fan_in</code> (INTEGER) — Number of callers
+- <code>fan_out</code> (INTEGER) — Number of callees</p>
+<p><strong>Impact:</strong>
+- <strong>10-100x faster</strong> pattern queries vs. LIKE scans on code/name columns
+- Cross-language test file detection (pytest, JUnit, Go testing, etc.)
+- Pre-computed metrics enable instant complexity/coupling analysis
+- DuckDB 1.4.2+ required for DuckPGQ graph query extension</p>
+<h3  id="v50-2025-11-16-phase-4-complete-compliance"><span id="v50_2025_11_16_phase_4_complete_compliance"></span>v5.0 (2025-11-16) - Phase 4 Complete Compliance<a class="heading-anchor" href="#v50-2025-11-16-phase-4-complete-compliance" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: Achieved 100% CPG schema compliance with all remaining features</strong></p>
 <p><strong>New Node Types:</strong>
 - <code>nodes_unknown</code> (UNKNOWN) - Catch-all for unsupported AST constructs
@@ -1781,7 +1850,7 @@ METHOD_REF (closure/lambda)
 - Comment preservation for documentation
 - Complete program analysis capabilities</p>
 <p><strong>Compliance:</strong> ~95% → <strong>100% CPG schema</strong></p>
-<h3 id="v40-2025-11-16-phase-3-namespace-and-file-support">v4.0 (2025-11-16) - Phase 3 Namespace and File Support<a class="heading-anchor" href="#v40-2025-11-16-phase-3-namespace-and-file-support" title="Link to this section">&para;</a></h3>
+<h3  id="v40-2025-11-16-phase-3-namespace-and-file-support"><span id="v40_2025_11_16_phase_3_namespace_and_file_support"></span>v4.0 (2025-11-16) - Phase 3 Namespace and File Support<a class="heading-anchor" href="#v40-2025-11-16-phase-3-namespace-and-file-support" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: Added file mapping, namespace support, and method/type references</strong></p>
 <p><strong>New Node Types:</strong>
 - <code>nodes_file</code> (FILE) - Source file nodes for file-based indexing
@@ -1798,7 +1867,7 @@ METHOD_REF (closure/lambda)
 - Complete source file mapping (IDE integration ready)
 - Cross-file dependency analysis improved</p>
 <p><strong>Compliance:</strong> ~90% → ~95% CPG schema compliance</p>
-<h3 id="v30-2025-11-16-phase-2-oop-support">v3.0 (2025-11-16) - Phase 2 OOP Support<a class="heading-anchor" href="#v30-2025-11-16-phase-2-oop-support" title="Link to this section">&para;</a></h3>
+<h3  id="v30-2025-11-16-phase-2-oop-support"><span id="v30_2025_11_16_phase_2_oop_support"></span>v3.0 (2025-11-16) - Phase 2 OOP Support<a class="heading-anchor" href="#v30-2025-11-16-phase-2-oop-support" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: Added OOP analysis support and precise source mapping</strong></p>
 <p><strong>New Node Types:</strong>
 - <code>nodes_field_identifier</code> (FIELD_IDENTIFIER) - Field access nodes for OOP
@@ -1817,7 +1886,7 @@ METHOD_REF (closure/lambda)
 - Variable/function name resolution improved
 - Alias analysis enabled (canonical names)</p>
 <p><strong>Compliance:</strong> ~80% → ~90% CPG schema compliance</p>
-<h3 id="v20-2025-11-16-phase-1-critical-updates">v2.0 (2025-11-16) - Phase 1 Critical Updates<a class="heading-anchor" href="#v20-2025-11-16-phase-1-critical-updates" title="Link to this section">&para;</a></h3>
+<h3  id="v20-2025-11-16-phase-1-critical-updates"><span id="v20_2025_11_16_phase_1_critical_updates"></span>v2.0 (2025-11-16) - Phase 1 Critical Updates<a class="heading-anchor" href="#v20-2025-11-16-phase-1-critical-updates" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: Added critical components for PDG and SSA analysis</strong></p>
 <p><strong>New Node Types:</strong>
 - <code>nodes_param_out</code> (METHOD_PARAMETER_OUT) - Output parameters for SSA analysis
@@ -1830,16 +1899,16 @@ METHOD_REF (closure/lambda)
 - Program slicing enabled
 - Security taint analysis improved</p>
 <p><strong>Compliance:</strong> ~70% → ~80% CPG schema compliance</p>
-<h3 id="v10-2025-11-15-initial-release">v1.0 (2025-11-15) - Initial Release<a class="heading-anchor" href="#v10-2025-11-15-initial-release" title="Link to this section">&para;</a></h3>
+<h3  id="v10-2025-11-15-initial-release"><span id="v10_2025_11_15_initial_release"></span>v1.0 (2025-11-15) - Initial Release<a class="heading-anchor" href="#v10-2025-11-15-initial-release" title="Link to this section">&para;</a></h3>
 <ul>
 <li>11 node types (METHOD, CALL, IDENTIFIER, LITERAL, LOCAL, PARAM, RETURN, BLOCK, CONTROL_STRUCTURE, TYPE_DECL, METADATA)</li>
 <li>10 edge types (AST, CFG, CALL, REF, REACHING_DEF, ARGUMENT, RECEIVER, CONDITION, DOMINATE, POST_DOMINATE)</li>
 </ul>
 <hr />
-<h2 id="extension-semantic-tag-system">Extension: Semantic Tag System<a class="heading-anchor" href="#extension-semantic-tag-system" title="Link to this section">&para;</a></h2>
+<h2  id="extension-semantic-tag-system"><span id="extension_semantic_tag_system"></span>Extension: Semantic Tag System<a class="heading-anchor" href="#extension-semantic-tag-system" title="Link to this section">&para;</a></h2>
 <h3 id="overview_1">Overview<a class="heading-anchor" href="#overview_1" title="Link to this section">&para;</a></h3>
 <p>The tag system extends the CPG with semantic annotations for methods and other code elements. Tags are custom extensions (not part of CPG spec v1.1) that enable semantic search, code classification, and intelligent analysis.</p>
-<h3 id="nodes-tag">nodes_tag<a class="heading-anchor" href="#nodes-tag" title="Link to this section">&para;</a></h3>
+<h3  id="nodes-tag"><span id="nodes_tag"></span>nodes_tag<a class="heading-anchor" href="#nodes-tag" title="Link to this section">&para;</a></h3>
 <p>Stores tag definitions (semantic labels for code elements).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_tag</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -1854,7 +1923,7 @@ METHOD_REF (closure/lambda)
 <p><strong>Properties:</strong>
 - NAME: Tag category identifier (unique semantic dimension)
 - VALUE: Tag value within that category</p>
-<h3 id="edges-tagged-by">edges_tagged_by<a class="heading-anchor" href="#edges-tagged-by" title="Link to this section">&para;</a></h3>
+<h3  id="edges-tagged-by"><span id="edges_tagged_by"></span>edges_tagged_by<a class="heading-anchor" href="#edges-tagged-by" title="Link to this section">&para;</a></h3>
 <p>Connects code elements to their semantic tags.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w"> </span><span class="nb">BIGINT</span><span class="p">,</span><span class="w">                </span><span class="c1">-- Source node id (typically METHOD)</span>
@@ -1869,7 +1938,7 @@ METHOD_REF (closure/lambda)
 <p><strong>Relationship:</strong>
 - Source: Any CPG node (typically nodes_method)
 - Destination: nodes_tag entry</p>
-<h3 id="tag-categories">Tag Categories<a class="heading-anchor" href="#tag-categories" title="Link to this section">&para;</a></h3>
+<h3  id="tag-categories"><span id="tag_categories"></span>Tag Categories<a class="heading-anchor" href="#tag-categories" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -1931,7 +2000,7 @@ METHOD_REF (closure/lambda)
 </tr>
 </tbody>
 </table></div>
-<h3 id="example-tag-queries">Example Tag Queries<a class="heading-anchor" href="#example-tag-queries" title="Link to this section">&para;</a></h3>
+<h3  id="example-tag-queries"><span id="example_tag_queries"></span>Example Tag Queries<a class="heading-anchor" href="#example-tag-queries" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Find all security-critical methods</span>
 <span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="o">*</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
@@ -1969,18 +2038,20 @@ METHOD_REF (closure/lambda)
 <span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="k">count</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
 </code></pre></div>
 
-<h3 id="tag-statistics">Tag Statistics<a class="heading-anchor" href="#tag-statistics" title="Link to this section">&para;</a></h3>
+<h3  id="tag-statistics"><span id="tag_statistics"></span>Tag Statistics<a class="heading-anchor" href="#tag-statistics" title="Link to this section">&para;</a></h3>
 <p>Current database contains approximately:
 - <strong>15.68M tags</strong> across <strong>98 categories</strong>
 - Primary categories: subsystem-name, security-risk, function-purpose
 - Tags enable semantic code search and intelligent analysis</p>
-<h3 id="integration-notes">Integration Notes<a class="heading-anchor" href="#integration-notes" title="Link to this section">&para;</a></h3>
+<h3  id="integration-notes"><span id="integration_notes"></span>Integration Notes<a class="heading-anchor" href="#integration-notes" title="Link to this section">&para;</a></h3>
 <p>Tags are enriched post-CPG generation through:
 1. <strong>Static analysis</strong>: CPG tag queries (<code>cpg.method.tag.name(...)</code>)
 2. <strong>LLM enrichment</strong>: AI-generated function purpose descriptions
 3. <strong>Computed metrics</strong>: Cyclomatic complexity from CFG analysis
 4. <strong>Manual annotation</strong>: Security audit findings</p>
 <p>Tags extend the CPG without modifying the core schema, maintaining compatibility with standard CPG tools while enabling advanced semantic analysis.</p>
+<hr />
+<p><em>Last updated: 2026-02-26</em></p>
       </article>
 
       <!-- Page Navigation -->
@@ -1999,7 +2070,7 @@ METHOD_REF (closure/lambda)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-02-18</span>
+        <span>Last updated: 2026-02-27</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SCHEMA.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -2034,10 +2105,6 @@ METHOD_REF (closure/lambda)
 <li><a href="#nodes-method-ref" class="level-3">nodes_method_ref</a></li>
 <li><a href="#nodes-type-ref" class="level-3">nodes_type_ref</a></li>
 <li><a href="#nodes-unknown" class="level-3">nodes_unknown</a></li>
-<li><a href="#python-walrus-operator-if-not-in-spec" class="level-1">Python walrus operator (if not in spec):</a></li>
-<li><a href="#unknown-parser-type-namenamedexpr-coden-lenitems" class="level-1">UNKNOWN: parser_type_name="NamedExpr", code="n := len(items)"</a></li>
-<li><a href="#proprietary-language-extension" class="level-1">Proprietary language extension:</a></li>
-<li><a href="#unknown-parser-type-namecustomdirective" class="level-1">UNKNOWN: parser_type_name="CustomDirective"</a></li>
 <li><a href="#nodes-jump-target" class="level-3">nodes_jump_target</a></li>
 <li><a href="#nodes-type-parameter" class="level-3">nodes_type_parameter</a></li>
 <li><a href="#nodes-type-argument" class="level-3">nodes_type_argument</a></li>
@@ -2063,7 +2130,6 @@ METHOD_REF (closure/lambda)
 <li><a href="#edges-inherits-from" class="level-3">edges_inherits_from</a></li>
 <li><a href="#edges-capture" class="level-3">edges_capture</a></li>
 <li><a href="#edges-captured-by" class="level-3">edges_captured_by</a></li>
-<li><a href="#local-count-captured-by-closure-binding" class="level-1">LOCAL "count" --CAPTURED_BY--> CLOSURE_BINDING</a></li>
 <li><a href="#property-graph-definition" class="level-2">Property Graph Definition</a></li>
 <li><a href="#step-1-create-materialized-unified-nodes-table" class="level-3">Step 1: Create Materialized Unified Nodes Table</a></li>
 <li><a href="#step-2-create-comprehensive-property-graph" class="level-3">Step 2: Create Comprehensive Property Graph</a></li>
@@ -2084,6 +2150,7 @@ METHOD_REF (closure/lambda)
 <li><a href="#performance-considerations" class="level-2">Performance Considerations</a></li>
 <li><a href="#schema-version" class="level-2">Schema Version</a></li>
 <li><a href="#changelog" class="level-2">Changelog</a></li>
+<li><a href="#v60-2026-02-26-pre-computed-metrics-pattern-flags" class="level-3">v6.0 (2026-02-26) - Pre-computed Metrics & Pattern Flags</a></li>
 <li><a href="#v50-2025-11-16-phase-4-complete-compliance" class="level-3">v5.0 (2025-11-16) - Phase 4 Complete Compliance</a></li>
 <li><a href="#v40-2025-11-16-phase-3-namespace-and-file-support" class="level-3">v4.0 (2025-11-16) - Phase 3 Namespace and File Support</a></li>
 <li><a href="#v30-2025-11-16-phase-2-oop-support" class="level-3">v3.0 (2025-11-16) - Phase 2 OOP Support</a></li>
@@ -2115,6 +2182,7 @@ METHOD_REF (closure/lambda)
             <ul class="footer-links-list">
               <li><a href="../../../index.html#features" class="footer-link">Features</a></li>
               <li><a href="../../../index.html#integrations" class="footer-link">Integrations</a></li>
+              <li><a href="../../../index.html#architecture" class="footer-link">Architecture</a></li>
               <li><a href="../../../index.html#faq" class="footer-link">FAQ</a></li>
             </ul>
           </div>
@@ -2131,6 +2199,7 @@ METHOD_REF (closure/lambda)
             <h4>Resources</h4>
             <ul class="footer-links-list">
               <li><a href="../../../whitepaper.html" class="footer-link">Whitepaper</a></li>
+              <li><a href="../../../docs/en/index.html" class="footer-link">Docs (EN)</a></li>
             </ul>
           </div>
           <div class="footer-links-group">
