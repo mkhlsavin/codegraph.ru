@@ -735,6 +735,49 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
    - Adjust limits based on your capacity</p>
 </li>
 </ol>
+<h2  id="multi-tenant-isolation"><span id="multi_tenant_isolation"></span>Multi-Tenant Isolation<a class="heading-anchor" href="#multi-tenant-isolation" title="Link to this section">&para;</a></h2>
+<p>Enable multi-tenant project isolation to let multiple teams share one CodeGraph instance:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">multi_tenant</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">              </span><span class="c1"># true = enforce group-level RBAC on all data endpoints</span>
+<span class="w">  </span><span class="nt">max_project_connections</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w"> </span><span class="c1"># Max concurrent CPGQueryService instances (LRU cache)</span>
+<span class="w">  </span><span class="nt">max_harness_instances</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span><span class="w">    </span><span class="c1"># Max concurrent Harness instances (LRU cache)</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Enable group-level RBAC enforcement. When <code>false</code>, all group checks are no-ops.</td>
+</tr>
+<tr>
+<td><code>max_project_connections</code></td>
+<td>int</td>
+<td><code>10</code></td>
+<td>LRU cache size for project-scoped CPG connections. Evicted connections are closed.</td>
+</tr>
+<tr>
+<td><code>max_harness_instances</code></td>
+<td>int</td>
+<td><code>5</code></td>
+<td>LRU cache size for project-scoped Harness instances.</td>
+</tr>
+</tbody>
+</table></div>
+<p>When enabled, every API request resolves a <code>ProjectContext</code> via:
+1. <code>X-Project-Id</code> header (UUID) — explicit project selection
+2. User&rsquo;s active project — from <code>user_active_project</code> table
+3. Global fallback — uses <code>ProjectManager</code> singleton (CLI/TUI/demo mode)</p>
+<p><strong>Migration for existing installations:</strong> Run <code>python scripts/migrate_default_group.py</code> once to create a default group with all existing users and projects.</p>
 <h2 id="validation">Validation<a class="heading-anchor" href="#validation" title="Link to this section">&para;</a></h2>
 <p>Test your configuration:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Test database connection</span>
@@ -811,6 +854,7 @@ curl<span class="w"> </span>http://localhost:8000/api/v1/health
 <li><a href="#for-development-fast-reload" class="level-3">For Development (Fast Reload)</a></li>
 <li><a href="#for-limited-resources" class="level-3">For Limited Resources</a></li>
 <li><a href="#security-best-practices" class="level-2">Security Best Practices</a></li>
+<li><a href="#multi-tenant-isolation" class="level-2">Multi-Tenant Isolation</a></li>
 <li><a href="#validation" class="level-2">Validation</a></li>
 <li><a href="#next-steps" class="level-2">Next Steps</a></li>
       </ul>

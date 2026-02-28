@@ -232,6 +232,12 @@
 <li><a href="#auditing-and-logging">Auditing and Logging</a></li>
 <li><a href="#authorization-events">Authorization Events</a></li>
 <li><a href="#log-format">Log Format</a></li>
+<li><a href="#group-level-rbac-multi-tenant">Group-Level RBAC (Multi-Tenant)</a></li>
+<li><a href="#group-roles">Group Roles</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#api-key-group-scoping">API Key Group Scoping</a></li>
+<li><a href="#audit-context">Audit Context</a></li>
+<li><a href="#migration">Migration</a></li>
 <li><a href="#best-practices">Best Practices</a></li>
 <li><a href="#for-administrators">For Administrators</a></li>
 <li><a href="#for-developers">For Developers</a></li>
@@ -915,6 +921,52 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 </code></pre></div>
 
 <hr />
+<h2  id="group-level-rbac-multi-tenant"><span id="group_level_rbac_multi_tenant"></span>Group-Level RBAC (Multi-Tenant)<a class="heading-anchor" href="#group-level-rbac-multi-tenant" title="Link to this section">&para;</a></h2>
+<p>When <code>multi_tenant.enabled: true</code> in <code>config.yaml</code>, CodeGraph enforces <strong>group-level access control</strong> on all data endpoints. Projects belong to groups, and users have per-group roles.</p>
+<h3  id="group-roles"><span id="group_roles"></span>Group Roles<a class="heading-anchor" href="#group-roles" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Permissions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VIEWER</code></td>
+<td>Read-only: query, stats, list</td>
+</tr>
+<tr>
+<td><code>EDITOR</code></td>
+<td>Read + write: import, edit, activate</td>
+</tr>
+<tr>
+<td><code>ADMIN</code></td>
+<td>Full access: delete projects, manage group members</td>
+</tr>
+</tbody>
+</table></div>
+<p>System administrators (<code>Role.ADMIN</code>) bypass all group checks.</p>
+<h3  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h3>
+<p>Every API request resolves a <code>ProjectContext</code> containing <code>project_id</code>, <code>group_id</code>, and <code>db_path</code>. The <code>require_project_access(min_group_role)</code> dependency checks:</p>
+<ol>
+<li>If <code>multi_tenant.enabled</code> is <code>false</code> → pass-through (no enforcement)</li>
+<li>If user is system admin → bypass group checks</li>
+<li>Otherwise → verify <code>user_group_access</code> table for minimum role</li>
+</ol>
+<h3  id="api-key-group-scoping"><span id="api_key_group_scoping"></span>API Key Group Scoping<a class="heading-anchor" href="#api-key-group-scoping" title="Link to this section">&para;</a></h3>
+<p>API keys can optionally be scoped to a specific group via the <code>group_id</code> column:
+- <code>NULL</code> — access all groups the user belongs to (backward compatible)
+- Set — restricts project resolution to that group only</p>
+<h3  id="audit-context"><span id="audit_context"></span>Audit Context<a class="heading-anchor" href="#audit-context" title="Link to this section">&para;</a></h3>
+<p>When multi-tenant is enabled, audit log entries include <code>project_id</code> and <code>group_id</code> fields for tenant-aware audit trails.</p>
+<h3 id="migration">Migration<a class="heading-anchor" href="#migration" title="Link to this section">&para;</a></h3>
+<p>For existing single-tenant installations, run the migration script once:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/migrate_default_group.py<span class="w">          </span><span class="c1"># Creates &quot;default&quot; group, assigns all users as ADMIN</span>
+python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> </span>--dry-run<span class="w"> </span><span class="c1"># Preview changes without applying</span>
+</code></pre></div>
+
+<hr />
 <h2  id="best-practices"><span id="best_practices"></span>Best Practices<a class="heading-anchor" href="#best-practices" title="Link to this section">&para;</a></h2>
 <h3  id="for-administrators"><span id="for_administrators"></span>For Administrators<a class="heading-anchor" href="#for-administrators" title="Link to this section">&para;</a></h3>
 <ol>
@@ -989,6 +1041,12 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 <li><a href="#auditing-and-logging" class="level-2">Auditing and Logging</a></li>
 <li><a href="#authorization-events" class="level-3">Authorization Events</a></li>
 <li><a href="#log-format" class="level-3">Log Format</a></li>
+<li><a href="#group-level-rbac-multi-tenant" class="level-2">Group-Level RBAC (Multi-Tenant)</a></li>
+<li><a href="#group-roles" class="level-3">Group Roles</a></li>
+<li><a href="#how-it-works" class="level-3">How It Works</a></li>
+<li><a href="#api-key-group-scoping" class="level-3">API Key Group Scoping</a></li>
+<li><a href="#audit-context" class="level-3">Audit Context</a></li>
+<li><a href="#migration" class="level-3">Migration</a></li>
 <li><a href="#best-practices" class="level-2">Best Practices</a></li>
 <li><a href="#for-administrators" class="level-3">For Administrators</a></li>
 <li><a href="#for-developers" class="level-3">For Developers</a></li>

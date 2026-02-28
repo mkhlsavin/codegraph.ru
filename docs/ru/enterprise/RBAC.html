@@ -232,6 +232,12 @@
 <li><a href="#audit-i-logirovanie">Аудит и логирование</a></li>
 <li><a href="#sobytiya-avtorizatsii">События авторизации</a></li>
 <li><a href="#format-loga">Формат лога</a></li>
+<li><a href="#rbac-na-urovne-grupp">RBAC на уровне групп (мультитенантность)</a></li>
+<li><a href="#roli-v-gruppakh">Роли в группах</a></li>
+<li><a href="#kak-eto-rabotaet">Как это работает</a></li>
+<li><a href="#privyazka-api-klyuchey-k-gruppe">Привязка API-ключей к группе</a></li>
+<li><a href="#kontekst-audita">Контекст аудита</a></li>
+<li><a href="#migratsiya">Миграция</a></li>
 <li><a href="#luchshie-praktiki">Лучшие практики</a></li>
 <li><a href="#dlya-administratorov">Для администраторов</a></li>
 <li><a href="#dlya-razrabotchikov">Для разработчиков</a></li>
@@ -915,6 +921,52 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 </code></pre></div>
 
 <hr />
+<h2  id="rbac-na-urovne-grupp"><span id="rbac-na-urovne-grupp-multitenantnost"></span><span id="rbac_na_urovne_grupp"></span><span id="rbac_na_urovne_grupp_multitenantnost"></span>RBAC на уровне групп (мультитенантность)<a class="heading-anchor" href="#rbac-na-urovne-grupp" title="Link to this section">&para;</a></h2>
+<p>При <code>multi_tenant.enabled: true</code> в <code>config.yaml</code> CodeGraph применяет <strong>контроль доступа на уровне групп</strong> для всех эндпоинтов данных. Проекты принадлежат группам, пользователи имеют роли в каждой группе.</p>
+<h3  id="roli-v-gruppakh"><span id="roli-v-gruppah"></span><span id="roli_v_gruppah"></span><span id="roli_v_gruppakh"></span>Роли в группах<a class="heading-anchor" href="#roli-v-gruppakh" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Роль</th>
+<th>Разрешения</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VIEWER</code></td>
+<td>Только чтение: запросы, статистика, списки</td>
+</tr>
+<tr>
+<td><code>EDITOR</code></td>
+<td>Чтение + запись: импорт, редактирование, активация</td>
+</tr>
+<tr>
+<td><code>ADMIN</code></td>
+<td>Полный доступ: удаление проектов, управление участниками группы</td>
+</tr>
+</tbody>
+</table></div>
+<p>Системные администраторы (<code>Role.ADMIN</code>) обходят все проверки групп.</p>
+<h3  id="kak-eto-rabotaet"><span id="kak_eto_rabotaet"></span>Как это работает<a class="heading-anchor" href="#kak-eto-rabotaet" title="Link to this section">&para;</a></h3>
+<p>Каждый API-запрос разрешает <code>ProjectContext</code>, содержащий <code>project_id</code>, <code>group_id</code> и <code>db_path</code>. Зависимость <code>require_project_access(min_group_role)</code> проверяет:</p>
+<ol>
+<li>Если <code>multi_tenant.enabled</code> = <code>false</code> → пропуск (без проверок)</li>
+<li>Если пользователь — системный администратор → обход проверок групп</li>
+<li>Иначе → проверка таблицы <code>user_group_access</code> на минимальную роль</li>
+</ol>
+<h3  id="privyazka-api-klyuchey-k-gruppe"><span id="privyazka_api_klyuchey_k_gruppe"></span>Привязка API-ключей к группе<a class="heading-anchor" href="#privyazka-api-klyuchey-k-gruppe" title="Link to this section">&para;</a></h3>
+<p>API-ключи могут быть привязаны к конкретной группе через столбец <code>group_id</code>:
+- <code>NULL</code> — доступ ко всем группам пользователя (обратная совместимость)
+- Указан — ограничивает разрешение проектов только этой группой</p>
+<h3  id="kontekst-audita"><span id="kontekst_audita"></span>Контекст аудита<a class="heading-anchor" href="#kontekst-audita" title="Link to this section">&para;</a></h3>
+<p>При включённой мультитенантности записи журнала аудита включают поля <code>project_id</code> и <code>group_id</code> для тенант-зависимых аудиторских следов.</p>
+<h3 id="migratsiya">Миграция<a class="heading-anchor" href="#migratsiya" title="Link to this section">&para;</a></h3>
+<p>Для существующих однотенантных установок выполните скрипт миграции один раз:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/migrate_default_group.py<span class="w">          </span><span class="c1"># Создаёт группу &quot;default&quot;, назначает всех пользователей как ADMIN</span>
+python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> </span>--dry-run<span class="w"> </span><span class="c1"># Предпросмотр изменений без применения</span>
+</code></pre></div>
+
+<hr />
 <h2  id="luchshie-praktiki"><span id="luchshie_praktiki"></span>Лучшие практики<a class="heading-anchor" href="#luchshie-praktiki" title="Link to this section">&para;</a></h2>
 <h3  id="dlya-administratorov"><span id="dlya_administratorov"></span>Для администраторов<a class="heading-anchor" href="#dlya-administratorov" title="Link to this section">&para;</a></h3>
 <ol>
@@ -989,6 +1041,12 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 <li><a href="#audit-i-logirovanie" class="level-2">Аудит и логирование</a></li>
 <li><a href="#sobytiya-avtorizatsii" class="level-3">События авторизации</a></li>
 <li><a href="#format-loga" class="level-3">Формат лога</a></li>
+<li><a href="#rbac-na-urovne-grupp" class="level-2">RBAC на уровне групп (мультитенантность)</a></li>
+<li><a href="#roli-v-gruppakh" class="level-3">Роли в группах</a></li>
+<li><a href="#kak-eto-rabotaet" class="level-3">Как это работает</a></li>
+<li><a href="#privyazka-api-klyuchey-k-gruppe" class="level-3">Привязка API-ключей к группе</a></li>
+<li><a href="#kontekst-audita" class="level-3">Контекст аудита</a></li>
+<li><a href="#migratsiya" class="level-3">Миграция</a></li>
 <li><a href="#luchshie-praktiki" class="level-2">Лучшие практики</a></li>
 <li><a href="#dlya-administratorov" class="level-3">Для администраторов</a></li>
 <li><a href="#dlya-razrabotchikov" class="level-3">Для разработчиков</a></li>

@@ -730,6 +730,49 @@ llm:
    - Используйте Redis для распределенного ограничения частоты запросов
    - Настройте ограничения в соответствии с возможностями вашей системы</li>
 </ol>
+<h2  id="multitenant-izolyatsiya"><span id="multitenant_izolyatsiya"></span><span id="multitenantnaya-izolyatsiya"></span><span id="multitenantnaya_izolyatsiya"></span>Мультитенантная изоляция<a class="heading-anchor" href="#multitenant-izolyatsiya" title="Link to this section">&para;</a></h2>
+<p>Включите мультитенантную изоляцию проектов, чтобы несколько команд могли использовать один экземпляр CodeGraph:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">multi_tenant</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">              </span><span class="c1"># true = включить RBAC на уровне групп для всех эндпоинтов данных</span>
+<span class="w">  </span><span class="nt">max_project_connections</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w"> </span><span class="c1"># Максимум одновременных подключений CPGQueryService (LRU-кэш)</span>
+<span class="w">  </span><span class="nt">max_harness_instances</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span><span class="w">    </span><span class="c1"># Максимум одновременных экземпляров Harness (LRU-кэш)</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Включить проверку RBAC на уровне групп. При <code>false</code> все проверки групп отключены.</td>
+</tr>
+<tr>
+<td><code>max_project_connections</code></td>
+<td>int</td>
+<td><code>10</code></td>
+<td>Размер LRU-кэша для подключений CPG по проектам. Вытесненные подключения закрываются.</td>
+</tr>
+<tr>
+<td><code>max_harness_instances</code></td>
+<td>int</td>
+<td><code>5</code></td>
+<td>Размер LRU-кэша для экземпляров Harness по проектам.</td>
+</tr>
+</tbody>
+</table></div>
+<p>При включении каждый API-запрос разрешает <code>ProjectContext</code> через:
+1. Заголовок <code>X-Project-Id</code> (UUID) — явный выбор проекта
+2. Активный проект пользователя — из таблицы <code>user_active_project</code>
+3. Глобальный откат — использует синглтон <code>ProjectManager</code> (CLI/TUI/демо-режим)</p>
+<p><strong>Миграция для существующих установок:</strong> Выполните <code>python scripts/migrate_default_group.py</code> один раз, чтобы создать группу по умолчанию со всеми существующими пользователями и проектами.</p>
 <h2  id="fayly-konfiguratsii"><span id="proverka"></span>Проверка<a class="heading-anchor" href="#fayly-konfiguratsii" title="Link to this section">&para;</a></h2>
 <p>Проверьте свою конфигурацию:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Проверка подключения к базе данных</span>
@@ -806,6 +849,7 @@ llm:
 <li><a href="#dlya-razrabotki-avtomaticheskaya-perezagruzka" class="level-3">Для разработки (автоматическая перезагрузка)</a></li>
 <li><a href="#pri-ogranichennyh-resursah" class="level-3">При ограниченных ресурсах</a></li>
 <li><a href="#rekomendatsii-po-obespecheniyu-bezopasnosti" class="level-2">Рекомендации по обеспечению безопасности</a></li>
+<li><a href="#multitenant-izolyatsiya" class="level-2">Мультитенантная изоляция</a></li>
 <li><a href="#fayly-konfiguratsii" class="level-2">Проверка</a></li>
 <li><a href="#dalneyshie-shagi" class="level-2">Дальнейшие шаги</a></li>
       </ul>
