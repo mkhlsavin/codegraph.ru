@@ -91,7 +91,7 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
-        <li><a href="CODE_REVIEW.html">Автоматический код-ревью</a></li>
+        <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Руководство по догфудингу: анализ коммитов на базе CPG</a></li>
@@ -112,7 +112,7 @@
         <li><a href="06-performance.html">Сценарий 06: Анализ производительности</a></li>
         <li><a href="07-test-coverage.html">Сценарий 07: Покрытие тестами</a></li>
         <li><a href="08-compliance.html">Сценарий 08: Проверка соответствия требованиям</a></li>
-        <li><a href="09-code-review.html">Сценарий 09: Код-ревью</a></li>
+        <li><a href="09-code-review.html">Сценарий 09: Проверка кода</a></li>
         <li><a href="10-cross-repo.html">Сценарий 10: Анализ между репозиториями</a></li>
         <li><a href="11-architecture.html">Сценарий 11: Анализ архитектуры</a></li>
         <li><a href="12-tech-debt.html">Сценарий 12: Оценка технического долга</a></li>
@@ -177,9 +177,9 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="audit-bezopasnosti-avtoispravlenie"><span id="audit_bezopasnosti_avtoispravlenie"></span>Аудит безопасности: Автоисправление<a class="heading-anchor" href="#audit-bezopasnosti-avtoispravlenie" title="Link to this section">&para;</a></h1>
-<p>Автоматическая генерация исправлений для уязвимостей, обнаруженных анализом потоков данных (taint analysis).</p>
+<p>Автоматическая генерация исправлений для уязвимостей, обнаруженных анализом потоков данных (анализ заражения данных).</p>
 <h2 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h2>
-<p>Движок автоисправлений CodeGraph берет обнаруженные уязвимости (пути распространения данных от ненадежных источников к опасным приемникам) и генерирует конкретные патчи. Используются две стратегии:</p>
+<p>Движок автоисправлений CodeGraph берет обнаруженные уязвимости (пути распространения данных от ненадежных источников к опасным приемникам) и генерирует конкретные исправления. Используются две стратегии:</p>
 <ol>
 <li><strong>Шаблонная</strong> — шаблоны исправлений на основе сопоставления с образцом для известных типов уязвимостей (высокая уверенность, &gt;0.8)</li>
 <li><strong>LLM</strong> — откат к генерации через LLM, когда ни один шаблон не подходит (пониженная уверенность, &lt;=0.59)</li>
@@ -227,10 +227,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">|</span>
 <span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Нет</span><span class="w"> </span><span class="err">совпадения</span><span class="o">?</span><span class="w"> </span><span class="err">Передача</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="n">LLM</span>
 <span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Откат</span><span class="w"> </span><span class="err">на</span><span class="w"> </span><span class="n">LLM</span><span class="w"> </span><span class="p">(</span><span class="n">PromptBuilder</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">провайдер</span><span class="w"> </span><span class="n">LLM</span><span class="p">)</span>
+<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Откат</span><span class="w"> </span><span class="err">на</span><span class="w"> </span><span class="n">LLM</span><span class="w"> </span><span class="p">(</span><span class="n">PromptBuilder</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">поставщик</span><span class="w"> </span><span class="n">LLM</span><span class="p">)</span>
 <span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">|</span>
 <span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Построение</span><span class="w"> </span><span class="err">структурированного</span><span class="w"> </span><span class="err">промпта</span><span class="w"> </span><span class="err">с</span><span class="w"> </span><span class="err">контекстом</span><span class="w"> </span><span class="err">потока</span><span class="w"> </span><span class="err">данных</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Вызов</span><span class="w"> </span><span class="err">настроенного</span><span class="w"> </span><span class="err">провайдера</span><span class="w"> </span><span class="n">LLM</span>
+<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Вызов</span><span class="w"> </span><span class="err">настроенного</span><span class="w"> </span><span class="err">поставщика</span><span class="w"> </span><span class="n">LLM</span>
 <span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Парсинг</span><span class="w"> </span><span class="err">кода</span><span class="w"> </span><span class="err">из</span><span class="w"> </span><span class="err">ответа</span>
 <span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="err">Возврат</span><span class="w"> </span><span class="n">FixSuggestion</span><span class="w"> </span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s">&quot;llm&quot;</span><span class="p">)</span>
 <span class="w">    </span><span class="o">|</span>
@@ -433,7 +433,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-02-27</span>
+        <span>Обновлено: 2026-02-28</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/02-security-audit-autofix.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

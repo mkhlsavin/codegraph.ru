@@ -91,7 +91,7 @@
         <li><a href="../guides/index.html">Обзор</a></li>
         <li><a href="../guides/BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
-        <li><a href="../guides/CODE_REVIEW.html">Автоматический код-ревью</a></li>
+        <li><a href="../guides/CODE_REVIEW.html">Автоматический проверка кода</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по догфудингу: анализ коммитов на базе CPG</a></li>
@@ -112,7 +112,7 @@
         <li><a href="../guides/06-performance.html">Сценарий 06: Анализ производительности</a></li>
         <li><a href="../guides/07-test-coverage.html">Сценарий 07: Покрытие тестами</a></li>
         <li><a href="../guides/08-compliance.html">Сценарий 08: Проверка соответствия требованиям</a></li>
-        <li><a href="../guides/09-code-review.html">Сценарий 09: Код-ревью</a></li>
+        <li><a href="../guides/09-code-review.html">Сценарий 09: Проверка кода</a></li>
         <li><a href="../guides/10-cross-repo.html">Сценарий 10: Анализ между репозиториями</a></li>
         <li><a href="../guides/11-architecture.html">Сценарий 11: Анализ архитектуры</a></li>
         <li><a href="../guides/12-tech-debt.html">Сценарий 12: Оценка технического долга</a></li>
@@ -721,7 +721,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <span class="w">    </span><span class="nt">id</span><span class="w"> </span><span class="nt">BIGINT</span><span class="w"> </span><span class="nt">PRIMARY</span><span class="w"> </span><span class="nt">KEY</span><span class="o">,</span>
 <span class="w">    </span><span class="nt">name</span><span class="w"> </span><span class="nt">VARCHAR</span><span class="o">,</span><span class="w">           </span><span class="nt">--</span><span class="w"> </span><span class="nt">Путь</span><span class="w"> </span><span class="nt">к</span><span class="w"> </span><span class="nt">файлу</span><span class="w"> </span><span class="o">(</span><span class="nt">относительно</span><span class="w"> </span><span class="nt">корня</span><span class="o">)</span>
 <span class="w">    </span><span class="nt">hash</span><span class="w"> </span><span class="nt">VARCHAR</span><span class="o">,</span><span class="w">           </span><span class="nt">--</span><span class="w"> </span><span class="nt">Хеш</span><span class="w"> </span><span class="nt">содержимого</span><span class="w"> </span><span class="nt">файла</span>
-<span class="w">    </span><span class="nt">content</span><span class="w"> </span><span class="nt">TEXT</span><span class="o">,</span><span class="w">           </span><span class="nt">--</span><span class="w"> </span><span class="nt">Опционально</span><span class="o">:</span><span class="w"> </span><span class="nt">исходный</span><span class="w"> </span><span class="nt">код</span><span class="w"> </span><span class="nt">файла</span>
+<span class="w">    </span><span class="nt">content</span><span class="w"> </span><span class="nt">TEXT</span><span class="o">,</span><span class="w">           </span><span class="nt">--</span><span class="w"> </span><span class="nt">Необязательно</span><span class="o">:</span><span class="w"> </span><span class="nt">исходный</span><span class="w"> </span><span class="nt">код</span><span class="w"> </span><span class="nt">файла</span>
 <span class="w">    </span><span class="nt">order_index</span><span class="w"> </span><span class="nt">INTEGER</span>
 <span class="o">);</span>
 
@@ -732,7 +732,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <p><strong>Свойства</strong> (из спецификации CPG):
 - NAME: Путь к файлу относительно корня (из METADATA.ROOT)
 - HASH: Хеш SHA-256 или MD5 содержимого файла
-- CONTENT: Опционально — полный исходный код файла
+- CONTENT: Необязательно — полный исходный код файла
 - ORDER_INDEX: Всегда 0 (у файлов нет соседей)</p>
 <p><strong>Назначение:</strong>
 - Индекс для поиска всех элементов кода по файлу
@@ -1005,7 +1005,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 <p><strong>Свойства</strong> (из спецификации CPG):
 - Связывает узлы с их исходным файлом FILE
 - Создаётся автоматически на основе свойства FILENAME
-- <strong>НЕ ДОЛЖНО создаваться языковым фронтендом</strong> — создаётся автоматически
+- <strong>НЕ ДОЛЖНО создаваться языковым модулем анализа</strong> — создаётся автоматически
 - Отношение один к одному: каждый узел имеет ровно один исходный файл</p>
 <p><strong>Назначение:</strong>
 - Сопоставление любого элемента кода с его исходным файлом
@@ -1019,7 +1019,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 </code></pre></div>
 
 <p><strong>Логика автоматического создания:</strong>
-1. Фронтенд устанавливает свойство FILENAME на узлах (METHOD, TYPE_DECL и т.д.)
+1. Модуль анализа устанавливает свойство FILENAME на узлах (METHOD, TYPE_DECL и т.д.)
 2. Загрузчик CPG создаёт узлы FILE для уникальных имён файлов
 3. Загрузчик CPG создаёт рёбра SOURCE_FILE от узлов к узлам FILE
 4. Результат — полное сопоставление файл → код</p>
@@ -1037,7 +1037,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 
 <p><strong>Свойства</strong> (из спецификации CPG):
 - Связывает TYPE_DECL (псевдоним) с TYPE (фактическим типом)
-- <strong>НЕ ДОЛЖНО создаваться фронтендом</strong> — создаётся автоматически из ALIAS_TYPE_FULL_NAME
+- <strong>НЕ ДОЛЖНО создаваться модулем анализа</strong> — создаётся автоматически из ALIAS_TYPE_FULL_NAME
 - Отношение один к одному</p>
 <p><strong>Назначение:</strong>
 - Представление псевдонимов типов (typedef в C, using, type aliases)
@@ -1072,7 +1072,7 @@ CREATE INDEX idx_field_identifier_canonical ON nodes_field_identifier(canonical_
 
 <p><strong>Свойства</strong> (из спецификации CPG):
 - Связывает TYPE_DECL (производный) с TYPE (базовым)
-- <strong>НЕ ДОЛЖНО создаваться фронтендом</strong> — создаётся автоматически из INHERITS_FROM_TYPE_FULL_NAME
+- <strong>НЕ ДОЛЖНО создаваться модулем анализа</strong> — создаётся автоматически из INHERITS_FROM_TYPE_FULL_NAME
 - Отношение один ко многим (поддерживается множественное наследование)</p>
 <p><strong>Назначение:</strong>
 - Представление наследования классов/интерфейсов
@@ -1566,7 +1566,7 @@ METHOD_REF (замыкание/лямбда)
 - Граф зависимостей программы (PDG) теперь полный (DDG + CDG)
 - Теперь возможен анализ SSA
 - Включено программное срезание (program slicing)
-- Улучшен анализ утечки данных (taint analysis)</p>
+- Улучшен анализ утечки данных (анализ заражения данных)</p>
 <p><strong>Соответствие:</strong> ~70% → ~80% схеме CPG</p>
 <h3  id="v10-2025-11-15---initial-release"><span id="v10-2025-11-15-pervonachalnyy-vypusk"></span><span id="v10_2025_11_15___initial_release"></span><span id="v10_2025_11_15_pervonachalnyy_vypusk"></span>v1.0 (2025-11-15) — Первоначальный выпуск<a class="heading-anchor" href="#v10-2025-11-15---initial-release" title="Link to this section">&para;</a></h3>
 <ul>
@@ -1739,7 +1739,7 @@ METHOD_REF (замыкание/лямбда)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-02-27</span>
+        <span>Обновлено: 2026-02-28</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SCHEMA.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

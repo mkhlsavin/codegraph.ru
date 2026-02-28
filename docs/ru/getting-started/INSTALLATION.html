@@ -155,7 +155,7 @@
 <li><a href="#shag-3-initsializatsiya-bazy-dannyh">Шаг 3: Инициализация базы данных</a></li>
 <li><a href="#proverka-bazy-dannyh">Проверка базы данных</a></li>
 <li><a href="#shag-4-sozdanie-administratora">Шаг 4: Создание администратора</a></li>
-<li><a href="#shag-5-nastroyka-postavschika-llm-neobyazatelno">Шаг 5: Настройка поставщика LLM (опционально)</a></li>
+<li><a href="#shag-5-nastroyka-postavschika-llm-neobyazatelno">Шаг 5: Настройка поставщика LLM (необязательно)</a></li>
 <li><a href="#variant-a-gigachat-rekomenduetsya-dlya-rossii">Вариант A: GigaChat (рекомендуется для России)</a></li>
 <li><a href="#variant-b-lokalnaya-llm-llama-cpp-python">Вариант B: Локальная LLM (llama-cpp-python)</a></li>
 <li><a href="#variant-c-openai-api">Вариант C: OpenAI API</a></li>
@@ -164,7 +164,7 @@
 <li><a href="#dostup-k-dokumentatsii-api">Доступ к документации API</a></li>
 <li><a href="#proverka-endpointa-rabotosposobnosti">Проверка работоспособности (health endpoint)</a></li>
 <li><a href="#proverka-autentifikatsii">Проверка аутентификации</a></li>
-<li><a href="#proverka-zaschischyonnogo-endpointa">Проверка защищённого эндпоинта</a></li>
+<li><a href="#proverka-zaschischyonnogo-endpointa">Проверка защищённого конечной точки</a></li>
 <li><a href="#shag-8-nastroyka-dannyh-cpg">Шаг 8: Настройка данных CPG</a></li>
 <li><a href="#ustranenie-nepoladok">Устранение неполадок</a></li>
 <li><a href="#ne-udalos-podklyuchitsya-k-postgresql">Не удалось подключиться к PostgreSQL</a></li>
@@ -180,16 +180,18 @@
 <ul>
 <li><strong>Процессор</strong>: рекомендуется 8 и более ядер</li>
 <li><strong>Оперативная память</strong>: минимум 16 ГБ (32 ГБ и более для крупных кодовых баз с локальной языковой моделью)</li>
-<li><strong>Видеокарта</strong>: NVIDIA RTX 3090 или выше (опционально, для локальной языковой модели)</li>
+<li><strong>Видеокарта</strong>: NVIDIA RTX 3090 или выше (необязательно, для локальной языковой модели)</li>
 <li><strong>Место на диске</strong>: 50 ГБ свободного места</li>
 </ul>
 <h3  id="programmnoe-obespechenie"><span id="programmnoe_obespechenie"></span>Программное обеспечение<a class="heading-anchor" href="#programmnoe-obespechenie" title="Link to this section">&para;</a></h3>
 <ul>
 <li>Windows 10/11 или Linux</li>
 <li>Python 3.11+</li>
-<li>PostgreSQL 15+ (требуется для сервера API)</li>
+<li>PostgreSQL 15+ (требуется для сервера API; рекомендуется PostgreSQL 17)</li>
+<li>DuckDB &gt;= 1.4.2 (требуется для расширения графовых запросов DuckPGQ; устанавливается через <code>requirements.txt</code>)</li>
 <li>Git</li>
-<li>CUDA Toolkit 11.8+ (опционально, для ускорения локальной языковой модели с помощью GPU)</li>
+<li>Go 1.26+ с CGO (необязательно, требуется для сборки GoCPG из исходников)</li>
+<li>CUDA Toolkit 11.8+ (необязательно, для ускорения локальной языковой модели с помощью GPU)</li>
 </ul>
 <h2  id="shag-1-nastroyka-okruzheniya"><span id="shag_1_nastroyka_okruzheniya"></span>Шаг 1: Настройка окружения<a class="heading-anchor" href="#shag-1-nastroyka-okruzheniya" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code># Клонировать репозиторий
@@ -345,7 +347,7 @@ CMAKE_ARGS=&quot;-DLLAMA_CUDA=on&quot; pip install llama-cpp-python
 <p>Откройте браузер и перейдите по следующим ссылкам:
 - <strong>Swagger UI</strong>: http://127.0.0.1:8000/api/docs
 - <strong>ReDoc</strong>: http://127.0.0.1:8000/api/redoc</p>
-<h3  id="proverka-endpointa-rabotosposobnosti"><span id="proverka_endpointa_rabotosposobnosti"></span>Проверка эндпоинта работоспособности<a class="heading-anchor" href="#proverka-endpointa-rabotosposobnosti" title="Link to this section">&para;</a></h3>
+<h3  id="proverka-endpointa-rabotosposobnosti"><span id="proverka-konechnoy-tochki-rabotosposobnosti"></span><span id="proverka_endpointa_rabotosposobnosti"></span><span id="proverka_konechnoy_tochki_rabotosposobnosti"></span>Проверка конечной точки работоспособности<a class="heading-anchor" href="#proverka-endpointa-rabotosposobnosti" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>curl http://127.0.0.1:8000/api/v1/health
 </code></pre></div>
 
@@ -379,7 +381,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/token \
 <span class="p">}</span>
 </code></pre></div>
 
-<h3  id="proverka-zaschischyonnogo-endpointa"><span id="proverka_zaschischyonnogo_endpointa"></span>Проверка защищённого эндпоинта<a class="heading-anchor" href="#proverka-zaschischyonnogo-endpointa" title="Link to this section">&para;</a></h3>
+<h3  id="proverka-zaschischyonnogo-endpointa"><span id="proverka-zaschischyonnoy-konechnoy-tochki"></span><span id="proverka_zaschischyonnogo_endpointa"></span><span id="proverka_zaschischyonnoy_konechnoy_tochki"></span>Проверка защищённой конечной точки<a class="heading-anchor" href="#proverka-zaschischyonnogo-endpointa" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="gh">#</span> Замените TOKEN на полученный ранее access_token
 curl http://127.0.0.1:8000/api/v1/scenarios \
   -H &quot;Authorization: Bearer TOKEN&quot;
@@ -474,7 +476,7 @@ retrieval:
 
 <h2  id="dalneyshie-shagi"><span id="dalneyshie_shagi"></span>Дальнейшие шаги<a class="heading-anchor" href="#dalneyshie-shagi" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="CONFIGURATION.html">Конфигурация</a> — Настройка параметров API, аутентификации и провайдеров</li>
+<li><a href="CONFIGURATION.html">Конфигурация</a> — Настройка параметров API, аутентификации и поставщиков</li>
 <li><a href="index.html">Краткое руководство</a> — Начало работы с типовыми сценариями использования</li>
 <li><a href="../../guides/TUI_USER_GUIDE.html">Руководство пользователя TUI</a> — Изучение работы с системой</li>
 <li><a href="../../api/REST_API.html">Справочник API</a> — Обзор конечных точек API</li>
@@ -498,7 +500,7 @@ retrieval:
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-02-27</span>
+        <span>Обновлено: 2026-02-28</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/getting-started/INSTALLATION.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -527,9 +529,9 @@ retrieval:
 <li><a href="#shag-6-zapusk-servera-api" class="level-2">Шаг 6: Запуск сервера API</a></li>
 <li><a href="#shag-7-proverka-ustanovki" class="level-2">Шаг 7: Проверка установки</a></li>
 <li><a href="#dostup-k-dokumentatsii-api" class="level-3">Доступ к документации API</a></li>
-<li><a href="#proverka-endpointa-rabotosposobnosti" class="level-3">Проверка эндпоинта работоспособности</a></li>
+<li><a href="#proverka-endpointa-rabotosposobnosti" class="level-3">Проверка конечной точки работоспособности</a></li>
 <li><a href="#proverka-autentifikatsii" class="level-3">Проверка аутентификации</a></li>
-<li><a href="#proverka-zaschischyonnogo-endpointa" class="level-3">Проверка защищённого эндпоинта</a></li>
+<li><a href="#proverka-zaschischyonnogo-endpointa" class="level-3">Проверка защищённой конечной точки</a></li>
 <li><a href="#shag-8-nastroyka-dannyh-cpg" class="level-2">Шаг 8: Настройка данных CPG</a></li>
 <li><a href="#ustranenie-nepoladok" class="level-2">Устранение неполадок</a></li>
 <li><a href="#ne-udalos-podklyuchitsya-k-postgresql" class="level-3">Не удалось подключиться к PostgreSQL</a></li>
