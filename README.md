@@ -67,7 +67,7 @@ landing/
 │
 ├── assets/svg/             # Логотипы, иконки, диаграммы
 ├── docs/{en,ru}/           # HTML-документация
-├── sitemap.xml             # 13 публичных URL с приоритетами
+├── sitemap.xml             # 14 публичных URL с приоритетами
 ├── CNAME                   # codegraph.ru
 └── .nojekyll
 ```
@@ -117,7 +117,7 @@ landing/
 - JSON-LD (Organization, SoftwareApplication, FAQPage) в `index.html` и вертикальных страницах
 - OpenGraph и Twitter Card метатеги
 - `robots.txt` — разрешает всё кроме `/admin/`, `/api/`, `*.json`
-- `sitemap.xml` — 13 URL с приоритетами
+- `sitemap.xml` — 14 URL с приоритетами
 - `BingSiteAuth.xml` — верификация Bing
 
 ## Деплой

@@ -120,7 +120,7 @@ Terms that must be translated (not left in English) on landing pages:
 - `CNAME` → `codegraph.ru` (GitHub Pages custom domain)
 - `index.html` contains JSON-LD structured data (Organization, SoftwareApplication, FAQPage)
 - Vertical pages have their own FAQPage JSON-LD in `<head>`
-- `sitemap.xml` — 13 public URLs with priorities
+- `sitemap.xml` — 14 public URLs with priorities
 - `robots.txt` — allows crawling, disallows `/admin/`, `/api/`, `*.json`
 - `.nojekyll` — disables Jekyll processing on GitHub Pages
 
