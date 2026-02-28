@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Landing is a sub-project of CodeGraph. See [`../../CLAUDE.md`](../../CLAUDE.md) for the main project context (Python backend, architecture, build scripts, domain plugins, config).
+
 ## What This Is
 
 Public landing site for CodeGraph (codegraph.ru) — a static website deployed to GitHub Pages via the `codegraph-landing` repo (`github.com/mkhlsavin/codegraph-landing`). The site is bilingual (Russian primary, English docs), serves as both marketing landing and documentation hub.
