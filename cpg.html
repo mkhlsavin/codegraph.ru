@@ -78,6 +78,26 @@
           "@type": "Answer",
           "text": "CodeGraph поддерживает 11 языков: C, C++, Go, Python, JavaScript, TypeScript, Java, Kotlin, C#, PHP, 1С:Предприятие."
         }
+      },
+      {
+        "@type": "Question",
+        "name": "Поддерживаются ли кросс-языковые вызовы (CGO, FFI)?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Да. GoCPG имеет FFIEdgePass для детекции вызовов между языками: Go→C через CGO, Python→C через ctypes/cffi. Кросс-языковые рёбра позволяют отслеживать потоки данных через языковые границы."}
+      },
+      {
+        "@type": "Question",
+        "name": "Справится ли CodeGraph с кодовой базой в 5M+ строк?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Да. Go-бинарник + DuckDB: 1M строк за ~30 минут, 5M — за несколько часов. Joern на таких объёмах не справляется. Запросы — 2-3 мс, 50+ QPS. Инкрементальные обновления — секунды."}
+      },
+      {
+        "@type": "Question",
+        "name": "Чем CPG-анализ глубже, чем SonarQube?",
+        "acceptedAnswer": {"@type": "Answer", "text": "SonarQube проверяет стиль и признаки плохого кода. CPG анализирует потоки данных, граф вызовов и зависимости между модулями — показывает, что изменение в файле A сломает функцию в файле B через цепочку вызовов."}
+      },
+      {
+        "@type": "Question",
+        "name": "Замедлит ли CPG-индексация наш CI/CD?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Нет. Индексация — одноразовое действие (~30 мин на 1M строк), инкрементальные обновления — секунды. Запросы — 2-3 мс. Это база знаний, а не сканер в конвейере."}
       }
     ]
   }
@@ -362,6 +382,42 @@
             </button>
             <div class="faq-answer">
               <p><strong>11 языков</strong> на промышленном уровне: C, C++, Go, Python, JavaScript, TypeScript, Java, Kotlin, C#, PHP, 1С:Предприятие. Каждый фронтенд генерирует полный CPG с поддержкой межпроцедурного анализа.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Поддерживаются ли кросс-языковые вызовы (CGO, FFI)?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p><strong>Да.</strong> GoCPG имеет специальный <strong>FFIEdgePass</strong>, который детектирует вызовы между языками: Go→C через CGO, Python→C через ctypes/cffi. Это не побочная функция, а целевая фича. Кросс-языковые рёбра позволяют отслеживать потоки данных через языковые границы и находить уязвимости, невидимые для однопроцессных анализаторов.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Справится ли CodeGraph с кодовой базой в 5M+ строк?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>GoCPG разрабатывался для больших кодовых баз. Архитектура: нативный Go-бинарник (не JVM), DuckDB для хранения (не Neo4j), Appender API для массовой загрузки. <strong>1M строк — ~30 минут</strong>, 5M строк — утром запустил, к обеду готово. Joern на таких объёмах работает часами или не справляется вовсе (128GB RAM недостаточно для Linux kernel). Запросы после индексации — <strong>2-3 мс</strong>. Инкрементальные обновления — секунды.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Чем CPG-анализ глубже, чем SonarQube?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>SonarQube проверяет <strong>как</strong> написан код — стиль, признаки плохого кода. CPG анализирует <strong>что</strong> код делает — потоки данных, граф вызовов, зависимости между модулями. SonarQube не покажет, что изменение в файле A сломает функцию в файле B через цепочку из 5 вызовов. CPG отследит весь путь: от пользовательского ввода через промежуточные функции до SQL-запроса — с файлами и строками.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="general">
+            <button class="faq-question">
+              <span>Замедлит ли CPG-индексация наш CI/CD?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p><strong>Нет.</strong> CodeGraph не встраивается в каждый коммит как SAST. Индексация — одноразовое действие (~30 мин на 1M строк), потом инкрементальные обновления при каждом push — секунды. Запросы к графу — <strong>2-3 мс</strong>. Пропускная способность — 50+ запросов/сек, 100+ одновременных пользователей. Это не сканер в конвейере, а база знаний, которая всегда актуальна.</p>
             </div>
           </div>
         </div>

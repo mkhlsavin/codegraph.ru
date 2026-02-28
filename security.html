@@ -51,7 +51,7 @@
       {
         "@type": "Question",
         "name": "Как достигается FP rate 12%?",
-        "acceptedAnswer": {"@type": "Answer", "text": "Благодаря межпроцедурному анализу потоков данных на основе CPG. CodeGraph строит полный граф потоков данных от source до sink и верифицирует каждый путь, отсекая ложные срабатывания от валидации и санитизации."}
+        "acceptedAnswer": {"@type": "Answer", "text": "Благодаря межпроцедурному анализу потоков данных на основе CPG. CodeGraph строит полный граф потоков данных от источника до приёмника и верифицирует каждый путь, отсекая ложные срабатывания от валидации и санитизации."}
       },
       {
         "@type": "Question",
@@ -62,6 +62,26 @@
         "@type": "Question",
         "name": "Можно ли развернуть в air-gapped среде?",
         "acceptedAnswer": {"@type": "Answer", "text": "Да. CodeGraph полностью функционален без внешних зависимостей. В изолированном контуре используются локальные LLM-модели вместо облачных API."}
+      },
+      {
+        "@type": "Question",
+        "name": "Как CodeGraph защищает от утечки кода через LLM?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Три уровня: on-premise (код не покидает периметр), DLP (25+ паттернов фильтрации до и после LLM — API-ключи, пароли, ПДн), RBAC (21 разрешение с полным журналом аудита в SIEM)."}
+      },
+      {
+        "@type": "Question",
+        "name": "У нас уже есть Fortify — зачем ещё один SAST?",
+        "acceptedAnswer": {"@type": "Answer", "text": "CodeGraph дополняет Fortify: находит межсервисные потоки данных, которые Fortify не отслеживает. Результаты в формате SARIF служат дополнительным подтверждением для аудита."}
+      },
+      {
+        "@type": "Question",
+        "name": "Чем CodeGraph отличается от PT Application Inspector?",
+        "acceptedAnswer": {"@type": "Answer", "text": "PT AI использует сопоставление шаблонов. CodeGraph строит CPG и выполняет анализ потоков данных — прослеживает поток данных от источника до приёмника через всю цепочку вызовов, включая межпроцедурные зависимости и границы микросервисов."}
+      },
+      {
+        "@type": "Question",
+        "name": "Чем CodeGraph отличается от Semgrep?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Semgrep — AST-уровень (паттерн-матчинг). CodeGraph — CPG-уровень (межпроцедурный анализ потоков данных). Semgrep не может отследить поток данных через цепочку вызовов. В CodeGraph 70+ готовых YAML-правил с CPG-ограничениями."}
       }
     ]
   }
@@ -273,6 +293,47 @@
             </button>
             <div class="faq-answer">
               <p><strong>Да.</strong> CodeGraph полностью функционален без внешних зависимостей. В изолированном контуре вместо облачных LLM используются локальные модели (Qwen3, DeepSeek). Docker-образы доступны для offline-установки.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="security">
+            <button class="faq-question">
+              <span>Как CodeGraph защищает от утечки кода через LLM?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>Три уровня защиты:</p>
+              <ul>
+                <li><strong>On-premise</strong> — код не покидает ваш периметр. LLM развёрнута на ваших серверах</li>
+                <li><strong>DLP</strong> — 25+ паттернов: API-ключи, пароли, ПДн, номера карт. Фильтрация до отправки в LLM и после получения ответа. Блокировка + логирование</li>
+                <li><strong>RBAC</strong> — 21 разрешение. Разработчик видит только свой код, AppSec — обнаружения, аудитор — отчёты. Полный журнал аудита в SIEM</li>
+              </ul>
+            </div>
+          </div>
+          <div class="faq-item" data-category="security">
+            <button class="faq-question">
+              <span>У нас уже есть Fortify — зачем ещё один SAST?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>CodeGraph не заменяет Fortify, а <strong>дополняет</strong>. CodeGraph работает параллельно: проиндексируйте ту же кодовую базу, получите верифицированные обнаружения поверх Fortify-результатов. Ключевое отличие — CodeGraph находит <strong>межсервисные потоки данных</strong>, которые Fortify не отслеживает. Используйте CodeGraph-отчёты как дополнительное подтверждение для аудита — с классификацией CWE, путями потоков данных, в формате SARIF.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="security">
+            <button class="faq-question">
+              <span>Чем CodeGraph отличается от PT Application Inspector?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>PT AI использует сопоставление шаблонов — ищет известные паттерны уязвимостей в тексте кода. CodeGraph строит <strong>Code Property Graph</strong> и выполняет анализ потоков данных — прослеживает реальный поток данных от источника до приёмника через всю цепочку вызовов. Сопоставление шаблонов не видит межпроцедурные зависимости и не проходит через границы микросервисов. CPG показывает аудитору полный путь эксплуатации — с файлами и строками.</p>
+            </div>
+          </div>
+          <div class="faq-item" data-category="security">
+            <button class="faq-question">
+              <span>Чем CodeGraph отличается от Semgrep?</span>
+              <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="faq-answer">
+              <p>Semgrep работает на уровне AST — паттерн-матчинг по синтаксическому дереву. Это хорошо для локальных правил, но Semgrep <strong>не выполняет межпроцедурный анализ потоков данных</strong>. Нельзя написать Semgrep-правило: «найди места, где данные из request.body достигают db.query через произвольную цепочку вызовов без sanitize()». Это задача для CPG. В CodeGraph правила пишутся на YAML, но с CPG-ограничениями: достижимость потоков данных, контекст вызова, проверка типов. Плюс 70+ готовых правил из коробки.</p>
             </div>
           </div>
         </div>
