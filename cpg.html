@@ -51,7 +51,7 @@
         "name": "Что такое Code Property Graph?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Code Property Graph (CPG) — единая структура данных, объединяющая AST (синтаксис), CFG (поток управления), PDG (зависимости по данным) и DDG (зависимости по данным между инструкциями) в один queryable граф для глубокого анализа кода."
+          "text": "Code Property Graph (CPG) — единая структура данных, объединяющая AST (синтаксис), CFG (поток управления), PDG (зависимости по данным) и DDG (зависимости по данным между инструкциями) в один граф с поддержкой запросов для глубокого анализа кода."
         }
       },
       {
@@ -143,7 +143,7 @@
             Code Property Graph: <span class="highlight">следующее поколение</span> анализа кода
           </h1>
           <p class="hero-subtitle animate-fade-in-delay">
-            AST + CFG + PDG + DDG в едином queryable графе. 33 аналитических пассов. 11 языков. 2-3 мс на запрос.
+            AST + CFG + PDG + DDG в едином графе с поддержкой запросов. 33 аналитических прохода. 11 языков. 2-3 мс на запрос.
           </p>
           <div class="hero-actions animate-fade-in-delay-2">
             <a href="docs/ru/index.html" class="btn btn-primary btn-lg">Изучить технологию</a>
@@ -161,15 +161,15 @@
         <div class="features-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2rem;margin-top:3rem;">
           <div class="feature-card">
             <h3>AST — синтаксис</h3>
-            <p>Abstract Syntax Tree отражает структуру кода: функции, вызовы, переменные, операторы. Это то, что видят SonarQube и Semgrep.</p>
+            <p>Абстрактное синтаксическое дерево отражает структуру кода: функции, вызовы, переменные, операторы. Это то, что видят SonarQube и Semgrep.</p>
           </div>
           <div class="feature-card">
             <h3>CFG — поток управления</h3>
-            <p>Control Flow Graph показывает порядок выполнения инструкций: ветвления, циклы, условия. Без CFG невозможен анализ достижимости.</p>
+            <p>Граф потока управления показывает порядок выполнения инструкций: ветвления, циклы, условия. Без CFG невозможен анализ достижимости.</p>
           </div>
           <div class="feature-card">
             <h3>PDG — зависимости</h3>
-            <p>Program Dependence Graph связывает данные с управлением: какая переменная от чего зависит, какие инструкции влияют друг на друга.</p>
+            <p>Граф зависимостей программы связывает данные с управлением: какая переменная от чего зависит, какие инструкции влияют друг на друга.</p>
           </div>
           <div class="feature-card">
             <h3>DDG — потоки данных</h3>
@@ -186,7 +186,7 @@
     <section class="section" style="background:var(--bg-secondary);">
       <div class="container">
         <h2 class="section-title">Почему CPG находит то, что AST пропускает</h2>
-        <p class="section-subtitle">Pattern matching видит синтаксис. CPG видит семантику.</p>
+        <p class="section-subtitle">Сопоставление шаблонов видит синтаксис. CPG видит семантику.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:2rem;margin-top:3rem;">
           <div class="feature-card">
             <h3>AST-based инструменты</h3>
@@ -213,7 +213,7 @@
           <h3>Пример: SQL-инъекция через 3 функции</h3>
           <p style="margin-top:1rem;">Функция <code>get_input()</code> в файле A читает пользовательский ввод. Функция <code>process()</code> в файле B передаёт его дальше. Функция <code>query()</code> в файле C вставляет в SQL-запрос.</p>
           <p style="margin-top:0.5rem;"><strong>AST-based SAST</strong>: Не видит связи между тремя файлами. Уязвимость пропущена.</p>
-          <p style="margin-top:0.5rem;"><strong>CPG (CodeGraph)</strong>: Строит taint-путь: <code>get_input() → process() → query() → PQexec()</code>. Уязвимость найдена за 2,3 мс.</p>
+          <p style="margin-top:0.5rem;"><strong>CPG (CodeGraph)</strong>: Строит путь распространения данных: <code>get_input() → process() → query() → PQexec()</code>. Уязвимость найдена за 2,3 мс.</p>
         </div>
       </div>
     </section>
@@ -222,28 +222,28 @@
     <section class="section">
       <div class="container">
         <h2 class="section-title">Архитектура CodeGraph</h2>
-        <p class="section-subtitle">Нативный Go-бинарник. Без JVM. 33 аналитических пассов.</p>
+        <p class="section-subtitle">Нативный Go-бинарник. Без JVM. 33 аналитических прохода.</p>
         <div class="feature-card" style="max-width:800px;margin:2rem auto;font-family:'JetBrains Mono',monospace;font-size:0.9rem;line-height:1.6;">
-          <pre style="overflow-x:auto;">Source Files → Frontend (per-file) → DiffGraph → Pass Pipeline (DAG) → DuckDB
-                   │                                    │
-            Orchestrator                         CPGGraph (in-memory)
-       (parallel workers per file)           (zero SQL during passes)
+          <pre style="overflow-x:auto;">Исходники → Фронтенд (по файлам) → DiffGraph → Конвейер проходов (DAG) → DuckDB
+                   │                                           │
+            Оркестратор                                CPGGraph (в памяти)
+    (параллельные воркеры по файлам)             (без SQL во время проходов)
 
-Фазы пассов:
- 1. Base: MetaData, File, Namespace
- 2. Types: TypeNode, TypeDecl, Inheritance
- 3. Control Flow: CFG, Dominator, PostDominator, CDG
- 4. Import Resolution + Call Graph
- 5. Data Flow: ReachingDef, Interprocedural ReachingDef
- 6. Type Propagation + Return Type Propagation
+Фазы проходов:
+ 1. Базовые: метаданные, файлы, пространства имён
+ 2. Типы: узлы типов, объявления, наследование
+ 3. Поток управления: CFG, доминаторы, постдоминаторы, CDG
+ 4. Разрешение импортов + граф вызовов
+ 5. Потоки данных: достигающие определения, межпроцедурные
+ 6. Распространение типов + типов возврата
  7. PDG + DDG
- 8. Enrichment: Metrics, Comments, Containment
- 9. Pattern Matching (70+ YAML rules)</pre>
+ 8. Обогащение: метрики, комментарии, вложенность
+ 9. Сопоставление шаблонов (70+ YAML-правил)</pre>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;margin-top:2rem;">
           <div class="feature-card" style="text-align:center;">
             <div style="font-size:2.5rem;font-weight:700;color:var(--primary);">33</div>
-            <div>аналитических пассов</div>
+            <div>аналитических проходов</div>
           </div>
           <div class="feature-card" style="text-align:center;">
             <div style="font-size:2.5rem;font-weight:700;color:var(--primary);">11</div>
@@ -373,7 +373,7 @@
         <div class="cta-content">
           <h2 class="section-title">Готовы изучить CPG?</h2>
           <p>
-            Посмотрите, как Code Property Graph работает на вашей кодовой базе. 11 языков, 33 аналитических пассов, результат за минуты.
+            Посмотрите, как Code Property Graph работает на вашей кодовой базе. 11 языков, 33 аналитических прохода, результат за минуты.
           </p>
           <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
             <a href="docs/ru/index.html" class="btn btn-primary btn-lg">Изучить технологию</a>
@@ -413,6 +413,8 @@
             <li><a href="docs/ru/getting-started/index.html" class="footer-link">Начало работы</a></li>
             <li><a href="docs/ru/guides/index.html" class="footer-link">Руководства</a></li>
             <li><a href="docs/ru/api/index.html" class="footer-link">API</a></li>
+            <li><a href="docs/ru/integrations/index.html" class="footer-link">Интеграции</a></li>
+            <li><a href="docs/ru/reference/index.html" class="footer-link">Справочник</a></li>
             <li><a href="docs/ru/enterprise/index.html" class="footer-link">Enterprise</a></li>
           </ul>
         </div>
