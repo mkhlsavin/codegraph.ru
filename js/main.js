@@ -577,13 +577,10 @@
       const question = item.querySelector('.faq-question');
       if (question) {
         question.addEventListener('click', () => {
-          const isOpen = item.classList.contains('open');
-
-          // Close all items (optional: for single open)
-          // DOM.faqItems.forEach(i => i.classList.remove('open'));
-
           // Toggle current
           item.classList.toggle('open');
+          const isNowOpen = item.classList.contains('open');
+          question.setAttribute('aria-expanded', String(isNowOpen));
         });
       }
     });
@@ -607,8 +604,12 @@
           const category = btn.getAttribute('data-category');
 
           // Update buttons
-          DOM.faqCategoryBtns.forEach(b => b.classList.remove('active'));
+          DOM.faqCategoryBtns.forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-pressed', 'false');
+          });
           btn.classList.add('active');
+          btn.setAttribute('aria-pressed', 'true');
 
           // Filter items
           DOM.faqItems.forEach(item => {
@@ -987,11 +988,6 @@
         question.setAttribute('aria-expanded', 'false');
         question.setAttribute('aria-controls', `faq-answer-${index}`);
         answer.setAttribute('id', `faq-answer-${index}`);
-
-        question.addEventListener('click', () => {
-          const isOpen = item.classList.contains('open');
-          question.setAttribute('aria-expanded', isOpen);
-        });
       }
     });
 
