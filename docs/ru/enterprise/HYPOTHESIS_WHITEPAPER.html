@@ -216,9 +216,9 @@
 <li><a href="#annotatsiya">Аннотация</a></li>
 <li><a href="#1-problema">1. Проблема</a></li>
 <li><a href="#11-ogranicheniya-traditsionnogo-sast">1.1 Ограничения традиционного SAST</a></li>
-<li><a href="#12-pochemu-pattern-matching-nedostatochno">1.2 Почему сопоставления шаблонов недостаточно</a></li>
+<li><a href="#12-pochemu-sopostavleniya-shablonov-nedostatochno">1.2 Почему сопоставления шаблонов недостаточно</a></li>
 <li><a href="#2-arhitektura-resheniya">2. Архитектура решения</a></li>
-<li><a href="#21-pipeline-validatsii-gipotez">2.1 Pipeline валидации гипотез</a></li>
+<li><a href="#21-konveyer-validatsii-gipotez">2.1 Конвейер валидации гипотез</a></li>
 <li><a href="#3-mnogokriterialnaya-model-skoringa">3. Многокритериальная модель скоринга</a></li>
 <li><a href="#31-formula-prioritizatsii">3.1 Формула приоритизации</a></li>
 <li><a href="#32-komponenty-skoringa">3.2 Компоненты скоринга</a></li>
@@ -226,11 +226,11 @@
 <li><a href="#4-statistika-kodovoy-bazy">4. Статистика кодовой базы</a></li>
 <li><a href="#41-sbor-statistiki-iz-cpg">4.1 Сбор статистики из CPG</a></li>
 <li><a href="#42-otslezhivaemye-funktsii">4.2 Отслеживаемые функции</a></li>
-<li><a href="#5-taint-analysis-na-cpg">5. Taint Analysis на CPG</a></li>
+<li><a href="#5-analiz-potokov-dannyh-na-cpg">5. Анализ потоков данных на CPG</a></li>
 <li><a href="#51-verifikatsiya-potoka-dannyh">5.1 Верификация потока данных</a></li>
 <li><a href="#52-proverka-sanitizatsii">5.2 Проверка санитизации</a></li>
 <li><a href="#6-rezultaty-validatsii">6. Результаты валидации</a></li>
-<li><a href="#61-benchmark-na-postgresql-17">6.1 Тестирование на PostgreSQL 17</a></li>
+<li><a href="#61-testirovanie-na-postgresql-17">6.1 Тестирование на PostgreSQL 17</a></li>
 <li><a href="#62-obnaruzhennye-cve">6.2 Обнаруженные CVE</a></li>
 <li><a href="#63-sravnenie-s-traditsionnym-sast">6.3 Сравнение с традиционным SAST</a></li>
 <li><a href="#7-struktura-gipotezy">7. Структура гипотезы</a></li>
@@ -246,25 +246,25 @@
 <ol>
 <li>Генерирует тестируемые гипотезы на основе CWE/CAPEC баз знаний</li>
 <li>Оценивает гипотезы по трём критериям с учётом контекста кодовой базы</li>
-<li>Верифицирует уязвимости через анализ заражения данных на Code Property Graph</li>
+<li>Верифицирует уязвимости через анализ потоков данных на графе свойств кода (CPG)</li>
 <li>Достигает <strong>100% обнаружения CVE</strong> при снижении доли ложных срабатываний с 70–90% до менее 30% (снижение на 60%+)</li>
 </ol>
 <hr />
 <h2  id="1-problema"><span id="1_problema"></span>1. Проблема<a class="heading-anchor" href="#1-problema" title="Link to this section">&para;</a></h2>
 <h3  id="11-ogranicheniya-traditsionnogo-sast"><span id="11_ogranicheniya_traditsionnogo_sast"></span>1.1 Ограничения традиционного SAST<a class="heading-anchor" href="#11-ogranicheniya-traditsionnogo-sast" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>Традиционный SAST:
-  Pattern: &quot;strcpy&quot; found
-  Result: POSSIBLE vulnerability
-  False Positive Rate: 70-90%
+  Обнаружен шаблон: &quot;strcpy&quot;
+  Результат: ВОЗМОЖНАЯ уязвимость
+  Частота ложных срабатываний: 70-90%
 
 CodeGraph:
-  Hypothesis: Untrusted data flows from recv() to strcpy()
-  Evidence: Taint path verified via CPG
-  Result: CONFIRMED vulnerability
-  False Positive Rate: &lt;30%
+  Гипотеза: Ненадежные потоки данных от recv() к strcpy()
+  Доказательство: Путь к источнику заражения проверен с помощью CPG
+  Результат: Уязвимость ПОДТВЕРЖДЕНА
+  Частота ложных срабатываний: &lt;30%
 </code></pre></div>
 
-<h3  id="12-pochemu-pattern-matching-nedostatochno"><span id="12-pochemu-sopostavleniya-shablonov-nedostatochno"></span><span id="12_pochemu_pattern_matching_nedostatochno"></span><span id="12_pochemu_sopostavleniya_shablonov_nedostatochno"></span>1.2 Почему сопоставления шаблонов недостаточно<a class="heading-anchor" href="#12-pochemu-pattern-matching-nedostatochno" title="Link to this section">&para;</a></h3>
+<h3  id="12-pochemu-sopostavleniya-shablonov-nedostatochno"><span id="12_pochemu_sopostavleniya_shablonov_nedostatochno"></span>1.2 Почему сопоставления шаблонов недостаточно<a class="heading-anchor" href="#12-pochemu-sopostavleniya-shablonov-nedostatochno" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -278,11 +278,11 @@ CodeGraph:
 <td><code>strcpy</code> безопасен, если источник — константа</td>
 </tr>
 <tr>
-<td><strong>Нет data flow</strong></td>
+<td><strong>Нет анализа потоков данных</strong></td>
 <td>Не учитывается откуда приходят данные</td>
 </tr>
 <tr>
-<td><strong>Нет sanitization</strong></td>
+<td><strong>Нет санитизации</strong></td>
 <td>Игнорируются функции-валидаторы</td>
 </tr>
 <tr>
@@ -293,61 +293,61 @@ CodeGraph:
 </table></div>
 <hr />
 <h2  id="2-arhitektura-resheniya"><span id="2_arhitektura_resheniya"></span>2. Архитектура решения<a class="heading-anchor" href="#2-arhitektura-resheniya" title="Link to this section">&para;</a></h2>
-<h3  id="21-pipeline-validatsii-gipotez"><span id="21_pipeline_validatsii_gipotez"></span>2.1 Pipeline валидации гипотез<a class="heading-anchor" href="#21-pipeline-validatsii-gipotez" title="Link to this section">&para;</a></h3>
+<h3  id="21-konveyer-validatsii-gipotez"><span id="21_konveyer_validatsii_gipotez"></span>2.1 Конвейер валидации гипотез<a class="heading-anchor" href="#21-konveyer-validatsii-gipotez" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────────────────┐
-│                    HYPOTHESIS VALIDATION PIPELINE                        │
+│                  КОНВЕЙЕР ВАЛИДАЦИИ ГИПОТЕЗ                              │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │ 1. GENERATION                                                   │   │
+│  │ 1. ГЕНЕРАЦИЯ                                                    │   │
 │  │    HypothesisGenerator.generate()                               │   │
-│  │    ├── CWE Database (120+ patterns)                            │   │
-│  │    ├── CAPEC Database (60+ attack patterns)                    │   │
-│  │    ├── Language Patterns (C, Python, Java)                     │   │
-│  │    └── Cartesian Product: CWEs × CAPECs × Patterns             │   │
-│  │    Output: SecurityHypothesis[]                                │   │
+│  │    ├── База CWE (120+ шаблонов)                                │   │
+│  │    ├── База CAPEC (60+ шаблонов атак)                          │   │
+│  │    ├── Языковые шаблоны (C, Python, Java)                      │   │
+│  │    └── Декартово произведение: CWE × CAPEC × Шаблоны            │   │
+│  │    Результат: SecurityHypothesis[]                              │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │                              ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │ 2. MULTI-CRITERIA SCORING                                       │   │
+│  │ 2. МНОГОКРИТЕРИАЛЬНЫЙ СКОРИНГ                                   │   │
 │  │    MultiCriteriaScorer.score_batch()                           │   │
 │  │                                                                  │   │
-│  │    Score = CWE_Freq × 0.40 + Attack_Sim × 0.30 + Exposure × 0.30│   │
+│  │    Оценка = Частота_CWE×0.40 + Сходство_атак×0.30 + Подверж.×0.30│  │
 │  │                                                                  │   │
-│  │    Bonuses:                                                     │   │
-│  │    ├── Known CVE pattern: ×1.20                                │   │
-│  │    ├── Critical severity: ×1.10                                │   │
-│  │    └── Recent exploit: ×1.15                                   │   │
+│  │    Бонусы:                                                      │   │
+│  │    ├── Известный шаблон CVE: ×1.20                             │   │
+│  │    ├── Критическая серьёзность: ×1.10                          │   │
+│  │    └── Недавний эксплойт: ×1.15                                │   │
 │  │                                                                  │   │
-│  │    Output: Prioritized hypotheses                               │   │
+│  │    Результат: Приоритизированные гипотезы                       │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │                              ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │ 3. QUERY SYNTHESIS                                              │   │
+│  │ 3. СИНТЕЗ ЗАПРОСОВ                                              │   │
 │  │    QuerySynthesizer.synthesize()                                │   │
-│  │    ├── Match hypothesis to SQL template                        │   │
-│  │    ├── Parameter substitution                                  │   │
-│  │    └── Output: DuckDB SQL / PGQ queries                        │   │
+│  │    ├── Сопоставление гипотезы с SQL-шаблоном                   │   │
+│  │    ├── Подстановка параметров                                  │   │
+│  │    └── Результат: DuckDB SQL / PGQ-запросы                     │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │                              ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │ 4. EXECUTION                                                    │   │
+│  │ 4. ВЫПОЛНЕНИЕ                                                   │   │
 │  │    HypothesisExecutor.execute()                                 │   │
-│  │    ├── Run queries against CPG                                 │   │
-│  │    ├── Collect evidence                                        │   │
-│  │    └── Output: Evidence[]                                      │   │
+│  │    ├── Выполнение запросов к CPG                                │   │
+│  │    ├── Сбор доказательств                                      │   │
+│  │    └── Результат: Evidence[]                                   │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │                              ▼                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │ 5. VALIDATION                                                   │   │
+│  │ 5. ВАЛИДАЦИЯ                                                    │   │
 │  │    HypothesisValidator.validate()                               │   │
-│  │    ├── Analyze evidence                                        │   │
-│  │    ├── Update hypothesis status (CONFIRMED/REJECTED)           │   │
-│  │    └── Calculate precision/recall metrics                      │   │
+│  │    ├── Анализ доказательств                                    │   │
+│  │    ├── Обновление статуса (ПОДТВЕРЖДЕНА/ОТКЛОНЕНА)             │   │
+│  │    └── Расчёт метрик точности/полноты                          │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -356,22 +356,22 @@ CodeGraph:
 <hr />
 <h2  id="3-mnogokriterialnaya-model-skoringa"><span id="3_mnogokriterialnaya_model_skoringa"></span>3. Многокритериальная модель скоринга<a class="heading-anchor" href="#3-mnogokriterialnaya-model-skoringa" title="Link to this section">&para;</a></h2>
 <h3  id="31-formula-prioritizatsii"><span id="31_formula_prioritizatsii"></span>3.1 Формула приоритизации<a class="heading-anchor" href="#31-formula-prioritizatsii" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>Priority Score = (CWE_Frequency × 0.40)
-               + (Attack_Similarity × 0.30)
-               + (Codebase_Exposure × 0.30)
+<div class="highlight"><pre><span></span><code>Оценка приоритета = (Частота_CWE × 0.40)
+                   + (Сходство_атак × 0.30)
+                   + (Подверженность_кодовой_базы × 0.30)
 </code></pre></div>
 
 <h3  id="32-komponenty-skoringa"><span id="32_komponenty_skoringa"></span>3.2 Компоненты скоринга<a class="heading-anchor" href="#32-komponenty-skoringa" title="Link to this section">&para;</a></h3>
-<h4  id="cwe-frequency-score-40"><span id="cwe_frequency_score_40"></span>CWE Frequency Score (40%)<a class="heading-anchor" href="#cwe-frequency-score-40" title="Link to this section">&para;</a></h4>
+<h4  id="otsenka-chastoty-cwe-40"><span id="otsenka_chastoty_cwe_40"></span>Оценка частоты CWE (40%)<a class="heading-anchor" href="#otsenka-chastoty-cwe-40" title="Link to this section">&para;</a></h4>
 <p>Оценивает, насколько часто данная уязвимость встречается в реальных CVE.</p>
 <div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_score_cwe_frequency</span><span class="p">(</span><span class="n">cwe_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Компоненты:</span>
-<span class="sd">    - prevalence: Частота в CVE database (0.0-1.0)</span>
+<span class="sd">    - prevalence: Частота в базе CVE (0.0-1.0)</span>
 <span class="sd">    - exploitability: Насколько легко эксплуатировать (0.0-1.0)</span>
-<span class="sd">    - cvss_base: CVSS базовый балл / 10 (0.0-1.0)</span>
+<span class="sd">    - cvss_base: Базовый балл CVSS / 10 (0.0-1.0)</span>
 
-<span class="sd">    Score = prevalence × 0.4 + exploitability × 0.4 + cvss × 0.2</span>
+<span class="sd">    Оценка = prevalence × 0.4 + exploitability × 0.4 + cvss × 0.2</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div>
 
@@ -379,36 +379,36 @@ CodeGraph:
 <thead>
 <tr>
 <th>CWE</th>
-<th style="text-align: center;">Prevalence</th>
-<th style="text-align: center;">Exploitability</th>
+<th style="text-align: center;">Распространённость</th>
+<th style="text-align: center;">Эксплуатируемость</th>
 <th style="text-align: center;">CVSS</th>
-<th style="text-align: center;">Score</th>
+<th style="text-align: center;">Оценка</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>CWE-120 (Buffer Overflow)</td>
+<td>CWE-120 (переполнение буфера)</td>
 <td style="text-align: center;">0.85</td>
 <td style="text-align: center;">0.90</td>
 <td style="text-align: center;">8.0</td>
 <td style="text-align: center;">0.86</td>
 </tr>
 <tr>
-<td>CWE-78 (Command Injection)</td>
+<td>CWE-78 (внедрение команд)</td>
 <td style="text-align: center;">0.75</td>
 <td style="text-align: center;">0.95</td>
 <td style="text-align: center;">9.8</td>
 <td style="text-align: center;">0.88</td>
 </tr>
 <tr>
-<td>CWE-89 (SQL Injection)</td>
+<td>CWE-89 (SQL-инъекция)</td>
 <td style="text-align: center;">0.90</td>
 <td style="text-align: center;">0.95</td>
 <td style="text-align: center;">9.8</td>
 <td style="text-align: center;">0.94</td>
 </tr>
 <tr>
-<td>CWE-200 (Info Disclosure)</td>
+<td>CWE-200 (раскрытие информации)</td>
 <td style="text-align: center;">0.60</td>
 <td style="text-align: center;">0.70</td>
 <td style="text-align: center;">5.3</td>
@@ -416,33 +416,33 @@ CodeGraph:
 </tr>
 </tbody>
 </table></div>
-<h4  id="attack-similarity-score-30"><span id="attack_similarity_score_30"></span>Attack Similarity Score (30%)<a class="heading-anchor" href="#attack-similarity-score-30" title="Link to this section">&para;</a></h4>
+<h4  id="otsenka-shodstva-s-atakoy-30"><span id="otsenka_shodstva_s_atakoy_30"></span>Оценка сходства с атакой (30%)<a class="heading-anchor" href="#otsenka-shodstva-s-atakoy-30" title="Link to this section">&para;</a></h4>
 <p>Оценивает, насколько гипотеза соответствует известным шаблонам атак из CAPEC.</p>
 <div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_score_attack_similarity</span><span class="p">(</span><span class="n">capec_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Компоненты:</span>
 <span class="sd">    - likelihood: Вероятность атаки (0.0-1.0)</span>
 <span class="sd">    - skill_level: Требуемый уровень навыков</span>
-<span class="sd">      - Low: ×1.0 (выше риск)</span>
-<span class="sd">      - Medium: ×0.8</span>
-<span class="sd">      - High: ×0.6</span>
-<span class="sd">      - Expert: ×0.4 (ниже риск)</span>
+<span class="sd">      - Низкий: ×1.0 (выше риск)</span>
+<span class="sd">      - Средний: ×0.8</span>
+<span class="sd">      - Высокий: ×0.6</span>
+<span class="sd">      - Экспертный: ×0.4 (ниже риск)</span>
 
-<span class="sd">    Score = likelihood × skill_adjustment</span>
+<span class="sd">    Оценка = likelihood × skill_adjustment</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div>
 
-<h4  id="codebase-exposure-score-30"><span id="codebase_exposure_score_30"></span>Codebase Exposure Score (30%)<a class="heading-anchor" href="#codebase-exposure-score-30" title="Link to this section">&para;</a></h4>
+<h4  id="otsenka-podverzhennosti-kodovoy-bazy-30"><span id="otsenka_podverzhennosti_kodovoy_bazy_30"></span>Оценка подверженности кодовой базы (30%)<a class="heading-anchor" href="#otsenka-podverzhennosti-kodovoy-bazy-30" title="Link to this section">&para;</a></h4>
 <p>Оценивает, насколько конкретная кодовая база подвержена данной уязвимости.</p>
 <div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_score_codebase_exposure</span><span class="p">(</span><span class="n">hypothesis</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Компоненты:</span>
-<span class="sd">    - sink_exposure: Наличие опасных sink-функций</span>
+<span class="sd">    - sink_exposure: Наличие опасных функций-приёмников</span>
 <span class="sd">    - source_exposure: Наличие источников внешних данных</span>
 <span class="sd">    - sanitizer_coverage: Наличие функций-санитайзеров (понижает риск)</span>
-<span class="sd">    - taint_paths: Количество путей source → sink</span>
+<span class="sd">    - taint_paths: Количество путей источник → приёмник</span>
 
-<span class="sd">    Exposure = (sink × 0.4 + source × 0.4) × (1 - sanitizer × 0.5)</span>
+<span class="sd">    Подверженность = (sink × 0.4 + source × 0.4) × (1 - sanitizer × 0.5)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div>
 
@@ -457,19 +457,19 @@ CodeGraph:
 </thead>
 <tbody>
 <tr>
-<td>Known CVE</td>
+<td>Известный CVE</td>
 <td style="text-align: center;">×1.20</td>
 <td>Шаблон соответствует известному CVE</td>
 </tr>
 <tr>
-<td>Critical Severity</td>
+<td>Критическая серьёзность</td>
 <td style="text-align: center;">×1.10</td>
-<td>CWE имеет критическую severity</td>
+<td>CWE имеет критический уровень</td>
 </tr>
 <tr>
-<td>Recent Exploit</td>
+<td>Недавний эксплойт</td>
 <td style="text-align: center;">×1.15</td>
-<td>Недавняя эксплуатация в wild</td>
+<td>Недавняя эксплуатация в реальных атаках</td>
 </tr>
 </tbody>
 </table></div>
@@ -481,34 +481,34 @@ CodeGraph:
     <span class="n">total_methods</span><span class="p">:</span> <span class="nb">int</span>        <span class="c1"># Общее количество методов</span>
     <span class="n">total_calls</span><span class="p">:</span> <span class="nb">int</span>          <span class="c1"># Общее количество вызовов</span>
 
-    <span class="n">sink_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>       <span class="c1"># sink_name → count</span>
-    <span class="n">source_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>     <span class="c1"># source_name → count</span>
-    <span class="n">sanitizer_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>  <span class="c1"># sanitizer_name → count</span>
+    <span class="n">sink_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>       <span class="c1"># приёмник → количество</span>
+    <span class="n">source_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>     <span class="c1"># источник → количество</span>
+    <span class="n">sanitizer_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>  <span class="c1"># санитайзер → количество</span>
 
-    <span class="n">taint_paths</span><span class="p">:</span> <span class="nb">int</span>          <span class="c1"># Количество source→sink путей</span>
+    <span class="n">taint_paths</span><span class="p">:</span> <span class="nb">int</span>          <span class="c1"># Количество путей источник→приёмник</span>
 </code></pre></div>
 
 <h3  id="42-otslezhivaemye-funktsii"><span id="42_otslezhivaemye_funktsii"></span>4.2 Отслеживаемые функции<a class="heading-anchor" href="#42-otslezhivaemye-funktsii" title="Link to this section">&para;</a></h3>
-<p><strong>Dangerous Sinks (C):</strong></p>
+<p><strong>Опасные приёмники (C):</strong></p>
 <div class="highlight"><pre><span></span><code>strcpy, strcat, sprintf, gets, memcpy
 system, popen, execl, execv
-printf, fprintf (format string)
+printf, fprintf (форматная строка)
 appendPQExpBuffer, SPI_execute, PQexec (PostgreSQL)
 </code></pre></div>
 
-<p><strong>Untrusted Sources:</strong></p>
+<p><strong>Недоверенные источники:</strong></p>
 <div class="highlight"><pre><span></span><code>recv, read, fgets, getenv
 PQgetvalue, SPI_getvalue, getTables (PostgreSQL)
 </code></pre></div>
 
-<p><strong>Sanitizers:</strong></p>
+<p><strong>Санитайзеры:</strong></p>
 <div class="highlight"><pre><span></span><code>strlcpy, snprintf
 fmtId, quote_identifier, quote_literal
 pg_class_aclcheck
 </code></pre></div>
 
 <hr />
-<h2  id="5-taint-analysis-na-cpg"><span id="5_taint_analysis_na_cpg"></span>5. Taint Analysis на CPG<a class="heading-anchor" href="#5-taint-analysis-na-cpg" title="Link to this section">&para;</a></h2>
+<h2  id="5-analiz-potokov-dannyh-na-cpg"><span id="5_analiz_potokov_dannyh_na_cpg"></span>5. Анализ потоков данных на CPG<a class="heading-anchor" href="#5-analiz-potokov-dannyh-na-cpg" title="Link to this section">&para;</a></h2>
 <h3  id="51-verifikatsiya-potoka-dannyh"><span id="51_verifikatsiya_potoka_dannyh"></span>5.1 Верификация потока данных<a class="heading-anchor" href="#51-verifikatsiya-potoka-dannyh" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Поиск непроверенных путей от source к sink</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">GRAPH_TABLE</span><span class="p">(</span><span class="n">cpg</span>
@@ -538,7 +538,7 @@ pg_class_aclcheck
 
 <hr />
 <h2  id="6-rezultaty-validatsii"><span id="6_rezultaty_validatsii"></span>6. Результаты валидации<a class="heading-anchor" href="#6-rezultaty-validatsii" title="Link to this section">&para;</a></h2>
-<h3  id="61-benchmark-na-postgresql-17"><span id="61-testirovanie-na-postgresql-17"></span><span id="61_benchmark_na_postgresql_17"></span><span id="61_testirovanie_na_postgresql_17"></span>6.1 Тестирование на PostgreSQL 17<a class="heading-anchor" href="#61-benchmark-na-postgresql-17" title="Link to this section">&para;</a></h3>
+<h3  id="61-testirovanie-na-postgresql-17"><span id="61_testirovanie_na_postgresql_17"></span>6.1 Тестирование на PostgreSQL 17<a class="heading-anchor" href="#61-testirovanie-na-postgresql-17" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -548,24 +548,24 @@ pg_class_aclcheck
 </thead>
 <tbody>
 <tr>
-<td><strong>CVE Detection Rate</strong></td>
+<td><strong>Доля обнаружения CVE</strong></td>
 <td>100% (3/3)</td>
 </tr>
 <tr>
-<td><strong>Hypothesis Confirmation Rate</strong></td>
+<td><strong>Доля подтверждения гипотез</strong></td>
 <td>55%</td>
 </tr>
 <tr>
-<td><strong>Average Query Time</strong></td>
-<td>2-3 ms</td>
+<td><strong>Среднее время запроса</strong></td>
+<td>2–3 мс</td>
 </tr>
 <tr>
-<td><strong>Generation Time (100 hyp.)</strong></td>
-<td>&lt;1 sec</td>
+<td><strong>Время генерации (100 гип.)</strong></td>
+<td>&lt;1 сек</td>
 </tr>
 <tr>
-<td><strong>Execution Time (20 hyp.)</strong></td>
-<td>&lt;30 sec</td>
+<td><strong>Время выполнения (20 гип.)</strong></td>
+<td>&lt;30 сек</td>
 </tr>
 </tbody>
 </table></div>
@@ -581,18 +581,18 @@ pg_class_aclcheck
 <tbody>
 <tr>
 <td>CVE-2025-8713</td>
-<td>Statistics Disclosure</td>
-<td>Hypothesis + Taint</td>
+<td>Раскрытие статистики</td>
+<td>Гипотеза + анализ потоков</td>
 </tr>
 <tr>
 <td>CVE-2025-8714</td>
-<td>pg_dump Injection</td>
-<td>Method-based</td>
+<td>Инъекция pg_dump</td>
+<td>На основе методов</td>
 </tr>
 <tr>
 <td>CVE-2025-8715</td>
-<td>Newline Injection</td>
-<td>Method-based</td>
+<td>Инъекция переноса строки</td>
+<td>На основе методов</td>
 </tr>
 </tbody>
 </table></div>
@@ -601,14 +601,14 @@ pg_class_aclcheck
 <thead>
 <tr>
 <th>Инструмент</th>
-<th style="text-align: center;">True Positives</th>
-<th style="text-align: center;">False Positives</th>
-<th style="text-align: center;">Precision</th>
+<th style="text-align: center;">Истинные срабатывания</th>
+<th style="text-align: center;">Ложные срабатывания</th>
+<th style="text-align: center;">Точность</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Pattern SAST</td>
+<td>Шаблонный SAST</td>
 <td style="text-align: center;">3</td>
 <td style="text-align: center;">45</td>
 <td style="text-align: center;">6.25%</td>
@@ -641,38 +641,38 @@ pg_class_aclcheck
     <span class="n">language</span><span class="p">:</span> <span class="nb">str</span>                   <span class="c1"># &quot;C&quot;, &quot;Python&quot;</span>
     <span class="n">category</span><span class="p">:</span> <span class="nb">str</span>                   <span class="c1"># &quot;buffer_overflow&quot;</span>
 
-    <span class="c1"># Taint patterns</span>
+    <span class="c1"># Шаблоны потоков данных</span>
     <span class="n">source_patterns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>      <span class="c1"># [&quot;PQgetvalue&quot;, &quot;getenv&quot;]</span>
     <span class="n">sink_patterns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>        <span class="c1"># [&quot;strcpy&quot;, &quot;memcpy&quot;]</span>
     <span class="n">sanitizer_patterns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>   <span class="c1"># [&quot;strlcpy&quot;, &quot;sizeof&quot;]</span>
 
-    <span class="c1"># Scoring</span>
+    <span class="c1"># Скоринг</span>
     <span class="n">priority_score</span><span class="p">:</span> <span class="nb">float</span>           <span class="c1"># 0.0-1.0+</span>
     <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>               <span class="c1"># 0.0-1.0</span>
 
-    <span class="c1"># Multi-criteria breakdown</span>
+    <span class="c1"># Многокритериальная разбивка</span>
     <span class="n">cwe_frequency_score</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">attack_similarity_score</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">codebase_exposure_score</span><span class="p">:</span> <span class="nb">float</span>
 
-    <span class="c1"># Validation</span>
+    <span class="c1"># Валидация</span>
     <span class="n">sql_query</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">evidence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Evidence</span><span class="p">]</span>
     <span class="n">validation_status</span><span class="p">:</span> <span class="n">ValidationStatus</span>
 </code></pre></div>
 
 <h3  id="72-format-gipotezy"><span id="72_format_gipotezy"></span>7.2 Формат гипотезы<a class="heading-anchor" href="#72-format-gipotezy" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&quot;If untrusted data from {sources} flows to {sinks}
- without sanitization via {sanitizers},
- then {cwe_id} enables {capec_id} attack,
- potentially allowing {impact}.&quot;
+<div class="highlight"><pre><span></span><code>&quot;Если недоверенные данные из {источники} поступают в {приёмники}
+ без санитизации через {санитайзеры},
+ то {cwe_id} делает возможной атаку {capec_id},
+ потенциально приводя к {последствия}.&quot;
 </code></pre></div>
 
 <p><strong>Пример:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="err">&quot;If untrusted data from PQgetvalue() flows to strcpy()</span>
-<span class="err"> without bounds checking via strlcpy(),</span>
-<span class="err"> then CWE-120 enables CAPEC-100 (Buffer Overflow) attack,</span>
-<span class="w"> </span><span class="nv">potentially</span><span class="w"> </span><span class="nv">allowing</span><span class="w"> </span><span class="nv">memory</span><span class="w"> </span><span class="nv">corruption</span><span class="w"> </span><span class="nv">or</span><span class="w"> </span><span class="nv">code</span><span class="w"> </span><span class="nv">execution</span>.<span class="err">&quot;</span>
+<div class="highlight"><pre><span></span><code>&quot;Если недоверенные данные из PQgetvalue() поступают в strcpy()
+ без проверки границ через strlcpy(),
+ то CWE-120 делает возможной атаку CAPEC-100 (переполнение буфера),
+ потенциально приводя к повреждению памяти или выполнению кода.&quot;
 </code></pre></div>
 
 <hr />
@@ -688,12 +688,13 @@ pg_class_aclcheck
     <span class="n">compute_codebase_stats_from_duckdb</span>
 <span class="p">)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectManager</span>
 
 <span class="c1"># 1. Подключение к CPG</span>
-<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
 
 <span class="c1"># 2. Сбор статистики кодовой базы</span>
-<span class="n">stats</span> <span class="o">=</span> <span class="n">compute_codebase_stats_from_duckdb</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">compute_codebase_stats_from_duckdb</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
 
 <span class="c1"># 3. Генерация гипотез</span>
 <span class="n">generator</span> <span class="o">=</span> <span class="n">HypothesisGenerator</span><span class="p">()</span>
@@ -722,9 +723,9 @@ pg_class_aclcheck
 <span class="n">validator</span> <span class="o">=</span> <span class="n">HypothesisValidator</span><span class="p">()</span>
 <span class="n">results</span> <span class="o">=</span> <span class="n">validator</span><span class="o">.</span><span class="n">validate_batch</span><span class="p">(</span><span class="n">scored</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detection Rate: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">detection_rate</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Precision: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">precision</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;F1 Score: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">f1_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Доля обнаружения: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">detection_rate</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Точность: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">precision</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;F1-мера: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">f1_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <hr />
@@ -732,24 +733,24 @@ pg_class_aclcheck
 <p>Многокритериальная система валидации гипотез CodeGraph представляет собой <strong>принципиально новый подход</strong> к поиску уязвимостей:</p>
 <ol>
 <li><strong>Контекстуальный анализ</strong> — учёт специфики конкретной кодовой базы</li>
-<li><strong>Taint-верификация</strong> — подтверждение потока данных через CPG</li>
+<li><strong>Верификация потоков данных</strong> — подтверждение потока данных через CPG</li>
 <li><strong>Приоритизация по риску</strong> — фокус на реально эксплуатируемых уязвимостях</li>
 <li><strong>Снижение ложных срабатываний</strong> — от 70-90% до менее 30%</li>
 </ol>
 <p>Результат: <strong>100% обнаружение</strong> целевых CVE при драматическом снижении ложных срабатываний.</p>
-<h3  id="vizualizatsiya-taint-potokov-i-integratsiya-s-sarif"><span id="vizualizatsiya_taint_potokov_i_integratsiya_s_sarif"></span>Визуализация Taint-потоков и интеграция с SARIF<a class="heading-anchor" href="#vizualizatsiya-taint-potokov-i-integratsiya-s-sarif" title="Link to this section">&para;</a></h3>
-<p>Подтверждённые гипотезы могут быть экспортированы с полной визуализацией taint-путей:
+<h3  id="vizualizatsiya-potokov-dannyh-i-integratsiya-s-sarif"><span id="vizualizatsiya_potokov_dannyh_i_integratsiya_s_sarif"></span>Визуализация потоков данных и интеграция с SARIF<a class="heading-anchor" href="#vizualizatsiya-potokov-dannyh-i-integratsiya-s-sarif" title="Link to this section">&para;</a></h3>
+<p>Подтверждённые гипотезы могут быть экспортированы с полной визуализацией путей потоков данных:
 - <strong>Mermaid-диаграммы</strong> (<code>src/security/taint_visualizer.py</code>) отображают потоки данных от источника к приёмнику в виде интерактивных диаграмм
-- <strong>Экспорт SARIF 2.1.0</strong> (<code>src/security/sarif_exporter.py</code>) включает <code>codeFlows</code> с пошаговым распространением taint
+- <strong>Экспорт SARIF 2.1.0</strong> (<code>src/security/sarif_exporter.py</code>) включает <code>codeFlows</code> с пошаговым распространением потоков данных
 - <strong>Маппинг OWASP Top 10</strong> (<code>src/security/owasp_mapping.py</code>) классифицирует находки для отчётности по соответствию</p>
 <h3  id="proverka-dostizhimosti-putey-cherez-z3"><span id="proverka_dostizhimosti_putey_cherez_z3"></span>Проверка достижимости путей через z3<a class="heading-anchor" href="#proverka-dostizhimosti-putey-cherez-z3" title="Link to this section">&para;</a></h3>
 <p>Движок символьного исполнения z3 валидирует ограничения путей для подтверждённых гипотез, исключая недостижимые пути и дополнительно снижая ложные срабатывания. Это особенно эффективно для условных уязвимостей, где эксплуатация зависит от определённых диапазонов входных данных или конфигурации.</p>
 <hr />
 <h2  id="svyazannye-dokumenty"><span id="svyazannye_dokumenty"></span>Связанные документы<a class="heading-anchor" href="#svyazannye-dokumenty" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="./SECURITY_BRIEF.html">Enterprise Security Brief</a></li>
-<li><a href="./COMPETITIVE_MATRIX.html">Competitive Matrix</a></li>
-<li><a href="../../reference/HYPOTHESIS_SYSTEM.html">Hypothesis System Reference</a></li>
+<li><a href="./SECURITY_BRIEF.html">Обзор корпоративной безопасности</a></li>
+<li><a href="./COMPETITIVE_MATRIX.html">Конкурентная матрица</a></li>
+<li><a href="../../reference/HYPOTHESIS_SYSTEM.html">Справочник по системе гипотез</a></li>
 </ul>
 <hr />
 <p><em>Версия: 1.1 | Февраль 2026</em></p>
@@ -785,9 +786,9 @@ pg_class_aclcheck
 <li><a href="#annotatsiya" class="level-2">Аннотация</a></li>
 <li><a href="#1-problema" class="level-2">1. Проблема</a></li>
 <li><a href="#11-ogranicheniya-traditsionnogo-sast" class="level-3">1.1 Ограничения традиционного SAST</a></li>
-<li><a href="#12-pochemu-pattern-matching-nedostatochno" class="level-3">1.2 Почему сопоставления шаблонов недостаточно</a></li>
+<li><a href="#12-pochemu-sopostavleniya-shablonov-nedostatochno" class="level-3">1.2 Почему сопоставления шаблонов недостаточно</a></li>
 <li><a href="#2-arhitektura-resheniya" class="level-2">2. Архитектура решения</a></li>
-<li><a href="#21-pipeline-validatsii-gipotez" class="level-3">2.1 Pipeline валидации гипотез</a></li>
+<li><a href="#21-konveyer-validatsii-gipotez" class="level-3">2.1 Конвейер валидации гипотез</a></li>
 <li><a href="#3-mnogokriterialnaya-model-skoringa" class="level-2">3. Многокритериальная модель скоринга</a></li>
 <li><a href="#31-formula-prioritizatsii" class="level-3">3.1 Формула приоритизации</a></li>
 <li><a href="#32-komponenty-skoringa" class="level-3">3.2 Компоненты скоринга</a></li>
@@ -795,11 +796,11 @@ pg_class_aclcheck
 <li><a href="#4-statistika-kodovoy-bazy" class="level-2">4. Статистика кодовой базы</a></li>
 <li><a href="#41-sbor-statistiki-iz-cpg" class="level-3">4.1 Сбор статистики из CPG</a></li>
 <li><a href="#42-otslezhivaemye-funktsii" class="level-3">4.2 Отслеживаемые функции</a></li>
-<li><a href="#5-taint-analysis-na-cpg" class="level-2">5. Taint Analysis на CPG</a></li>
+<li><a href="#5-analiz-potokov-dannyh-na-cpg" class="level-2">5. Анализ потоков данных на CPG</a></li>
 <li><a href="#51-verifikatsiya-potoka-dannyh" class="level-3">5.1 Верификация потока данных</a></li>
 <li><a href="#52-proverka-sanitizatsii" class="level-3">5.2 Проверка санитизации</a></li>
 <li><a href="#6-rezultaty-validatsii" class="level-2">6. Результаты валидации</a></li>
-<li><a href="#61-benchmark-na-postgresql-17" class="level-3">6.1 Тестирование на PostgreSQL 17</a></li>
+<li><a href="#61-testirovanie-na-postgresql-17" class="level-3">6.1 Тестирование на PostgreSQL 17</a></li>
 <li><a href="#62-obnaruzhennye-cve" class="level-3">6.2 Обнаруженные CVE</a></li>
 <li><a href="#63-sravnenie-s-traditsionnym-sast" class="level-3">6.3 Сравнение с традиционным SAST</a></li>
 <li><a href="#7-struktura-gipotezy" class="level-2">7. Структура гипотезы</a></li>
@@ -808,7 +809,7 @@ pg_class_aclcheck
 <li><a href="#8-api-dlya-integratsii" class="level-2">8. API для интеграции</a></li>
 <li><a href="#81-polnyy-primer" class="level-3">8.1 Полный пример</a></li>
 <li><a href="#9-zaklyuchenie" class="level-2">9. Заключение</a></li>
-<li><a href="#vizualizatsiya-taint-potokov-i-integratsiya-s-sarif" class="level-3">Визуализация Taint-потоков и интеграция с SARIF</a></li>
+<li><a href="#vizualizatsiya-potokov-dannyh-i-integratsiya-s-sarif" class="level-3">Визуализация потоков данных и интеграция с SARIF</a></li>
 <li><a href="#proverka-dostizhimosti-putey-cherez-z3" class="level-3">Проверка достижимости путей через z3</a></li>
 <li><a href="#svyazannye-dokumenty" class="level-2">Связанные документы</a></li>
       </ul>

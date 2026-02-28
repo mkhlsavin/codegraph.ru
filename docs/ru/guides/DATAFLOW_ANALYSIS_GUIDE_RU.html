@@ -203,19 +203,19 @@
 - <strong>Безопасность памяти</strong> - Обнаружение use-after-free и double-free ошибок
 - <strong>Обнаружение NULL-указателей</strong> - Поиск потенциальных разыменований NULL
 - <strong>Утечка информации</strong> - Обнаружение утечек конфиденциальных данных
-- <strong>Состояния гонки</strong> - Поиск TOCTOU и data race проблем</p>
+- <strong>Состояния гонки</strong> - Поиск TOCTOU (ошибок класса &ldquo;от времени проверки до времени использования&rdquo;) и проблем гонки данных</p>
 <p><strong>Точность:</strong> 85-90% (улучшено с 70% при подходе на основе шаблонов)</p>
 <hr />
 <h2  id="klyuchevye-vozmozhnosti"><span id="klyuchevye_vozmozhnosti"></span>Ключевые возможности<a class="heading-anchor" href="#klyuchevye-vozmozhnosti" title="Link to this section">&para;</a></h2>
-<h3  id="funktsii-phase-4-bazovye"><span id="funktsii_phase_4_bazovye"></span>Функции Phase 4 (Базовые)<a class="heading-anchor" href="#funktsii-phase-4-bazovye" title="Link to this section">&para;</a></h3>
-<p>✅ <strong>Межпроцедурный анализ</strong> - Отслеживание taint через вызовы функций
-✅ <strong>Анализ потока управления</strong> - Анализ условного выполнения
-✅ <strong>Field-sensitive анализ</strong> - Отслеживание taint на уровне полей структур
-✅ <strong>Обнаружение санитизации</strong> - Определение правильной санитизации входных данных</p>
-<h3  id="uluchsheniya-priority-3-novoe"><span id="uluchsheniya_priority_3_novoe"></span>Улучшения Priority 3 (Новое!)<a class="heading-anchor" href="#uluchsheniya-priority-3-novoe" title="Link to this section">&para;</a></h3>
-<p>✅ <strong>Кросс-языковая поддержка</strong> - Python, JavaScript, Go, PostgreSQL
-✅ <strong>Анализ алиасов указателей</strong> - Улучшенное обнаружение UAF (+15% точности)
-✅ <strong>Символьное выполнение</strong> - Проверка выполнимости путей (-5-7% ложных срабатываний)</p>
+<ul>
+<li><strong>Межпроцедурный анализ</strong> - Отслеживание зараженных данных через вызовы функций</li>
+<li><strong>Анализ потока управления</strong> - Анализ условного выполнения</li>
+<li><strong>Field-sensitive анализ</strong> - Отслеживание зараженных данных на уровне полей структур</li>
+<li><strong>Обнаружение санитизации</strong> - Определение правильной санитизации входных данных</li>
+<li><strong>Кросс-языковая поддержка</strong> - Python, JavaScript, Go, PostgreSQL</li>
+<li><strong>Анализ алиасов указателей</strong> - Улучшенное обнаружение UAF (+15% точности)</li>
+<li><strong>Символьное выполнение</strong> - Проверка выполнимости путей (-5-7% ложных срабатываний)</li>
+</ul>
 <hr />
 <h2 id="arhitektura">Архитектура<a class="heading-anchor" href="#arhitektura" title="Link to this section">&para;</a></h2>
 <h3  id="osnovnye-komponenty"><span id="osnovnye_komponenty"></span>Основные компоненты<a class="heading-anchor" href="#osnovnye-komponenty" title="Link to this section">&para;</a></h3>
@@ -224,8 +224,8 @@
 ├── InterProcTracker      - Межпроцедурное отслеживание
 ├── ControlFlowAnalyzer   - Анализ зависимостей по управлению
 ├── FieldSensitiveTracker - Отслеживание полей структур
-├── PointerAliasAnalyzer  - Обнаружение алиасов (Priority 3)
-└── PathConstraintTracker - Символьное выполнение (Priority 3)
+├── PointerAliasAnalyzer  - Обнаружение алиасов
+└── PathConstraintTracker - Символьное выполнение
 </code></pre></div>
 
 <h3  id="protsess-analiza"><span id="protsess_analiza"></span>Процесс анализа<a class="heading-anchor" href="#protsess-analiza" title="Link to this section">&para;</a></h3>
@@ -254,7 +254,7 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">analyze_sql_injections</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.services.cpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGQueryService</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="c1"># Анализ уязвимостей SQL-инъекций</span>
     <span class="n">paths</span> <span class="o">=</span> <span class="n">analyze_sql_injections</span><span class="p">(</span>
         <span class="n">cpg</span><span class="p">,</span>
@@ -312,14 +312,14 @@
 <h3  id="polzovatelskiy-taint-analiz"><span id="polzovatelskiy_taint_analiz"></span>Пользовательский Taint-анализ<a class="heading-anchor" href="#polzovatelskiy-taint-analiz" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.taint_analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaintPropagator</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="c1"># Создание propagator с пользовательскими настройками</span>
     <span class="n">propagator</span> <span class="o">=</span> <span class="n">TaintPropagator</span><span class="p">(</span>
         <span class="n">cpg</span><span class="p">,</span>
         <span class="n">enable_inter_proc</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>        <span class="c1"># Межпроцедурное отслеживание</span>
         <span class="n">enable_control_flow</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>      <span class="c1"># Анализ потока управления</span>
         <span class="n">enable_field_sensitive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>   <span class="c1"># Field-sensitive отслеживание</span>
-        <span class="n">enable_symbolic_execution</span><span class="o">=</span><span class="kc">True</span> <span class="c1"># Проверка выполнимости путей (Priority 3)</span>
+        <span class="n">enable_symbolic_execution</span><span class="o">=</span><span class="kc">True</span> <span class="c1"># Проверка выполнимости путей</span>
     <span class="p">)</span>
 
     <span class="c1"># Поиск taint-путей</span>
@@ -336,8 +336,8 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">analyze_use_after_free</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.services.cpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGQueryService</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
-    <span class="c1"># Анализ с включённым анализом алиасов указателей (Priority 3)</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+    <span class="c1"># Анализ с включённым анализом алиасов указателей</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.memory_lifetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryLifetimeAnalyzer</span>
 
     <span class="n">analyzer</span> <span class="o">=</span> <span class="n">MemoryLifetimeAnalyzer</span><span class="p">(</span>
@@ -364,7 +364,7 @@
 <h3  id="obnaruzhenie-double-free"><span id="obnaruzhenie_double_free"></span>Обнаружение Double-Free<a class="heading-anchor" href="#obnaruzhenie-double-free" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">analyze_double_free</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="n">analyzer</span> <span class="o">=</span> <span class="n">MemoryLifetimeAnalyzer</span><span class="p">(</span><span class="n">cpg</span><span class="p">)</span>
 
     <span class="n">paths</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_double_free</span><span class="p">(</span>
@@ -380,10 +380,10 @@
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Риск: </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">risk_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<h3  id="analiz-aliasov-ukazateley-priority-3"><span id="analiz_aliasov_ukazateley_priority_3"></span>Анализ алиасов указателей (Priority 3)<a class="heading-anchor" href="#analiz-aliasov-ukazateley-priority-3" title="Link to this section">&para;</a></h3>
+<h3  id="analiz-aliasov-ukazateley"><span id="analiz_aliasov_ukazateley"></span>Анализ алиасов указателей<a class="heading-anchor" href="#analiz-aliasov-ukazateley" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.pointer_alias</span><span class="w"> </span><span class="kn">import</span> <span class="n">PointerAliasAnalyzer</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="n">analyzer</span> <span class="o">=</span> <span class="n">PointerAliasAnalyzer</span><span class="p">(</span><span class="n">cpg</span><span class="p">)</span>
 
     <span class="c1"># Анализ функции на наличие алиасов указателей</span>
@@ -412,7 +412,7 @@
 <h2  id="obnaruzhenie-null-ukazateley"><span id="obnaruzhenie_null_ukazateley"></span>Обнаружение NULL-указателей<a class="heading-anchor" href="#obnaruzhenie-null-ukazateley" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">analyze_null_dereferences</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="n">paths</span> <span class="o">=</span> <span class="n">analyze_null_dereferences</span><span class="p">(</span>
         <span class="n">cpg</span><span class="p">,</span>
         <span class="n">max_paths</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
@@ -433,7 +433,7 @@
 <h2  id="obnaruzhenie-utechek-informatsii"><span id="obnaruzhenie_utechek_informatsii"></span>Обнаружение утечек информации<a class="heading-anchor" href="#obnaruzhenie-utechek-informatsii" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">analyze_info_disclosure</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="n">paths</span> <span class="o">=</span> <span class="n">analyze_info_disclosure</span><span class="p">(</span>
         <span class="n">cpg</span><span class="p">,</span>
         <span class="n">max_paths</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
@@ -455,7 +455,7 @@
 <h2  id="obnaruzhenie-sostoyaniy-gonki"><span id="obnaruzhenie_sostoyaniy_gonki"></span>Обнаружение состояний гонки<a class="heading-anchor" href="#obnaruzhenie-sostoyaniy-gonki" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">analyze_race_conditions</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="n">paths</span> <span class="o">=</span> <span class="n">analyze_race_conditions</span><span class="p">(</span>
         <span class="n">cpg</span><span class="p">,</span>
         <span class="n">max_paths</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
@@ -475,10 +475,10 @@
 
 <hr />
 <h2  id="prodvinutye-funktsii"><span id="prodvinutye_funktsii"></span>Продвинутые функции<a class="heading-anchor" href="#prodvinutye-funktsii" title="Link to this section">&para;</a></h2>
-<h3  id="simvolnoe-vypolnenie-priority-3"><span id="simvolnoe_vypolnenie_priority_3"></span>Символьное выполнение (Priority 3)<a class="heading-anchor" href="#simvolnoe-vypolnenie-priority-3" title="Link to this section">&para;</a></h3>
+<h3  id="simvolnoe-vypolnenie"><span id="simvolnoe_vypolnenie"></span>Символьное выполнение<a class="heading-anchor" href="#simvolnoe-vypolnenie" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.symbolic_execution</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathConstraintTracker</span>
 
-<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="s2">&quot;cpg.duckdb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">CPGQueryService</span><span class="p">()</span> <span class="k">as</span> <span class="n">cpg</span><span class="p">:</span>
     <span class="n">tracker</span> <span class="o">=</span> <span class="n">PathConstraintTracker</span><span class="p">(</span><span class="n">cpg</span><span class="p">,</span> <span class="n">max_constraints</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
     <span class="c1"># Проверка, выполним ли конкретный путь</span>
@@ -500,7 +500,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Отфильтровано </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_paths</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">feasible_paths</span><span class="p">)</span><span class="si">}</span><span class="s2"> невыполнимых путей&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<h3  id="kross-yazykovoy-analiz-priority-3"><span id="kross_yazykovoy_analiz_priority_3"></span>Кросс-языковой анализ (Priority 3)<a class="heading-anchor" href="#kross-yazykovoy-analiz-priority-3" title="Link to this section">&para;</a></h3>
+<h3  id="kross-yazykovoy-analiz"><span id="kross_yazykovoy_analiz"></span>Кросс-языковой анализ<a class="heading-anchor" href="#kross-yazykovoy-analiz" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.domains</span><span class="w"> </span><span class="kn">import</span> <span class="n">DomainRegistry</span>
 
 <span class="c1"># Активация домена для вашего языка</span>
@@ -704,16 +704,13 @@
 - <code>src/analysis/dataflow/__init__.py</code>
 - <code>src/analysis/dataflow/taint_analysis.py</code>
 - <code>src/analysis/dataflow/memory_lifetime.py</code>
-- <code>src/analysis/dataflow/pointer_alias.py</code> (Priority 3)
-- <code>src/analysis/dataflow/symbolic_execution.py</code> (Priority 3)</p>
+- <code>src/analysis/dataflow/pointer_alias.py</code>
+- <code>src/analysis/dataflow/symbolic_execution.py</code></p>
 <hr />
 <h3  id="vizualizatsiya-taint-potokov"><span id="vizualizatsiya_taint_potokov"></span>Визуализация Taint-потоков<a class="heading-anchor" href="#vizualizatsiya-taint-potokov" title="Link to this section">&para;</a></h3>
-<p>Результаты анализ заражения данныха могут быть отрисованы в виде Mermaid-диаграмм через <code>src/security/taint_visualizer.py</code>, предоставляя визуальные диаграммы потоков данных от источника к приёмнику. Экспорт SARIF 2.1.0 (<code>--sarif-file</code>) включает полные <code>codeFlows</code> с пошаговым распространением taint.</p>
+<p>Результаты анализ заражения данныха могут быть отрисованы в виде Mermaid-диаграмм через <code>src/security/taint_visualizer.py</code>, предоставляя визуальные диаграммы потоков данных от источника к приёмнику. Экспорт SARIF 2.1.0 (<code>--sarif-file</code>) включает полные <code>codeFlows</code> с пошаговым распространением зараженных данных.</p>
 <h3  id="kross-yazykovaya-podderzhka"><span id="kross_yazykovaya_podderzhka"></span>Кросс-языковая поддержка<a class="heading-anchor" href="#kross-yazykovaya-podderzhka" title="Link to this section">&para;</a></h3>
-<p>GoCPG поддерживает 11 языков: C, C++, Go, Python, JavaScript, TypeScript, Java, Kotlin, C#, PHP и 1С:Предприятие. Межъязыковые FFI-рёбра (CGO, ctypes, cffi) связывают taint-пути через границы языков.</p>
-<blockquote class="callout">
-<p><strong>Примечание:</strong> Всегда используйте <code>ProjectManager.get_active_db_path()</code> вместо жёстко закодированного <code>"cpg.duckdb"</code> — см. <code>src/project_manager.py</code>.</p>
-</blockquote>
+<p>GoCPG поддерживает 11 языков: C, C++, Go, Python, JavaScript, TypeScript, Java, Kotlin, C#, PHP и 1С:Предприятие. Межъязыковые FFI-рёбра (CGO, ctypes, cffi) связывают пути заражения через границы языков.</p>
 <h2  id="dopolnitelnye-resursy"><span id="dopolnitelnye_resursy"></span>Дополнительные ресурсы<a class="heading-anchor" href="#dopolnitelnye-resursy" title="Link to this section">&para;</a></h2>
 <ul>
 <li><strong>Руководство по CLI:</strong> <code>docs/guides/ru/CLI_GUIDE.md</code></li>
@@ -744,8 +741,6 @@
 <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#obzor" class="level-2">Обзор</a></li>
 <li><a href="#klyuchevye-vozmozhnosti" class="level-2">Ключевые возможности</a></li>
-<li><a href="#funktsii-phase-4-bazovye" class="level-3">Функции Phase 4 (Базовые)</a></li>
-<li><a href="#uluchsheniya-priority-3-novoe" class="level-3">Улучшения Priority 3 (Новое!)</a></li>
 <li><a href="#arhitektura" class="level-2">Архитектура</a></li>
 <li><a href="#osnovnye-komponenty" class="level-3">Основные компоненты</a></li>
 <li><a href="#protsess-analiza" class="level-3">Процесс анализа</a></li>
@@ -759,13 +754,13 @@
 <li><a href="#analiz-bezopasnosti-pamyati" class="level-2">Анализ безопасности памяти</a></li>
 <li><a href="#obnaruzhenie-use-after-free" class="level-3">Обнаружение Use-After-Free</a></li>
 <li><a href="#obnaruzhenie-double-free" class="level-3">Обнаружение Double-Free</a></li>
-<li><a href="#analiz-aliasov-ukazateley-priority-3" class="level-3">Анализ алиасов указателей (Priority 3)</a></li>
+<li><a href="#analiz-aliasov-ukazateley" class="level-3">Анализ алиасов указателей</a></li>
 <li><a href="#obnaruzhenie-null-ukazateley" class="level-2">Обнаружение NULL-указателей</a></li>
 <li><a href="#obnaruzhenie-utechek-informatsii" class="level-2">Обнаружение утечек информации</a></li>
 <li><a href="#obnaruzhenie-sostoyaniy-gonki" class="level-2">Обнаружение состояний гонки</a></li>
 <li><a href="#prodvinutye-funktsii" class="level-2">Продвинутые функции</a></li>
-<li><a href="#simvolnoe-vypolnenie-priority-3" class="level-3">Символьное выполнение (Priority 3)</a></li>
-<li><a href="#kross-yazykovoy-analiz-priority-3" class="level-3">Кросс-языковой анализ (Priority 3)</a></li>
+<li><a href="#simvolnoe-vypolnenie" class="level-3">Символьное выполнение</a></li>
+<li><a href="#kross-yazykovoy-analiz" class="level-3">Кросс-языковой анализ</a></li>
 <li><a href="#field-sensitive-analiz" class="level-3">Field-Sensitive анализ</a></li>
 <li><a href="#analiz-potoka-upravleniya" class="level-3">Анализ потока управления</a></li>
 <li><a href="#konfiguratsiya" class="level-2">Конфигурация</a></li>
