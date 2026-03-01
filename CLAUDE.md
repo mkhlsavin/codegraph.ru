@@ -6,7 +6,7 @@ Landing is a sub-project of CodeGraph. See [`../../CLAUDE.md`](../../CLAUDE.md) 
 
 ## What This Is
 
-Public landing site for CodeGraph (codegraph.ru) — a static website deployed to GitHub Pages. Russian-first marketing landing (6 HTML pages) + bilingual documentation hub (`docs/en/`, `docs/ru/`).
+Public landing site for CodeGraph (codegraph.ru) — a static website deployed to GitHub Pages. Russian-first marketing landing (7 HTML pages) + bilingual documentation hub (`docs/en/`, `docs/ru/`).
 
 ## Local Preview
 
@@ -23,7 +23,7 @@ Build scripts live in `../../scripts/`. **Run from the codegraph root**, not fro
 
 ### Landing (`build_landing.py`)
 ```bash
-python scripts/build_landing.py              # Update header/footer in all 6 HTML pages from templates
+python scripts/build_landing.py              # Update header/footer in all 7 HTML pages from templates
 python scripts/build_landing.py --sections   # Rebuild index.html from modular sections (templates/sections/)
 python scripts/build_landing.py --assets     # Minify CSS/JS only (styles.min.css, main.min.js)
 python scripts/build_landing.py --all        # HTML + minification
@@ -42,7 +42,7 @@ python scripts/build_docs.py --validate                   # Validate links in ex
 ```
 Markdown source: `D:/work/codegraph/docs/{section}/`. Output: `docs/en/` and `docs/ru/`.
 
-## Pages (6 root-level HTML files)
+## Pages (7 root-level HTML files)
 
 All share header/footer from templates. All must stay in sync.
 
@@ -54,13 +54,14 @@ All share header/footer from templates. All must stay in sync.
 | `productivity.html` | Vertical: onboarding, code search |
 | `compliance.html` | Vertical: 152-ФЗ, ГОСТ, ФСТЭК |
 | `cpg.html` | Vertical: CPG technology deep-dive |
+| `ai-engineering.html` | Vertical: ML infrastructure, AI-generated code verification, completed experiments cleanup |
 
 Each vertical page has its own FAQ section (unique questions per page, no overlap) and JSON-LD FAQPage structured data in `<head>`.
 
 ## Templates
 
 ### Header & Footer
-`templates/header.html` and `templates/footer.html` are the source of truth. They use `{variable}` placeholder syntax (`{base_url}`, `{docs_url}`, `{nav_features}`, etc.) substituted by `build_landing.py`. They are **NOT auto-compiled** — either run the build script or edit all 6 HTML pages manually.
+`templates/header.html` and `templates/footer.html` are the source of truth. They use `{variable}` placeholder syntax (`{base_url}`, `{docs_url}`, `{nav_features}`, etc.) substituted by `build_landing.py`. They are **NOT auto-compiled** — either run the build script or edit all 7 HTML pages manually.
 
 ### Sections
 `templates/sections/` contains modular sections for `index.html`, rebuilt via `--sections` flag. Order:
@@ -93,8 +94,8 @@ API auto-detection: `localhost:8000` in dev, `api.codegraph.ru` in prod. Rate li
 
 ## Critical Rules
 
-1. **Header/footer sync** — When editing header or footer, update ALL 6 HTML pages. Use `build_landing.py` from codegraph root to automate, or edit each file manually.
-2. **ICP links** — Footer must include links to all 4 vertical pages (security, productivity, compliance, cpg) for SEO internal linking.
+1. **Header/footer sync** — When editing header or footer, update ALL 7 HTML pages. Use `build_landing.py` from codegraph root to automate, or edit each file manually.
+2. **ICP links** — Footer must include links to all 5 vertical pages (security, productivity, compliance, cpg, ai-engineering) for SEO internal linking.
 3. **Russian-first** — All user-facing text on landing pages must be in Russian. English only for proper names and abbreviations (CPG, AST, CFG, SARIF, DuckDB). English content lives only in `docs/en/`.
 4. **Minified assets** — `styles.min.css` and `main.min.js` are regenerated via `--assets`. CSS `@import` in `styles.css` works directly in browsers without bundling.
 5. **Submodule workflow** — After pushing to landing, update submodule pointer in parent codegraph: `cd D:/work/codegraph && git add docs/landing && git commit`.
@@ -115,14 +116,20 @@ Terms that must be translated (not left in English) on landing pages:
 - findings → обнаружения
 - on-premise — keep as-is (accepted IT term in Russian)
 
+## Blog
+
+`blog/` contains Habr article drafts (markdown, `habr-NN-slug.md`). 9 articles covering CPG vs SAST, onboarding, dogfooding, parser design, taint analysis, DuckDB for CPG, handler-formatter architecture, and audit. Disallowed in `robots.txt` — not indexed by search engines.
+
 ## SEO & Deployment
 
 - `CNAME` → `codegraph.ru` (GitHub Pages custom domain)
 - `index.html` contains JSON-LD structured data (Organization, SoftwareApplication, FAQPage)
 - Vertical pages have their own FAQPage JSON-LD in `<head>`
-- `sitemap.xml` — 14 public URLs with priorities
-- `robots.txt` — allows crawling, disallows `/admin/`, `/api/`, `*.json`
+- `sitemap.xml` — 15 public URLs with priorities
+- `robots.txt` — allows crawling, disallows `/admin/`, `/api/`, `/templates/`, `/blog/`, `/.claude/`, `*.json`
 - `.nojekyll` — disables Jekyll processing on GitHub Pages
+- `yandex_76c03f1a56dcfce0.html` — Yandex Webmaster verification
+- `BingSiteAuth.xml` — Bing Webmaster verification
 
 ## Git Workflow
 
