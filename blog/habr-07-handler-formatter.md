@@ -470,7 +470,7 @@ Handler-Formatter архитектура — это внутренняя мех�
 Эта статья — седьмая (и последняя) в серии:
 - [Статья 1: почему CPG лучше SAST](habr-01-cpg-vs-sast.md)
 - [Статья 2: онбординг в кодовую базу](habr-02-onboarding.md)
-- [Статья 3: догфудинг](habr-03-dogfooding.md)
+- [Статья 3: догфуддинг](habr-03-dogfooding.md)
 - [Статья 4: зачем свой парсер](habr-04-why-own-parser.md)
 - [Статья 5: эволюция анализа уязвимостей](habr-05-taint-analysis.md)
 - [Статья 6: DuckDB вместо Neo4j](habr-06-duckdb-for-cpg.md)
@@ -479,4 +479,10 @@ Handler-Formatter архитектура — это внутренняя мех�
 
 ---
 
-*CodeGraph — инструмент анализа кода на основе графа свойств кода. [codegraph.ru](https://codegraph.ru)*
+**Хотите снизить стоимость LLM-вызовов в вашем проекте?**
+
+[Подробнее о продуктивности](https://codegraph.ru/productivity.html) | [Технический обзор](https://codegraph.ru/whitepaper.html)
+
+---
+
+*CodeGraph — инструмент построения и анализа графа свойств кода. 11 языков, 31 аналитический проход, 190 правил структурного поиска. Подробнее: [codegraph.ru](https://codegraph.ru)*
