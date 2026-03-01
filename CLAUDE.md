@@ -95,11 +95,12 @@ API auto-detection: `localhost:8000` in dev, `api.codegraph.ru` in prod. Rate li
 ## Critical Rules
 
 1. **Header/footer sync** — When editing header or footer, update ALL 7 HTML pages. Use `build_landing.py` from codegraph root to automate, or edit each file manually.
-2. **ICP links** — Footer must include links to all 5 vertical pages (security, productivity, compliance, cpg, ai-engineering) for SEO internal linking.
-3. **Russian-first** — All user-facing text on landing pages must be in Russian. English only for proper names and abbreviations (CPG, AST, CFG, SARIF, DuckDB). English content lives only in `docs/en/`.
-4. **Minified assets** — `styles.min.css` and `main.min.js` are regenerated via `--assets`. CSS `@import` in `styles.css` works directly in browsers without bundling.
-5. **Submodule workflow** — After pushing to landing, update submodule pointer in parent codegraph: `cd D:/work/codegraph && git add docs/landing && git commit`.
-6. **Scenario count** — CodeGraph has **21** scenarios (not 20). #21 is "Структурный поиск паттернов".
+2. **Docs footer sync** — Documentation pages have **3 separate footer templates** that must stay in sync with landing: `scripts/docs_builder/template.py` (doc pages), `scripts/docs_builder/navigation.py` (index pages — 2 copies with different relative paths), and `scripts/docs_builder/config.py` (UI_STRINGS).
+3. **ICP links** — Footer must include links to all 5 vertical pages (security, productivity, compliance, cpg, ai-engineering) for SEO internal linking.
+4. **Russian-first** — All user-facing text on landing pages must be in Russian. English only for proper names and abbreviations (CPG, AST, CFG, SARIF, DuckDB). English content lives only in `docs/en/`.
+5. **Minified assets** — `styles.min.css` and `main.min.js` are regenerated via `--assets`. CSS `@import` in `styles.css` works directly in browsers without bundling.
+6. **Submodule workflow** — After pushing to landing, update submodule pointer in parent codegraph: `cd D:/work/codegraph && git add docs/landing && git commit`.
+7. **Scenario count** — CodeGraph has **21** scenarios (not 20). #21 is "Структурный поиск паттернов".
 
 ## Localization
 
@@ -114,6 +115,12 @@ Terms that must be translated (not left in English) on landing pages:
 - audit trail → журнал аудита
 - PII → ПДн (персональные данные)
 - findings → обнаружения
+- dead experiments → завершённые эксперименты (NOT «мёртвые эксперименты»)
+- preprocessing steps → этапы предобработки
+- training loops → циклы обучения
+- feature engineering → конструирование признаков
+- training pipeline → конвейер обучения
+- data pipeline → конвейер данных
 - on-premise — keep as-is (accepted IT term in Russian)
 
 ## Blog
