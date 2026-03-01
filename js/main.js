@@ -27,19 +27,19 @@
   // ============================================
   const MOCK_RESPONSES = {
     'Как устроена авторизация?': {
-      answer: 'Авторизация в PostgreSQL реализована в модуле src/backend/libpq/auth.c.\n\nОсновные функции:\n- ClientAuthentication() - точка входа\n- CheckPasswordAuth() - проверка пароля\n- CheckMD5Auth() - MD5 хеширование\n\nПоддерживаемые методы: trust, md5, scram-sha-256, cert, ldap.',
-      processing_time_ms: 1250
+      answer: 'Авторизация в CodeGraph реализована в модуле `src/api/auth/` (16 файлов в CPG).\n\n**Основные компоненты:**\n- `jwt_handler.py` — JWT-аутентификация: `create_access_token` (fan_in=9), `verify_token` (fan_in=7), `create_refresh_token` (fan_in=8)\n- `project_auth.py` — RBAC на уровне групп проектов (GroupRole: VIEWER/EDITOR/ADMIN)\n- `permissions.py` — 4 роли пользователей: VIEWER, ANALYST, REVIEWER, ADMIN\n- `api_keys.py` — `generate_api_key` (fan_in=7) для программного доступа\n- `oauth.py` — 4 провайдера: GitHub, GitLab, Google, Keycloak\n- `middleware.py` — проверка JWT в каждом запросе\n\n**Граф вызовов:** `OAuthProvider.__init__` — самый связанный метод (fan_in=19), от него наследуются все провайдеры.',
+      processing_time_ms: 1340
     },
-    'Как работает MVCC в PostgreSQL?': {
-      answer: 'MVCC (Multi-Version Concurrency Control) реализован через:\n\n1. xmin/xmax в заголовке каждого tuple\n2. Snapshot видимости (GetTransactionSnapshot)\n3. Visibility map для оптимизации\n\nКлючевые файлы: src/backend/access/heap/heapam.c, src/backend/storage/ipc/procarray.c',
-      processing_time_ms: 1100
+    'Как работает оркестрация сценариев?': {
+      answer: 'Оркестрация реализована в `src/workflow/orchestration/` (7 файлов в CPG).\n\n**Ключевые методы (по данным графа вызовов):**\n- `route_by_intent` (fan_in=23, fan_out=9) — маршрутизация по намерению\n- `MultiScenarioCopilot.run` (fan_in=18, fan_out=34, CC=5) — основной метод выполнения\n- `classify_intent_node` (fan_in=7, fan_out=14) — классификация намерения через LLM\n- `build_multi_scenario_graph` (fan_in=4, fan_out=37) — построение LangGraph-графа\n\n**Архитектура:** LangGraph-граф маршрутизирует запрос по 21 сценарию. 3,637 методов в 285 файлах модуля scenarios.\n\n**Композитные сценарии:** S18 (5 суб-сценариев параллельно, 60с), S19 (3 последовательно, 45с), Audit (9 суб-сценариев, 600с).',
+      processing_time_ms: 1180
     },
-    'Покажи callers функции palloc': {
-      answer: 'palloc() вызывается из 847 функций в кодовой базе.\n\nТоп-5 вызывающих модулей:\n- executor/ - 234 вызова\n- parser/ - 156 вызовов\n- rewriter/ - 89 вызовов\n- optimizer/ - 78 вызовов\n- utils/ - 67 вызовов',
-      processing_time_ms: 890
+    'Покажи callers get_unified_config': {
+      answer: '`get_unified_config()` — самая вызываемая конфигурационная функция: **654 уникальных вызывающих функции**, 1 392 ребра вызовов в графе.\n\n**Вызывающие модули:**\n- `workflow/scenarios/` — 367 функций\n- `analysis/` — 68 функций\n- `workflow/` (прочее) — 53 функции\n- `retrieval/` — 26 функций\n- `config/` — 17 функций\n- `services/` — 9 функций\n- `tui/` — 7 функций\n- `security/` — 7 функций\n- `api/` — 5 функций\n\n**Топ-вызывающие классы:** обработчики сценариев (`ReachabilityOnboardingHandler.handle`, `CallDepthOnboardingHandler.handle` и др.) — каждый с fan_in=277.',
+      processing_time_ms: 920
     },
     'default': {
-      answer: 'CodeGraph анализирует кодовую базу PostgreSQL с использованием Code Property Graph.\n\nПопробуйте примеры из кнопок выше или задайте свой вопрос о коде.',
+      answer: 'CodeGraph анализирует собственную кодовую базу (само-анализ) с использованием Code Property Graph.\n\n87,000+ методов • 2,800,000+ узлов • 48,000,000+ рёбер в CPG.\n\nПопробуйте примеры из кнопок выше или задайте свой вопрос о коде.',
       processing_time_ms: 500
     }
   };
