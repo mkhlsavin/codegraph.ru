@@ -147,6 +147,8 @@
         <li><a href="CLAUDE_CODE_GIT.html" class="active">Claude Code & Git Integration Guide</a></li>
         <li><a href="EXTERNAL_CONTEXT.html">External Context Integration Guide</a></li>
         <li><a href="GIGACHAT.html">GigaChat Integration Guide</a></li>
+        <li><a href="GITVERSE.html">GitVerse Integration Guide</a></li>
+        <li><a href="SOURCECRAFT.html">SourceCraft Integration Guide</a></li>
         <li><a href="YANDEX_AI_STUDIO.html">Yandex AI Studio Integration Guide</a></li>
       </ul>
     </div>
@@ -329,6 +331,14 @@ Domain: python_generic
 </code></pre></div>
 
 <p>This helps Claude locate code entities without manual file searching.</p>
+<h4  id="interface-exposure-detection-m1"><span id="interface_exposure_detection_m1"></span>Interface Exposure Detection (M1)<a class="heading-anchor" href="#interface-exposure-detection-m1" title="Link to this section">&para;</a></h4>
+<p>For each resolved entity, the hook additionally checks which interface layers call it:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">### CommitAnalyzer</span>
+<span class="w">  </span><span class="k">-</span><span class="w"> </span><span class="sb">`analyze_commit`</span> at <span class="sb">`src/dogfooding/commit_analyzer.py:298`</span> (complexity: 12)
+  <span class="gs">**Exposed via:**</span> CLI, MCP, REST API
+</code></pre></div>
+
+<p>The <code>lookup_interface_exposure()</code> function searches for calls to the entity from the 5 interface layers (CLI, REST API, TUI, MCP, ACP) via the <code>nodes_call</code> table in the CPG. This helps Claude assess the potential impact of changes on external interfaces.</p>
 <h3  id="pretooluse-complexity-gate"><span id="pretooluse_complexity_gate"></span>PreToolUse: Complexity gate<a class="heading-anchor" href="#pretooluse-complexity-gate" title="Link to this section">&para;</a></h3>
 <p><strong>File:</strong> <code>.claude/hooks/pre_tool_use.py</code>
 <strong>Timeout:</strong> 8s
@@ -340,6 +350,14 @@ Domain: python_generic
 </code></pre></div>
 
 <p>Non-source files (<code>.md</code>, <code>.json</code>, <code>.yaml</code>, etc.) are silently skipped.</p>
+<h4  id="registration-completeness-check-cr2"><span id="registration_completeness_check_cr2"></span>Registration Completeness Check (CR2)<a class="heading-anchor" href="#registration-completeness-check-cr2" title="Link to this section">&para;</a></h4>
+<p>When editing files in <code>scenarios/</code>, <code>services/</code>, <code>analysis/</code>, <code>security/</code> directories, the hook additionally checks whether all public functions in the file are registered in interface layers:</p>
+<div class="highlight"><pre><span></span><code><span class="gu">## Registration Warning</span>
+<span class="gs">**Registration check:**</span> <span class="sb">`analyze_security`</span>, <span class="sb">`scan_endpoints`</span> not called from any interface layer (CLI/API/TUI/MCP/ACP)
+</code></pre></div>
+
+<p>The <code>check_registration_completeness()</code> function extracts public functions (not starting with <code>_</code> or <code>test_</code>) from the target file via CPG, then checks whether they are called from any interface layer. If some functions are registered and some are not, a warning is produced.</p>
+<p>Files in the interface layers themselves (<code>src/cli/</code>, <code>src/api/routers/</code>, <code>src/tui/commands/</code>, <code>src/mcp/tools/</code>, <code>src/acp/</code>) are skipped.</p>
 <h3  id="posttooluse-commit-analysis"><span id="posttooluse_commit_analysis"></span>PostToolUse: Commit analysis<a class="heading-anchor" href="#posttooluse-commit-analysis" title="Link to this section">&para;</a></h3>
 <p><strong>File:</strong> <code>.claude/hooks/commit_analysis.py</code>
 <strong>Timeout:</strong> 60s
@@ -369,6 +387,17 @@ Domain: python_generic
 
 <p>The hook only fires for <code>git commit</code> commands. Non-commit Bash commands (<code>ls</code>, <code>git status</code>, etc.) produce empty <code>{}</code>.</p>
 <p><strong>Fallback path:</strong> If DuckDB import fails, falls back to subprocess-based analysis (simpler, without blast radius or delta report).</p>
+<h4  id="extended-analysis-phases-code-review-v3"><span id="extended_analysis_phases_code_review_v3"></span>Extended Analysis Phases (Code Review v3)<a class="heading-anchor" href="#extended-analysis-phases-code-review-v3" title="Link to this section">&para;</a></h4>
+<p>Beyond the base pipeline, the hook performs extended analysis:</p>
+<p><strong>Interface Impact Detection (CR1).</strong> If changed files are in interface layers (CLI, REST API, TUI, MCP, ACP), the hook reports which layers are affected and how many methods changed:</p>
+<div class="highlight"><pre><span></span><code><span class="gs">**Interface Impact:**</span>
+<span class="k">-</span><span class="w"> </span>CLI: 3 methods affected in <span class="sb">`src/cli/audit_commands.py`</span>
+<span class="k">-</span><span class="w"> </span>MCP: 1 method affected in <span class="sb">`src/mcp/tools/search.py`</span>
+</code></pre></div>
+
+<p><strong>Cross-Module Dependency Alerts (CR3).</strong> The hook analyzes which adjacent interface layers may need updates when one layer changes.</p>
+<p><strong>Go CPG Blast Radius (L1).</strong> If a Go CPG database is configured (<code>go_db_path</code>), the hook queries <code>call_containment</code> in both databases for a combined Python + Go blast radius.</p>
+<p><strong>Story Coverage Delta (L4).</strong> If interface impact is detected, the hook checks for story coverage gaps &ndash; for example, a function removed from CLI but still present in API.</p>
 <h3  id="stop-post-analysis"><span id="stop_post_analysis"></span>Stop: Post-analysis<a class="heading-anchor" href="#stop-post-analysis" title="Link to this section">&para;</a></h3>
 <p><strong>File:</strong> <code>.claude/hooks/post_analysis.py</code>
 <strong>Timeout:</strong> 10s
@@ -387,6 +416,12 @@ Domain: python_generic
 </code></pre></div>
 
 <p>This surfaces quality issues in files that Claude discussed or modified during the conversation.</p>
+<h4  id="post-analysis-test-registration-checks-l2"><span id="post-analysis-test-amp-registration-checks-l2"></span><span id="post_analysis_test_amp_registration_checks_l2"></span><span id="post_analysis_test_registration_checks_l2"></span>Post-Analysis Test &amp; Registration Checks (L2)<a class="heading-anchor" href="#post-analysis-test-registration-checks-l2" title="Link to this section">&para;</a></h4>
+<p>The Stop hook additionally checks:</p>
+<ul>
+<li><strong>Missing tests</strong>: whether changed files contain public functions without corresponding tests</li>
+<li><strong>Unregistered interfaces</strong>: whether new functions are not called from any interface layer</li>
+</ul>
 <h2  id="git-integration"><span id="git_integration"></span>Git Integration<a class="heading-anchor" href="#git-integration" title="Link to this section">&para;</a></h2>
 <h3  id="gocpg-git-hooks"><span id="gocpg_git_hooks"></span>GoCPG git hooks<a class="heading-anchor" href="#gocpg-git-hooks" title="Link to this section">&para;</a></h3>
 <p>GoCPG can install git <code>post-commit</code> hooks that trigger an incremental CPG update after every commit:</p>
@@ -573,7 +608,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-01</span>
+        <span>Last updated: 2026-03-02</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/CLAUDE_CODE_GIT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>

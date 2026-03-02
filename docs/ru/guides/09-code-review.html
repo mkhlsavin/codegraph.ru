@@ -288,11 +288,58 @@
 /review github 123 --format md --inline
 </code></pre></div>
 
+<h2  id="cpg-analiz-pri-proverke-koda"><span id="cpg_analiz_pri_proverke_koda"></span>CPG-анализ при проверке кода<a class="heading-anchor" href="#cpg-analiz-pri-proverke-koda" title="Link to this section">&para;</a></h2>
+<p>Сценарий проверки кода использует CPG (граф свойств кода) для автоматического анализа:</p>
+<h3  id="otsenka-riska-izmeneniy"><span id="otsenka_riska_izmeneniy"></span>Оценка риска изменений<a class="heading-anchor" href="#otsenka-riska-izmeneniy" title="Link to this section">&para;</a></h3>
+<p>Каждый изменённый метод получает оценку риска (0.0&ndash;1.0) на основе 4 факторов:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Фактор</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Количество вызывающих</td>
+<td>Чем больше вызывающих, тем шире влияние</td>
+</tr>
+<tr>
+<td>Сложность сигнатуры</td>
+<td>Количество параметров</td>
+</tr>
+<tr>
+<td>Расположение в ядре</td>
+<td>Доменные плагины и базовые сервисы</td>
+</tr>
+<tr>
+<td>Интерфейсный слой</td>
+<td>+0.15 если метод в CLI/API/TUI/MCP/ACP</td>
+</tr>
+</tbody>
+</table></div>
+<p>Уровни: <code>critical</code> (≥0.8), <code>high</code> (≥0.6), <code>medium</code> (≥0.4), <code>low</code> (&lt;0.4).</p>
+<h3  id="obnaruzhenie-vliyaniya-na-interfeysy"><span id="obnaruzhenie_vliyaniya_na_interfeysy"></span>Обнаружение влияния на интерфейсы<a class="heading-anchor" href="#obnaruzhenie-vliyaniya-na-interfeysy" title="Link to this section">&para;</a></h3>
+<p>При изменении файлов в интерфейсных слоях проверка кода определяет, какие интерфейсы затронуты:</p>
+<div class="highlight"><pre><span></span><code><span class="err">Интерфейсные</span><span class="w"> </span><span class="err">слои</span><span class="p">:</span>
+<span class="w">  </span><span class="n">CLI</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">cli</span><span class="o">/</span>
+<span class="w">  </span><span class="n">REST</span><span class="w"> </span><span class="n">API</span><span class="w">   </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">routers</span><span class="o">/</span>
+<span class="w">  </span><span class="n">TUI</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">tui</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span>
+<span class="w">  </span><span class="n">MCP</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">mcp</span><span class="o">/</span><span class="n">tools</span><span class="o">/</span><span class="p">,</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">mcp</span><span class="o">/</span>
+<span class="w">  </span><span class="n">ACP</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">acp</span><span class="o">/</span><span class="n">server</span><span class="o">/</span><span class="p">,</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">acp</span><span class="o">/</span>
+</code></pre></div>
+
+<h3  id="realnyy-analiz-git-diff"><span id="realnyy_analiz_git_diff"></span>Реальный анализ git diff<a class="heading-anchor" href="#realnyy-analiz-git-diff" title="Link to this section">&para;</a></h3>
+<p>Обработчик <code>PRImpactHandler</code> извлекает изменённые файлы через <code>git diff --name-only {base_ref} HEAD</code> для точного анализа зоны поражения. Поддерживаемые расширения: <code>.py</code>, <code>.go</code>, <code>.ts</code>, <code>.js</code>, <code>.c</code>, <code>.h</code>, <code>.java</code>, <code>.kt</code>, <code>.cs</code>, <code>.php</code>.</p>
+<h3  id="tranzitivnyy-analiz-vyzyvayuschih"><span id="tranzitivnyy_analiz_vyzyvayuschih"></span>Транзитивный анализ вызывающих<a class="heading-anchor" href="#tranzitivnyy-analiz-vyzyvayuschih" title="Link to this section">&para;</a></h3>
+<p><code>CallerAnalysis</code> выполняет 2-hop транзитивный поиск: находит не только прямых вызывающих изменённых методов, но и вызывающих вызывающих &ndash; для оценки полной зоны поражения.</p>
 <h2  id="svyazannye-stsenarii"><span id="svyazannye_stsenarii"></span>Связанные сценарии<a class="heading-anchor" href="#svyazannye-stsenarii" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="02-security-audit.html">Аудит безопасности</a> — Глубокий анализ безопасности</li>
 <li><a href="07-test-coverage.html">Покрытие тестами</a> — Анализ покрытия кода тестами</li>
 <li><a href="05-refactoring.html">Рефакторинг</a> — Качество кода</li>
+<li><a href="./composite-workflows.html">Композитные рабочие процессы</a> — Оркестрация сценариев</li>
+<li><a href="../../../integrations/CLAUDE_CODE_GIT.html">Интеграция Claude Code и Git</a> — Хуки проверки кода</li>
 </ul>
       </article>
 
@@ -312,7 +359,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-01</span>
+        <span>Обновлено: 2026-03-02</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/09-code-review.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -332,6 +379,11 @@
 <li><a href="#proverka-s-vstroennymi-kommentariyami" class="level-2">Проверка с встроенными комментариями</a></li>
 <li><a href="#formaty-vyvoda" class="level-2">Форматы вывода</a></li>
 <li><a href="#parametry-proverki" class="level-2">Параметры проверки</a></li>
+<li><a href="#cpg-analiz-pri-proverke-koda" class="level-2">CPG-анализ при проверке кода</a></li>
+<li><a href="#otsenka-riska-izmeneniy" class="level-3">Оценка риска изменений</a></li>
+<li><a href="#obnaruzhenie-vliyaniya-na-interfeysy" class="level-3">Обнаружение влияния на интерфейсы</a></li>
+<li><a href="#realnyy-analiz-git-diff" class="level-3">Реальный анализ git diff</a></li>
+<li><a href="#tranzitivnyy-analiz-vyzyvayuschih" class="level-3">Транзитивный анализ вызывающих</a></li>
 <li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>
       </ul>
     </aside>
