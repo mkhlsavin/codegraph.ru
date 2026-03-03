@@ -188,7 +188,7 @@ class FunctionDocHandler(BaseHandler):
 
 ### Пакетные операции
 
-Наивный подход: для каждого метода — отдельный запрос к DuckDB (N+1 problem). Наш подход:
+Наивный подход: для каждого метода — отдельный запрос к DuckDB (проблема N+1 запросов). Наш подход:
 
 ```python
 # Один запрос на 100 методов (не 100 запросов)
@@ -310,12 +310,12 @@ subsystems = domain.get_subsystem_names() # executor, planner, storage...
 | `generic_cpp` | C, C++ | Общие паттерны (strcpy, malloc, sprintf) |
 | `python_django` | Python, Django | ORM-инъекции, шаблонизатор, middleware |
 | `python_generic` | Python | Общие паттерны (eval, exec, pickle) |
-| `javascript` | JS, TS, Node.js, React | XSS, десериализация, prototype pollution |
+| `javascript` | JS, TS, Node.js, React | XSS, десериализация, загрязнение прототипа (prototype pollution) |
 | `go` | Go | goroutine-утечки, defer-паттерны |
 | `java` | Java | Spring, Hibernate, сериализация |
 | `kotlin` | Kotlin, Android | Android-специфика, coroutine-паттерны |
 | `csharp` | C#, ASP.NET | LINQ-инъекции, Razor XSS |
-| `php` | PHP | include/require, type juggling |
+| `php` | PHP | include/require, жонглирование типами (type juggling) |
 | `onec` | 1С:Предприятие | Встроенный язык, специфичные паттерны |
 
 Добавить 12-й плагин — создать каталог с 10 YAML-файлами. Без единой строчки Python.
