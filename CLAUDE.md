@@ -63,9 +63,14 @@ Each vertical page has its own FAQ section (unique questions per page, no overla
 ### Header & Footer
 `templates/header.html` and `templates/footer.html` are the source of truth. They use `{variable}` placeholder syntax (`{base_url}`, `{docs_url}`, `{nav_features}`, etc.) substituted by `build_landing.py`. They are **NOT auto-compiled** — either run the build script or edit all 7 HTML pages manually.
 
+### Head & Scripts
+`templates/head.html` — `<head>` block with meta tags, Open Graph, JSON-LD (Organization + SoftwareApplication + FAQPage), canonical/hreflang, font preconnects, stylesheets. `templates/scripts.html` — `main.min.js` include + Yandex.Metrika counter (ID `107046651`).
+
 ### Sections
-`templates/sections/` contains modular sections for `index.html`, rebuilt via `--sections` flag. Order:
-hero → problems → solution → features → metrics → integrations → architecture → usp → faq → cta
+`templates/sections/` contains 11 modular sections for `index.html`, rebuilt via `--sections` flag. Order:
+hero → problems → solution → solutions → features → metrics → integrations → architecture → usp → faq → cta
+
+**`solution.html` vs `solutions.html`** — `solution.html` is the interactive demo section ("Как работает CodeGraph?" with API input and pipeline animation). `solutions.html` is the role-based cards section (CISO, CTO, CIO, AI/ML PM) linking to vertical pages.
 
 ## CSS Architecture
 
@@ -125,7 +130,7 @@ Terms that must be translated (not left in English) on landing pages:
 
 ## Blog
 
-`blog/` contains Habr article drafts (markdown, `habr-NN-slug.md`). 9 articles covering CPG vs SAST, onboarding, dogfooding, parser design, taint analysis, DuckDB for CPG, handler-formatter architecture, and audit. Disallowed in `robots.txt` — not indexed by search engines.
+`blog/` contains Habr article drafts (markdown, `habr-NN-slug.md`). 10 articles: CPG vs SAST, onboarding, dogfooding, parser design, taint analysis, DuckDB for CPG, handler-formatter, meta-audit, vibe-coding pipeline, business value. `blog/archive/` has superseded drafts. Disallowed in `robots.txt` — not indexed by search engines.
 
 ## SEO & Deployment
 
