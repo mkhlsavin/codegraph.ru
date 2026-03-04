@@ -466,10 +466,18 @@
     }
   }
 
+  // Render markdown safely (fallback to escaped text if marked unavailable)
+  function renderMarkdown(text) {
+    if (typeof marked !== 'undefined' && marked.parse) {
+      return marked.parse(text, { breaks: true });
+    }
+    return '<pre>' + escapeHtml(text) + '</pre>';
+  }
+
   // Show API result
   function showApiResult(answer, processingTimeMs) {
     const timeStr = processingTimeMs ? ` <span class="processing-time">(${processingTimeMs.toFixed(0)}ms)</span>` : '';
-    DOM.demoResult.innerHTML = `<div class="result-content"><pre>${escapeHtml(answer)}</pre>${timeStr}</div>`;
+    DOM.demoResult.innerHTML = `<div class="result-content result-markdown">${renderMarkdown(answer)}${timeStr}</div>`;
   }
 
   // Show rate limit error
