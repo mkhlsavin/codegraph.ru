@@ -92,6 +92,7 @@
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -288,6 +289,49 @@
 /review github 123 --format md --inline
 </code></pre></div>
 
+<h2  id="cli-komanda-proverki-koda"><span id="cli_komanda_proverki_koda"></span>CLI-команда проверки кода<a class="heading-anchor" href="#cli-komanda-proverki-koda" title="Link to this section">&para;</a></h2>
+<p>CodeGraph также предоставляет самостоятельную команду проверки, выполняющую анализ качества и безопасности через конвейер CPG:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Проверка изменений относительно базового рефа</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~3
+
+<span class="c1"># Проверка проиндексированных изменений</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--staged
+
+<span class="c1"># Проверка конкретных файлов</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--files<span class="w"> </span>src/api/main.py<span class="w"> </span>src/auth.py
+
+<span class="c1"># Без анализа безопасности</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--no-security
+</code></pre></div>
+
+<h3  id="formaty-vyvoda_1"><span id="formaty_vyvoda_1"></span>Форматы вывода<a class="heading-anchor" href="#formaty-vyvoda_1" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Формат</th>
+<th>Флаг</th>
+<th>Применение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Markdown</td>
+<td><code>--format markdown</code> (по умолчанию)</td>
+<td>Терминал, документация</td>
+</tr>
+<tr>
+<td>JSON</td>
+<td><code>--format json</code></td>
+<td>Интеграция с CI/CD, автоматизация</td>
+</tr>
+<tr>
+<td>SARIF 2.1.0</td>
+<td><code>--format sarif</code> или <code>--sarif-file out.sarif</code></td>
+<td>Вкладка безопасности GitHub/GitLab, интеграция с IDE</td>
+</tr>
+</tbody>
+</table></div>
+<p>Коды возврата: <code>0</code> = чисто или только medium/low, <code>1</code> = обнаружены critical или high.</p>
 <h2  id="cpg-analiz-pri-proverke-koda"><span id="cpg_analiz_pri_proverke_koda"></span>CPG-анализ при проверке кода<a class="heading-anchor" href="#cpg-analiz-pri-proverke-koda" title="Link to this section">&para;</a></h2>
 <p>Сценарий проверки кода использует CPG (граф свойств кода) для автоматического анализа:</p>
 <h3  id="otsenka-riska-izmeneniy"><span id="otsenka_riska_izmeneniy"></span>Оценка риска изменений<a class="heading-anchor" href="#otsenka-riska-izmeneniy" title="Link to this section">&para;</a></h3>
@@ -333,6 +377,25 @@
 <p>Обработчик <code>PRImpactHandler</code> извлекает изменённые файлы через <code>git diff --name-only {base_ref} HEAD</code> для точного анализа зоны поражения. Поддерживаемые расширения: <code>.py</code>, <code>.go</code>, <code>.ts</code>, <code>.js</code>, <code>.c</code>, <code>.h</code>, <code>.java</code>, <code>.kt</code>, <code>.cs</code>, <code>.php</code>.</p>
 <h3  id="tranzitivnyy-analiz-vyzyvayuschih"><span id="tranzitivnyy_analiz_vyzyvayuschih"></span>Транзитивный анализ вызывающих<a class="heading-anchor" href="#tranzitivnyy-analiz-vyzyvayuschih" title="Link to this section">&para;</a></h3>
 <p><code>CallerAnalysis</code> выполняет 2-hop транзитивный поиск: находит не только прямых вызывающих изменённых методов, но и вызывающих вызывающих &ndash; для оценки полной зоны поражения.</p>
+<h3  id="scope-aware-filtratsiya"><span id="scope_aware_filtratsiya"></span>Scope-aware фильтрация<a class="heading-anchor" href="#scope-aware-filtratsiya" title="Link to this section">&para;</a></h3>
+<p>Когда CPG построен с исключениями (ограниченный scope), находки фильтруются:</p>
+<ul>
+<li><strong>Мёртвый код</strong>: понижен до <code>info</code>, помечен <code>scope_limited</code> (вызывающие могут существовать в исключённых модулях)</li>
+<li><strong>Зона поражения</strong>: понижена до <code>info</code>, помечена <code>scope_limited</code></li>
+<li><strong>Отсутствие тестов</strong>: полностью подавлено при <code>include_tests=false</code></li>
+<li><strong>Сложность/Безопасность</strong>: не затронуты (метрики per-method и реальные уязвимости)</li>
+</ul>
+<p>При активной фильтрации в отчёт добавляется дисклеймер scope.</p>
+<h3  id="arhitektura-konveyera-proverki"><span id="arhitektura_konveyera_proverki"></span>Архитектура конвейера проверки<a class="heading-anchor" href="#arhitektura-konveyera-proverki" title="Link to this section">&para;</a></h3>
+<p><code>ReviewPipeline</code> (<code>src/review/pipeline.py</code>) оркестрирует полный цикл проверки:</p>
+<div class="highlight"><pre><span></span><code>определение_проекта → проверка_cpg → загрузка_scope → получение_изменённых_файлов
+     → анализ_качества → анализ_безопасности → агрегация → форматирование
+</code></pre></div>
+
+<p>Ключевые компоненты:
+- <code>ReviewAggregator</code> (<code>src/review/aggregator.py</code>): объединяет находки качества и безопасности, применяет scope-aware фильтрацию
+- <code>ReviewReport</code> (<code>src/review/models.py</code>): генерирует вывод в форматах markdown, JSON и SARIF 2.1.0
+- <code>SecurityPRReview</code>: опциональный анализ безопасности для изменённых файлов</p>
 <h2  id="svyazannye-stsenarii"><span id="svyazannye_stsenarii"></span>Связанные сценарии<a class="heading-anchor" href="#svyazannye-stsenarii" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="02-security-audit.html">Аудит безопасности</a> — Глубокий анализ безопасности</li>
@@ -359,7 +422,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-03</span>
+        <span>Обновлено: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/09-code-review.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -379,11 +442,15 @@
 <li><a href="#proverka-s-vstroennymi-kommentariyami" class="level-2">Проверка с встроенными комментариями</a></li>
 <li><a href="#formaty-vyvoda" class="level-2">Форматы вывода</a></li>
 <li><a href="#parametry-proverki" class="level-2">Параметры проверки</a></li>
+<li><a href="#cli-komanda-proverki-koda" class="level-2">CLI-команда проверки кода</a></li>
+<li><a href="#formaty-vyvoda" class="level-3">Форматы вывода</a></li>
 <li><a href="#cpg-analiz-pri-proverke-koda" class="level-2">CPG-анализ при проверке кода</a></li>
 <li><a href="#otsenka-riska-izmeneniy" class="level-3">Оценка риска изменений</a></li>
 <li><a href="#obnaruzhenie-vliyaniya-na-interfeysy" class="level-3">Обнаружение влияния на интерфейсы</a></li>
 <li><a href="#realnyy-analiz-git-diff" class="level-3">Реальный анализ git diff</a></li>
 <li><a href="#tranzitivnyy-analiz-vyzyvayuschih" class="level-3">Транзитивный анализ вызывающих</a></li>
+<li><a href="#scope-aware-filtratsiya" class="level-3">Scope-aware фильтрация</a></li>
+<li><a href="#arhitektura-konveyera-proverki" class="level-3">Архитектура конвейера проверки</a></li>
 <li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>
       </ul>
     </aside>

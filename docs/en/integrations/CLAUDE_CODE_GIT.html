@@ -92,6 +92,7 @@
         <li><a href="../guides/BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
+        <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -201,7 +202,12 @@
 <li><a href="#userpromptsubmit-entity-enrichment">UserPromptSubmit: Entity enrichment</a></li>
 <li><a href="#pretooluse-complexity-gate">PreToolUse: Complexity gate</a></li>
 <li><a href="#posttooluse-commit-analysis">PostToolUse: Commit analysis</a></li>
+<li><a href="#posttooluse-cli-error-monitor">PostToolUse: CLI error monitor</a></li>
 <li><a href="#stop-post-analysis">Stop: Post-analysis</a></li>
+<li><a href="#cli-review-command">CLI Review Command</a></li>
+<li><a href="#scope-aware-filtering">Scope-Aware Filtering</a></li>
+<li><a href="#metrics-monitoring">Metrics &amp; Monitoring</a></li>
+<li><a href="#graceful-degradation">Graceful Degradation</a></li>
 <li><a href="#git-integration">Git Integration</a></li>
 <li><a href="#gocpg-git-hooks">GoCPG git hooks</a></li>
 <li><a href="#cpg-freshness-and-automatic-updates">CPG freshness and automatic updates</a></li>
@@ -233,6 +239,8 @@
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">PreToolUse</span><span class="w"> </span><span class="p">(</span><span class="n">Edit</span><span class="p">)</span><span class="w"> </span><span class="o">----&gt;</span><span class="w"> </span><span class="n">pre_tool_use</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">--------&gt;</span><span class="w"> </span><span class="n">Complexity</span><span class="w"> </span><span class="n">warnings</span><span class="w"> </span><span class="n">before</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="n">edit</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">PostToolUse</span><span class="w"> </span><span class="p">(</span><span class="n">Bash</span><span class="p">)</span><span class="w"> </span><span class="o">---&gt;</span><span class="w"> </span><span class="n">commit_analysis</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">-----&gt;</span><span class="w"> </span><span class="n">Commit</span><span class="w"> </span><span class="n">quality</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">blast</span><span class="w"> </span><span class="n">radius</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">delta</span>
+<span class="w">    </span><span class="o">|</span>
+<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">PostToolUse</span><span class="w"> </span><span class="p">(</span><span class="n">Bash</span><span class="p">)</span><span class="w"> </span><span class="o">---&gt;</span><span class="w"> </span><span class="n">cli_error_monitor</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">---&gt;</span><span class="w"> </span><span class="n">Detect</span><span class="w"> </span><span class="n">CLI</span><span class="w"> </span><span class="n">error</span><span class="w"> </span><span class="n">patterns</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Stop</span><span class="w"> </span><span class="o">-----------------&gt;</span><span class="w"> </span><span class="n">post_analysis</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">-------&gt;</span><span class="w"> </span><span class="n">Quality</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="n">on</span><span class="w"> </span><span class="n">files</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">response</span>
 </code></pre></div>
@@ -295,6 +303,33 @@
 </tbody>
 </table></div>
 <p>Constants: <code>PROJECT_ROOT</code> (two levels up from hooks dir), <code>GOCPG_BINARY</code> (<code>gocpg/gocpg.exe</code>), <code>CONFIG_PATH</code> (<code>config.yaml</code>).</p>
+<p>Additional shared modules in <code>.claude/hooks/</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_feedback.py</code></td>
+<td><code>ReviewFeedback</code> and <code>ReviewFinding</code> dataclasses for structured markdown reports</td>
+</tr>
+<tr>
+<td><code>_metrics.py</code></td>
+<td>JSONL performance logging via <code>timed_hook()</code> context manager</td>
+</tr>
+<tr>
+<td><code>_session_cache.py</code></td>
+<td>File-based project context cache (avoids re-reading config.yaml on every hook)</td>
+</tr>
+<tr>
+<td><code>_project_detector.py</code></td>
+<td>Auto-detect project by CWD/git remote</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="hooks-reference"><span id="hooks_reference"></span>Hooks Reference<a class="heading-anchor" href="#hooks-reference" title="Link to this section">&para;</a></h2>
 <h3  id="sessionstart-project-context"><span id="sessionstart_project_context"></span>SessionStart: Project context<a class="heading-anchor" href="#sessionstart-project-context" title="Link to this section">&para;</a></h3>
 <p><strong>File:</strong> <code>.claude/hooks/session_context.py</code>
@@ -422,6 +457,106 @@ Domain: python_generic
 <li><strong>Missing tests</strong>: whether changed files contain public functions without corresponding tests</li>
 <li><strong>Unregistered interfaces</strong>: whether new functions are not called from any interface layer</li>
 </ul>
+<h3  id="posttooluse-cli-error-monitor"><span id="posttooluse_cli_error_monitor"></span>PostToolUse: CLI error monitor<a class="heading-anchor" href="#posttooluse-cli-error-monitor" title="Link to this section">&para;</a></h3>
+<p><strong>File:</strong> <code>.claude/hooks/cli_error_monitor.py</code>
+<strong>Timeout:</strong> 5s
+<strong>Fires:</strong> After any <code>Bash</code> tool call</p>
+<p>Monitors CLI command output for common error patterns and surfaces actionable diagnostics:</p>
+<ul>
+<li>Database not found / <code>DatabaseNotConfiguredError</code></li>
+<li>DuckDB import errors</li>
+<li>Python <code>ImportError</code> / <code>ModuleNotFoundError</code></li>
+<li>Unhandled tracebacks</li>
+<li><code>RuntimeWarning</code> messages</li>
+<li>GoCPG binary not found</li>
+</ul>
+<p>When an error pattern is detected, the hook returns a context message with the error type and suggested resolution.</p>
+<h2  id="cli-review-command"><span id="cli_review_command"></span>CLI Review Command<a class="heading-anchor" href="#cli-review-command" title="Link to this section">&para;</a></h2>
+<p>In addition to hooks, CodeGraph provides a standalone CLI command for code review:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Review changes against a base ref</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~3
+
+<span class="c1"># Review staged changes</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--staged
+
+<span class="c1"># Review specific files</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--files<span class="w"> </span>src/api/main.py<span class="w"> </span>src/auth.py
+
+<span class="c1"># Output formats</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>report.json
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--format<span class="w"> </span>sarif<span class="w"> </span>--output-file<span class="w"> </span>report.sarif
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~5<span class="w"> </span>--sarif-file<span class="w"> </span>out.sarif
+
+<span class="c1"># Skip security analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--no-security
+</code></pre></div>
+
+<p>The CLI review command uses <code>ReviewPipeline</code> (<code>src/review/pipeline.py</code>) which orchestrates:
+1. Project detection and CPG status check
+2. Parse scope loading for scope-aware filtering
+3. Quality analysis (dead code, high complexity, large methods)
+4. Security analysis via <code>SecurityPRReview</code> (optional)
+5. Scope-aware aggregation via <code>ReviewAggregator</code>
+6. Output in markdown, JSON, or SARIF 2.1.0 format</p>
+<p>Exit codes: <code>0</code> = clean or medium/low only, <code>1</code> = critical or high findings detected.</p>
+<h3  id="scope-aware-filtering"><span id="scope_aware_filtering"></span>Scope-Aware Filtering<a class="heading-anchor" href="#scope-aware-filtering" title="Link to this section">&para;</a></h3>
+<p>When the CPG is built with excluded directories (e.g., only backend without tests/frontend), the pipeline applies scope-aware filtering:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Finding Type</th>
+<th>Condition</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dead_code</code></td>
+<td>Scope is partial</td>
+<td>Demote to <code>info</code>, mark <code>scope_limited</code></td>
+</tr>
+<tr>
+<td><code>missing_test</code></td>
+<td><code>include_tests=false</code></td>
+<td>Suppress entirely</td>
+</tr>
+<tr>
+<td><code>blast_radius</code></td>
+<td>Scope is partial</td>
+<td>Demote to <code>info</code>, mark <code>scope_limited</code></td>
+</tr>
+<tr>
+<td><code>complexity</code></td>
+<td>&ndash;</td>
+<td>Not affected (per-method metric)</td>
+</tr>
+<tr>
+<td><code>security</code></td>
+<td>&ndash;</td>
+<td>Not affected (real vulnerability)</td>
+</tr>
+</tbody>
+</table></div>
+<p>A disclaimer block is added to the report when scope is limited.</p>
+<h2  id="metrics-monitoring"><span id="metrics-amp-monitoring"></span><span id="metrics_amp_monitoring"></span><span id="metrics_monitoring"></span>Metrics &amp; Monitoring<a class="heading-anchor" href="#metrics-monitoring" title="Link to this section">&para;</a></h2>
+<p>All hooks log execution metrics to <code>data/hook_metrics.jsonl</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-06T12:00:00Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;hook&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commit_analysis&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1234.5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;codegraph&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>View statistics with the dogfood CLI:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span>--last<span class="w"> </span><span class="m">50</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span>--hook<span class="w"> </span>commit_analysis
+</code></pre></div>
+
+<p>The dashboard shows per-hook aggregates: runs, ok/error/warning counts, failure rate, average and max duration, total findings.</p>
+<h2  id="graceful-degradation"><span id="graceful_degradation"></span>Graceful Degradation<a class="heading-anchor" href="#graceful-degradation" title="Link to this section">&para;</a></h2>
+<p>All hooks follow fail-open design:
+- Missing gocpg binary: skip CPG queries, output empty context
+- Corrupt/missing DB: skip analysis, warn in metrics
+- Timeout: partial results returned within budget
+- Import errors: fallback to subprocess path (commit_analysis)
+- Any unhandled exception: caught at top level, empty JSON output</p>
 <h2  id="git-integration"><span id="git_integration"></span>Git Integration<a class="heading-anchor" href="#git-integration" title="Link to this section">&para;</a></h2>
 <h3  id="gocpg-git-hooks"><span id="gocpg_git_hooks"></span>GoCPG git hooks<a class="heading-anchor" href="#gocpg-git-hooks" title="Link to this section">&para;</a></h3>
 <p>GoCPG can install git <code>post-commit</code> hooks that trigger an incremental CPG update after every commit:</p>
@@ -497,6 +632,10 @@ Domain: python_generic
 <span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python .claude/hooks/commit_analysis.py&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60000</span>
+<span class="w">      </span><span class="p">},</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python .claude/hooks/cli_error_monitor.py&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span>
 <span class="w">      </span><span class="p">}]</span>
 <span class="w">    </span><span class="p">}],</span>
 <span class="w">    </span><span class="nt">&quot;Stop&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
@@ -526,6 +665,18 @@ Domain: python_generic
 </code></pre></div>
 
 <p>The <code>db_path</code> is resolved relative to the project root. All hooks use <code>_utils.get_active_project()</code> to look up this configuration.</p>
+<h3  id="review-pipeline"><span id="review_pipeline"></span>Review pipeline<a class="heading-anchor" href="#review-pipeline" title="Link to this section">&para;</a></h3>
+<p>The review pipeline is configured in <code>config.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">review_pipeline</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">scope_aware_filtering</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">suppress_tests_outside_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">demote_dead_code_partial_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">show_scope_disclaimer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">metrics_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">metrics_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/hook_metrics.jsonl</span>
+<span class="w">  </span><span class="nt">fail_open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+
 <h2 id="setup">Setup<a class="heading-anchor" href="#setup" title="Link to this section">&para;</a></h2>
 <h3  id="one-command-setup"><span id="one_command_setup"></span>One-command setup<a class="heading-anchor" href="#one-command-setup" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
@@ -608,7 +759,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-03</span>
+        <span>Last updated: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/CLAUDE_CODE_GIT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -630,12 +781,18 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 <li><a href="#pretooluse-complexity-gate" class="level-3">PreToolUse: Complexity gate</a></li>
 <li><a href="#posttooluse-commit-analysis" class="level-3">PostToolUse: Commit analysis</a></li>
 <li><a href="#stop-post-analysis" class="level-3">Stop: Post-analysis</a></li>
+<li><a href="#posttooluse-cli-error-monitor" class="level-3">PostToolUse: CLI error monitor</a></li>
+<li><a href="#cli-review-command" class="level-2">CLI Review Command</a></li>
+<li><a href="#scope-aware-filtering" class="level-3">Scope-Aware Filtering</a></li>
+<li><a href="#metrics-monitoring" class="level-2">Metrics & Monitoring</a></li>
+<li><a href="#graceful-degradation" class="level-2">Graceful Degradation</a></li>
 <li><a href="#git-integration" class="level-2">Git Integration</a></li>
 <li><a href="#gocpg-git-hooks" class="level-3">GoCPG git hooks</a></li>
 <li><a href="#cpg-freshness-and-automatic-updates" class="level-3">CPG freshness and automatic updates</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
 <li><a href="#claude-code-settings" class="level-3">Claude Code settings</a></li>
 <li><a href="#project-configuration" class="level-3">Project configuration</a></li>
+<li><a href="#review-pipeline" class="level-3">Review pipeline</a></li>
 <li><a href="#setup" class="level-2">Setup</a></li>
 <li><a href="#one-command-setup" class="level-3">One-command setup</a></li>
 <li><a href="#manual-setup" class="level-3">Manual setup</a></li>

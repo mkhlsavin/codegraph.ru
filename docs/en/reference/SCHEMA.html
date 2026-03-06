@@ -92,6 +92,7 @@
         <li><a href="../guides/BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
+        <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -162,7 +163,10 @@
         <li><a href="API.html">API Reference</a></li>
         <li><a href="APPROVAL_ENGINE.html">Approval Engine</a></li>
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
+        <li><a href="FAQ.html">Frequently Asked Questions (FAQ)</a></li>
+        <li><a href="GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="HYPOTHESIS_SYSTEM.html">Hypothesis System Reference</a></li>
+        <li><a href="MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="SCHEMA.html" class="active">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Enterprise Security Module</a></li>
         <li><a href="SQL_QUERY_COOKBOOK.html">SQL Query Cookbook for DuckDB CPG</a></li>
@@ -294,6 +298,7 @@
 <li><a href="#performance-considerations">Performance Considerations</a></li>
 <li><a href="#schema-version">Schema Version</a></li>
 <li><a href="#changelog">Changelog</a></li>
+<li><a href="#v71-2026-03-06-parse-scope-awareness">v7.1 (2026-03-06) - Parse scope awareness</a></li>
 <li><a href="#v70-2026-02-28-full-schemago-alignment">v7.0 (2026-02-28) - Full schema.go alignment</a></li>
 <li><a href="#v60-2026-02-26-pre-computed-metrics-pattern-flags">v6.0 (2026-02-26) - Pre-computed Metrics &amp; Pattern Flags</a></li>
 <li><a href="#v50-2025-11-16-complete-compliance">v5.0 (2025-11-16) - Complete Compliance</a></li>
@@ -1899,6 +1904,84 @@ Reference (IDENTIFIER/CALL)
 <span class="p">);</span>
 </code></pre></div>
 
+<h3  id="cpg-parse-scope"><span id="cpg_parse_scope"></span>cpg_parse_scope<a class="heading-anchor" href="#cpg-parse-scope" title="Link to this section">&para;</a></h3>
+<p>Parse scope boundaries: which parts of the repository were parsed and which were excluded. Used by the code review pipeline to suppress false positives (dead code, missing tests) when scope is partial.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">cpg_parse_scope</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">              </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="n">source_path</span><span class="w">     </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">language</span><span class="w">        </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">include_tests</span><span class="w">   </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">include_paths</span><span class="w">   </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">exclude_paths</span><span class="w">   </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">default_excludes</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">import_mode</span><span class="w">     </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;full&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">parsed_at</span><span class="w">       </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="p">(</span><span class="n">epoch_ms</span><span class="p">(</span><span class="n">now</span><span class="p">())),</span>
+<span class="w">    </span><span class="n">gocpg_version</span><span class="w">   </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;&#39;</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>Always 1 (singleton)</td>
+</tr>
+<tr>
+<td><code>source_path</code></td>
+<td>VARCHAR</td>
+<td>Path to source code or repository URL</td>
+</tr>
+<tr>
+<td><code>language</code></td>
+<td>VARCHAR</td>
+<td>Parse language (<code>c</code>, <code>go</code>, <code>java</code>, &hellip;)</td>
+</tr>
+<tr>
+<td><code>include_tests</code></td>
+<td>BOOLEAN</td>
+<td>Whether tests are included in CPG</td>
+</tr>
+<tr>
+<td><code>include_paths</code></td>
+<td>VARCHAR</td>
+<td>JSON array of included paths (empty = everything)</td>
+</tr>
+<tr>
+<td><code>exclude_paths</code></td>
+<td>VARCHAR</td>
+<td>JSON array of explicitly excluded paths</td>
+</tr>
+<tr>
+<td><code>default_excludes</code></td>
+<td>VARCHAR</td>
+<td>JSON array of default exclusions (<code>vendor/</code>, <code>node_modules/</code>, &hellip;)</td>
+</tr>
+<tr>
+<td><code>import_mode</code></td>
+<td>VARCHAR</td>
+<td>Import mode: <code>full</code> or <code>selective</code></td>
+</tr>
+<tr>
+<td><code>parsed_at</code></td>
+<td>BIGINT</td>
+<td>Parse timestamp (epoch ms)</td>
+</tr>
+<tr>
+<td><code>gocpg_version</code></td>
+<td>VARCHAR</td>
+<td>GoCPG version that performed the parse</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>CLI</strong>: <code>gocpg scope --db=project.duckdb [--json]</code></p>
 <h3  id="cpg-branch-state"><span id="cpg_branch_state"></span>cpg_branch_state<a class="heading-anchor" href="#cpg-branch-state" title="Link to this section">&para;</a></h3>
 <p>Track CPG state per branch for branch-aware updates.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">cpg_branch_state</span><span class="w"> </span><span class="p">(</span>
@@ -2331,10 +2414,24 @@ Reference (IDENTIFIER/CALL)
 <li>CPG Spec: v1.1</li>
 <li>DuckDB: 1.4.2+</li>
 <li>duckpgq: Latest stable</li>
-<li>Schema Version: 7.0 (Full schema.go alignment)</li>
-<li>Last Updated: 2026-02-28</li>
+<li>Schema Version: 7.1 (Parse scope awareness)</li>
+<li>Last Updated: 2026-03-06</li>
 </ul>
 <h2 id="changelog">Changelog<a class="heading-anchor" href="#changelog" title="Link to this section">&para;</a></h2>
+<h3  id="v71-2026-03-06-parse-scope-awareness"><span id="v71_2026_03_06_parse_scope_awareness"></span>v7.1 (2026-03-06) - Parse scope awareness<a class="heading-anchor" href="#v71-2026-03-06-parse-scope-awareness" title="Link to this section">&para;</a></h3>
+<p><strong>New state table:</strong>
+- <code>cpg_parse_scope</code> — CPG analysis boundaries (singleton, id=1). Records which parts of the repository were included/excluded during parsing. Used by the code review pipeline for scope-aware finding filtering (suppresses dead code and missing test false positives when scope is partial)</p>
+<p><strong>New columns:</strong>
+- <code>source_path</code> (VARCHAR) — source code path or repository URL
+- <code>language</code> (VARCHAR) — parse language
+- <code>include_tests</code> (BOOLEAN) — whether tests are included in CPG
+- <code>include_paths</code> (VARCHAR) — JSON array of included paths
+- <code>exclude_paths</code> (VARCHAR) — JSON array of explicitly excluded paths
+- <code>default_excludes</code> (VARCHAR) — JSON array of default exclusions
+- <code>import_mode</code> (VARCHAR) — import mode (<code>full</code>/<code>selective</code>)
+- <code>gocpg_version</code> (VARCHAR) — GoCPG version</p>
+<p><strong>New CLI command:</strong>
+- <code>gocpg scope --db=... [--json]</code> — view parse scope with partial scope indicator</p>
 <h3  id="v70-2026-02-28-full-schemago-alignment"><span id="v70_2026_02_28_full_schemago_alignment"></span>v7.0 (2026-02-28) - Full schema.go alignment<a class="heading-anchor" href="#v70-2026-02-28-full-schemago-alignment" title="Link to this section">&para;</a></h3>
 <p><strong>MAJOR UPDATE: All table definitions now match <code>gocpg/pkg/storage/duckdb/schema.go</code> exactly</strong></p>
 <p><strong>New node tables:</strong>
@@ -2368,7 +2465,7 @@ Reference (IDENTIFIER/CALL)
 - <code>call_containment</code> - Denormalized caller/callee view (11 columns)
 - <code>method_docstrings</code> - Comment to method mapping</p>
 <p><strong>New state/domain/pattern tables:</strong>
-- <code>cpg_fqn_index</code>, <code>cpg_file_state</code>, <code>cpg_git_state</code>, <code>cpg_branch_state</code>, <code>cpg_submodule_state</code>, <code>export_progress</code>
+- <code>cpg_fqn_index</code>, <code>cpg_file_state</code>, <code>cpg_git_state</code>, <code>cpg_parse_scope</code>, <code>cpg_branch_state</code>, <code>cpg_submodule_state</code>, <code>export_progress</code>
 - <code>cpg_domain_annotations</code>, <code>cpg_domain_subsystems</code>, <code>cpg_domain_subsystem_members</code>
 - <code>finding_evidence</code>, <code>cpg_enrichment_state</code>, <code>cpg_enrichment_anchors</code>
 - <code>cpg_pattern_results</code>, <code>cpg_pattern_rules</code>, <code>cpg_pattern_deps</code></p>
@@ -2658,7 +2755,7 @@ Reference (IDENTIFIER/CALL)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-03</span>
+        <span>Last updated: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SCHEMA.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -2749,6 +2846,7 @@ Reference (IDENTIFIER/CALL)
 <li><a href="#cpg-fqn-index" class="level-3">cpg_fqn_index</a></li>
 <li><a href="#cpg-file-state" class="level-3">cpg_file_state</a></li>
 <li><a href="#cpg-git-state" class="level-3">cpg_git_state</a></li>
+<li><a href="#cpg-parse-scope" class="level-3">cpg_parse_scope</a></li>
 <li><a href="#cpg-branch-state" class="level-3">cpg_branch_state</a></li>
 <li><a href="#cpg-submodule-state" class="level-3">cpg_submodule_state</a></li>
 <li><a href="#export-progress" class="level-3">export_progress</a></li>
@@ -2777,6 +2875,7 @@ Reference (IDENTIFIER/CALL)
 <li><a href="#performance-considerations" class="level-2">Performance Considerations</a></li>
 <li><a href="#schema-version" class="level-2">Schema Version</a></li>
 <li><a href="#changelog" class="level-2">Changelog</a></li>
+<li><a href="#v71-2026-03-06-parse-scope-awareness" class="level-3">v7.1 (2026-03-06) - Parse scope awareness</a></li>
 <li><a href="#v70-2026-02-28-full-schemago-alignment" class="level-3">v7.0 (2026-02-28) - Full schema.go alignment</a></li>
 <li><a href="#v60-2026-02-26-pre-computed-metrics-pattern-flags" class="level-3">v6.0 (2026-02-26) - Pre-computed Metrics & Pattern Flags</a></li>
 <li><a href="#v50-2025-11-16-complete-compliance" class="level-3">v5.0 (2025-11-16) - Complete Compliance</a></li>

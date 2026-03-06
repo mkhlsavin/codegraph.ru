@@ -92,6 +92,7 @@
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -193,6 +194,7 @@
 <li><a href="#komandy-cli">Команды CLI</a></li>
 <li><a href="#audit-kachestva-koda">Аудит качества кода</a></li>
 <li><a href="#validatsiya-polzovatelskih-istoriy">Валидация пользовательских историй</a></li>
+<li><a href="#sinkhronizatsiya-dokumentatsii-po-interfeysam">Синхронизация документации по интерфейсам</a></li>
 <li><a href="#luchshie-praktiki">Лучшие практики</a></li>
 </ul>
 <h2 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h2>
@@ -749,6 +751,130 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="w">    </span>--output<span class="w"> </span>report.md
 </code></pre></div>
 
+<h2  id="sinkhronizatsiya-dokumentatsii-po-interfeysam"><span id="sinhronizatsiya-dokumentatsii-po-interfeysam"></span><span id="sinhronizatsiya_dokumentatsii_po_interfeysam"></span><span id="sinkhronizatsiya_dokumentatsii_po_interfeysam"></span>Синхронизация документации по интерфейсам<a class="heading-anchor" href="#sinkhronizatsiya-dokumentatsii-po-interfeysam" title="Link to this section">&para;</a></h2>
+<p>Синхронизация документации — композитный рабочий процесс, который сканирует 7 интерфейсов на предмет расхождений документации. Запускает 5-фазный пайплайн для обнаружения сущностей кода, парсинга существующей документации, выявления несоответствий и генерации отчёта покрытия.</p>
+<h3  id="proveryaemye-interfeysy_1"><span id="proveryaemye_interfeysy_1"></span>Проверяемые интерфейсы<a class="heading-anchor" href="#proveryaemye-interfeysy_1" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Интерфейс</th>
+<th>Путь к коду</th>
+<th>Путь к документации</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REST API</td>
+<td><code>src/api/routers/</code></td>
+<td><code>docs/api/{lang}/REST_API.md</code></td>
+</tr>
+<tr>
+<td>CLI</td>
+<td><code>src/cli/</code></td>
+<td><code>docs/guides/{lang}/CLI_REFERENCE.md</code></td>
+</tr>
+<tr>
+<td>TUI</td>
+<td><code>src/tui/commands/</code></td>
+<td><code>docs/guides/{lang}/TUI_USER_GUIDE.md</code></td>
+</tr>
+<tr>
+<td>MCP</td>
+<td><code>src/mcp/</code></td>
+<td><code>docs/integrations/{lang}/MCP.md</code></td>
+</tr>
+<tr>
+<td>ACP</td>
+<td><code>src/acp/</code></td>
+<td><code>docs/integrations/{lang}/ACP.md</code></td>
+</tr>
+<tr>
+<td>gRPC</td>
+<td><code>src/services/gocpg/grpc_transport.py</code></td>
+<td><code>docs/reference/{lang}/GOCPG.md</code></td>
+</tr>
+<tr>
+<td>WebSocket</td>
+<td><code>src/api/routers/websocket.py</code></td>
+<td><code>docs/api/{lang}/WEBSOCKET.md</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="5-faznyy-payplayn"><span id="5_faznyy_payplayn"></span>5-фазный пайплайн<a class="heading-anchor" href="#5-faznyy-payplayn" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Обнаружение         Парсинг документов   Генерация            Детекция дрифта      Отчёт
+     │                    │                    │                    │                  │
+     ▼                    ▼                    ▼                    ▼                  ▼
+  Сканирование       Парсинг markdown     Генерация            Сопоставление       Markdown/JSON
+  сущностей кода     задокументированных  недостающих          код↔документация     Покрытие %
+  по интерфейсам     сущностей            заглушек (опц.)      Мультистратегия     по интерфейсам
+</code></pre></div>
+
+<h3  id="kategorii-drifta"><span id="kategorii_drifta"></span>Категории дрифта<a class="heading-anchor" href="#kategorii-drifta" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Категория</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UNDOCUMENTED</code></td>
+<td>Сущность есть в коде, но отсутствует в документации</td>
+</tr>
+<tr>
+<td><code>STALE</code></td>
+<td>Документация описывает сущность, которой нет в коде</td>
+</tr>
+<tr>
+<td><code>OUTDATED</code></td>
+<td>Обе существуют, но параметры/сигнатуры расходятся</td>
+</tr>
+<tr>
+<td><code>COVERED</code></td>
+<td>Корректно задокументировано</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="strategii-sopostavleniya"><span id="strategii_sopostavleniya"></span>Стратегии сопоставления<a class="heading-anchor" href="#strategii-sopostavleniya" title="Link to this section">&para;</a></h3>
+<p>Детектор дрифта использует мультистратегийный пайплайн (фаза 4):</p>
+<ol>
+<li><strong>Точное совпадение</strong> — прямое сравнение имён (уверенность: 1.0)</li>
+<li><strong>С учётом маршрутов</strong> — удаление префиксов маршрутов <code>/api/v1</code> (уверенность: 0.95)</li>
+<li><strong>Нормализация регистра</strong> — эквивалентность snake_case ↔ kebab-case (уверенность: 0.95)</li>
+<li><strong>Нечёткое совпадение</strong> — подобие Жаккара по токенам имени (уверенность: коэффициент подобия)</li>
+</ol>
+<p>Шаблоны исключения (регулярные выражения) позволяют фильтровать сущности. Конфигурация:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">composition</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">orchestrators</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">interface_docs_sync</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">drift_detection</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">route_prefix_strip</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;/api/v1&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/api/v2&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/api&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">exclude_patterns</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;^internal_&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;^_&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">case_normalize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">fuzzy_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+<span class="w">        </span><span class="nt">min_coverage_warning</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+</code></pre></div>
+
+<h3  id="primer-ispolzovaniya_4"><span id="primer_ispolzovaniya_4"></span>Пример использования<a class="heading-anchor" href="#primer-ispolzovaniya_4" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Полный отчёт</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
+
+<span class="c1"># CI-режим (код выхода 1, если покрытие ниже порога)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--check<span class="w"> </span>--format<span class="w"> </span>json
+
+<span class="c1"># Фильтрация по интерфейсам</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--interfaces<span class="w"> </span>rest_api,cli<span class="w"> </span>--language<span class="w"> </span>ru
+
+<span class="c1"># REST API</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>/api/v1/documentation/sync<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;interfaces&quot;: [&quot;rest_api&quot;, &quot;cli&quot;]}&#39;</span>
+
+<span class="c1"># MCP-инструмент</span>
+codegraph_docs_sync<span class="o">(</span><span class="nv">interfaces</span><span class="o">=</span><span class="s2">&quot;rest_api,cli&quot;</span>,<span class="w"> </span><span class="nv">output_format</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="o">)</span>
+</code></pre></div>
+
+<h3  id="integratsiya-s-ci"><span id="integratsiya_s_ci"></span>Интеграция с CI<a class="heading-anchor" href="#integratsiya-s-ci" title="Link to this section">&para;</a></h3>
+<p>GitHub Actions <code>.github/workflows/docs-sync.yml</code> запускается на PR, затрагивающих код интерфейсов или документацию. Публикует прикреплённый комментарий к PR с метриками покрытия и загружает отчёт как артефакт.</p>
 <h2  id="komponenty-kompozitsii"><span id="komponenty_kompozitsii"></span>Компоненты композиции<a class="heading-anchor" href="#komponenty-kompozitsii" title="Link to this section">&para;</a></h2>
 <h3 id="scenarioinvoker">ScenarioInvoker<a class="heading-anchor" href="#scenarioinvoker" title="Link to this section">&para;</a></h3>
 <p>Вызывает подсценарии с параллельным или последовательным выполнением:</p>
@@ -1053,6 +1179,7 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 <li><strong>Аудит</strong> для комплексного анализа: Полная проверка по 12 измерениям качества (9 подсценариев, 600с таймаут)</li>
 <li><strong>S18</strong> для оптимизации: Когда нужны улучшения производительности, безопасности и качества (5 подсценариев)</li>
 <li><strong>S19</strong> для соответствия: Когда нужна проверка стандартов со ссылками (3 подсценария)</li>
+<li><strong>Синхронизация документации</strong> для покрытия документации: Когда нужно найти незадокументированные эндпоинты и устаревшую документацию (7 интерфейсов, 120с таймаут)</li>
 </ul>
 <h3  id="2-nastroyka-strategii-obedineniya"><span id="2_nastroyka_strategii_obedineniya"></span>2. Настройка стратегии объединения<a class="heading-anchor" href="#2-nastroyka-strategii-obedineniya" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Для комплексного анализа (включить всё)</span>
@@ -1100,6 +1227,7 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 <li><a href="02-security-audit.html">Аудит безопасности (S02)</a></li>
 <li><a href="09-code-review.html">Проверка кода (S09)</a></li>
 <li><a href="17-file-editing.html">Редактирование файлов (S17)</a></li>
+<li><a href="../../../reference/WORKFLOWS.md#composite-workflows">CLI синхронизации документации</a></li>
 <li><a href="../../../integrations/CLAUDE_CODE_GIT.html">Интеграция Claude Code и Git</a></li>
 <li><a href="../../../api/REST_API.html">Справочник REST API</a></li>
 </ul>
@@ -1121,7 +1249,7 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-03</span>
+        <span>Обновлено: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/composite-workflows.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1155,6 +1283,13 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 <li><a href="#proveryaemye-interfeysy" class="level-3">Проверяемые интерфейсы</a></li>
 <li><a href="#tipy-dokazatelstv" class="level-3">Типы доказательств</a></li>
 <li><a href="#primer-ispolzovaniya" class="level-3">Пример использования</a></li>
+<li><a href="#sinkhronizatsiya-dokumentatsii-po-interfeysam" class="level-2">Синхронизация документации по интерфейсам</a></li>
+<li><a href="#proveryaemye-interfeysy" class="level-3">Проверяемые интерфейсы</a></li>
+<li><a href="#5-faznyy-payplayn" class="level-3">5-фазный пайплайн</a></li>
+<li><a href="#kategorii-drifta" class="level-3">Категории дрифта</a></li>
+<li><a href="#strategii-sopostavleniya" class="level-3">Стратегии сопоставления</a></li>
+<li><a href="#primer-ispolzovaniya" class="level-3">Пример использования</a></li>
+<li><a href="#integratsiya-s-ci" class="level-3">Интеграция с CI</a></li>
 <li><a href="#komponenty-kompozitsii" class="level-2">Компоненты композиции</a></li>
 <li><a href="#scenarioinvoker" class="level-3">ScenarioInvoker</a></li>
 <li><a href="#resultmerger" class="level-3">ResultMerger</a></li>

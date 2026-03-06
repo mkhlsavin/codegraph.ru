@@ -92,6 +92,7 @@
         <li><a href="BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
+        <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -193,6 +194,7 @@
 <li><a href="#cli-commands">CLI Commands</a></li>
 <li><a href="#code-quality-audit">Code Quality Audit</a></li>
 <li><a href="#user-story-validation">User Story Validation</a></li>
+<li><a href="#interface-documentation-sync">Interface Documentation Sync</a></li>
 <li><a href="#best-practices">Best Practices</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
@@ -749,6 +751,130 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="w">    </span>--output<span class="w"> </span>report.md
 </code></pre></div>
 
+<h2  id="interface-documentation-sync"><span id="interface_documentation_sync"></span>Interface Documentation Sync<a class="heading-anchor" href="#interface-documentation-sync" title="Link to this section">&para;</a></h2>
+<p>Interface documentation sync is a composite workflow that scans 7 interfaces for documentation drift. It runs a 5-phase pipeline to discover code entities, parse existing docs, detect mismatches, and generate a coverage report.</p>
+<h3  id="checked-interfaces_1"><span id="checked_interfaces_1"></span>Checked Interfaces<a class="heading-anchor" href="#checked-interfaces_1" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Code Path</th>
+<th>Doc Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>REST API</td>
+<td><code>src/api/routers/</code></td>
+<td><code>docs/api/{lang}/REST_API.md</code></td>
+</tr>
+<tr>
+<td>CLI</td>
+<td><code>src/cli/</code></td>
+<td><code>docs/guides/{lang}/CLI_REFERENCE.md</code></td>
+</tr>
+<tr>
+<td>TUI</td>
+<td><code>src/tui/commands/</code></td>
+<td><code>docs/guides/{lang}/TUI_USER_GUIDE.md</code></td>
+</tr>
+<tr>
+<td>MCP</td>
+<td><code>src/mcp/</code></td>
+<td><code>docs/integrations/{lang}/MCP.md</code></td>
+</tr>
+<tr>
+<td>ACP</td>
+<td><code>src/acp/</code></td>
+<td><code>docs/integrations/{lang}/ACP.md</code></td>
+</tr>
+<tr>
+<td>gRPC</td>
+<td><code>src/services/gocpg/grpc_transport.py</code></td>
+<td><code>docs/reference/{lang}/GOCPG.md</code></td>
+</tr>
+<tr>
+<td>WebSocket</td>
+<td><code>src/api/routers/websocket.py</code></td>
+<td><code>docs/api/{lang}/WEBSOCKET.md</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="5-phase-pipeline"><span id="5_phase_pipeline"></span>5-Phase Pipeline<a class="heading-anchor" href="#5-phase-pipeline" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">Discovery</span><span class="w">            </span><span class="nv">Doc</span><span class="w"> </span><span class="nv">Parsing</span><span class="w">          </span><span class="nv">Generation</span><span class="w">           </span><span class="nv">Drift</span><span class="w"> </span><span class="nv">Detection</span><span class="w">      </span><span class="nv">Report</span>
+<span class="w">     </span>│<span class="w">                    </span>│<span class="w">                    </span>│<span class="w">                    </span>│<span class="w">                  </span>│
+<span class="w">     </span>▼<span class="w">                    </span>▼<span class="w">                    </span>▼<span class="w">                    </span>▼<span class="w">                  </span>▼
+<span class="w">  </span><span class="nv">Scan</span><span class="w"> </span><span class="nv">code</span><span class="w">          </span><span class="nv">Parse</span><span class="w"> </span><span class="nv">markdown</span><span class="w">       </span><span class="nv">Generate</span><span class="w"> </span><span class="nv">missing</span><span class="w">     </span><span class="nv">Match</span><span class="w"> </span><span class="nv">code</span>↔<span class="nv">docs</span><span class="w">    </span><span class="nv">Markdown</span><span class="o">/</span><span class="nv">JSON</span>
+<span class="w">  </span><span class="nv">entities</span><span class="w">           </span><span class="k">for</span><span class="w"> </span><span class="nv">documented</span><span class="w">       </span><span class="nv">doc</span><span class="w"> </span><span class="nv">stubs</span><span class="w">            </span><span class="nv">Multi</span><span class="o">-</span><span class="nv">strategy</span><span class="w">      </span><span class="nv">Coverage</span><span class="w"> </span><span class="o">%</span>
+<span class="w">  </span><span class="nv">per</span><span class="w"> </span><span class="nv">interface</span><span class="w">      </span><span class="nv">entities</span><span class="w">             </span><span class="ss">(</span><span class="nv">optional</span><span class="ss">)</span><span class="w">           </span><span class="nv">matching</span><span class="w">            </span><span class="nv">per</span><span class="w"> </span><span class="nv">interface</span>
+</code></pre></div>
+
+<h3  id="drift-categories"><span id="drift_categories"></span>Drift Categories<a class="heading-anchor" href="#drift-categories" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UNDOCUMENTED</code></td>
+<td>Code entity exists but has no documentation</td>
+</tr>
+<tr>
+<td><code>STALE</code></td>
+<td>Documented entity no longer exists in code</td>
+</tr>
+<tr>
+<td><code>OUTDATED</code></td>
+<td>Both exist but parameters/signatures differ</td>
+</tr>
+<tr>
+<td><code>COVERED</code></td>
+<td>Properly documented</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="matching-strategies"><span id="matching_strategies"></span>Matching Strategies<a class="heading-anchor" href="#matching-strategies" title="Link to this section">&para;</a></h3>
+<p>The drift detector uses a multi-strategy matching pipeline (Phase 4):</p>
+<ol>
+<li><strong>Exact match</strong> — direct name comparison (confidence: 1.0)</li>
+<li><strong>Route-aware match</strong> — strip route prefixes like <code>/api/v1</code> (confidence: 0.95)</li>
+<li><strong>Case-normalized match</strong> — snake_case ↔ kebab-case equivalence (confidence: 0.95)</li>
+<li><strong>Fuzzy match</strong> — Jaccard similarity on name tokens (confidence: similarity score)</li>
+</ol>
+<p>Exclude patterns (regex) can filter entities from drift detection. Configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">composition</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">orchestrators</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">interface_docs_sync</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">drift_detection</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">route_prefix_strip</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;/api/v1&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/api/v2&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;/api&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">exclude_patterns</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;^internal_&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;^_&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">case_normalize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">fuzzy_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+<span class="w">        </span><span class="nt">min_coverage_warning</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+</code></pre></div>
+
+<h3  id="example-usage_4"><span id="example_usage_4"></span>Example Usage<a class="heading-anchor" href="#example-usage_4" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full report</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
+
+<span class="c1"># CI mode (exit 1 if coverage below threshold)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--check<span class="w"> </span>--format<span class="w"> </span>json
+
+<span class="c1"># Filter interfaces</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--interfaces<span class="w"> </span>rest_api,cli<span class="w"> </span>--language<span class="w"> </span>en
+
+<span class="c1"># REST API</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>/api/v1/documentation/sync<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;interfaces&quot;: [&quot;rest_api&quot;, &quot;cli&quot;]}&#39;</span>
+
+<span class="c1"># MCP tool</span>
+codegraph_docs_sync<span class="o">(</span><span class="nv">interfaces</span><span class="o">=</span><span class="s2">&quot;rest_api,cli&quot;</span>,<span class="w"> </span><span class="nv">output_format</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="o">)</span>
+</code></pre></div>
+
+<h3  id="ci-integration"><span id="ci_integration"></span>CI Integration<a class="heading-anchor" href="#ci-integration" title="Link to this section">&para;</a></h3>
+<p>GitHub Actions workflow <code>.github/workflows/docs-sync.yml</code> runs on PRs that modify interface code or docs. Posts a sticky PR comment with coverage metrics and uploads the report as an artifact.</p>
 <h2  id="composition-components"><span id="composition_components"></span>Composition Components<a class="heading-anchor" href="#composition-components" title="Link to this section">&para;</a></h2>
 <h3 id="scenarioinvoker">ScenarioInvoker<a class="heading-anchor" href="#scenarioinvoker" title="Link to this section">&para;</a></h3>
 <p>Invokes sub-scenarios with parallel or sequential execution:</p>
@@ -1053,6 +1179,7 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 <li><strong>Audit</strong> for comprehensive analysis: Full check across 12 quality dimensions (9 sub-scenarios, 600s timeout)</li>
 <li><strong>S18</strong> for optimization: When you need performance, security, and quality improvements (5 sub-scenarios)</li>
 <li><strong>S19</strong> for compliance: When you need standards verification with references (3 sub-scenarios)</li>
+<li><strong>Interface Docs Sync</strong> for documentation coverage: When you need to detect undocumented endpoints and stale docs (7 interfaces, 120s timeout)</li>
 </ul>
 <h3  id="2-configure-merge-strategy"><span id="2_configure_merge_strategy"></span>2. Configure Merge Strategy<a class="heading-anchor" href="#2-configure-merge-strategy" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># For comprehensive analysis (include everything)</span>
@@ -1100,6 +1227,7 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 <li><a href="02-security-audit.html">Security Audit (S02)</a></li>
 <li><a href="09-code-review.html">Code Review (S09)</a></li>
 <li><a href="17-file-editing.html">File Editing (S17)</a></li>
+<li><a href="../../../reference/WORKFLOWS.md#composite-workflows">Interface Docs Sync CLI</a></li>
 <li><a href="../../../integrations/CLAUDE_CODE_GIT.html">Claude Code &amp; Git Integration</a></li>
 <li><a href="../../../api/REST_API.html">REST API Reference</a></li>
 </ul>
@@ -1121,7 +1249,7 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-03</span>
+        <span>Last updated: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/composite-workflows.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1155,6 +1283,13 @@ codegraph<span class="w"> </span>composition<span class="w"> </span>scenarios
 <li><a href="#checked-interfaces" class="level-3">Checked Interfaces</a></li>
 <li><a href="#evidence-types" class="level-3">Evidence Types</a></li>
 <li><a href="#example-usage" class="level-3">Example Usage</a></li>
+<li><a href="#interface-documentation-sync" class="level-2">Interface Documentation Sync</a></li>
+<li><a href="#checked-interfaces" class="level-3">Checked Interfaces</a></li>
+<li><a href="#5-phase-pipeline" class="level-3">5-Phase Pipeline</a></li>
+<li><a href="#drift-categories" class="level-3">Drift Categories</a></li>
+<li><a href="#matching-strategies" class="level-3">Matching Strategies</a></li>
+<li><a href="#example-usage" class="level-3">Example Usage</a></li>
+<li><a href="#ci-integration" class="level-3">CI Integration</a></li>
 <li><a href="#composition-components" class="level-2">Composition Components</a></li>
 <li><a href="#scenarioinvoker" class="level-3">ScenarioInvoker</a></li>
 <li><a href="#resultmerger" class="level-3">ResultMerger</a></li>

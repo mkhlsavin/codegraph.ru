@@ -92,6 +92,7 @@
         <li><a href="BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
+        <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -288,6 +289,49 @@
 /review<span class="w"> </span>github<span class="w"> </span><span class="m">123</span><span class="w"> </span>--format<span class="w"> </span>md<span class="w"> </span>--inline
 </code></pre></div>
 
+<h2  id="cli-review-command"><span id="cli_review_command"></span>CLI Review Command<a class="heading-anchor" href="#cli-review-command" title="Link to this section">&para;</a></h2>
+<p>CodeGraph also provides a standalone review command that runs quality and security analysis through the CPG pipeline:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Review changes against a base ref</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~3
+
+<span class="c1"># Review staged changes</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--staged
+
+<span class="c1"># Review specific files</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--files<span class="w"> </span>src/api/main.py<span class="w"> </span>src/auth.py
+
+<span class="c1"># Skip security analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--no-security
+</code></pre></div>
+
+<h3  id="output-formats_1"><span id="output_formats_1"></span>Output Formats<a class="heading-anchor" href="#output-formats_1" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Flag</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Markdown</td>
+<td><code>--format markdown</code> (default)</td>
+<td>Terminal, documentation</td>
+</tr>
+<tr>
+<td>JSON</td>
+<td><code>--format json</code></td>
+<td>CI/CD integration, automation</td>
+</tr>
+<tr>
+<td>SARIF 2.1.0</td>
+<td><code>--format sarif</code> or <code>--sarif-file out.sarif</code></td>
+<td>GitHub/GitLab security tab, IDE integration</td>
+</tr>
+</tbody>
+</table></div>
+<p>Exit codes: <code>0</code> = clean or medium/low only, <code>1</code> = critical or high findings detected.</p>
 <h2  id="cpg-powered-code-review"><span id="cpg_powered_code_review"></span>CPG-Powered Code Review<a class="heading-anchor" href="#cpg-powered-code-review" title="Link to this section">&para;</a></h2>
 <p>The code review scenario leverages the CPG (Code Property Graph) for automated analysis:</p>
 <h3  id="change-risk-assessment"><span id="change_risk_assessment"></span>Change Risk Assessment<a class="heading-anchor" href="#change-risk-assessment" title="Link to this section">&para;</a></h3>
@@ -333,6 +377,25 @@
 <p>The <code>PRImpactHandler</code> extracts changed files via <code>git diff --name-only {base_ref} HEAD</code> for accurate blast radius analysis. Supported extensions: <code>.py</code>, <code>.go</code>, <code>.ts</code>, <code>.js</code>, <code>.c</code>, <code>.h</code>, <code>.java</code>, <code>.kt</code>, <code>.cs</code>, <code>.php</code>.</p>
 <h3  id="transitive-caller-analysis"><span id="transitive_caller_analysis"></span>Transitive Caller Analysis<a class="heading-anchor" href="#transitive-caller-analysis" title="Link to this section">&para;</a></h3>
 <p><code>CallerAnalysis</code> performs 2-hop transitive search: finds not only direct callers of changed methods, but callers of callers &ndash; to assess the full blast radius.</p>
+<h3  id="scope-aware-filtering"><span id="scope_aware_filtering"></span>Scope-Aware Filtering<a class="heading-anchor" href="#scope-aware-filtering" title="Link to this section">&para;</a></h3>
+<p>When the CPG is built with excluded directories (partial scope), findings are filtered:</p>
+<ul>
+<li><strong>Dead code</strong>: demoted to <code>info</code> severity, marked <code>scope_limited</code> (callers may exist in excluded modules)</li>
+<li><strong>Blast radius</strong>: demoted to <code>info</code> severity, marked <code>scope_limited</code></li>
+<li><strong>Missing tests</strong>: suppressed entirely when <code>include_tests=false</code></li>
+<li><strong>Complexity/Security</strong>: not affected (per-method and real vulnerability metrics)</li>
+</ul>
+<p>A scope disclaimer is added to reports when filtering is active.</p>
+<h3  id="review-pipeline-architecture"><span id="review_pipeline_architecture"></span>Review Pipeline Architecture<a class="heading-anchor" href="#review-pipeline-architecture" title="Link to this section">&para;</a></h3>
+<p>The <code>ReviewPipeline</code> (<code>src/review/pipeline.py</code>) orchestrates the full review cycle:</p>
+<div class="highlight"><pre><span></span><code><span class="n">detect_project</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">check_cpg_status</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">load_scope</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">get_changed_files</span>
+<span class="w">     </span><span class="err">→</span><span class="w"> </span><span class="n">quality_analysis</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">security_analysis</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">aggregate</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">format_output</span>
+</code></pre></div>
+
+<p>Key components:
+- <code>ReviewAggregator</code> (<code>src/review/aggregator.py</code>): combines quality and security findings, applies scope-aware filtering
+- <code>ReviewReport</code> (<code>src/review/models.py</code>): generates markdown, JSON, and SARIF 2.1.0 output
+- <code>SecurityPRReview</code>: optional security analysis for changed files</p>
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="02-security-audit.html">Security Audit</a> - Deeper security analysis</li>
@@ -359,7 +422,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-03</span>
+        <span>Last updated: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/09-code-review.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -379,11 +442,15 @@
 <li><a href="#review-with-inline-comments" class="level-2">Review with Inline Comments</a></li>
 <li><a href="#output-formats" class="level-2">Output Formats</a></li>
 <li><a href="#review-options" class="level-2">Review Options</a></li>
+<li><a href="#cli-review-command" class="level-2">CLI Review Command</a></li>
+<li><a href="#output-formats" class="level-3">Output Formats</a></li>
 <li><a href="#cpg-powered-code-review" class="level-2">CPG-Powered Code Review</a></li>
 <li><a href="#change-risk-assessment" class="level-3">Change Risk Assessment</a></li>
 <li><a href="#interface-impact-detection" class="level-3">Interface Impact Detection</a></li>
 <li><a href="#real-git-diff-analysis" class="level-3">Real Git Diff Analysis</a></li>
 <li><a href="#transitive-caller-analysis" class="level-3">Transitive Caller Analysis</a></li>
+<li><a href="#scope-aware-filtering" class="level-3">Scope-Aware Filtering</a></li>
+<li><a href="#review-pipeline-architecture" class="level-3">Review Pipeline Architecture</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>
     </aside>

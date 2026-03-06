@@ -92,6 +92,7 @@
         <li><a href="../guides/BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -162,7 +163,10 @@
         <li><a href="API.html">Справочник API</a></li>
         <li><a href="APPROVAL_ENGINE.html">Механизм подтверждения операций</a></li>
         <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
+        <li><a href="FAQ.html">Часто задаваемые вопросы (FAQ)</a></li>
+        <li><a href="GRPC_API.html">Справочник gRPC API</a></li>
         <li><a href="HYPOTHESIS_SYSTEM.html">Справочная система гипотез</a></li>
+        <li><a href="MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="SCHEMA.html" class="active">Дизайн схемы DuckDB CPG (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Модуль корпоративной безопасности</a></li>
         <li><a href="SQL_QUERY_COOKBOOK.html">Кулинарная книга SQL-запросов для DuckDB CPG</a></li>
@@ -294,6 +298,7 @@
 <li><a href="#rekomendatsii-po-proizvoditelnosti">Соображения по производительности</a></li>
 <li><a href="#schema-version">Версия схемы</a></li>
 <li><a href="#changelog">Журнал изменений</a></li>
+<li><a href="#v71-2026-03-06-parse-scope-awareness">v7.1 (2026-03-06) — Parse scope awareness</a></li>
 <li><a href="#v70-2026-02-28-polnoe-sootvetstvie-schemago">v7.0 (2026-02-28) — Полное соответствие schema.go</a></li>
 <li><a href="#v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov">v6.0 (2026-02-26) — Предвычисленные метрики и флаги шаблонов</a></li>
 <li><a href="#v50-2025-11-16-compliance">v5.0 (2025-11-16) — Полное соответствие</a></li>
@@ -1645,6 +1650,84 @@
 <span class="p">);</span>
 </code></pre></div>
 
+<h3  id="cpg-parse-scope"><span id="cpg_parse_scope"></span>cpg_parse_scope<a class="heading-anchor" href="#cpg-parse-scope" title="Link to this section">&para;</a></h3>
+<p>Границы CPG-анализа: какие части репозитория были распарсены, какие исключены. Используется code review pipeline для подавления ложных срабатываний (мёртвый код, отсутствие тестов), когда scope ограничен.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">cpg_parse_scope</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">              </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="n">source_path</span><span class="w">     </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">language</span><span class="w">        </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">include_tests</span><span class="w">   </span><span class="nb">BOOLEAN</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">FALSE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">include_paths</span><span class="w">   </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">exclude_paths</span><span class="w">   </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">default_excludes</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;[]&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">import_mode</span><span class="w">     </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;full&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">parsed_at</span><span class="w">       </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="p">(</span><span class="n">epoch_ms</span><span class="p">(</span><span class="n">now</span><span class="p">())),</span>
+<span class="w">    </span><span class="n">gocpg_version</span><span class="w">   </span><span class="nb">VARCHAR</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;&#39;</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Столбец</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INTEGER</td>
+<td>Всегда 1 (singleton)</td>
+</tr>
+<tr>
+<td><code>source_path</code></td>
+<td>VARCHAR</td>
+<td>Путь к исходному коду или URL репозитория</td>
+</tr>
+<tr>
+<td><code>language</code></td>
+<td>VARCHAR</td>
+<td>Язык парсинга (<code>c</code>, <code>go</code>, <code>java</code>, &hellip;)</td>
+</tr>
+<tr>
+<td><code>include_tests</code></td>
+<td>BOOLEAN</td>
+<td>Включены ли тесты в CPG</td>
+</tr>
+<tr>
+<td><code>include_paths</code></td>
+<td>VARCHAR</td>
+<td>JSON-массив включённых путей (пустой = всё)</td>
+</tr>
+<tr>
+<td><code>exclude_paths</code></td>
+<td>VARCHAR</td>
+<td>JSON-массив явно исключённых путей</td>
+</tr>
+<tr>
+<td><code>default_excludes</code></td>
+<td>VARCHAR</td>
+<td>JSON-массив исключений по умолчанию (<code>vendor/</code>, <code>node_modules/</code>, &hellip;)</td>
+</tr>
+<tr>
+<td><code>import_mode</code></td>
+<td>VARCHAR</td>
+<td>Режим импорта: <code>full</code> или <code>selective</code></td>
+</tr>
+<tr>
+<td><code>parsed_at</code></td>
+<td>BIGINT</td>
+<td>Временная метка парсинга (epoch ms)</td>
+</tr>
+<tr>
+<td><code>gocpg_version</code></td>
+<td>VARCHAR</td>
+<td>Версия GoCPG, выполнившего парсинг</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>CLI</strong>: <code>gocpg scope --db=project.duckdb [--json]</code></p>
 <h3  id="cpg-branch-state"><span id="cpg_branch_state"></span>cpg_branch_state<a class="heading-anchor" href="#cpg-branch-state" title="Link to this section">&para;</a></h3>
 <p>Отслеживание состояния CPG по веткам.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">cpg_branch_state</span><span class="w"> </span><span class="p">(</span>
@@ -2076,10 +2159,24 @@
 <li>Спецификация CPG: v1.1</li>
 <li>DuckDB: 1.4.2+</li>
 <li>duckpgq: Последняя стабильная версия</li>
-<li>Версия схемы: 7.0 (Полное соответствие schema.go)</li>
-<li>Последнее обновление: 2026-02-28</li>
+<li>Версия схемы: 7.1 (Parse scope awareness)</li>
+<li>Последнее обновление: 2026-03-06</li>
 </ul>
 <h2  id="changelog"><span id="zhurnal-izmeneniy"></span><span id="zhurnal_izmeneniy"></span>Журнал изменений<a class="heading-anchor" href="#changelog" title="Link to this section">&para;</a></h2>
+<h3  id="v71-2026-03-06-parse-scope-awareness"><span id="v71_2026_03_06_parse_scope_awareness"></span>v7.1 (2026-03-06) — Parse scope awareness<a class="heading-anchor" href="#v71-2026-03-06-parse-scope-awareness" title="Link to this section">&para;</a></h3>
+<p><strong>Новая таблица состояния:</strong>
+- <code>cpg_parse_scope</code> — границы CPG-анализа (singleton, id=1). Фиксирует какие части репозитория включены/исключены при парсинге. Используется code review pipeline для scope-aware фильтрации findings (подавление ложных срабатываний мёртвого кода и отсутствия тестов при ограниченном scope)</p>
+<p><strong>Новые столбцы:</strong>
+- <code>source_path</code> (VARCHAR) — путь к исходному коду или URL репозитория
+- <code>language</code> (VARCHAR) — язык парсинга
+- <code>include_tests</code> (BOOLEAN) — включены ли тесты в CPG
+- <code>include_paths</code> (VARCHAR) — JSON-массив включённых путей
+- <code>exclude_paths</code> (VARCHAR) — JSON-массив явно исключённых путей
+- <code>default_excludes</code> (VARCHAR) — JSON-массив исключений по умолчанию
+- <code>import_mode</code> (VARCHAR) — режим импорта (<code>full</code>/<code>selective</code>)
+- <code>gocpg_version</code> (VARCHAR) — версия GoCPG</p>
+<p><strong>Новая команда CLI:</strong>
+- <code>gocpg scope --db=... [--json]</code> — просмотр scope парсинга с индикатором partial scope</p>
 <h3  id="v70-2026-02-28-polnoe-sootvetstvie-schemago"><span id="v70_2026_02_28_polnoe_sootvetstvie_schemago"></span>v7.0 (2026-02-28) — Полное соответствие schema.go<a class="heading-anchor" href="#v70-2026-02-28-polnoe-sootvetstvie-schemago" title="Link to this section">&para;</a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Все определения таблиц приведены в точное соответствие с <code>gocpg/pkg/storage/duckdb/schema.go</code></strong></p>
 <p><strong>Новые таблицы узлов:</strong>
@@ -2113,7 +2210,7 @@
 - <code>call_containment</code> — Денормализованное представление вызывающий/вызываемый (11 столбцов)
 - <code>method_docstrings</code> — Связь комментариев с методами</p>
 <p><strong>Новые таблицы состояния/доменов/шаблонов:</strong>
-- <code>cpg_fqn_index</code>, <code>cpg_file_state</code>, <code>cpg_git_state</code>, <code>cpg_branch_state</code>, <code>cpg_submodule_state</code>, <code>export_progress</code>
+- <code>cpg_fqn_index</code>, <code>cpg_file_state</code>, <code>cpg_git_state</code>, <code>cpg_parse_scope</code>, <code>cpg_branch_state</code>, <code>cpg_submodule_state</code>, <code>export_progress</code>
 - <code>cpg_domain_annotations</code>, <code>cpg_domain_subsystems</code>, <code>cpg_domain_subsystem_members</code>
 - <code>finding_evidence</code>, <code>cpg_enrichment_state</code>, <code>cpg_enrichment_anchors</code>
 - <code>cpg_pattern_results</code>, <code>cpg_pattern_rules</code>, <code>cpg_pattern_deps</code></p>
@@ -2405,7 +2502,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-03</span>
+        <span>Обновлено: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SCHEMA.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -2496,6 +2593,7 @@
 <li><a href="#cpg-fqn-index" class="level-3">cpg_fqn_index</a></li>
 <li><a href="#cpg-file-state" class="level-3">cpg_file_state</a></li>
 <li><a href="#cpg-git-state" class="level-3">cpg_git_state</a></li>
+<li><a href="#cpg-parse-scope" class="level-3">cpg_parse_scope</a></li>
 <li><a href="#cpg-branch-state" class="level-3">cpg_branch_state</a></li>
 <li><a href="#cpg-submodule-state" class="level-3">cpg_submodule_state</a></li>
 <li><a href="#export-progress" class="level-3">export_progress</a></li>
@@ -2524,6 +2622,7 @@
 <li><a href="#rekomendatsii-po-proizvoditelnosti" class="level-2">Рекомендации по производительности</a></li>
 <li><a href="#schema-version" class="level-2">Версия схемы</a></li>
 <li><a href="#changelog" class="level-2">Журнал изменений</a></li>
+<li><a href="#v71-2026-03-06-parse-scope-awareness" class="level-3">v7.1 (2026-03-06) — Parse scope awareness</a></li>
 <li><a href="#v70-2026-02-28-polnoe-sootvetstvie-schemago" class="level-3">v7.0 (2026-02-28) — Полное соответствие schema.go</a></li>
 <li><a href="#v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov" class="level-3">v6.0 (2026-02-26) — Предвычисленные метрики и флаги шаблонов</a></li>
 <li><a href="#v50-2025-11-16-compliance" class="level-3">v5.0 (2025-11-16) — полное соответствие схеме</a></li>

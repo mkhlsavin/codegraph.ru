@@ -92,6 +92,7 @@
         <li><a href="../guides/BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
+        <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -162,7 +163,10 @@
         <li><a href="API.html">API Reference</a></li>
         <li><a href="APPROVAL_ENGINE.html">Approval Engine</a></li>
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
+        <li><a href="FAQ.html">Frequently Asked Questions (FAQ)</a></li>
+        <li><a href="GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="HYPOTHESIS_SYSTEM.html">Hypothesis System Reference</a></li>
+        <li><a href="MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="SCHEMA.html">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Enterprise Security Module</a></li>
         <li><a href="SQL_QUERY_COOKBOOK.html">SQL Query Cookbook for DuckDB CPG</a></li>
@@ -415,6 +419,7 @@
 ├── cross_repo_handlers/      # Cross-repo scenario
 ├── feature_dev_handlers/     # Feature development scenario
 ├── audit_composite.py        # Audit (runs 9 sub-scenarios)
+├── interface_docs_sync_composite.py  # Docs sync (7 interfaces)
 ├── code_optimization.py      # Code optimization
 ├── file_editing.py           # File editing
 ├── pattern_search_handlers/  # Structural pattern search scenario
@@ -567,6 +572,12 @@
 <td><code>AuditRunner</code></td>
 <td>Composite: 12-dimension quality audit</td>
 </tr>
+<tr>
+<td>—</td>
+<td>interface_docs_sync</td>
+<td><code>InterfaceDocsSyncRunner</code></td>
+<td>Composite: interface documentation sync (7 interfaces)</td>
+</tr>
 </tbody>
 </table></div>
 <h3  id="handler-base-class"><span id="handler_base_class"></span>Handler Base Class<a class="heading-anchor" href="#handler-base-class" title="Link to this section">&para;</a></h3>
@@ -594,7 +605,7 @@
 <p><strong>Warning:</strong> Do NOT use <code>AnalysisHandler</code> from <code>src/workflow/handlers/analysis.py</code> as a base class — its constructor signature is incompatible with the scenario registry.</p>
 </blockquote>
 <h2  id="composite-workflows"><span id="composite_workflows"></span>Composite Workflows<a class="heading-anchor" href="#composite-workflows" title="Link to this section">&para;</a></h2>
-<p>Three composite orchestrators run sub-scenarios in parallel or sequentially:</p>
+<p>Four composite orchestrators run sub-scenarios in parallel or sequentially:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -623,6 +634,12 @@
 <td>Parallel</td>
 <td>600s</td>
 </tr>
+<tr>
+<td>interface_docs_sync</td>
+<td>Discovery, DocParse, DriftDetect</td>
+<td>5-phase pipeline</td>
+<td>120s</td>
+</tr>
 </tbody>
 </table></div>
 <p><strong>Audit</strong> runs 9 sub-scenarios in parallel, covering 12 code quality dimensions (security, complexity, duplication, dependencies, naming, error handling, testing, documentation, performance, portability, style, architecture). Exposed via:</p>
@@ -631,6 +648,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <p>The <code>--autofix</code> flag generates automated fix suggestions for security vulnerabilities found during the audit, using <code>AutofixEngine</code> on taint paths. Configuration in <code>config.yaml</code> → <code>autofix</code> section.</p>
+<p><strong>Interface Docs Sync</strong> runs a 5-phase pipeline: Discovery → Doc Parsing → Generation → Drift Detection → Report. Scans 7 interfaces (REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket) for documentation drift. Exposed via:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--check<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--interfaces<span class="w"> </span>rest_api,cli<span class="o">]</span>
+</code></pre></div>
+
+<p>Also available as MCP tool <code>codegraph_docs_sync</code> and REST endpoint <code>POST /api/v1/documentation/sync</code>. CI integration via <code>.github/workflows/docs-sync.yml</code>. Configuration in <code>config.yaml</code> → <code>composition.orchestrators.interface_docs_sync</code>.</p>
 <p><strong>Exec</strong> provides non-interactive CI/CD execution with PR security review:</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Review security&quot;</span><span class="w"> </span>--base-ref<span class="w"> </span>origin/main<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--sarif-file<span class="w"> </span>out.sarif<span class="w"> </span>--comment-file<span class="w"> </span>comment.md<span class="w"> </span>--sandbox<span class="w"> </span>read-only
@@ -729,7 +751,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-03</span>
+        <span>Last updated: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/WORKFLOWS.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>

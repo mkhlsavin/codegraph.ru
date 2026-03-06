@@ -92,6 +92,7 @@
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -741,6 +742,59 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="sinhronizatsiya-dokumentatsii-po-interfeysam-kompozitnyy"><span id="sinhronizatsiya_dokumentatsii_po_interfeysam_kompozitnyy"></span>Синхронизация документации по интерфейсам (композитный)<a class="heading-anchor" href="#sinhronizatsiya-dokumentatsii-po-interfeysam-kompozitnyy" title="Link to this section">&para;</a></h2>
+<p>Проверка покрытия документации по всем интерфейсам CodeGraph. Обнаруживает сущности кода (эндпоинты, команды, инструменты, методы) и сравнивает их с существующей markdown-документацией для выявления незадокументированных сущностей, устаревшей документации и расхождений сигнатур.</p>
+<h3  id="podderzhivaemye-interfeysy"><span id="podderzhivaemye_interfeysy"></span>Поддерживаемые интерфейсы<a class="heading-anchor" href="#podderzhivaemye-interfeysy" title="Link to this section">&para;</a></h3>
+<p>REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket — 7 интерфейсов с настраиваемыми путями и маппингом файлов документации.</p>
+<h3  id="primery-zaprosov_21"><span id="primery_zaprosov_21"></span>Примеры запросов<a class="heading-anchor" href="#primery-zaprosov_21" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Проверь покрытие документации
+Какие эндпоинты не задокументированы?
+Найди устаревшую документацию
+Покажи отчёт docs sync для REST API и CLI
+</code></pre></div>
+
+<h3  id="kategorii-drifta"><span id="kategorii_drifta"></span>Категории дрифта<a class="heading-anchor" href="#kategorii-drifta" title="Link to this section">&para;</a></h3>
+<ul>
+<li><strong>UNDOCUMENTED</strong>: Сущность есть в коде, но отсутствует в документации</li>
+<li><strong>STALE</strong>: Документация описывает сущность, которой больше нет в коде</li>
+<li><strong>OUTDATED</strong>: Обе существуют, но параметры/сигнатуры расходятся</li>
+<li><strong>COVERED</strong>: Корректно задокументировано</li>
+</ul>
+<h3 id="ispolzovanie_17">Использование<a class="heading-anchor" href="#ispolzovanie_17" title="Link to this section">&para;</a></h3>
+<h4 id="cli_1">CLI<a class="heading-anchor" href="#cli_1" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Полный отчёт (markdown)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
+
+<span class="c1"># CI-режим (код выхода 1, если покрытие ниже порога)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--check<span class="w"> </span>--format<span class="w"> </span>json
+
+<span class="c1"># Фильтрация по интерфейсам</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--interfaces<span class="w"> </span>rest_api,cli<span class="w"> </span>--language<span class="w"> </span>ru
+</code></pre></div>
+
+<h4  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>POST /api/v1/documentation/sync
+{
+  &quot;interfaces&quot;: [&quot;rest_api&quot;, &quot;cli&quot;],
+  &quot;language&quot;: &quot;ru&quot;,
+  &quot;output_format&quot;: &quot;markdown&quot;
+}
+</code></pre></div>
+
+<h4 id="mcp">MCP<a class="heading-anchor" href="#mcp" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>codegraph_docs_sync(interfaces=&quot;rest_api,cli&quot;, language=&quot;ru&quot;, output_format=&quot;json&quot;)
+</code></pre></div>
+
+<h4  id="programmnoe-ispolzovanie_1"><span id="programmnoe_ispolzovanie_1"></span>Программное использование<a class="heading-anchor" href="#programmnoe-ispolzovanie_1" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios.interface_docs_sync_composite</span><span class="w"> </span><span class="kn">import</span> <span class="n">InterfaceDocsSyncRunner</span>
+
+<span class="n">runner</span> <span class="o">=</span> <span class="n">InterfaceDocsSyncRunner</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;data/projects/codegraph.duckdb&quot;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">markdown</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Покрытие: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">coverage_ratio</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<hr />
 <h2  id="kombinirovanie-stsenariev"><span id="kombinirovanie_stsenariev"></span>Комбинирование сценариев<a class="heading-anchor" href="#kombinirovanie-stsenariev" title="Link to this section">&para;</a></h2>
 <p>Запуск нескольких сценариев вместе:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiScenarioCopilot</span>
@@ -781,7 +835,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-03</span>
+        <span>Обновлено: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/SCENARIOS.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -859,6 +913,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#21-strukturnyy-poisk-shablonov" class="level-2">21. Структурный поиск шаблонов</a></li>
 <li><a href="#primery-zaprosov" class="level-3">Примеры запросов</a></li>
 <li><a href="#tipy-shablonov" class="level-3">Типы шаблонов</a></li>
+<li><a href="#ispolzovanie" class="level-3">Использование</a></li>
+<li><a href="#sinhronizatsiya-dokumentatsii-po-interfeysam-kompozitnyy" class="level-2">Синхронизация документации по интерфейсам (композитный)</a></li>
+<li><a href="#podderzhivaemye-interfeysy" class="level-3">Поддерживаемые интерфейсы</a></li>
+<li><a href="#primery-zaprosov" class="level-3">Примеры запросов</a></li>
+<li><a href="#kategorii-drifta" class="level-3">Категории дрифта</a></li>
 <li><a href="#ispolzovanie" class="level-3">Использование</a></li>
 <li><a href="#kombinirovanie-stsenariev" class="level-2">Комбинирование сценариев</a></li>
 <li><a href="#sleduyuschie-shagi" class="level-2">Следующие шаги</a></li>

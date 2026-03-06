@@ -92,6 +92,7 @@
         <li><a href="BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
         <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
+        <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -742,6 +743,59 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="interface-documentation-sync-composite"><span id="interface_documentation_sync_composite"></span>Interface Documentation Sync (Composite)<a class="heading-anchor" href="#interface-documentation-sync-composite" title="Link to this section">&para;</a></h2>
+<p>Check documentation coverage across all CodeGraph interfaces. Discovers code entities (endpoints, commands, tools, methods) and compares them against existing markdown documentation to find undocumented entities, stale docs, and signature mismatches.</p>
+<h3  id="supported-interfaces"><span id="supported_interfaces"></span>Supported Interfaces<a class="heading-anchor" href="#supported-interfaces" title="Link to this section">&para;</a></h3>
+<p>REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket — 7 interfaces with configurable paths and doc file mappings.</p>
+<h3  id="example-questions_21"><span id="example_questions_21"></span>Example Questions<a class="heading-anchor" href="#example-questions_21" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">Check</span><span class="w"> </span><span class="nv">documentation</span><span class="w"> </span><span class="nv">coverage</span>
+<span class="nv">Which</span><span class="w"> </span><span class="nv">endpoints</span><span class="w"> </span><span class="nv">are</span><span class="w"> </span><span class="nv">undocumented</span>?
+<span class="nv">Find</span><span class="w"> </span><span class="nv">stale</span><span class="w"> </span><span class="nv">documentation</span><span class="w"> </span><span class="nv">entries</span>
+<span class="k">Show</span><span class="w"> </span><span class="nv">docs</span><span class="w"> </span><span class="nv">sync</span><span class="w"> </span><span class="nv">report</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">REST</span><span class="w"> </span><span class="nv">API</span><span class="w"> </span><span class="nv">and</span><span class="w"> </span><span class="nv">CLI</span>
+</code></pre></div>
+
+<h3  id="drift-categories"><span id="drift_categories"></span>Drift Categories<a class="heading-anchor" href="#drift-categories" title="Link to this section">&para;</a></h3>
+<ul>
+<li><strong>UNDOCUMENTED</strong>: Code entity exists but has no documentation</li>
+<li><strong>STALE</strong>: Documented entity no longer exists in code</li>
+<li><strong>OUTDATED</strong>: Both exist but parameters/signatures differ</li>
+<li><strong>COVERED</strong>: Properly documented</li>
+</ul>
+<h3 id="usage_17">Usage<a class="heading-anchor" href="#usage_17" title="Link to this section">&para;</a></h3>
+<h4 id="cli_1">CLI<a class="heading-anchor" href="#cli_1" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full report (markdown)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
+
+<span class="c1"># CI mode (exit 1 if coverage below threshold)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--check<span class="w"> </span>--format<span class="w"> </span>json
+
+<span class="c1"># Filter interfaces</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--interfaces<span class="w"> </span>rest_api,cli<span class="w"> </span>--language<span class="w"> </span>ru
+</code></pre></div>
+
+<h4  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>POST /api/v1/documentation/sync
+{
+  &quot;interfaces&quot;: [&quot;rest_api&quot;, &quot;cli&quot;],
+  &quot;language&quot;: &quot;en&quot;,
+  &quot;output_format&quot;: &quot;markdown&quot;
+}
+</code></pre></div>
+
+<h4 id="mcp">MCP<a class="heading-anchor" href="#mcp" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>codegraph_docs_sync(interfaces=&quot;rest_api,cli&quot;, language=&quot;en&quot;, output_format=&quot;json&quot;)
+</code></pre></div>
+
+<h4 id="programmatic_1">Programmatic<a class="heading-anchor" href="#programmatic_1" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios.interface_docs_sync_composite</span><span class="w"> </span><span class="kn">import</span> <span class="n">InterfaceDocsSyncRunner</span>
+
+<span class="n">runner</span> <span class="o">=</span> <span class="n">InterfaceDocsSyncRunner</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;data/projects/codegraph.duckdb&quot;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">markdown</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Coverage: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">coverage_ratio</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<hr />
 <h2  id="combining-scenarios"><span id="combining_scenarios"></span>Combining Scenarios<a class="heading-anchor" href="#combining-scenarios" title="Link to this section">&para;</a></h2>
 <p>Run multiple scenarios together:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiScenarioCopilot</span>
@@ -782,7 +836,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-03</span>
+        <span>Last updated: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/SCENARIOS.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -860,6 +914,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#21-structural-pattern-search" class="level-2">21. Structural Pattern Search</a></li>
 <li><a href="#example-questions" class="level-3">Example Questions</a></li>
 <li><a href="#pattern-types" class="level-3">Pattern Types</a></li>
+<li><a href="#usage" class="level-3">Usage</a></li>
+<li><a href="#interface-documentation-sync-composite" class="level-2">Interface Documentation Sync (Composite)</a></li>
+<li><a href="#supported-interfaces" class="level-3">Supported Interfaces</a></li>
+<li><a href="#example-questions" class="level-3">Example Questions</a></li>
+<li><a href="#drift-categories" class="level-3">Drift Categories</a></li>
 <li><a href="#usage" class="level-3">Usage</a></li>
 <li><a href="#combining-scenarios" class="level-2">Combining Scenarios</a></li>
 <li><a href="#next-steps" class="level-2">Next Steps</a></li>

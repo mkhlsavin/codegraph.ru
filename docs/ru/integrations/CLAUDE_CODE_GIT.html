@@ -92,6 +92,7 @@
         <li><a href="../guides/BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -202,6 +203,10 @@
 <li><a href="#pretooluse-shlyuz-slozhnosti">PreToolUse: шлюз сложности</a></li>
 <li><a href="#posttooluse-analiz-kommita">PostToolUse: анализ коммита</a></li>
 <li><a href="#stop-post-analiz">Stop: пост-анализ</a></li>
+<li><a href="#cli-komanda-revyu">CLI-команда ревью</a></li>
+<li><a href="#scope-aware-filtratsiya">Scope-aware фильтрация</a></li>
+<li><a href="#metriki-i-monitoring">Метрики и мониторинг</a></li>
+<li><a href="#ustojchivost-k-sboyam">Устойчивость к сбоям</a></li>
 <li><a href="#integratsiya-s-git">Интеграция с Git</a></li>
 <li><a href="#git-huki-gocpg">Git-хуки GoCPG</a></li>
 <li><a href="#aktualnost-cpg-i-avtomaticheskie-obnovleniya">Актуальность CPG и автоматические обновления</a></li>
@@ -233,6 +238,8 @@
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">PreToolUse</span><span class="w"> </span><span class="p">(</span><span class="n">Edit</span><span class="p">)</span><span class="w"> </span><span class="o">----&gt;</span><span class="w"> </span><span class="n">pre_tool_use</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">--------&gt;</span><span class="w"> </span><span class="err">Предупреждения</span><span class="w"> </span><span class="err">о</span><span class="w"> </span><span class="err">сложности</span><span class="w"> </span><span class="err">перед</span><span class="w"> </span><span class="err">редактированием</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">PostToolUse</span><span class="w"> </span><span class="p">(</span><span class="n">Bash</span><span class="p">)</span><span class="w"> </span><span class="o">---&gt;</span><span class="w"> </span><span class="n">commit_analysis</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">-----&gt;</span><span class="w"> </span><span class="err">Качество</span><span class="w"> </span><span class="err">коммита</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">зона</span><span class="w"> </span><span class="err">поражения</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">дельта</span>
+<span class="w">    </span><span class="o">|</span>
+<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">PostToolUse</span><span class="w"> </span><span class="p">(</span><span class="n">Bash</span><span class="p">)</span><span class="w"> </span><span class="o">---&gt;</span><span class="w"> </span><span class="n">cli_error_monitor</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">---&gt;</span><span class="w"> </span><span class="err">Обнаружение</span><span class="w"> </span><span class="err">паттернов</span><span class="w"> </span><span class="err">ошибок</span><span class="w"> </span><span class="n">CLI</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Stop</span><span class="w"> </span><span class="o">-----------------&gt;</span><span class="w"> </span><span class="n">post_analysis</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">-------&gt;</span><span class="w"> </span><span class="err">Проверка</span><span class="w"> </span><span class="err">качества</span><span class="w"> </span><span class="err">файлов</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="err">ответе</span>
 </code></pre></div>
@@ -295,6 +302,33 @@
 </tbody>
 </table></div>
 <p>Константы: <code>PROJECT_ROOT</code> (два уровня вверх от директории хуков), <code>GOCPG_BINARY</code> (<code>gocpg/gocpg.exe</code>), <code>CONFIG_PATH</code> (<code>config.yaml</code>).</p>
+<p>Дополнительные модули:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Модуль</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_feedback.py</code></td>
+<td>Датаклассы <code>ReviewFeedback</code> и <code>ReviewFinding</code> для структурированных markdown-отчётов</td>
+</tr>
+<tr>
+<td><code>_metrics.py</code></td>
+<td>JSONL-логирование производительности через контекстный менеджер <code>timed_hook()</code></td>
+</tr>
+<tr>
+<td><code>_session_cache.py</code></td>
+<td>Файловый кеш контекста проекта (избегает повторного чтения config.yaml)</td>
+</tr>
+<tr>
+<td><code>_project_detector.py</code></td>
+<td>Автоопределение проекта по CWD и git remote</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="spravochnik-po-hukam"><span id="spravochnik_po_hukam"></span>Справочник по хукам<a class="heading-anchor" href="#spravochnik-po-hukam" title="Link to this section">&para;</a></h2>
 <h3  id="sessionstart-kontekst-proekta"><span id="sessionstart_kontekst_proekta"></span>SessionStart: контекст проекта<a class="heading-anchor" href="#sessionstart-kontekst-proekta" title="Link to this section">&para;</a></h3>
 <p><strong>Файл:</strong> <code>.claude/hooks/session_context.py</code>
@@ -422,6 +456,92 @@ Domain: python_generic
 <li><strong>Отсутствие тестов</strong>: если изменённые файлы содержат публичные функции без соответствующих тестов</li>
 <li><strong>Незарегистрированные интерфейсы</strong>: если новые функции не вызываются из интерфейсных слоёв</li>
 </ul>
+<h2  id="cli-komanda-revyu"><span id="cli_komanda_revyu"></span>CLI-команда ревью<a class="heading-anchor" href="#cli-komanda-revyu" title="Link to this section">&para;</a></h2>
+<p>Помимо хуков, CodeGraph предоставляет самостоятельную CLI-команду для проверки кода:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Проверка изменений относительно базового рефа</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~3
+
+<span class="c1"># Проверка проиндексированных изменений</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--staged
+
+<span class="c1"># Проверка конкретных файлов</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--files<span class="w"> </span>src/api/main.py<span class="w"> </span>src/auth.py
+
+<span class="c1"># Форматы вывода</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>report.json
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--format<span class="w"> </span>sarif<span class="w"> </span>--output-file<span class="w"> </span>report.sarif
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~5<span class="w"> </span>--sarif-file<span class="w"> </span>out.sarif
+
+<span class="c1"># Без анализа безопасности</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--no-security
+</code></pre></div>
+
+<p>CLI-команда использует <code>ReviewPipeline</code> (<code>src/review/pipeline.py</code>), который оркестрирует:
+1. Определение проекта и проверку статуса CPG
+2. Загрузку scope парсинга для scope-aware фильтрации
+3. Анализ качества (мёртвый код, высокая сложность, большие методы)
+4. Анализ безопасности через <code>SecurityPRReview</code> (опционально)
+5. Scope-aware агрегацию через <code>ReviewAggregator</code>
+6. Вывод в формате markdown, JSON или SARIF 2.1.0</p>
+<p>Коды возврата: <code>0</code> = чисто или только medium/low, <code>1</code> = обнаружены critical или high.</p>
+<h3  id="scope-aware-filtratsiya"><span id="scope_aware_filtratsiya"></span>Scope-aware фильтрация<a class="heading-anchor" href="#scope-aware-filtratsiya" title="Link to this section">&para;</a></h3>
+<p>Когда CPG построен с исключениями (например, только бэкенд без тестов/фронтенда), конвейер применяет фильтрацию с учётом scope:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Тип находки</th>
+<th>Условие</th>
+<th>Действие</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dead_code</code></td>
+<td>Scope ограничен</td>
+<td>Понизить до <code>info</code>, пометить <code>scope_limited</code></td>
+</tr>
+<tr>
+<td><code>missing_test</code></td>
+<td><code>include_tests=false</code></td>
+<td>Полностью подавить</td>
+</tr>
+<tr>
+<td><code>blast_radius</code></td>
+<td>Scope ограничен</td>
+<td>Понизить до <code>info</code>, пометить <code>scope_limited</code></td>
+</tr>
+<tr>
+<td><code>complexity</code></td>
+<td>—</td>
+<td>Не затронут (метрика per-method)</td>
+</tr>
+<tr>
+<td><code>security</code></td>
+<td>—</td>
+<td>Не затронут (реальная уязвимость)</td>
+</tr>
+</tbody>
+</table></div>
+<p>При ограниченном scope в начало отчёта добавляется блок-дисклеймер.</p>
+<h2  id="metriki-i-monitoring"><span id="metriki_i_monitoring"></span>Метрики и мониторинг<a class="heading-anchor" href="#metriki-i-monitoring" title="Link to this section">&para;</a></h2>
+<p>Все хуки логируют метрики выполнения в <code>data/hook_metrics.jsonl</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-06T12:00:00Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;hook&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commit_analysis&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1234.5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;codegraph&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>Просмотр статистики через CLI:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span>--last<span class="w"> </span><span class="m">50</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span>--hook<span class="w"> </span>commit_analysis
+</code></pre></div>
+
+<p>Панель показывает агрегаты по хукам: количество запусков, ok/error/warning, процент ошибок, среднее и максимальное время выполнения, общее количество находок.</p>
+<h2  id="ustojchivost-k-sboyam"><span id="ustojchivost_k_sboyam"></span><span id="ustoychivost-k-sboyam"></span><span id="ustoychivost_k_sboyam"></span>Устойчивость к сбоям<a class="heading-anchor" href="#ustojchivost-k-sboyam" title="Link to this section">&para;</a></h2>
+<p>Все хуки следуют принципу fail-open:
+- Отсутствует бинарник gocpg: CPG-запросы пропускаются, выводится пустой контекст
+- Повреждённая или отсутствующая БД: анализ пропускается, предупреждение в метрики
+- Таймаут: частичные результаты возвращаются в пределах бюджета
+- Ошибки импорта: переключение на subprocess-путь (commit_analysis)
+- Любое необработанное исключение: перехватывается на верхнем уровне, пустой JSON</p>
 <h2  id="integratsiya-s-git"><span id="integratsiya_s_git"></span>Интеграция с Git<a class="heading-anchor" href="#integratsiya-s-git" title="Link to this section">&para;</a></h2>
 <h3  id="git-huki-gocpg"><span id="git_huki_gocpg"></span>Git-хуки GoCPG<a class="heading-anchor" href="#git-huki-gocpg" title="Link to this section">&para;</a></h3>
 <p>GoCPG может установить git-хук <code>post-commit</code>, который запускает инкрементальное обновление CPG после каждого коммита:</p>
@@ -526,6 +646,17 @@ Domain: python_generic
 </code></pre></div>
 
 <p><code>db_path</code> определяется относительно корня проекта. Все хуки используют <code>_utils.get_active_project()</code> для чтения этой конфигурации.</p>
+<p>Конфигурация конвейера проверки:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">review_pipeline</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">scope_aware_filtering</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">suppress_tests_outside_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">demote_dead_code_partial_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">show_scope_disclaimer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">metrics_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">metrics_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/hook_metrics.jsonl</span>
+<span class="w">  </span><span class="nt">fail_open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+
 <h2 id="ustanovka">Установка<a class="heading-anchor" href="#ustanovka" title="Link to this section">&para;</a></h2>
 <h3  id="ustanovka-odnoy-komandoy"><span id="ustanovka_odnoy_komandoy"></span>Установка одной командой<a class="heading-anchor" href="#ustanovka-odnoy-komandoy" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
@@ -608,7 +739,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-03</span>
+        <span>Обновлено: 2026-03-06</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/CLAUDE_CODE_GIT.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -630,6 +761,10 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 <li><a href="#pretooluse-shlyuz-slozhnosti" class="level-3">PreToolUse: шлюз сложности</a></li>
 <li><a href="#posttooluse-analiz-kommita" class="level-3">PostToolUse: анализ коммита</a></li>
 <li><a href="#stop-post-analiz" class="level-3">Stop: пост-анализ</a></li>
+<li><a href="#cli-komanda-revyu" class="level-2">CLI-команда ревью</a></li>
+<li><a href="#scope-aware-filtratsiya" class="level-3">Scope-aware фильтрация</a></li>
+<li><a href="#metriki-i-monitoring" class="level-2">Метрики и мониторинг</a></li>
+<li><a href="#ustojchivost-k-sboyam" class="level-2">Устойчивость к сбоям</a></li>
 <li><a href="#integratsiya-s-git" class="level-2">Интеграция с Git</a></li>
 <li><a href="#git-huki-gocpg" class="level-3">Git-хуки GoCPG</a></li>
 <li><a href="#aktualnost-cpg-i-avtomaticheskie-obnovleniya" class="level-3">Актуальность CPG и автоматические обновления</a></li>
