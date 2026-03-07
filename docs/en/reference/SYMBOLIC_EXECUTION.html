@@ -160,7 +160,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="AGENTS.html">Agents Reference</a></li>
         <li><a href="ANALYSIS_MODULES.html">Analysis Modules Reference</a></li>
-        <li><a href="API.html">API Reference</a></li>
+        <li><a href="API.html">Python SDK Reference</a></li>
         <li><a href="APPROVAL_ENGINE.html">Approval Engine</a></li>
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="FAQ.html">Frequently Asked Questions (FAQ)</a></li>
@@ -210,7 +210,7 @@
 - Optional component — gracefully degrades when Z3 is not installed
 - Adds ~20% time overhead, ~25% memory overhead
 - Maximum 20 constraints per path (configurable)
-- Supports integer comparisons, NULL checks, simple arithmetic</p>
+- Supports integer comparisons (<code>var op constant</code>) and NULL checks</p>
 <h2 id="installation">Installation<a class="heading-anchor" href="#installation" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>z3-solver
 </code></pre></div>
@@ -270,7 +270,8 @@
 <span class="sd">        Filter a list of taint paths, removing infeasible ones.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            paths: List of taint path objects (must have .source_id and .sink_id)</span>
+<span class="sd">            paths: List of taint path objects (must have .path_nodes attribute —</span>
+<span class="sd">                   list of node IDs; first element = source, last = sink)</span>
 <span class="sd">            min_confidence: Minimum confidence to consider a result reliable (default: 0.8)</span>
 
 <span class="sd">        Returns:</span>
@@ -278,9 +279,23 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 </code></pre></div>
 
-<h2 id="usage">Usage<a class="heading-anchor" href="#usage" title="Link to this section">&para;</a></h2>
-<h3  id="direct-api"><span id="direct_api"></span>Direct API<a class="heading-anchor" href="#direct-api" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.symbolic_execution</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathConstraintTracker</span>
+<div class="highlight"><pre><span></span><code><span class="n">def</span><span class="w"> </span><span class="n">get_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="w"> </span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get solver statistics.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with keys:</span>
+<span class="sd">        - z3_available (bool): Whether Z3 solver is installed</span>
+<span class="sd">        - max_constraints (int): Maximum constraints per path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1">## Usage</span>
+
+<span class="c1">### Direct API</span>
+
+<span class="err">```</span><span class="n">python</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.symbolic_execution</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathConstraintTracker</span>
 
 <span class="n">tracker</span> <span class="o">=</span> <span class="n">PathConstraintTracker</span><span class="p">(</span><span class="n">cpg_service</span><span class="p">,</span> <span class="n">max_constraints</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
@@ -294,7 +309,7 @@
 </code></pre></div>
 
 <h3  id="integration-with-taint-analysis"><span id="integration_with_taint_analysis"></span>Integration with Taint Analysis<a class="heading-anchor" href="#integration-with-taint-analysis" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.taint</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaintPropagator</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.taint_analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaintPropagator</span>
 
 <span class="n">propagator</span> <span class="o">=</span> <span class="n">TaintPropagator</span><span class="p">(</span>
     <span class="n">cpg_service</span><span class="p">,</span>
@@ -337,21 +352,20 @@
 <tr>
 <td>NULL check</td>
 <td><code>ptr == NULL</code></td>
-<td><code>z3.Int('ptr') == 0</code></td>
+<td><code>z3.Bool('ptr_is_null') == True</code></td>
 </tr>
 <tr>
 <td>nullptr check</td>
 <td><code>ptr != nullptr</code></td>
-<td><code>z3.Int('ptr') != 0</code></td>
+<td><code>z3.Bool('ptr_is_null') == False</code></td>
 </tr>
 <tr>
-<td>Simple arithmetic</td>
-<td><code>x + y &gt; z</code></td>
-<td><code>z3.Int('x') + z3.Int('y') &gt; z3.Int('z')</code></td>
+<td><strong>Not supported:</strong> binary arithmetic expressions (<code>x + y &gt; z</code>), inter-variable comparisons (<code>a &gt; b</code>), function calls in conditions, complex expressions, floating-point, string operations.</td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Not supported:</strong> function calls in conditions, complex expressions, floating-point, string operations.</p>
 <h2  id="confidence-levels"><span id="confidence_levels"></span>Confidence Levels<a class="heading-anchor" href="#confidence-levels" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
@@ -390,7 +404,7 @@
 <tr>
 <td>Too many constraints</td>
 <td>Assumed yes</td>
-<td>0.5</td>
+<td>0.3</td>
 <td>Keep path (skip analysis)</td>
 </tr>
 </tbody>
@@ -443,7 +457,7 @@
 </ul>
 <hr />
 <p><em>Module: <code>src/analysis/dataflow/symbolic_execution.py</code></em>
-<em>Last updated: February 2026</em></p>
+<em>Last updated: March 2026</em></p>
       </article>
 
       <!-- Page Navigation -->
@@ -462,7 +476,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-06</span>
+        <span>Last updated: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SYMBOLIC_EXECUTION.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -478,8 +492,6 @@
 <li><a href="#api-reference" class="level-2">API Reference</a></li>
 <li><a href="#pathconstraint" class="level-3">PathConstraint</a></li>
 <li><a href="#pathconstrainttracker" class="level-3">PathConstraintTracker</a></li>
-<li><a href="#usage" class="level-2">Usage</a></li>
-<li><a href="#direct-api" class="level-3">Direct API</a></li>
 <li><a href="#integration-with-taint-analysis" class="level-3">Integration with Taint Analysis</a></li>
 <li><a href="#supported-constraint-types" class="level-2">Supported Constraint Types</a></li>
 <li><a href="#confidence-levels" class="level-2">Confidence Levels</a></li>

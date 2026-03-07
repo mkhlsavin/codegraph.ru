@@ -160,7 +160,7 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="AGENTS.html">Справочник агентов</a></li>
         <li><a href="ANALYSIS_MODULES.html">Справочник модулей анализа</a></li>
-        <li><a href="API.html">Справочник API</a></li>
+        <li><a href="API.html">Справочник Python SDK</a></li>
         <li><a href="APPROVAL_ENGINE.html">Механизм подтверждения операций</a></li>
         <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
         <li><a href="FAQ.html" class="active">Часто задаваемые вопросы (FAQ)</a></li>
@@ -216,6 +216,12 @@
 <li><a href="#obogaschenie-otvetov">Обогащение ответов</a></li>
 <li><a href="#stsenarnye-rabochie-protsessy">Сценарные рабочие процессы</a></li>
 <li><a href="#multitenantnost-i-api">Мультитенантность и API</a></li>
+<li><a href="#moduli-analiza">Модули анализа</a></li>
+<li><a href="#sistema-gipotez-bezopasnosti">Система гипотез безопасности</a></li>
+<li><a href="#generatsiya-dokumentatsii-i-zhurnala-izmeneniy">Генерация документации и журнала изменений</a></li>
+<li><a href="#domennye-plaginy">Доменные плагины</a></li>
+<li><a href="#dvizhok-patternov">Движок паттернов</a></li>
+<li><a href="#mcp-server-i-instrumenty">MCP-сервер и инструменты</a></li>
 </ul>
 <hr />
 <h2  id="orkestratsiya-i-marshrutizatsiya"><span id="orkestratsiya_i_marshrutizatsiya"></span>Оркестрация и маршрутизация<a class="heading-anchor" href="#orkestratsiya-i-marshrutizatsiya" title="Link to this section">&para;</a></h2>
@@ -255,8 +261,6 @@
 <p>Представление (view) <code>call_containment</code> в DuckDB связывает вызовы функций с содержащими их методами. Поля: <code>containing_method_name</code> (вызывающий метод) и <code>callee_name</code> (вызываемый метод). Используется для построения графа вызовов в <code>MechanismExplanationHandler</code>.</p>
 <h3  id="chto-oznachaet-pole-is-test-v-nodes-method"><span id="chto_oznachaet_pole_is_test_v_nodes_method"></span>Что означает поле <code>is_test</code> в <code>nodes_method</code>?<a class="heading-anchor" href="#chto-oznachaet-pole-is-test-v-nodes-method" title="Link to this section">&para;</a></h3>
 <p>Булево поле <code>is_test</code> указывает, является ли метод тестовым (определяется GoCPG по именованию и расположению). Используется для фильтрации тестовых функций из результатов анализа при нетестовых запросах.</p>
-<h3  id="kak-opredelyayutsya-myortvye-metody"><span id="kak_opredelyayutsya_myortvye_metody"></span>Как определяются мёртвые методы?<a class="heading-anchor" href="#kak-opredelyayutsya-myortvye-metody" title="Link to this section">&para;</a></h3>
-<p>Мёртвые методы определяются через <code>AuditRunner._collect_metrics()</code> с многоуровневой фильтрацией ложных срабатываний: фильтр <code>is_test</code> (V25), class-aware достижимость (V26), наследование (V26b), вложенные функции (V27), полностью мёртвые модули (V28), модули с низкой витальностью (V29), companion-файлы (V30). GoCPG создаёт синтетические рёбра для реэкспортов из <code>__init__.py</code> и callable-аргументов.</p>
 <hr />
 <h2  id="gocpg-generator-cpg"><span id="gocpg_generator_cpg"></span>GoCPG — генератор CPG<a class="heading-anchor" href="#gocpg-generator-cpg" title="Link to this section">&para;</a></h2>
 <h3  id="chto-takoe-gocpg"><span id="chto_takoe_gocpg"></span>Что такое GoCPG?<a class="heading-anchor" href="#chto-takoe-gocpg" title="Link to this section">&para;</a></h3>
@@ -273,7 +277,11 @@
 <h3  id="kak-gocpg-integriruetsya-s-python"><span id="kak_gocpg_integriruetsya_s_python"></span>Как GoCPG интегрируется с Python?<a class="heading-anchor" href="#kak-gocpg-integriruetsya-s-python" title="Link to this section">&para;</a></h3>
 <p>Python-клиент (<code>src/services/gocpg/</code>) поддерживает два транспорта: gRPC (<code>grpc_transport.py</code>) и subprocess. Конфигурация <code>transport</code> (<code>"auto"</code>, <code>"grpc"</code>, <code>"subprocess"</code>) определяет режим. В режиме <code>"auto"</code> сначала пробуется gRPC, затем subprocess.</p>
 <h3  id="kakie-tablitsy-sozdayot-gocpg"><span id="kakie_tablitsy_sozdayot_gocpg"></span>Какие таблицы создаёт GoCPG?<a class="heading-anchor" href="#kakie-tablitsy-sozdayot-gocpg" title="Link to this section">&para;</a></h3>
-<p>Основные таблицы: <code>nodes_method</code> (методы/функции), <code>nodes_type</code> (типы/классы), <code>edges_call</code> (вызовы), <code>edges_inherits_from</code> (наследование), <code>call_containment</code> (содержание вызовов), <code>nodes_file</code> (файлы), <code>edges_data_flow</code> (поток данных), <code>cpg_git_state</code> (состояние git). Полная схема в <code>docs/reference/SCHEMA.md</code>.</p>
+<p>GoCPG создаёт 43 таблицы узлов, 25 таблиц рёбер, 2 представления и несколько служебных таблиц. Ключевые: <code>nodes_method</code> (методы/функции), <code>nodes_call</code> (точки вызова), <code>nodes_type_decl</code> (объявления типов), <code>nodes_file</code> (файлы), <code>edges_call</code> (рёбра вызовов), <code>edges_ast</code> (структура AST), <code>edges_cfg</code> (поток управления), <code>edges_reaching_def</code> (достигающие определения потока данных), <code>edges_inherits_from</code> (наследование). Представления: <code>call_containment</code> (денормализованные вызывающий/вызываемый) и <code>method_docstrings</code>. Состояние: <code>cpg_git_state</code>, <code>cpg_file_state</code>, <code>cpg_fqn_index</code>. Полная схема в <code>docs/reference/ru/SCHEMA.md</code>.</p>
+<h3  id="chto-takoe-konveyer-prohodov-gocpg"><span id="chto_takoe_konveyer_prohodov_gocpg"></span>Что такое конвейер проходов GoCPG?<a class="heading-anchor" href="#chto-takoe-konveyer-prohodov-gocpg" title="Link to this section">&para;</a></h3>
+<p>GoCPG выполняет 31 аналитический проход в порядке DAG (направленного ациклического графа): базовые (MetaData, File, Namespace) → типы (TypeNode, TypeDecl, Inheritance) → CFG/Dominator/CDG → разрешение вызовов (CallGraph, CallResolution) → поток данных (Ref, AliasAnalysis, ReachingDef, InterproceduralReachingDef) → PDG/DDG → обогащение (MethodMetrics, FindingGeneration, PatternMatch). Каждый проход читает <code>CPGGraph</code> (в памяти), пишет <code>DiffGraph</code>, никогда не обращается к DuckDB напрямую.</p>
+<h3  id="chto-takoe-inkrementalnoe-obnovlenie-v-gocpg"><span id="chto_takoe_inkrementalnoe_obnovlenie_v_gocpg"></span>Что такое инкрементальное обновление в GoCPG?<a class="heading-anchor" href="#chto-takoe-inkrementalnoe-obnovlenie-v-gocpg" title="Link to this section">&para;</a></h3>
+<p>GoCPG поддерживает git-инкрементальное обновление через <code>gocpg update</code> или <code>gocpg ci-update</code>. Сравнивает хеши файлов в <code>cpg_file_state</code> с рабочим деревом, повторно парсит только изменённые файлы и перестраивает затронутые аналитические проходы. Для CI флаг <code>--base-ref</code> ограничивает анализ файлами, изменёнными с указанной git-ссылки. Откат к полному перепарсингу при превышении <code>--incremental-threshold</code> (по умолчанию: 30 файлов).</p>
 <h3  id="chto-takoe-tkb-type-knowledge-base"><span id="chto_takoe_tkb_type_knowledge_base"></span>Что такое TKB (Type Knowledge Base)?<a class="heading-anchor" href="#chto-takoe-tkb-type-knowledge-base" title="Link to this section">&para;</a></h3>
 <p>TKB — база знаний типов в формате YAML (<code>gocpg/configs/typestubs/</code>), содержащая 46 файлов для 11 языков. Предоставляет информацию о возвращаемых типах стандартных библиотечных функций без анализа исходного кода.</p>
 <hr />
@@ -308,7 +316,7 @@
 </code></pre></div>
 
 <h3  id="kakie-etapy-vklyuchaet-import"><span id="kakie_etapy_vklyuchaet_import"></span>Какие этапы включает импорт?<a class="heading-anchor" href="#kakie-etapy-vklyuchaet-import" title="Link to this section">&para;</a></h3>
-<p>Полный конвейер (<code>src/project_import/pipeline.py</code>): CloneStep → DetectLanguageStep → GoCPGParseStep → ValidateStep → ChromaDBSyncStep → DomainSetupStep. Инкрементальный (при наличии БД): GoCPGUpdateStep → ValidateStep → ChromaDBSyncStep → DomainSetupStep. Автоматически определяется по наличию таблицы <code>cpg_git_state</code>.</p>
+<p>Полный конвейер (<code>src/project_import/pipeline.py</code>): CloneStep → DetectLanguageStep → GoCPGParseStep → ValidateStep → ChromaDBSyncStep → DocGenerationStep → VectorIndexStep → DomainSetupStep. Инкрементальный (при наличии БД): GoCPGUpdateStep → ValidateStep → ChromaDBSyncStep → DomainSetupStep. Автоматически определяется по наличию таблицы <code>cpg_git_state</code>. DocGenerationStep автоматически генерирует документацию из CPG, если каталог <code>docs/</code> отсутствует.</p>
 <h3  id="kak-obnovit-indeksy-chromadb"><span id="kak_obnovit_indeksy_chromadb"></span>Как обновить индексы ChromaDB?<a class="heading-anchor" href="#kak-obnovit-indeksy-chromadb" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/index_codegraph_vectors.py
 </code></pre></div>
@@ -347,6 +355,119 @@
 <p>Пять уровней доступа: CLI (<code>python -m src.cli</code>), REST API (<code>/api/v1/</code>), TUI (<code>python -m src.tui.app</code>), MCP-сервер (<code>python -m src.mcp</code>), ACP-протокол (<code>src/acp/</code>). REST API документирован по адресу <code>http://localhost:8000/api/docs</code>.</p>
 <h3  id="kak-rabotaet-demo-rezhim"><span id="kak_rabotaet_demo_rezhim"></span>Как работает демо-режим?<a class="heading-anchor" href="#kak-rabotaet-demo-rezhim" title="Link to this section">&para;</a></h3>
 <p>При <code>api.demo.enabled: true</code> эндпоинт <code>/api/v1/demo/chat</code> доступен без аутентификации. Принимает <code>{"query": "..."}</code>, выполняет полный pipeline (классификация → обработка → обогащение) и возвращает <code>{"answer": "...", "scenario_id": "...", "processing_time_ms": ...}</code>.</p>
+<hr />
+<h2  id="moduli-analiza"><span id="moduli_analiza"></span>Модули анализа<a class="heading-anchor" href="#moduli-analiza" title="Link to this section">&para;</a></h2>
+<h3  id="kakie-moduli-analiza-dostupny"><span id="kakie_moduli_analiza_dostupny"></span>Какие модули анализа доступны?<a class="heading-anchor" href="#kakie-moduli-analiza-dostupny" title="Link to this section">&para;</a></h3>
+<p>CodeGraph включает несколько модулей анализа в <code>src/analysis/</code>:
+- <strong>Обнаружение клонов</strong> (<code>clone_detector.py</code>) — поиск дублированного кода по 4 типам клонов
+- <strong>Анализ помеченных данных</strong> (<code>dataflow/taint_analysis.py</code>) — отслеживание распространения ненадёжных данных
+- <strong>Символьное выполнение</strong> (<code>dataflow/symbolic_execution.py</code>) — проверка достижимости путей через Z3
+- <strong>Обнаружение состояний гонки</strong> (<code>race_detector.py</code>) — поиск TOCTOU и проблем синхронизации
+- <strong>Анализ параллелизма</strong> (<code>concurrency_analyzer.py</code>) — обнаружение взаимоблокировок и нарушений порядка блокировок
+- <strong>Маппинг соответствия</strong> (<code>compliance.py</code>) — сопоставление находок с CWE, OWASP, CERT, MISRA
+- <strong>Анализ графа вызовов</strong> (<code>callgraph/</code>) — PageRank, SCC, betweenness centrality, поиск путей
+- <strong>Движок автоисправлений</strong> (<code>autofix/</code>) — генерация исправлений уязвимостей на основе шаблонов и LLM</p>
+<h3  id="kak-rabotaet-obnaruzhenie-klonov"><span id="kak_rabotaet_obnaruzhenie_klonov"></span>Как работает обнаружение клонов?<a class="heading-anchor" href="#kak-rabotaet-obnaruzhenie-klonov" title="Link to this section">&para;</a></h3>
+<p><code>ASTCloneDetector</code> (<code>src/analysis/clone_detector.py</code>) попарно сравнивает методы по 4 метрикам сходства: Жаккар по токенам (&gt;0.95 → Тип 1, точный), нормализованные токены (&gt;0.85 → Тип 2, переименованный), структура AST (&gt;0.75 → Тип 3, структурный), поток управления (&gt;0.70 → Тип 4, семантический). Возвращает объекты <code>CloneResult</code>, отсортированные по убыванию сходства. Ограничение по умолчанию: 300 методов (<code>max_methods_extended</code>). См. <code>docs/reference/ru/CLONE_DETECTION.md</code>.</p>
+<h3  id="kak-rabotaet-analiz-pomechennyh-dannyh"><span id="kak_rabotaet_analiz_pomechennyh_dannyh"></span>Как работает анализ помеченных данных?<a class="heading-anchor" href="#kak-rabotaet-analiz-pomechennyh-dannyh" title="Link to this section">&para;</a></h3>
+<p><code>TaintPropagator</code> (<code>src/analysis/dataflow/taint_analysis.py</code>) отслеживает поток ненадёжных данных через CPG, используя <code>edges_reaching_def</code> и <code>edges_call</code>. Источники и стоки определяются доменным плагином (<code>get_taint_sources()</code>, <code>get_taint_sinks()</code>). Использует чувствительный к полям и межпроцедурный анализ. Интегрируется с <code>PathConstraintTracker</code> для символьной проверки достижимости путей через Z3. См. <code>docs/reference/ru/SYMBOLIC_EXECUTION.md</code>.</p>
+<h3  id="kak-rabotaet-dvizhok-avtoispravleniy"><span id="kak_rabotaet_dvizhok_avtoispravleniy"></span>Как работает движок автоисправлений?<a class="heading-anchor" href="#kak-rabotaet-dvizhok-avtoispravleniy" title="Link to this section">&para;</a></h3>
+<p>Движок автоисправлений (<code>src/analysis/autofix/</code>) генерирует предложения по исправлению обнаруженных уязвимостей. Читает исходный файл, сопоставляет уязвимость с идентификатором CWE, выбирает шаблон исправления или генерирует патч с помощью LLM, валидирует diff и выдаёт унифицированный diff. Поддерживает как шаблонную (детерминированную), так и LLM-генерацию (креативную).</p>
+<h3  id="kak-opredelyayutsya-myortvye-metody"><span id="kak_opredelyayutsya_myortvye_metody"></span>Как определяются мёртвые методы?<a class="heading-anchor" href="#kak-opredelyayutsya-myortvye-metody" title="Link to this section">&para;</a></h3>
+<p>Мёртвые методы определяются через <code>AuditRunner._collect_metrics()</code> с многоуровневой фильтрацией ложных срабатываний: фильтр <code>is_test</code> (V25), class-aware достижимость (V26), наследование (V26b), вложенные функции (V27), полностью мёртвые модули (V28), модули с низкой витальностью (V29), companion-файлы (V30). GoCPG создаёт синтетические рёбра CALL для реэкспортов из <code>__init__.py</code>, callable-аргументов (<code>callback=fn</code>) и паттернов регистрации фреймворков (LangGraph <code>add_node</code>, FastAPI <code>include_router</code>).</p>
+<hr />
+<h2  id="sistema-gipotez-bezopasnosti"><span id="sistema_gipotez_bezopasnosti"></span>Система гипотез безопасности<a class="heading-anchor" href="#sistema-gipotez-bezopasnosti" title="Link to this section">&para;</a></h2>
+<h3  id="chto-takoe-sistema-gipotez-bezopasnosti"><span id="chto_takoe_sistema_gipotez_bezopasnosti"></span>Что такое система гипотез безопасности?<a class="heading-anchor" href="#chto-takoe-sistema-gipotez-bezopasnosti" title="Link to this section">&para;</a></h3>
+<p>Система гипотез (<code>src/security/hypothesis/</code>) — движок многокритериального обнаружения уязвимостей. Объединяет базу знаний (58 записей CWE, 27 записей CAPEC, 13 шаблонов обнаружения) с анализом CPG. Генерирует гипотезы о потенциальных уязвимостях, синтезирует DuckDB/PGQ-запросы для их проверки и оценивает результаты через многокритериальный скорер.</p>
+<h3  id="kak-rabotaet-generatsiya-gipotez"><span id="kak_rabotaet_generatsiya_gipotez"></span>Как работает генерация гипотез?<a class="heading-anchor" href="#kak-rabotaet-generatsiya-gipotez" title="Link to this section">&para;</a></h3>
+<p><code>HypothesisExecutor</code> (<code>src/security/hypothesis/executor.py</code>) принимает запрос по безопасности (например, «SQL-инъекция в обработке пользовательского ввода») и: (1) сопоставляет с базами знаний CWE/CAPEC, (2) выбирает применимые шаблоны обнаружения, (3) синтезирует CPG-запросы, нацеленные на паттерн уязвимости, (4) выполняет запросы к DuckDB проекта, (5) оценивает находки через многокритериальный скорер, (6) возвращает ранжированные гипотезы с доказательствами.</p>
+<h3  id="chto-takoe-provaydery-gipotez"><span id="chto_takoe_provaydery_gipotez"></span>Что такое провайдеры гипотез?<a class="heading-anchor" href="#chto-takoe-provaydery-gipotez" title="Link to this section">&para;</a></h3>
+<p>Провайдеры предоставляют доменно-специфичные паттерны уязвимостей. Встроенные провайдеры существуют для PostgreSQL, Django, Express, Spring, Gin и Next.js (<code>src/security/hypothesis/{framework}/</code>). YAML-провайдер (<code>providers/yaml_provider.py</code>) позволяет определять пользовательские паттерны. Провайдеры автоматически обнаруживаются на основе активного доменного плагина.</p>
+<h3  id="kak-rabotaet-mnogokriterialnyy-skorer"><span id="kak_rabotaet_mnogokriterialnyy_skorer"></span>Как работает многокритериальный скорер?<a class="heading-anchor" href="#kak-rabotaet-mnogokriterialnyy-skorer" title="Link to this section">&para;</a></h3>
+<p><code>MultiCriteriaScorer</code> (<code>src/security/hypothesis/multi_criteria_scorer.py</code>) оценивает гипотезы по нескольким измерениям: достижимость потока данных, контекст кода, фреймворк-специфичные паттерны и историческая обратная связь. Доступны три пресета: <code>embedded</code> (строгий, для критически важных систем), <code>web</code> (сбалансированный, для веб-приложений) и <code>enterprise</code> (ориентированный на соответствие требованиям). Каждый пресет регулирует распределение весов между критериями оценки.</p>
+<h3  id="kak-rabotaet-tsikl-obratnoy-svyazi"><span id="kak_rabotaet_tsikl_obratnoy_svyazi"></span>Как работает цикл обратной связи?<a class="heading-anchor" href="#kak-rabotaet-tsikl-obratnoy-svyazi" title="Link to this section">&para;</a></h3>
+<p><code>FeedbackStore</code> (<code>src/security/hypothesis/feedback.py</code>) отслеживает решения аналитика (подтверждено/ложное срабатывание/отложено) по гипотезам. <code>TrendStore</code> (<code>src/security/hypothesis/trend_store.py</code>) агрегирует обратную связь для выявления повторяющихся паттернов. Это снижает количество ложных срабатываний в последующих запусках и помогает калибровать многокритериальный скорер.</p>
+<hr />
+<h2  id="generatsiya-dokumentatsii-i-zhurnala-izmeneniy"><span id="generatsiya_dokumentatsii_i_zhurnala_izmeneniy"></span>Генерация документации и журнала изменений<a class="heading-anchor" href="#generatsiya-dokumentatsii-i-zhurnala-izmeneniy" title="Link to this section">&para;</a></h2>
+<h3  id="kak-rabotaet-generatsiya-dokumentatsii"><span id="kak_rabotaet_generatsiya_dokumentatsii"></span>Как работает генерация документации?<a class="heading-anchor" href="#kak-rabotaet-generatsiya-dokumentatsii" title="Link to this section">&para;</a></h3>
+<p><code>DocumentationGenerator</code> (<code>src/services/doc_generator.py</code>) автоматически генерирует 8 разделов документации из данных CPG: обзор проекта (MVD), обзор модулей, документация функций, документация конвейеров, описание бизнес-логики, документация типов, отчёты покрытия и диаграммы графа вызовов. Результат может индексироваться в ChromaDB для векторного поиска.</p>
+<h3  id="kak-sgenerirovat-dokumentatsiyu"><span id="kak_sgenerirovat_dokumentatsiyu"></span>Как сгенерировать документацию?<a class="heading-anchor" href="#kak-sgenerirovat-dokumentatsiyu" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>ru
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>en<span class="w">  </span><span class="c1"># Английский</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>--sections<span class="w"> </span>overview,functions<span class="w"> </span>--output<span class="w"> </span>./docs/generated
+</code></pre></div>
+
+<p>Или через MCP: <code>codegraph_reindex action=generate</code>. При импорте проекта <code>DocGenerationStep</code> запускается автоматически, если в проекте нет каталога <code>docs/</code>.</p>
+<h3  id="kak-rabotaet-generatsiya-zhurnala-izmeneniy"><span id="kak_rabotaet_generatsiya_zhurnala_izmeneniy"></span>Как работает генерация журнала изменений?<a class="heading-anchor" href="#kak-rabotaet-generatsiya-zhurnala-izmeneniy" title="Link to this section">&para;</a></h3>
+<p><code>ChangelogGenerator</code> (<code>src/changelog/generator.py</code>) разбирает git-историю на конвенциональные коммиты (<code>feat:</code>, <code>fix:</code>, <code>docs:</code> и т.д.), извлекает область действия и маркеры критических изменений, группирует изменения по типу, разрешает ссылки на задачи и генерирует структурированный Markdown-журнал. Поддерживает LLM-обогащение для более описательных записей и двуязычный вывод (EN/RU).</p>
+<h3  id="kak-sgenerirovat-zhurnal-izmeneniy"><span id="kak_sgenerirovat_zhurnal_izmeneniy"></span>Как сгенерировать журнал изменений?<a class="heading-anchor" href="#kak-sgenerirovat-zhurnal-izmeneniy" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.changelog_commands<span class="w"> </span>--from<span class="w"> </span>v1.0.0<span class="w"> </span>--to<span class="w"> </span>HEAD
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.changelog_commands<span class="w"> </span>--from<span class="w"> </span>v1.0.0<span class="w"> </span>--to<span class="w"> </span>HEAD<span class="w"> </span>--language<span class="w"> </span>ru<span class="w"> </span>--enhance
+</code></pre></div>
+
+<p>Или через REST API: <code>POST /api/v1/changelog/generate</code> с телом <code>{"from_ref": "v1.0.0", "to_ref": "HEAD"}</code>.</p>
+<h3  id="kak-rabotaet-pereindeksatsiya-vektorov"><span id="kak_rabotaet_pereindeksatsiya_vektorov"></span>Как работает переиндексация векторов?<a class="heading-anchor" href="#kak-rabotaet-pereindeksatsiya-vektorov" title="Link to this section">&para;</a></h3>
+<p><code>VectorIndexer</code> (<code>src/retrieval/vector_indexer.py</code>) индексирует данные проекта в 6 коллекций ChromaDB: <code>code_snippets</code>, <code>qa_pairs</code>, <code>documentation</code>, <code>sql_examples</code>, <code>code_comments</code> и <code>domain_patterns</code>. Поддерживает инкрементальную индексацию через отслеживание состояния файлов. CLI: <code>python -m src.cli.reindex_commands reindex [--generate] [--sections ...]</code>. MCP: <code>codegraph_reindex action=reindex</code>.</p>
+<hr />
+<h2  id="domennye-plaginy"><span id="domennye_plaginy"></span>Доменные плагины<a class="heading-anchor" href="#domennye-plaginy" title="Link to this section">&para;</a></h2>
+<h3  id="chto-takoe-domennyy-plagin"><span id="chto_takoe_domennyy_plagin"></span>Что такое доменный плагин?<a class="heading-anchor" href="#chto-takoe-domennyy-plagin" title="Link to this section">&para;</a></h3>
+<p>Доменный плагин (<code>DomainPluginV3</code>) предоставляет доменно-специфичные знания для языка программирования или фреймворка. Каждый плагин определяет: имена модулей/подсистем, источники и стоки помеченных данных, категории операций, паттерны безопасности, правила качества кода и доменные промпты. Конфигурируется через 10 YAML-файлов в <code>src/domains/{name}/config/</code>.</p>
+<h3  id="kakie-domeny-dostupny"><span id="kakie_domeny_dostupny"></span>Какие домены доступны?<a class="heading-anchor" href="#kakie-domeny-dostupny" title="Link to this section">&para;</a></h3>
+<p>13 доменов: <code>python_generic</code> (по умолчанию), <code>python_django</code>, <code>java</code>, <code>csharp</code>, <code>go</code>, <code>javascript</code>, <code>kotlin</code>, <code>php</code>, <code>postgresql</code>, <code>cpp</code>, <code>bsl_1c</code>, <code>typescript</code>, <code>web</code>. Активный домен задаётся в <code>config.yaml</code> → <code>domain.name</code> или в реестре проектов для каждого проекта отдельно.</p>
+<h3  id="kak-rabotaet-avtomaticheskoe-opredelenie-domena"><span id="kak_rabotaet_avtomaticheskoe_opredelenie_domena"></span>Как работает автоматическое определение домена?<a class="heading-anchor" href="#kak-rabotaet-avtomaticheskoe-opredelenie-domena" title="Link to this section">&para;</a></h3>
+<p><code>CPGConfigLoader</code> (<code>src/config/cpg_config.py</code>) использует эвристику на основе расширений файлов из CPG для определения основного языка проекта. При переключении проекта через <code>ProjectManager.switch_project()</code> соответствующий доменный плагин автоматически активируется через <code>DomainRegistry.activate()</code>.</p>
+<h3  id="kak-sozdat-sobstvennyy-domennyy-plagin"><span id="kak_sozdat_sobstvennyy_domennyy_plagin"></span>Как создать собственный доменный плагин?<a class="heading-anchor" href="#kak-sozdat-sobstvennyy-domennyy-plagin" title="Link to this section">&para;</a></h3>
+<p>Создайте каталог <code>src/domains/{name}/</code> с классом плагина, наследующим <code>DomainPluginV3</code>, и 10 YAML-файлами конфигурации: <code>modules.yaml</code>, <code>subsystems.yaml</code>, <code>taint_sources.yaml</code>, <code>taint_sinks.yaml</code>, <code>operation_categories.yaml</code>, <code>security_patterns.yaml</code>, <code>quality_rules.yaml</code>, <code>prompts.yaml</code>, <code>domain_config.yaml</code>, <code>compliance_mapping.yaml</code>. Зарегистрируйте плагин в реестре доменов.</p>
+<hr />
+<h2  id="dvizhok-patternov"><span id="dvizhok_patternov"></span>Движок паттернов<a class="heading-anchor" href="#dvizhok-patternov" title="Link to this section">&para;</a></h2>
+<h3  id="chto-takoe-dvizhok-patternov"><span id="chto_takoe_dvizhok_patternov"></span>Что такое движок паттернов?<a class="heading-anchor" href="#chto-takoe-dvizhok-patternov" title="Link to this section">&para;</a></h3>
+<p>Движок паттернов GoCPG (<code>gocpg/pkg/patterns/</code>) обеспечивает структурный поиск кода с семантическими ограничениями. Работает в 4 фазы: (1) <strong>Структурный</strong> — сопоставление CST через tree-sitter с метапеременными (<code>$VAR</code>, <code>$$$VARS</code>, <code>$_</code>), (2) <strong>Ограничения CPG</strong> — фильтры по потоку данных, контексту вызовов, типам и метрикам, (3) <strong>Инкрементальный</strong> — отслеживание зависимостей для эффективного повторного анализа, (4) <strong>Перезапись</strong> — автоисправление на основе шаблонов с подстановкой метапеременных.</p>
+<h3  id="kak-iskat-patterny"><span id="kak_iskat_patterny"></span>Как искать паттерны?<a class="heading-anchor" href="#kak-iskat-patterny" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Структурный поиск (CPG не нужен)</span>
+gocpg<span class="w"> </span>search<span class="w"> </span>--pattern<span class="w"> </span><span class="s2">&quot;malloc(</span><span class="nv">$SIZE</span><span class="s2">)&quot;</span><span class="w"> </span>--lang<span class="w"> </span>c<span class="w"> </span>--input<span class="w"> </span>/path/to/source
+
+<span class="c1"># Сканирование с учётом CPG и правил</span>
+gocpg<span class="w"> </span>scan<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w"> </span>--rules<span class="o">=</span>configs/rules/common/
+gocpg<span class="w"> </span>scan<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w"> </span>--domain<span class="o">=</span>postgresql<span class="w"> </span>--format<span class="w"> </span>sarif
+
+<span class="c1"># С автоисправлением</span>
+gocpg<span class="w"> </span>scan<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w"> </span>--rules<span class="o">=</span>configs/rules/<span class="w"> </span>--fix<span class="w"> </span>--input<span class="o">=</span>./src<span class="w"> </span>--dry-run
+</code></pre></div>
+
+<h3  id="kak-opredelyayutsya-pravila-patternov"><span id="kak_opredelyayutsya_pravila_patternov"></span>Как определяются правила паттернов?<a class="heading-anchor" href="#kak-opredelyayutsya-pravila-patternov" title="Link to this section">&para;</a></h3>
+<p>Правила описываются в YAML-файлах в <code>configs/rules/</code> (190 правил в 14 каталогах):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rule-id</span>
+<span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Описание</span><span class="nv"> </span><span class="s">с</span><span class="nv"> </span><span class="s">$VAR&quot;</span>
+<span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">error|warning|info|hint</span>
+<span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">c</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cpp</span><span class="p p-Indicator">]</span>
+<span class="nt">rule</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;malloc($SIZE)&quot;</span>
+<span class="nt">fix</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;safe_malloc($SIZE)&quot;</span><span class="w">          </span><span class="c1"># Шаблон автоисправления (необязательно)</span>
+<span class="nt">constraints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> SIZE</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;^[a-z]&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">cpg</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">dataflow</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$SRC&quot;</span><span class="p p-Indicator">,</span><span class="nt"> to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$SINK&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> cyclomatic_complexity</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&gt;10&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+
+<h3  id="mozhet-li-llm-generirovat-pravila-patternov"><span id="mozhet_li_llm_generirovat_pravila_patternov"></span>Может ли LLM генерировать правила паттернов?<a class="heading-anchor" href="#mozhet-li-llm-generirovat-pravila-patternov" title="Link to this section">&para;</a></h3>
+<p>Да. <code>LLMPatternGenerator</code> (<code>src/analysis/patterns/llm_pattern_generator.py</code>) преобразует описание на естественном языке в YAML-правила паттернов. Автоматически валидирует сгенерированные правила через <code>gocpg validate-rule</code> и повторяет попытку при ошибке. Системные промпты загружаются из двуязычных YAML-файлов.</p>
+<hr />
+<h2  id="mcp-server-i-instrumenty"><span id="mcp_server_i_instrumenty"></span>MCP-сервер и инструменты<a class="heading-anchor" href="#mcp-server-i-instrumenty" title="Link to this section">&para;</a></h2>
+<h3  id="chto-takoe-mcp-server"><span id="chto_takoe_mcp_server"></span>Что такое MCP-сервер?<a class="heading-anchor" href="#chto-takoe-mcp-server" title="Link to this section">&para;</a></h3>
+<p>MCP-сервер (Model Context Protocol, <code>src/mcp/</code>) предоставляет функциональность CodeGraph для AI-ассистентов. Поддерживает 21 встроенный инструмент плюс динамические SQL-инструменты, загружаемые из <code>.codegraph/tools.yaml</code>. Транспорты: stdio (по умолчанию), SSE и HTTP.</p>
+<h3  id="kak-zapustit-mcp-server"><span id="kak_zapustit_mcp_server"></span>Как запустить MCP-сервер?<a class="heading-anchor" href="#kak-zapustit-mcp-server" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w">                              </span><span class="c1"># stdio (по умолчанию)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>sse<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w">  </span><span class="c1"># SSE</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w"> </span><span class="c1"># HTTP</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--no-auth<span class="w">                     </span><span class="c1"># Отключить аутентификацию (только для разработки)</span>
+</code></pre></div>
+
+<h3  id="kakie-mcp-instrumenty-dostupny"><span id="kakie_mcp_instrumenty_dostupny"></span>Какие MCP-инструменты доступны?<a class="heading-anchor" href="#kakie-mcp-instrumenty-dostupny" title="Link to this section">&para;</a></h3>
+<p>Ключевые инструменты: <code>codegraph_query</code> (запрос на естественном языке), <code>codegraph_search</code> (поиск кода), <code>codegraph_callgraph</code> (анализ графа вызовов), <code>codegraph_hotspots</code> (горячие точки сложности), <code>codegraph_security</code> (анализ безопасности), <code>codegraph_patterns</code> (сканирование паттернов), <code>codegraph_compliance</code> (проверка соответствия), <code>codegraph_tech_debt</code> (анализ технического долга), <code>codegraph_explain</code> (объяснение кода), <code>codegraph_standards_check</code> (стандарты кодирования), <code>codegraph_reindex</code> (переиндексация векторов), <code>codegraph_hypothesis</code> (гипотезы безопасности), <code>codegraph_docs_sync</code> (обнаружение рассинхронизации документации).</p>
+<h3  id="chto-takoe-dinamicheskie-sql-instrumenty"><span id="chto_takoe_dinamicheskie_sql_instrumenty"></span>Что такое динамические SQL-инструменты?<a class="heading-anchor" href="#chto-takoe-dinamicheskie-sql-instrumenty" title="Link to this section">&para;</a></h3>
+<p>Динамические SQL-инструменты определяются в <code>.codegraph/tools.yaml</code> для каждого проекта. Каждый инструмент задаёт имя, описание, шаблон SQL-запроса и параметры. MCP-сервер загружает их при запуске и предоставляет наряду со встроенными инструментами. Это позволяет создавать проектно-специфичные CPG-запросы без изменения кода.</p>
+<h3  id="chto-takoe-instrument-sinhronizatsii-dokumentatsii-interfeysov"><span id="chto_takoe_instrument_sinhronizatsii_dokumentatsii_interfeysov"></span>Что такое инструмент синхронизации документации интерфейсов?<a class="heading-anchor" href="#chto-takoe-instrument-sinhronizatsii-dokumentatsii-interfeysov" title="Link to this section">&para;</a></h3>
+<p><code>codegraph_docs_sync</code> запускает 5-фазный композитный сценарий синхронизации документации интерфейсов (<code>src/workflow/scenarios/interface_docs_sync_composite.py</code>): Обнаружение → Разбор документации → Генерация → Обнаружение рассинхронизации → Отчёт. Проверяет 7 интерфейсов (REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket) на соответствие их документации и сообщает типы рассинхронизации: UNDOCUMENTED, STALE, OUTDATED, COVERED.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -365,7 +486,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-06</span>
+        <span>Обновлено: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/FAQ.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -395,12 +516,13 @@
 <li><a href="#kak-ustroen-cpgqueryservice" class="level-3">Как устроен `CPGQueryService`?</a></li>
 <li><a href="#chto-takoe-call-containment" class="level-3">Что такое `call_containment`?</a></li>
 <li><a href="#chto-oznachaet-pole-is-test-v-nodes-method" class="level-3">Что означает поле `is_test` в `nodes_method`?</a></li>
-<li><a href="#kak-opredelyayutsya-myortvye-metody" class="level-3">Как определяются мёртвые методы?</a></li>
 <li><a href="#gocpg-generator-cpg" class="level-2">GoCPG — генератор CPG</a></li>
 <li><a href="#chto-takoe-gocpg" class="level-3">Что такое GoCPG?</a></li>
 <li><a href="#kak-zapustit-gocpg" class="level-3">Как запустить GoCPG?</a></li>
 <li><a href="#kak-gocpg-integriruetsya-s-python" class="level-3">Как GoCPG интегрируется с Python?</a></li>
 <li><a href="#kakie-tablitsy-sozdayot-gocpg" class="level-3">Какие таблицы создаёт GoCPG?</a></li>
+<li><a href="#chto-takoe-konveyer-prohodov-gocpg" class="level-3">Что такое конвейер проходов GoCPG?</a></li>
+<li><a href="#chto-takoe-inkrementalnoe-obnovlenie-v-gocpg" class="level-3">Что такое инкрементальное обновление в GoCPG?</a></li>
 <li><a href="#chto-takoe-tkb-type-knowledge-base" class="level-3">Что такое TKB (Type Knowledge Base)?</a></li>
 <li><a href="#gibridnyy-poisk-i-izvlechenie" class="level-2">Гибридный поиск и извлечение</a></li>
 <li><a href="#kak-rabotaet-gibridnyy-poisk" class="level-3">Как работает гибридный поиск?</a></li>
@@ -431,6 +553,40 @@
 <li><a href="#kak-zaschischyon-put-k-baze-dannyh" class="level-3">Как защищён путь к базе данных?</a></li>
 <li><a href="#kakie-interfeysy-dostupa-est" class="level-3">Какие интерфейсы доступа есть?</a></li>
 <li><a href="#kak-rabotaet-demo-rezhim" class="level-3">Как работает демо-режим?</a></li>
+<li><a href="#moduli-analiza" class="level-2">Модули анализа</a></li>
+<li><a href="#kakie-moduli-analiza-dostupny" class="level-3">Какие модули анализа доступны?</a></li>
+<li><a href="#kak-rabotaet-obnaruzhenie-klonov" class="level-3">Как работает обнаружение клонов?</a></li>
+<li><a href="#kak-rabotaet-analiz-pomechennyh-dannyh" class="level-3">Как работает анализ помеченных данных?</a></li>
+<li><a href="#kak-rabotaet-dvizhok-avtoispravleniy" class="level-3">Как работает движок автоисправлений?</a></li>
+<li><a href="#kak-opredelyayutsya-myortvye-metody" class="level-3">Как определяются мёртвые методы?</a></li>
+<li><a href="#sistema-gipotez-bezopasnosti" class="level-2">Система гипотез безопасности</a></li>
+<li><a href="#chto-takoe-sistema-gipotez-bezopasnosti" class="level-3">Что такое система гипотез безопасности?</a></li>
+<li><a href="#kak-rabotaet-generatsiya-gipotez" class="level-3">Как работает генерация гипотез?</a></li>
+<li><a href="#chto-takoe-provaydery-gipotez" class="level-3">Что такое провайдеры гипотез?</a></li>
+<li><a href="#kak-rabotaet-mnogokriterialnyy-skorer" class="level-3">Как работает многокритериальный скорер?</a></li>
+<li><a href="#kak-rabotaet-tsikl-obratnoy-svyazi" class="level-3">Как работает цикл обратной связи?</a></li>
+<li><a href="#generatsiya-dokumentatsii-i-zhurnala-izmeneniy" class="level-2">Генерация документации и журнала изменений</a></li>
+<li><a href="#kak-rabotaet-generatsiya-dokumentatsii" class="level-3">Как работает генерация документации?</a></li>
+<li><a href="#kak-sgenerirovat-dokumentatsiyu" class="level-3">Как сгенерировать документацию?</a></li>
+<li><a href="#kak-rabotaet-generatsiya-zhurnala-izmeneniy" class="level-3">Как работает генерация журнала изменений?</a></li>
+<li><a href="#kak-sgenerirovat-zhurnal-izmeneniy" class="level-3">Как сгенерировать журнал изменений?</a></li>
+<li><a href="#kak-rabotaet-pereindeksatsiya-vektorov" class="level-3">Как работает переиндексация векторов?</a></li>
+<li><a href="#domennye-plaginy" class="level-2">Доменные плагины</a></li>
+<li><a href="#chto-takoe-domennyy-plagin" class="level-3">Что такое доменный плагин?</a></li>
+<li><a href="#kakie-domeny-dostupny" class="level-3">Какие домены доступны?</a></li>
+<li><a href="#kak-rabotaet-avtomaticheskoe-opredelenie-domena" class="level-3">Как работает автоматическое определение домена?</a></li>
+<li><a href="#kak-sozdat-sobstvennyy-domennyy-plagin" class="level-3">Как создать собственный доменный плагин?</a></li>
+<li><a href="#dvizhok-patternov" class="level-2">Движок паттернов</a></li>
+<li><a href="#chto-takoe-dvizhok-patternov" class="level-3">Что такое движок паттернов?</a></li>
+<li><a href="#kak-iskat-patterny" class="level-3">Как искать паттерны?</a></li>
+<li><a href="#kak-opredelyayutsya-pravila-patternov" class="level-3">Как определяются правила паттернов?</a></li>
+<li><a href="#mozhet-li-llm-generirovat-pravila-patternov" class="level-3">Может ли LLM генерировать правила паттернов?</a></li>
+<li><a href="#mcp-server-i-instrumenty" class="level-2">MCP-сервер и инструменты</a></li>
+<li><a href="#chto-takoe-mcp-server" class="level-3">Что такое MCP-сервер?</a></li>
+<li><a href="#kak-zapustit-mcp-server" class="level-3">Как запустить MCP-сервер?</a></li>
+<li><a href="#kakie-mcp-instrumenty-dostupny" class="level-3">Какие MCP-инструменты доступны?</a></li>
+<li><a href="#chto-takoe-dinamicheskie-sql-instrumenty" class="level-3">Что такое динамические SQL-инструменты?</a></li>
+<li><a href="#chto-takoe-instrument-sinhronizatsii-dokumentatsii-interfeysov" class="level-3">Что такое инструмент синхронизации документации интерфейсов?</a></li>
       </ul>
     </aside>
   </div>

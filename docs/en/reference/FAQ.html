@@ -160,7 +160,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="AGENTS.html">Agents Reference</a></li>
         <li><a href="ANALYSIS_MODULES.html">Analysis Modules Reference</a></li>
-        <li><a href="API.html">API Reference</a></li>
+        <li><a href="API.html">Python SDK Reference</a></li>
         <li><a href="APPROVAL_ENGINE.html">Approval Engine</a></li>
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="FAQ.html" class="active">Frequently Asked Questions (FAQ)</a></li>
@@ -216,6 +216,12 @@
 <li><a href="#answer-enrichment">Answer Enrichment</a></li>
 <li><a href="#scenario-workflows">Scenario Workflows</a></li>
 <li><a href="#multi-tenancy-and-api">Multi-Tenancy and API</a></li>
+<li><a href="#analysis-modules">Analysis Modules</a></li>
+<li><a href="#security-hypothesis-system">Security Hypothesis System</a></li>
+<li><a href="#documentation-and-changelog-generation">Documentation and Changelog Generation</a></li>
+<li><a href="#domain-plugins">Domain Plugins</a></li>
+<li><a href="#pattern-engine">Pattern Engine</a></li>
+<li><a href="#mcp-server-and-tools">MCP Server and Tools</a></li>
 </ul>
 <hr />
 <h2  id="orchestration-and-routing"><span id="orchestration_and_routing"></span>Orchestration and Routing<a class="heading-anchor" href="#orchestration-and-routing" title="Link to this section">&para;</a></h2>
@@ -255,8 +261,6 @@
 <p>The <code>call_containment</code> view in DuckDB links function calls to their containing methods. Fields: <code>containing_method_name</code> (calling method) and <code>callee_name</code> (called method). Used for building call graphs in <code>MechanismExplanationHandler</code>.</p>
 <h3  id="what-does-the-is-test-field-in-nodes-method-mean"><span id="what_does_the_is_test_field_in_nodes_method_mean"></span>What does the <code>is_test</code> field in <code>nodes_method</code> mean?<a class="heading-anchor" href="#what-does-the-is-test-field-in-nodes-method-mean" title="Link to this section">&para;</a></h3>
 <p>The boolean <code>is_test</code> field indicates whether a method is a test function (determined by GoCPG based on naming and location). Used to filter out test functions from analysis results for non-test queries.</p>
-<h3  id="how-are-dead-methods-identified"><span id="how_are_dead_methods_identified"></span>How are dead methods identified?<a class="heading-anchor" href="#how-are-dead-methods-identified" title="Link to this section">&para;</a></h3>
-<p>Dead methods are identified via <code>AuditRunner._collect_metrics()</code> with multi-layered false positive filtering: <code>is_test</code> filter (V25), class-aware reachability (V26), inheritance (V26b), nested functions (V27), fully dead modules (V28), low-vitality modules (V29), companion files (V30). GoCPG creates synthetic edges for <code>__init__.py</code> re-exports and callable arguments.</p>
 <hr />
 <h2  id="gocpg-cpg-generator"><span id="gocpg_cpg_generator"></span>GoCPG — CPG Generator<a class="heading-anchor" href="#gocpg-cpg-generator" title="Link to this section">&para;</a></h2>
 <h3  id="what-is-gocpg"><span id="what_is_gocpg"></span>What is GoCPG?<a class="heading-anchor" href="#what-is-gocpg" title="Link to this section">&para;</a></h3>
@@ -273,7 +277,11 @@
 <h3  id="how-does-gocpg-integrate-with-python"><span id="how_does_gocpg_integrate_with_python"></span>How does GoCPG integrate with Python?<a class="heading-anchor" href="#how-does-gocpg-integrate-with-python" title="Link to this section">&para;</a></h3>
 <p>The Python client (<code>src/services/gocpg/</code>) supports two transports: gRPC (<code>grpc_transport.py</code>) and subprocess. The <code>transport</code> configuration (<code>"auto"</code>, <code>"grpc"</code>, <code>"subprocess"</code>) determines the mode. In <code>"auto"</code> mode, gRPC is tried first, then subprocess.</p>
 <h3  id="what-tables-does-gocpg-create"><span id="what_tables_does_gocpg_create"></span>What tables does GoCPG create?<a class="heading-anchor" href="#what-tables-does-gocpg-create" title="Link to this section">&para;</a></h3>
-<p>Main tables: <code>nodes_method</code> (methods/functions), <code>nodes_type</code> (types/classes), <code>edges_call</code> (calls), <code>edges_inherits_from</code> (inheritance), <code>call_containment</code> (call containment), <code>nodes_file</code> (files), <code>edges_data_flow</code> (data flow), <code>cpg_git_state</code> (git state). Full schema in <code>docs/reference/SCHEMA.md</code>.</p>
+<p>GoCPG creates 43 node tables, 25 edge tables, 2 views, and several state/domain tables. Key tables: <code>nodes_method</code> (methods/functions), <code>nodes_call</code> (call sites), <code>nodes_type_decl</code> (type declarations), <code>nodes_file</code> (source files), <code>edges_call</code> (call edges), <code>edges_ast</code> (AST structure), <code>edges_cfg</code> (control flow), <code>edges_reaching_def</code> (data flow reaching definitions), <code>edges_inherits_from</code> (inheritance). Views: <code>call_containment</code> (denormalized caller/callee) and <code>method_docstrings</code>. State: <code>cpg_git_state</code>, <code>cpg_file_state</code>, <code>cpg_fqn_index</code>. Full schema in <code>docs/reference/en/SCHEMA.md</code>.</p>
+<h3  id="what-is-the-gocpg-pass-pipeline"><span id="what_is_the_gocpg_pass_pipeline"></span>What is the GoCPG pass pipeline?<a class="heading-anchor" href="#what-is-the-gocpg-pass-pipeline" title="Link to this section">&para;</a></h3>
+<p>GoCPG runs 31 analysis passes in a DAG (directed acyclic graph) order: base passes (MetaData, File, Namespace) → type passes (TypeNode, TypeDecl, Inheritance) → CFG/Dominator/CDG → call resolution (CallGraph, CallResolution) → data flow (Ref, AliasAnalysis, ReachingDef, InterproceduralReachingDef) → PDG/DDG → enrichment (MethodMetrics, FindingGeneration, PatternMatch). Each pass reads <code>CPGGraph</code> (in-memory), writes <code>DiffGraph</code>, never touches DuckDB directly.</p>
+<h3  id="what-is-incremental-update-in-gocpg"><span id="what_is_incremental_update_in_gocpg"></span>What is incremental update in GoCPG?<a class="heading-anchor" href="#what-is-incremental-update-in-gocpg" title="Link to this section">&para;</a></h3>
+<p>GoCPG supports git-based incremental updates via <code>gocpg update</code> or <code>gocpg ci-update</code>. It compares file hashes in <code>cpg_file_state</code> against the working tree, re-parses only changed files, and rebuilds affected analysis passes. For CI, <code>--base-ref</code> limits analysis to files changed since a specific git reference. Falls back to full re-parse when changes exceed <code>--incremental-threshold</code> (default: 30 files).</p>
 <h3  id="what-is-tkb-type-knowledge-base"><span id="what_is_tkb_type_knowledge_base"></span>What is TKB (Type Knowledge Base)?<a class="heading-anchor" href="#what-is-tkb-type-knowledge-base" title="Link to this section">&para;</a></h3>
 <p>TKB is a type knowledge base in YAML format (<code>gocpg/configs/typestubs/</code>) containing 46 files for 11 languages. Provides return type information for standard library functions without analyzing source code.</p>
 <hr />
@@ -308,7 +316,7 @@
 </code></pre></div>
 
 <h3  id="what-steps-does-import-include"><span id="what_steps_does_import_include"></span>What steps does import include?<a class="heading-anchor" href="#what-steps-does-import-include" title="Link to this section">&para;</a></h3>
-<p>Full pipeline (<code>src/project_import/pipeline.py</code>): CloneStep → DetectLanguageStep → GoCPGParseStep → ValidateStep → ChromaDBSyncStep → DomainSetupStep. Incremental (when DB exists): GoCPGUpdateStep → ValidateStep → ChromaDBSyncStep → DomainSetupStep. Automatically detected by the presence of <code>cpg_git_state</code> rows.</p>
+<p>Full pipeline (<code>src/project_import/pipeline.py</code>): CloneStep → DetectLanguageStep → GoCPGParseStep → ValidateStep → ChromaDBSyncStep → DocGenerationStep → VectorIndexStep → DomainSetupStep. Incremental (when DB exists): GoCPGUpdateStep → ValidateStep → ChromaDBSyncStep → DomainSetupStep. Automatically detected by the presence of <code>cpg_git_state</code> rows. DocGenerationStep auto-generates documentation from CPG when a <code>docs/</code> directory is missing.</p>
 <h3  id="how-to-update-chromadb-indexes"><span id="how_to_update_chromadb_indexes"></span>How to update ChromaDB indexes?<a class="heading-anchor" href="#how-to-update-chromadb-indexes" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/index_codegraph_vectors.py
 </code></pre></div>
@@ -347,6 +355,119 @@
 <p>Five access layers: CLI (<code>python -m src.cli</code>), REST API (<code>/api/v1/</code>), TUI (<code>python -m src.tui.app</code>), MCP server (<code>python -m src.mcp</code>), ACP protocol (<code>src/acp/</code>). REST API is documented at <code>http://localhost:8000/api/docs</code>.</p>
 <h3  id="how-does-demo-mode-work"><span id="how_does_demo_mode_work"></span>How does demo mode work?<a class="heading-anchor" href="#how-does-demo-mode-work" title="Link to this section">&para;</a></h3>
 <p>When <code>api.demo.enabled: true</code>, the <code>/api/v1/demo/chat</code> endpoint is accessible without authentication. It accepts <code>{"query": "..."}</code>, runs the full pipeline (classification → processing → enrichment), and returns <code>{"answer": "...", "scenario_id": "...", "processing_time_ms": ...}</code>.</p>
+<hr />
+<h2  id="analysis-modules"><span id="analysis_modules"></span>Analysis Modules<a class="heading-anchor" href="#analysis-modules" title="Link to this section">&para;</a></h2>
+<h3  id="what-analysis-modules-are-available"><span id="what_analysis_modules_are_available"></span>What analysis modules are available?<a class="heading-anchor" href="#what-analysis-modules-are-available" title="Link to this section">&para;</a></h3>
+<p>CodeGraph includes several analysis modules in <code>src/analysis/</code>:
+- <strong>Clone Detection</strong> (<code>clone_detector.py</code>) — finds duplicate code across 4 clone types
+- <strong>Taint Analysis</strong> (<code>dataflow/taint_analysis.py</code>) — tracks untrusted data propagation
+- <strong>Symbolic Execution</strong> (<code>dataflow/symbolic_execution.py</code>) — path feasibility checking via Z3
+- <strong>Race Condition Detection</strong> (<code>race_detector.py</code>) — finds TOCTOU and synchronization issues
+- <strong>Concurrency Analysis</strong> (<code>concurrency_analyzer.py</code>) — detects deadlocks and lock ordering violations
+- <strong>Compliance Mapping</strong> (<code>compliance.py</code>) — maps findings to CWE, OWASP, CERT, MISRA standards
+- <strong>Call Graph Analysis</strong> (<code>callgraph/</code>) — PageRank, SCC, betweenness centrality, path finding
+- <strong>Autofix Engine</strong> (<code>autofix/</code>) — template and LLM-assisted vulnerability fix generation</p>
+<h3  id="how-does-clone-detection-work"><span id="how_does_clone_detection_work"></span>How does clone detection work?<a class="heading-anchor" href="#how-does-clone-detection-work" title="Link to this section">&para;</a></h3>
+<p><code>ASTCloneDetector</code> (<code>src/analysis/clone_detector.py</code>) compares methods pairwise using 4 similarity metrics in order: token Jaccard (&gt;0.95 → Type-1 exact), normalized tokens (&gt;0.85 → Type-2 renamed), AST structure (&gt;0.75 → Type-3 structural), control flow (&gt;0.70 → Type-4 semantic). Returns <code>CloneResult</code> objects sorted by similarity. Default limit: 300 methods (<code>max_methods_extended</code>). See <code>docs/reference/en/CLONE_DETECTION.md</code>.</p>
+<h3  id="how-does-taint-analysis-work"><span id="how_does_taint_analysis_work"></span>How does taint analysis work?<a class="heading-anchor" href="#how-does-taint-analysis-work" title="Link to this section">&para;</a></h3>
+<p><code>TaintPropagator</code> (<code>src/analysis/dataflow/taint_analysis.py</code>) traces untrusted data flow through the CPG using <code>edges_reaching_def</code> and <code>edges_call</code>. Sources and sinks are defined per domain plugin (<code>get_taint_sources()</code>, <code>get_taint_sinks()</code>). Uses field-sensitive and inter-procedural analysis. Integrates with <code>PathConstraintTracker</code> for symbolic path feasibility checking via Z3. See <code>docs/reference/en/SYMBOLIC_EXECUTION.md</code>.</p>
+<h3  id="how-does-the-autofix-engine-work"><span id="how_does_the_autofix_engine_work"></span>How does the autofix engine work?<a class="heading-anchor" href="#how-does-the-autofix-engine-work" title="Link to this section">&para;</a></h3>
+<p>The autofix engine (<code>src/analysis/autofix/</code>) generates code fix suggestions for detected vulnerabilities. It reads the actual source file, maps the vulnerability to a CWE ID, selects a fix template or generates an LLM-assisted patch, validates the diff, and outputs a unified diff. Supports both template-based (deterministic) and LLM-based (creative) fix generation.</p>
+<h3  id="how-are-dead-methods-identified"><span id="how_are_dead_methods_identified"></span>How are dead methods identified?<a class="heading-anchor" href="#how-are-dead-methods-identified" title="Link to this section">&para;</a></h3>
+<p>Dead methods are identified via <code>AuditRunner._collect_metrics()</code> with multi-layered false positive filtering: <code>is_test</code> filter (V25), class-aware reachability (V26), inheritance (V26b), nested functions (V27), fully dead modules (V28), low-vitality modules (V29), companion files (V30). GoCPG creates synthetic CALL edges for <code>__init__.py</code> re-exports, callable keyword arguments (<code>callback=fn</code>), and framework registration patterns (LangGraph <code>add_node</code>, FastAPI <code>include_router</code>).</p>
+<hr />
+<h2  id="security-hypothesis-system"><span id="security_hypothesis_system"></span>Security Hypothesis System<a class="heading-anchor" href="#security-hypothesis-system" title="Link to this section">&para;</a></h2>
+<h3  id="what-is-the-security-hypothesis-system"><span id="what_is_the_security_hypothesis_system"></span>What is the security hypothesis system?<a class="heading-anchor" href="#what-is-the-security-hypothesis-system" title="Link to this section">&para;</a></h3>
+<p>The hypothesis system (<code>src/security/hypothesis/</code>) is a multi-criteria vulnerability detection engine. It combines a knowledge base (58 CWE entries, 27 CAPEC entries, 13 detection templates) with CPG analysis. It generates hypotheses about potential vulnerabilities, synthesizes DuckDB/PGQ queries to verify them, and scores results using a multi-criteria scorer.</p>
+<h3  id="how-does-hypothesis-generation-work"><span id="how_does_hypothesis_generation_work"></span>How does hypothesis generation work?<a class="heading-anchor" href="#how-does-hypothesis-generation-work" title="Link to this section">&para;</a></h3>
+<p><code>HypothesisExecutor</code> (<code>src/security/hypothesis/executor.py</code>) takes a security concern (e.g., &ldquo;SQL injection in user input handling&rdquo;) and: (1) matches it against CWE/CAPEC knowledge bases, (2) selects applicable detection templates, (3) synthesizes CPG queries targeting the vulnerability pattern, (4) executes queries against the project&rsquo;s DuckDB, (5) scores findings using the multi-criteria scorer, (6) returns ranked hypotheses with evidence.</p>
+<h3  id="what-are-hypothesis-providers"><span id="what_are_hypothesis_providers"></span>What are hypothesis providers?<a class="heading-anchor" href="#what-are-hypothesis-providers" title="Link to this section">&para;</a></h3>
+<p>Providers supply domain-specific vulnerability patterns. Built-in providers exist for PostgreSQL, Django, Express, Spring, Gin, and Next.js frameworks (<code>src/security/hypothesis/{framework}/</code>). A YAML-based provider (<code>providers/yaml_provider.py</code>) allows custom pattern definitions. Providers are auto-discovered based on the active domain plugin.</p>
+<h3  id="how-does-the-multi-criteria-scorer-work"><span id="how_does_the_multi_criteria_scorer_work"></span>How does the multi-criteria scorer work?<a class="heading-anchor" href="#how-does-the-multi-criteria-scorer-work" title="Link to this section">&para;</a></h3>
+<p><code>MultiCriteriaScorer</code> (<code>src/security/hypothesis/multi_criteria_scorer.py</code>) evaluates hypotheses across multiple dimensions: data flow reachability, code context, framework-specific patterns, and historical feedback. Three presets are available: <code>embedded</code> (strict, for safety-critical systems), <code>web</code> (balanced, for web applications), and <code>enterprise</code> (compliance-oriented). Each preset adjusts the weight distribution across scoring criteria.</p>
+<h3  id="how-does-the-feedback-loop-work"><span id="how_does_the_feedback_loop_work"></span>How does the feedback loop work?<a class="heading-anchor" href="#how-does-the-feedback-loop-work" title="Link to this section">&para;</a></h3>
+<p><code>FeedbackStore</code> (<code>src/security/hypothesis/feedback.py</code>) tracks analyst decisions (confirmed/false-positive/deferred) on hypotheses. <code>TrendStore</code> (<code>src/security/hypothesis/trend_store.py</code>) aggregates feedback over time to identify recurring patterns. This feedback reduces false positives in subsequent runs and helps calibrate the multi-criteria scorer.</p>
+<hr />
+<h2  id="documentation-and-changelog-generation"><span id="documentation_and_changelog_generation"></span>Documentation and Changelog Generation<a class="heading-anchor" href="#documentation-and-changelog-generation" title="Link to this section">&para;</a></h2>
+<h3  id="how-does-documentation-generation-work"><span id="how_does_documentation_generation_work"></span>How does documentation generation work?<a class="heading-anchor" href="#how-does-documentation-generation-work" title="Link to this section">&para;</a></h3>
+<p><code>DocumentationGenerator</code> (<code>src/services/doc_generator.py</code>) auto-generates 8 documentation sections from CPG data: project overview (MVD), module overview, function documentation, pipeline documentation, business logic description, type documentation, coverage reports, and call graph diagrams. Output can be indexed into ChromaDB for vector search.</p>
+<h3  id="how-to-generate-documentation"><span id="how_to_generate_documentation"></span>How to generate documentation?<a class="heading-anchor" href="#how-to-generate-documentation" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>en
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>ru<span class="w">  </span><span class="c1"># Russian</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>--sections<span class="w"> </span>overview,functions<span class="w"> </span>--output<span class="w"> </span>./docs/generated
+</code></pre></div>
+
+<p>Or via MCP: <code>codegraph_reindex action=generate</code>. During project import, <code>DocGenerationStep</code> runs automatically when the project has no <code>docs/</code> directory.</p>
+<h3  id="how-does-changelog-generation-work"><span id="how_does_changelog_generation_work"></span>How does changelog generation work?<a class="heading-anchor" href="#how-does-changelog-generation-work" title="Link to this section">&para;</a></h3>
+<p><code>ChangelogGenerator</code> (<code>src/changelog/generator.py</code>) parses git history for conventional commits (<code>feat:</code>, <code>fix:</code>, <code>docs:</code>, etc.), extracts scope and breaking change markers, groups changes by type, resolves issue references, and generates structured Markdown changelogs. Supports LLM enhancement for more descriptive entries and bilingual output (EN/RU).</p>
+<h3  id="how-to-generate-a-changelog"><span id="how_to_generate_a_changelog"></span>How to generate a changelog?<a class="heading-anchor" href="#how-to-generate-a-changelog" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.changelog_commands<span class="w"> </span>--from<span class="w"> </span>v1.0.0<span class="w"> </span>--to<span class="w"> </span>HEAD
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.changelog_commands<span class="w"> </span>--from<span class="w"> </span>v1.0.0<span class="w"> </span>--to<span class="w"> </span>HEAD<span class="w"> </span>--language<span class="w"> </span>ru<span class="w"> </span>--enhance
+</code></pre></div>
+
+<p>Or via REST API: <code>POST /api/v1/changelog/generate</code> with <code>{"from_ref": "v1.0.0", "to_ref": "HEAD"}</code>.</p>
+<h3  id="how-does-vector-reindexing-work"><span id="how_does_vector_reindexing_work"></span>How does vector reindexing work?<a class="heading-anchor" href="#how-does-vector-reindexing-work" title="Link to this section">&para;</a></h3>
+<p><code>VectorIndexer</code> (<code>src/retrieval/vector_indexer.py</code>) indexes project data into 6 ChromaDB collections: <code>code_snippets</code>, <code>qa_pairs</code>, <code>documentation</code>, <code>sql_examples</code>, <code>code_comments</code>, and <code>domain_patterns</code>. Supports incremental indexing via file state tracking. CLI: <code>python -m src.cli.reindex_commands reindex [--generate] [--sections ...]</code>. MCP: <code>codegraph_reindex action=reindex</code>.</p>
+<hr />
+<h2  id="domain-plugins"><span id="domain_plugins"></span>Domain Plugins<a class="heading-anchor" href="#domain-plugins" title="Link to this section">&para;</a></h2>
+<h3  id="what-is-a-domain-plugin"><span id="what_is_a_domain_plugin"></span>What is a domain plugin?<a class="heading-anchor" href="#what-is-a-domain-plugin" title="Link to this section">&para;</a></h3>
+<p>A domain plugin (<code>DomainPluginV3</code>) provides domain-specific knowledge for a programming language or framework. Each plugin defines: module/subsystem names, taint sources and sinks, operation categories, security patterns, code quality rules, and domain-specific prompts. Configured via 10 YAML files per domain in <code>src/domains/{name}/config/</code>.</p>
+<h3  id="what-domains-are-available"><span id="what_domains_are_available"></span>What domains are available?<a class="heading-anchor" href="#what-domains-are-available" title="Link to this section">&para;</a></h3>
+<p>13 domains: <code>python_generic</code> (default), <code>python_django</code>, <code>java</code>, <code>csharp</code>, <code>go</code>, <code>javascript</code>, <code>kotlin</code>, <code>php</code>, <code>postgresql</code>, <code>cpp</code>, <code>bsl_1c</code>, <code>typescript</code>, <code>web</code>. The active domain is set in <code>config.yaml</code> → <code>domain.name</code> or per-project in the project registry.</p>
+<h3  id="how-does-domain-auto-detection-work"><span id="how_does_domain_auto_detection_work"></span>How does domain auto-detection work?<a class="heading-anchor" href="#how-does-domain-auto-detection-work" title="Link to this section">&para;</a></h3>
+<p><code>CPGConfigLoader</code> (<code>src/config/cpg_config.py</code>) uses file extension heuristics from the CPG to detect the project&rsquo;s primary language. When a project is switched via <code>ProjectManager.switch_project()</code>, the corresponding domain plugin is automatically activated via <code>DomainRegistry.activate()</code>.</p>
+<h3  id="how-to-create-a-custom-domain-plugin"><span id="how_to_create_a_custom_domain_plugin"></span>How to create a custom domain plugin?<a class="heading-anchor" href="#how-to-create-a-custom-domain-plugin" title="Link to this section">&para;</a></h3>
+<p>Create a directory <code>src/domains/{name}/</code> with a plugin class inheriting <code>DomainPluginV3</code> and 10 YAML config files: <code>modules.yaml</code>, <code>subsystems.yaml</code>, <code>taint_sources.yaml</code>, <code>taint_sinks.yaml</code>, <code>operation_categories.yaml</code>, <code>security_patterns.yaml</code>, <code>quality_rules.yaml</code>, <code>prompts.yaml</code>, <code>domain_config.yaml</code>, <code>compliance_mapping.yaml</code>. Register the plugin in the domain registry.</p>
+<hr />
+<h2  id="pattern-engine"><span id="pattern_engine"></span>Pattern Engine<a class="heading-anchor" href="#pattern-engine" title="Link to this section">&para;</a></h2>
+<h3  id="what-is-the-pattern-engine"><span id="what_is_the_pattern_engine"></span>What is the pattern engine?<a class="heading-anchor" href="#what-is-the-pattern-engine" title="Link to this section">&para;</a></h3>
+<p>The GoCPG pattern engine (<code>gocpg/pkg/patterns/</code>) provides structural code search with semantic constraints. It operates in 4 phases: (1) <strong>Structural</strong> — tree-sitter CST matching with metavariables (<code>$VAR</code>, <code>$$$VARS</code>, <code>$_</code>), (2) <strong>CPG constraints</strong> — data-flow, call context, type, and metric filters, (3) <strong>Incremental</strong> — dependency tracking for efficient re-analysis, (4) <strong>Rewrite</strong> — template-based autofix with metavariable substitution.</p>
+<h3  id="how-to-search-for-patterns"><span id="how_to_search_for_patterns"></span>How to search for patterns?<a class="heading-anchor" href="#how-to-search-for-patterns" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Structural search (no CPG needed)</span>
+gocpg<span class="w"> </span>search<span class="w"> </span>--pattern<span class="w"> </span><span class="s2">&quot;malloc(</span><span class="nv">$SIZE</span><span class="s2">)&quot;</span><span class="w"> </span>--lang<span class="w"> </span>c<span class="w"> </span>--input<span class="w"> </span>/path/to/source
+
+<span class="c1"># CPG-aware scan with rules</span>
+gocpg<span class="w"> </span>scan<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w"> </span>--rules<span class="o">=</span>configs/rules/common/
+gocpg<span class="w"> </span>scan<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w"> </span>--domain<span class="o">=</span>postgresql<span class="w"> </span>--format<span class="w"> </span>sarif
+
+<span class="c1"># With autofix</span>
+gocpg<span class="w"> </span>scan<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w"> </span>--rules<span class="o">=</span>configs/rules/<span class="w"> </span>--fix<span class="w"> </span>--input<span class="o">=</span>./src<span class="w"> </span>--dry-run
+</code></pre></div>
+
+<h3  id="how-are-pattern-rules-defined"><span id="how_are_pattern_rules_defined"></span>How are pattern rules defined?<a class="heading-anchor" href="#how-are-pattern-rules-defined" title="Link to this section">&para;</a></h3>
+<p>Rules are YAML files in <code>configs/rules/</code> (190 rules across 14 directories):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rule-id</span>
+<span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Description</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">$VAR&quot;</span>
+<span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">error|warning|info|hint</span>
+<span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">c</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cpp</span><span class="p p-Indicator">]</span>
+<span class="nt">rule</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;malloc($SIZE)&quot;</span>
+<span class="nt">fix</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;safe_malloc($SIZE)&quot;</span><span class="w">          </span><span class="c1"># Optional rewrite template</span>
+<span class="nt">constraints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> SIZE</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> regex</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;^[a-z]&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">cpg</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">dataflow</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$SRC&quot;</span><span class="p p-Indicator">,</span><span class="nt"> to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$SINK&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> cyclomatic_complexity</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&gt;10&quot;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+
+<h3  id="can-llm-generate-pattern-rules"><span id="can_llm_generate_pattern_rules"></span>Can LLM generate pattern rules?<a class="heading-anchor" href="#can-llm-generate-pattern-rules" title="Link to this section">&para;</a></h3>
+<p>Yes. <code>LLMPatternGenerator</code> (<code>src/analysis/patterns/llm_pattern_generator.py</code>) converts natural language descriptions to YAML pattern rules. It auto-validates generated rules via <code>gocpg validate-rule</code> and retries on failure. System prompts are loaded from bilingual YAML.</p>
+<hr />
+<h2  id="mcp-server-and-tools"><span id="mcp_server_and_tools"></span>MCP Server and Tools<a class="heading-anchor" href="#mcp-server-and-tools" title="Link to this section">&para;</a></h2>
+<h3  id="what-is-the-mcp-server"><span id="what_is_the_mcp_server"></span>What is the MCP server?<a class="heading-anchor" href="#what-is-the-mcp-server" title="Link to this section">&para;</a></h3>
+<p>The MCP (Model Context Protocol) server (<code>src/mcp/</code>) exposes CodeGraph functionality to AI assistants. It supports 21 built-in tools plus dynamic SQL tools loaded from <code>.codegraph/tools.yaml</code>. Transports: stdio (default), SSE, and HTTP.</p>
+<h3  id="how-to-start-the-mcp-server"><span id="how_to_start_the_mcp_server"></span>How to start the MCP server?<a class="heading-anchor" href="#how-to-start-the-mcp-server" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w">                              </span><span class="c1"># stdio (default)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>sse<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w">  </span><span class="c1"># SSE</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w"> </span><span class="c1"># HTTP</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--no-auth<span class="w">                     </span><span class="c1"># Disable auth (dev only)</span>
+</code></pre></div>
+
+<h3  id="what-mcp-tools-are-available"><span id="what_mcp_tools_are_available"></span>What MCP tools are available?<a class="heading-anchor" href="#what-mcp-tools-are-available" title="Link to this section">&para;</a></h3>
+<p>Key tools: <code>codegraph_query</code> (natural language query), <code>codegraph_search</code> (code search), <code>codegraph_callgraph</code> (call graph analysis), <code>codegraph_hotspots</code> (complexity hotspots), <code>codegraph_security</code> (security analysis), <code>codegraph_patterns</code> (pattern scan), <code>codegraph_compliance</code> (compliance check), <code>codegraph_tech_debt</code> (tech debt analysis), <code>codegraph_explain</code> (code explanation), <code>codegraph_standards_check</code> (coding standards), <code>codegraph_reindex</code> (vector reindex), <code>codegraph_hypothesis</code> (security hypothesis), <code>codegraph_docs_sync</code> (documentation drift detection).</p>
+<h3  id="what-are-dynamic-sql-tools"><span id="what_are_dynamic_sql_tools"></span>What are dynamic SQL tools?<a class="heading-anchor" href="#what-are-dynamic-sql-tools" title="Link to this section">&para;</a></h3>
+<p>Dynamic SQL tools are defined in <code>.codegraph/tools.yaml</code> per project. Each tool specifies a name, description, SQL query template, and parameters. The MCP server loads these at startup and exposes them alongside built-in tools. This allows project-specific CPG queries without code changes.</p>
+<h3  id="what-is-the-interface-documentation-sync-tool"><span id="what_is_the_interface_documentation_sync_tool"></span>What is the interface documentation sync tool?<a class="heading-anchor" href="#what-is-the-interface-documentation-sync-tool" title="Link to this section">&para;</a></h3>
+<p><code>codegraph_docs_sync</code> runs the 5-phase interface documentation sync composite (<code>src/workflow/scenarios/interface_docs_sync_composite.py</code>): Discovery → DocParse → Generation → DriftDetect → Report. It validates 7 interfaces (REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket) against their documentation and reports drift types: UNDOCUMENTED, STALE, OUTDATED, COVERED.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -365,7 +486,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-06</span>
+        <span>Last updated: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/FAQ.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -395,12 +516,13 @@
 <li><a href="#how-is-cpgqueryservice-structured" class="level-3">How is `CPGQueryService` structured?</a></li>
 <li><a href="#what-is-call-containment" class="level-3">What is `call_containment`?</a></li>
 <li><a href="#what-does-the-is-test-field-in-nodes-method-mean" class="level-3">What does the `is_test` field in `nodes_method` mean?</a></li>
-<li><a href="#how-are-dead-methods-identified" class="level-3">How are dead methods identified?</a></li>
 <li><a href="#gocpg-cpg-generator" class="level-2">GoCPG — CPG Generator</a></li>
 <li><a href="#what-is-gocpg" class="level-3">What is GoCPG?</a></li>
 <li><a href="#how-to-run-gocpg" class="level-3">How to run GoCPG?</a></li>
 <li><a href="#how-does-gocpg-integrate-with-python" class="level-3">How does GoCPG integrate with Python?</a></li>
 <li><a href="#what-tables-does-gocpg-create" class="level-3">What tables does GoCPG create?</a></li>
+<li><a href="#what-is-the-gocpg-pass-pipeline" class="level-3">What is the GoCPG pass pipeline?</a></li>
+<li><a href="#what-is-incremental-update-in-gocpg" class="level-3">What is incremental update in GoCPG?</a></li>
 <li><a href="#what-is-tkb-type-knowledge-base" class="level-3">What is TKB (Type Knowledge Base)?</a></li>
 <li><a href="#hybrid-search-and-retrieval" class="level-2">Hybrid Search and Retrieval</a></li>
 <li><a href="#how-does-hybrid-search-work" class="level-3">How does hybrid search work?</a></li>
@@ -431,6 +553,40 @@
 <li><a href="#how-is-the-database-path-protected" class="level-3">How is the database path protected?</a></li>
 <li><a href="#what-access-interfaces-are-available" class="level-3">What access interfaces are available?</a></li>
 <li><a href="#how-does-demo-mode-work" class="level-3">How does demo mode work?</a></li>
+<li><a href="#analysis-modules" class="level-2">Analysis Modules</a></li>
+<li><a href="#what-analysis-modules-are-available" class="level-3">What analysis modules are available?</a></li>
+<li><a href="#how-does-clone-detection-work" class="level-3">How does clone detection work?</a></li>
+<li><a href="#how-does-taint-analysis-work" class="level-3">How does taint analysis work?</a></li>
+<li><a href="#how-does-the-autofix-engine-work" class="level-3">How does the autofix engine work?</a></li>
+<li><a href="#how-are-dead-methods-identified" class="level-3">How are dead methods identified?</a></li>
+<li><a href="#security-hypothesis-system" class="level-2">Security Hypothesis System</a></li>
+<li><a href="#what-is-the-security-hypothesis-system" class="level-3">What is the security hypothesis system?</a></li>
+<li><a href="#how-does-hypothesis-generation-work" class="level-3">How does hypothesis generation work?</a></li>
+<li><a href="#what-are-hypothesis-providers" class="level-3">What are hypothesis providers?</a></li>
+<li><a href="#how-does-the-multi-criteria-scorer-work" class="level-3">How does the multi-criteria scorer work?</a></li>
+<li><a href="#how-does-the-feedback-loop-work" class="level-3">How does the feedback loop work?</a></li>
+<li><a href="#documentation-and-changelog-generation" class="level-2">Documentation and Changelog Generation</a></li>
+<li><a href="#how-does-documentation-generation-work" class="level-3">How does documentation generation work?</a></li>
+<li><a href="#how-to-generate-documentation" class="level-3">How to generate documentation?</a></li>
+<li><a href="#how-does-changelog-generation-work" class="level-3">How does changelog generation work?</a></li>
+<li><a href="#how-to-generate-a-changelog" class="level-3">How to generate a changelog?</a></li>
+<li><a href="#how-does-vector-reindexing-work" class="level-3">How does vector reindexing work?</a></li>
+<li><a href="#domain-plugins" class="level-2">Domain Plugins</a></li>
+<li><a href="#what-is-a-domain-plugin" class="level-3">What is a domain plugin?</a></li>
+<li><a href="#what-domains-are-available" class="level-3">What domains are available?</a></li>
+<li><a href="#how-does-domain-auto-detection-work" class="level-3">How does domain auto-detection work?</a></li>
+<li><a href="#how-to-create-a-custom-domain-plugin" class="level-3">How to create a custom domain plugin?</a></li>
+<li><a href="#pattern-engine" class="level-2">Pattern Engine</a></li>
+<li><a href="#what-is-the-pattern-engine" class="level-3">What is the pattern engine?</a></li>
+<li><a href="#how-to-search-for-patterns" class="level-3">How to search for patterns?</a></li>
+<li><a href="#how-are-pattern-rules-defined" class="level-3">How are pattern rules defined?</a></li>
+<li><a href="#can-llm-generate-pattern-rules" class="level-3">Can LLM generate pattern rules?</a></li>
+<li><a href="#mcp-server-and-tools" class="level-2">MCP Server and Tools</a></li>
+<li><a href="#what-is-the-mcp-server" class="level-3">What is the MCP server?</a></li>
+<li><a href="#how-to-start-the-mcp-server" class="level-3">How to start the MCP server?</a></li>
+<li><a href="#what-mcp-tools-are-available" class="level-3">What MCP tools are available?</a></li>
+<li><a href="#what-are-dynamic-sql-tools" class="level-3">What are dynamic SQL tools?</a></li>
+<li><a href="#what-is-the-interface-documentation-sync-tool" class="level-3">What is the interface documentation sync tool?</a></li>
       </ul>
     </aside>
   </div>

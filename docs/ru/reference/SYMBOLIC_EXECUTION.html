@@ -160,7 +160,7 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="AGENTS.html">Справочник агентов</a></li>
         <li><a href="ANALYSIS_MODULES.html">Справочник модулей анализа</a></li>
-        <li><a href="API.html">Справочник API</a></li>
+        <li><a href="API.html">Справочник Python SDK</a></li>
         <li><a href="APPROVAL_ENGINE.html">Механизм подтверждения операций</a></li>
         <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
         <li><a href="FAQ.html">Часто задаваемые вопросы (FAQ)</a></li>
@@ -210,7 +210,7 @@
 - Опциональный компонент — корректно деградирует при отсутствии Z3
 - Дополнительные затраты: ~20% времени, ~25% памяти
 - Максимум 20 ограничений на путь (настраивается)
-- Поддержка целочисленных сравнений, проверок NULL, простой арифметики</p>
+- Поддержка целочисленных сравнений (<code>var op constant</code>) и проверок NULL</p>
 <h2 id="ustanovka">Установка<a class="heading-anchor" href="#ustanovka" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>z3-solver
 </code></pre></div>
@@ -270,7 +270,8 @@
 <span class="sd">        Отфильтровать нереализуемые пути из списка.</span>
 
 <span class="sd">        Аргументы:</span>
-<span class="sd">            paths: список объектов путей (должны иметь .source_id и .sink_id)</span>
+<span class="sd">            paths: список объектов путей (должны иметь атрибут .path_nodes —</span>
+<span class="sd">                   список ID узлов; первый элемент = источник, последний = приёмник)</span>
 <span class="sd">            min_confidence: минимальная достоверность (по умолчанию: 0.8)</span>
 
 <span class="sd">        Возвращает:</span>
@@ -278,9 +279,23 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 </code></pre></div>
 
-<h2 id="ispolzovanie">Использование<a class="heading-anchor" href="#ispolzovanie" title="Link to this section">&para;</a></h2>
-<h3  id="pryamoy-vyzov-api"><span id="pryamoy_vyzov_api"></span>Прямой вызов API<a class="heading-anchor" href="#pryamoy-vyzov-api" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.symbolic_execution</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathConstraintTracker</span>
+<div class="highlight"><pre><span></span><code><span class="n">def</span><span class="w"> </span><span class="n">get_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="w"> </span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Получить статистику решателя.</span>
+
+<span class="sd">    Возвращает:</span>
+<span class="sd">        Словарь с ключами:</span>
+<span class="sd">        - z3_available (bool): установлен ли Z3</span>
+<span class="sd">        - max_constraints (int): максимум ограничений на путь</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1">## Использование</span>
+
+<span class="c1">### Прямой вызов API</span>
+
+<span class="err">```</span><span class="n">python</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.symbolic_execution</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathConstraintTracker</span>
 
 <span class="n">tracker</span> <span class="o">=</span> <span class="n">PathConstraintTracker</span><span class="p">(</span><span class="n">cpg_service</span><span class="p">,</span> <span class="n">max_constraints</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
@@ -294,7 +309,7 @@
 </code></pre></div>
 
 <h3  id="integratsiya-s-analizom-pomechennyh-dannyh"><span id="integratsiya_s_analizom_pomechennyh_dannyh"></span>Интеграция с анализом помеченных данных<a class="heading-anchor" href="#integratsiya-s-analizom-pomechennyh-dannyh" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.taint</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaintPropagator</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.dataflow.taint_analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaintPropagator</span>
 
 <span class="n">propagator</span> <span class="o">=</span> <span class="n">TaintPropagator</span><span class="p">(</span>
     <span class="n">cpg_service</span><span class="p">,</span>
@@ -337,21 +352,20 @@
 <tr>
 <td>Проверка NULL</td>
 <td><code>ptr == NULL</code></td>
-<td><code>z3.Int('ptr') == 0</code></td>
+<td><code>z3.Bool('ptr_is_null') == True</code></td>
 </tr>
 <tr>
 <td>Проверка nullptr</td>
 <td><code>ptr != nullptr</code></td>
-<td><code>z3.Int('ptr') != 0</code></td>
+<td><code>z3.Bool('ptr_is_null') == False</code></td>
 </tr>
 <tr>
-<td>Простая арифметика</td>
-<td><code>x + y &gt; z</code></td>
-<td><code>z3.Int('x') + z3.Int('y') &gt; z3.Int('z')</code></td>
+<td><strong>Не поддерживается:</strong> бинарные арифметические выражения (<code>x + y &gt; z</code>), сравнения между переменными (<code>a &gt; b</code>), вызовы функций в условиях, сложные выражения, числа с плавающей точкой, строковые операции.</td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Не поддерживается:</strong> вызовы функций в условиях, сложные выражения, числа с плавающей точкой, строковые операции.</p>
 <h2  id="urovni-dostovernosti"><span id="urovni_dostovernosti"></span>Уровни достоверности<a class="heading-anchor" href="#urovni-dostovernosti" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
@@ -390,7 +404,7 @@
 <tr>
 <td>Слишком много ограничений</td>
 <td>Предположительно да</td>
-<td>0.5</td>
+<td>0.3</td>
 <td>Сохранить (пропуск анализа)</td>
 </tr>
 </tbody>
@@ -443,7 +457,7 @@
 </ul>
 <hr />
 <p><em>Модуль: <code>src/analysis/dataflow/symbolic_execution.py</code></em>
-<em>Последнее обновление: февраль 2026</em></p>
+<em>Последнее обновление: март 2026</em></p>
       </article>
 
       <!-- Page Navigation -->
@@ -462,7 +476,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-06</span>
+        <span>Обновлено: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SYMBOLIC_EXECUTION.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -478,8 +492,6 @@
 <li><a href="#spravochnik-api" class="level-2">Справочник API</a></li>
 <li><a href="#pathconstraint" class="level-3">PathConstraint</a></li>
 <li><a href="#pathconstrainttracker" class="level-3">PathConstraintTracker</a></li>
-<li><a href="#ispolzovanie" class="level-2">Использование</a></li>
-<li><a href="#pryamoy-vyzov-api" class="level-3">Прямой вызов API</a></li>
 <li><a href="#integratsiya-s-analizom-pomechennyh-dannyh" class="level-3">Интеграция с анализом помеченных данных</a></li>
 <li><a href="#podderzhivaemye-tipy-ogranicheniy" class="level-2">Поддерживаемые типы ограничений</a></li>
 <li><a href="#urovni-dostovernosti" class="level-2">Уровни достоверности</a></li>

@@ -160,7 +160,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="AGENTS.html">Agents Reference</a></li>
         <li><a href="ANALYSIS_MODULES.html">Analysis Modules Reference</a></li>
-        <li><a href="API.html">API Reference</a></li>
+        <li><a href="API.html">Python SDK Reference</a></li>
         <li><a href="APPROVAL_ENGINE.html">Approval Engine</a></li>
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="FAQ.html">Frequently Asked Questions (FAQ)</a></li>
@@ -203,7 +203,7 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="workflows-reference"><span id="workflows_reference"></span>Workflows Reference<a class="heading-anchor" href="#workflows-reference" title="Link to this section">&para;</a></h1>
-<p>Documentation for CodeGraph&rsquo;s workflow system.</p>
+<p>Documentation for CodeGraph&rsquo;s workflow system &ndash; LangGraph-based orchestration of 21 scenario workflows, composite pipelines, and the exec CI/CD tool.</p>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#workflow-architecture">Workflow Architecture</a></li>
@@ -213,6 +213,7 @@
 <li><a href="#specialized-states">Specialized States</a></li>
 <li><a href="#workflow-nodes">Workflow Nodes</a></li>
 <li><a href="#intent-classification">Intent Classification</a></li>
+<li><a href="#pre-retrieval">Pre-Retrieval</a></li>
 <li><a href="#scenario-routing">Scenario Routing</a></li>
 <li><a href="#scenario-execution">Scenario Execution</a></li>
 <li><a href="#scenario-workflows">Scenario Workflows</a></li>
@@ -220,6 +221,7 @@
 <li><a href="#available-scenarios">Available Scenarios</a></li>
 <li><a href="#handler-base-class">Handler Base Class</a></li>
 <li><a href="#composite-workflows">Composite Workflows</a></li>
+<li><a href="#exec-pipeline">Exec Pipeline</a></li>
 <li><a href="#error-handling">Error Handling</a></li>
 <li><a href="#retry-logic">Retry Logic</a></li>
 <li><a href="#fallback-strategies">Fallback Strategies</a></li>
@@ -227,44 +229,31 @@
 <li><a href="#creating-a-custom-workflow">Creating a Custom Workflow</a></li>
 <li><a href="#conditional-routing">Conditional Routing</a></li>
 <li><a href="#streaming">Streaming</a></li>
-<li><a href="#next-steps">Next Steps</a></li>
+<li><a href="#related-documentation">Related Documentation</a></li>
 </ul>
 <h2  id="workflow-architecture"><span id="workflow_architecture"></span>Workflow Architecture<a class="heading-anchor" href="#workflow-architecture" title="Link to this section">&para;</a></h2>
-<p>CodeGraph uses LangGraph for workflow orchestration. All queries flow through a single entry point — <code>MultiScenarioCopilot</code> — which classifies intent and routes to the appropriate scenario workflow.</p>
-<div class="highlight"><pre><span></span><code>                    ┌──────────────────┐
-                    │   Entry Point    │
-                    │   (User Query)   │
-                    └────────┬─────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  Intent Classify  │
-                    │ (Keyword + LLM)  │
-                    └────────┬─────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  Scenario Router  │
-                    │ (21 scenarios)   │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-     ┌────────▼───┐  ┌──────▼─────┐  ┌────▼────────┐
-     │  Security  │  │ Onboarding │  │  Perf / ... │
-     │  Workflow  │  │  Workflow  │  │  Workflows  │
-     └────────┬───┘  └──────┬─────┘  └────┬────────┘
-              │              │              │
-              └──────────────┼──────────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │    Output        │
-                    │  (Answer +       │
-                    │   Evidence)      │
-                    └──────────────────┘
+<p>CodeGraph uses LangGraph for workflow orchestration. All queries flow through a single entry point &ndash; <code>MultiScenarioCopilot</code> &ndash; which classifies intent, runs pre-retrieval, routes to the appropriate scenario workflow, and returns structured results.</p>
+<div class="highlight"><pre><span></span><code><span class="n">graph</span><span class="w"> </span><span class="n">TD</span>
+<span class="w">    </span><span class="n">START</span><span class="p">([</span><span class="n">User</span><span class="w"> </span><span class="n">Query</span><span class="p">])</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">classify_intent</span><span class="p">[</span><span class="n">classify_intent</span><span class="p">]</span>
+<span class="w">    </span><span class="n">classify_intent</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">pre_retrieval</span><span class="p">[</span><span class="n">pre_retrieval</span><span class="p">]</span>
+<span class="w">    </span><span class="n">pre_retrieval</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">route_by_intent</span><span class="p">[</span><span class="n">route_by_intent</span><span class="p">]</span>
+<span class="w">    </span><span class="n">route_by_intent</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">S01</span><span class="p">[</span><span class="n">onboarding_workflow</span><span class="p">]</span>
+<span class="w">    </span><span class="n">route_by_intent</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">S02</span><span class="p">[</span><span class="n">security_workflow</span><span class="p">]</span>
+<span class="w">    </span><span class="n">route_by_intent</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">S03</span><span class="p">[</span><span class="n">documentation_workflow</span><span class="p">]</span>
+<span class="w">    </span><span class="n">route_by_intent</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">S_N</span><span class="p">[...</span><span class="w"> </span><span class="mi">18</span><span class="w"> </span><span class="n">more</span><span class="w"> </span><span class="n">scenarios</span><span class="p">]</span>
+<span class="w">    </span><span class="n">route_by_intent</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">S21</span><span class="p">[</span><span class="n">interface_docs_sync_workflow</span><span class="p">]</span>
+<span class="w">    </span><span class="n">S01</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">END_NODE</span><span class="p">([</span><span class="n">END</span><span class="p">])</span>
+<span class="w">    </span><span class="n">S02</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">END_NODE</span>
+<span class="w">    </span><span class="n">S03</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">END_NODE</span>
+<span class="w">    </span><span class="n">S_N</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">END_NODE</span>
+<span class="w">    </span><span class="n">S21</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">END_NODE</span>
 </code></pre></div>
 
+<p>The graph chain is: <code>classify_intent</code> -&gt; <code>pre_retrieval</code> -&gt; <code>route_by_intent</code> -&gt; scenario node -&gt; <code>END</code>.</p>
 <h2 id="multiscenariocopilot">MultiScenarioCopilot<a class="heading-anchor" href="#multiscenariocopilot" title="Link to this section">&para;</a></h2>
 <p>The main entry point for all workflow execution.</p>
-<p><strong>Location:</strong> <code>src/workflow/orchestration/copilot.py</code> (re-exported from <code>src/workflow/</code>)</p>
+<p><strong>Location:</strong> <code>src/workflow/orchestration/copilot.py</code></p>
+<p>Re-exported from <code>src/workflow/</code> for convenience.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiScenarioCopilot</span>
 
 <span class="n">copilot</span> <span class="o">=</span> <span class="n">MultiScenarioCopilot</span><span class="p">()</span>
@@ -278,26 +267,40 @@
     <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;scenario_id&quot;</span><span class="p">:</span> <span class="s2">&quot;scenario_2&quot;</span><span class="p">}</span>
 <span class="p">)</span>
 
-<span class="c1"># Result structure</span>
-<span class="p">{</span>
-    <span class="s1">&#39;query&#39;</span><span class="p">:</span> <span class="s1">&#39;Find SQL injection vulnerabilities&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;intent&#39;</span><span class="p">:</span> <span class="s1">&#39;security_audit&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;scenario_id&#39;</span><span class="p">:</span> <span class="s1">&#39;scenario_2&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;confidence&#39;</span><span class="p">:</span> <span class="mf">0.92</span><span class="p">,</span>
-    <span class="s1">&#39;answer&#39;</span><span class="p">:</span> <span class="s1">&#39;Found 3 potential SQL injection...&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;evidence&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Function exec_simple_query at line 142...&#39;</span><span class="p">],</span>
-    <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>
+<span class="c1"># Set language via context</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">copilot</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+    <span class="s2">&quot;Find memory leaks&quot;</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;language&quot;</span><span class="p">:</span> <span class="s2">&quot;ru&quot;</span><span class="p">}</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p>Constructor and method signatures:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MultiScenarioCopilot</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">build_multi_scenario_graph</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<p>The graph is built internally via <code>build_multi_scenario_graph()</code> from <code>src/workflow/orchestration/graph_builder.py</code>.</p>
+<p>Result structure:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+    <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;Find SQL injection vulnerabilities&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;intent&quot;</span><span class="p">:</span> <span class="s2">&quot;security_audit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;scenario_id&quot;</span><span class="p">:</span> <span class="s2">&quot;scenario_2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.92</span><span class="p">,</span>
+    <span class="s2">&quot;answer&quot;</span><span class="p">:</span> <span class="s2">&quot;Found 3 potential SQL injection...&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;evidence&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Function exec_simple_query at line 142...&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>The copilot builds a LangGraph graph internally via <code>build_multi_scenario_graph()</code>, which wires together intent classification, scenario routing, and scenario-specific handler execution.</p>
 <h2  id="workflow-state"><span id="workflow_state"></span>Workflow State<a class="heading-anchor" href="#workflow-state" title="Link to this section">&para;</a></h2>
 <h3 id="multiscenariostate">MultiScenarioState<a class="heading-anchor" href="#multiscenariostate" title="Link to this section">&para;</a></h3>
-<p>All workflows share <code>MultiScenarioState</code>, a <code>TypedDict</code> that flows through the LangGraph nodes.</p>
+<p>All workflows share <code>MultiScenarioState</code>, a <code>TypedDict</code> with 21 fields that flows through the LangGraph nodes.</p>
 <p><strong>Location:</strong> <code>src/workflow/state.py</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypedDict</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">MultiScenarioState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MultiScenarioState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
     <span class="c1"># Input</span>
     <span class="n">query</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
@@ -306,7 +309,7 @@
     <span class="c1"># Intent Classification</span>
     <span class="n">intent</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                 <span class="c1"># e.g., &quot;security_audit&quot;</span>
     <span class="n">scenario_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>            <span class="c1"># e.g., &quot;scenario_2&quot;</span>
-    <span class="n">confidence</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>           <span class="c1"># 0.0–1.0</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>           <span class="c1"># 0.0-1.0</span>
     <span class="n">classification_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># &quot;keyword&quot; or &quot;llm&quot;</span>
 
     <span class="c1"># CPG Data</span>
@@ -315,7 +318,7 @@
     <span class="n">methods</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]]</span>
     <span class="n">call_graph</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
 
-    <span class="c1"># Output</span>
+    <span class="c1"># Final Output</span>
     <span class="n">answer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">evidence</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
     <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
@@ -328,20 +331,27 @@
     <span class="c1"># Workflow Configuration</span>
     <span class="n">enrichment_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
     <span class="n">vector_store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+
+    <span class="c1"># Multi-tenant project scoping</span>
+    <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">collection_prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="c1"># Pre-retrieval results (Phase E)</span>
+    <span class="n">pre_retrieval_results</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>
 </code></pre></div>
 
-<p>Create initial state with the helper:</p>
+<p>Create initial state with the helper function. Note that <code>language</code> is NOT a parameter &ndash; pass it via <code>context</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.state</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_initial_state</span>
 
+<span class="c1"># Signature: create_initial_state(query, context=None)</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">create_initial_state</span><span class="p">(</span>
     <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Find memory leaks&quot;</span><span class="p">,</span>
-    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;en&quot;</span><span class="p">,</span>
-    <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;subsystem&quot;</span><span class="p">:</span> <span class="s2">&quot;executor&quot;</span><span class="p">}</span>
+    <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;subsystem&quot;</span><span class="p">:</span> <span class="s2">&quot;executor&quot;</span><span class="p">,</span> <span class="s2">&quot;language&quot;</span><span class="p">:</span> <span class="s2">&quot;en&quot;</span><span class="p">}</span>
 <span class="p">)</span>
 </code></pre></div>
 
 <h3  id="specialized-states"><span id="specialized_states"></span>Specialized States<a class="heading-anchor" href="#specialized-states" title="Link to this section">&para;</a></h3>
-<p>Some scenarios extend the base state with additional fields:</p>
+<p>Some scenarios extend the base state with domain-specific fields:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -356,28 +366,66 @@
 </tr>
 <tr>
 <td><code>PerformanceWorkflowState</code></td>
-<td><code>hotspots</code>, <code>complexity_metrics</code>, <code>bottlenecks</code></td>
+<td><code>hotspots</code>, <code>complexity_metrics</code>, <code>bottlenecks</code>, <code>optimization_suggestions</code></td>
 </tr>
 <tr>
 <td><code>ArchitectureWorkflowState</code></td>
-<td><code>dependency_graph</code>, <code>layer_violations</code>, <code>module_coupling</code></td>
+<td><code>dependencies</code>, <code>layer_violations</code>, <code>circular_deps</code>, <code>subsystem_info</code></td>
 </tr>
 </tbody>
 </table></div>
+<p>All specialized states also include the base fields: <code>query</code>, <code>context</code>, <code>intent</code>, <code>answer</code>, <code>evidence</code>, <code>error</code>.</p>
 <h2  id="workflow-nodes"><span id="workflow_nodes"></span>Workflow Nodes<a class="heading-anchor" href="#workflow-nodes" title="Link to this section">&para;</a></h2>
 <h3  id="intent-classification"><span id="intent_classification"></span>Intent Classification<a class="heading-anchor" href="#intent-classification" title="Link to this section">&para;</a></h3>
-<p>The first node classifies the user query into a scenario using bilingual (EN/RU) keyword matching and optional LLM fallback.</p>
-<p><strong>Location:</strong> <code>src/workflow/scenarios/_intent/</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration</span><span class="w"> </span><span class="kn">import</span> <span class="n">classify_intent_node</span>
+<p>The first node in the graph classifies the user query into a scenario using bilingual (EN/RU) keyword matching with optional LLM fallback.</p>
+<p><strong>Location:</strong> <code>src/workflow/orchestration/intent_classifier.py</code></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration.intent_classifier</span><span class="w"> </span><span class="kn">import</span> <span class="n">classify_intent_node</span>
 
 <span class="c1"># Called internally by the graph</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">classify_intent_node</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
-<span class="c1"># Populates: state[&#39;intent&#39;], state[&#39;scenario_id&#39;], state[&#39;confidence&#39;]</span>
+<span class="c1"># Populates: state[&#39;intent&#39;], state[&#39;scenario_id&#39;], state[&#39;confidence&#39;],</span>
+<span class="c1">#            state[&#39;classification_method&#39;]</span>
 </code></pre></div>
 
+<p>Classification methods:
+- <code>"keyword"</code> &ndash; fast bilingual keyword matching (default)
+- <code>"llm"</code> &ndash; LLM-based fallback when keyword confidence is low</p>
+<h3  id="pre-retrieval"><span id="pre_retrieval"></span>Pre-Retrieval<a class="heading-anchor" href="#pre-retrieval" title="Link to this section">&para;</a></h3>
+<p>After intent classification and before routing, the pre-retrieval node runs <code>HybridRetriever</code> to gather initial context. This is Phase E of the retrieval pipeline.</p>
+<p><strong>Location:</strong> <code>src/workflow/orchestration/pre_retrieval.py</code></p>
+<p>The node maps each intent to a <code>query_type</code> that controls retrieval weighting:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Query Type</th>
+<th>Intent Keys</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>semantic</td>
+<td>onboarding, documentation, feature_development, debugging, test_coverage</td>
+</tr>
+<tr>
+<td>structural</td>
+<td>architecture_violations, cross_repo_impact, dependencies, mass_refactoring, tech_debt, refactoring, performance</td>
+</tr>
+<tr>
+<td>security</td>
+<td>security_audit, security_incident, entry_points, compliance</td>
+</tr>
+<tr>
+<td>default</td>
+<td>code_review, file_editing, code_optimization, standards_check</td>
+</tr>
+</tbody>
+</table></div>
+<p>Results are stored in <code>state["pre_retrieval_results"]</code>.</p>
+<p>Configuration: <code>config.yaml</code> -&gt; <code>workflows.pre_retrieval.enable</code> (enabled by default).</p>
 <h3  id="scenario-routing"><span id="scenario_routing"></span>Scenario Routing<a class="heading-anchor" href="#scenario-routing" title="Link to this section">&para;</a></h3>
-<p>After classification, the router dispatches to the matched scenario workflow.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration</span><span class="w"> </span><span class="kn">import</span> <span class="n">route_by_intent</span>
+<p>After pre-retrieval, the router dispatches to the matched scenario workflow function.</p>
+<p><strong>Location:</strong> <code>src/workflow/orchestration/router.py</code></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration.router</span><span class="w"> </span><span class="kn">import</span> <span class="n">route_by_intent</span>
 
 <span class="c1"># Returns the scenario node name</span>
 <span class="n">next_node</span> <span class="o">=</span> <span class="n">route_by_intent</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
@@ -385,48 +433,47 @@
 </code></pre></div>
 
 <h3  id="scenario-execution"><span id="scenario_execution"></span>Scenario Execution<a class="heading-anchor" href="#scenario-execution" title="Link to this section">&para;</a></h3>
-<p>Each scenario workflow is a LangGraph subgraph that:
-1. Queries the CPG database via <code>CPGQueryService</code>
-2. Processes results through scenario-specific handlers
-3. Formats the answer using localized formatters</p>
+<p>Each scenario workflow is a LangGraph subgraph that:</p>
+<ol>
+<li>Queries the CPG database via <code>CPGQueryService</code></li>
+<li>Processes results through scenario-specific handlers inheriting from <code>BaseHandler</code></li>
+<li>Formats the answer using localized formatters</li>
+<li>Returns results back to the main graph state</li>
+</ol>
 <h2  id="scenario-workflows"><span id="scenario_workflows"></span>Scenario Workflows<a class="heading-anchor" href="#scenario-workflows" title="Link to this section">&para;</a></h2>
 <h3 id="structure">Structure<a class="heading-anchor" href="#structure" title="Link to this section">&para;</a></h3>
-<p>Each scenario follows the pattern <code>src/workflow/scenarios/{name}_handlers/</code>:</p>
+<p>Each scenario follows a standard directory layout under <code>src/workflow/scenarios/</code>:</p>
 <div class="highlight"><pre><span></span><code>src/workflow/scenarios/
-├── _base/                    # Base handler class
-│   └── handler.py            # BaseHandler
-├── _intent/                  # Intent classification
-├── security/                 # Security scenario
+├── _base/                              # Base handler class
+│   └── handler.py                      # BaseHandler, HandlerResult
+├── _intent/                            # Intent classification
+├── onboarding/                         # S01: Onboarding
+│   └── handlers/
+├── security/                           # S02: Security
 │   ├── handlers/
-│   ├── formatters/
-│   └── __init__.py
-├── onboarding/               # Onboarding scenario
+│   └── formatters/
+├── documentation_handlers/             # S03: Documentation
+├── feature_dev_handlers/               # S04: Feature development
+├── refactoring_handlers/               # S05: Refactoring
+├── performance_handlers/               # S06: Performance
+├── coverage_handlers/                  # S07: Test coverage
+├── compliance_handlers/                # S08: Compliance
+├── code_review_handlers/               # S09: Code review
+├── cross_repo_handlers/                # S10: Cross-repo
+├── architecture_handlers/              # S11: Architecture
 │   ├── handlers/
-│   └── __init__.py
-├── architecture_handlers/    # Architecture scenario
-│   ├── handlers/
-│   ├── formatters/
-│   └── __init__.py
-├── performance_handlers/     # Performance scenario
-├── refactoring_handlers/     # Refactoring scenario
-├── code_review_handlers/     # Code review scenario
-├── compliance_handlers/      # Compliance scenario
-├── documentation_handlers/   # Documentation scenario
-├── tech_debt_handlers/       # Tech debt scenario
-├── debugging_handlers/       # Debugging scenario
-├── concurrency_handlers/     # Concurrency scenario
-├── coverage_handlers/        # Test coverage scenario
-├── cross_repo_handlers/      # Cross-repo scenario
-├── feature_dev_handlers/     # Feature development scenario
-├── audit_composite.py        # Audit (runs 9 sub-scenarios)
-├── interface_docs_sync_composite.py  # Docs sync (7 interfaces)
-├── code_optimization.py      # Code optimization
-├── file_editing.py           # File editing
-├── pattern_search_handlers/  # Structural pattern search scenario
-│   ├── handlers/
-│   └── __init__.py
-├── standards_check.py        # Standards check
-└── dependencies_analysis.py  # Dependency analysis
+│   └── formatters/
+├── tech_debt_handlers/                 # S12: Tech debt
+├── debugging_handlers/                 # S15: Debugging
+├── code_optimization.py                # S18: Code optimization
+├── code_optimization_composite.py      # S18 composite variant
+├── file_editing.py                     # S17: File editing
+├── standards_check.py                  # S19: Standards check
+├── standards_check_composite.py        # S19 composite variant
+├── dependencies_analysis.py            # S20: Dependencies
+├── interface_docs_sync_composite.py    # S21 + composite: Docs sync
+├── audit_composite.py                  # Composite: Audit (AuditRunner)
+└── story_validation_composite.py       # Composite: Story validation (StoryValidationRunner)
 </code></pre></div>
 
 <h3  id="available-scenarios"><span id="available_scenarios"></span>Available Scenarios<a class="heading-anchor" href="#available-scenarios" title="Link to this section">&para;</a></h3>
@@ -454,15 +501,15 @@
 </tr>
 <tr>
 <td>03</td>
-<td>performance</td>
-<td><code>performance_workflow</code></td>
-<td>Performance and complexity</td>
+<td>documentation</td>
+<td><code>documentation_workflow</code></td>
+<td>Documentation generation</td>
 </tr>
 <tr>
 <td>04</td>
-<td>architecture</td>
-<td><code>architecture_workflow</code></td>
-<td>Architectural analysis</td>
+<td>feature_dev</td>
+<td><code>feature_dev_workflow</code></td>
+<td>Feature development</td>
 </tr>
 <tr>
 <td>05</td>
@@ -472,27 +519,27 @@
 </tr>
 <tr>
 <td>06</td>
-<td>documentation</td>
-<td><code>documentation_workflow</code></td>
-<td>Documentation generation</td>
+<td>performance</td>
+<td><code>performance_workflow</code></td>
+<td>Performance and complexity</td>
 </tr>
 <tr>
 <td>07</td>
+<td>test_coverage</td>
+<td><code>test_coverage_workflow</code></td>
+<td>Test coverage analysis</td>
+</tr>
+<tr>
+<td>08</td>
 <td>compliance</td>
 <td><code>compliance_workflow</code></td>
 <td>Compliance checking</td>
 </tr>
 <tr>
-<td>08</td>
+<td>09</td>
 <td>code_review</td>
 <td><code>code_review_workflow</code></td>
 <td>Code review automation</td>
-</tr>
-<tr>
-<td>09</td>
-<td>tech_debt</td>
-<td><code>tech_debt_workflow</code></td>
-<td>Tech debt quantification</td>
 </tr>
 <tr>
 <td>10</td>
@@ -502,39 +549,39 @@
 </tr>
 <tr>
 <td>11</td>
-<td>debugging</td>
-<td><code>debugging_workflow</code></td>
-<td>Debugging support</td>
+<td>architecture</td>
+<td><code>architecture_workflow</code></td>
+<td>Architectural analysis</td>
 </tr>
 <tr>
 <td>12</td>
-<td>concurrency</td>
-<td><code>concurrency_workflow</code></td>
-<td>Concurrency analysis</td>
+<td>tech_debt</td>
+<td><code>tech_debt_workflow</code></td>
+<td>Tech debt quantification</td>
 </tr>
 <tr>
 <td>13</td>
-<td>coverage</td>
-<td><code>test_coverage_workflow</code></td>
-<td>Test coverage analysis</td>
+<td>mass_refactoring</td>
+<td><code>mass_refactoring_workflow</code></td>
+<td>Enterprise-scale refactoring</td>
 </tr>
 <tr>
 <td>14</td>
-<td>feature_dev</td>
-<td><code>feature_dev_workflow</code></td>
-<td>Feature development</td>
-</tr>
-<tr>
-<td>15</td>
 <td>security_incident</td>
 <td><code>security_incident_workflow</code></td>
 <td>Incident response</td>
 </tr>
 <tr>
+<td>15</td>
+<td>debugging</td>
+<td><code>debugging_workflow</code></td>
+<td>Debugging support</td>
+</tr>
+<tr>
 <td>16</td>
-<td>large_scale_refactoring</td>
-<td><code>large_scale_refactoring_workflow</code></td>
-<td>Enterprise-scale refactoring</td>
+<td>entry_points</td>
+<td><code>entry_points_workflow</code></td>
+<td>Entry point analysis</td>
 </tr>
 <tr>
 <td>17</td>
@@ -562,119 +609,172 @@
 </tr>
 <tr>
 <td>21</td>
-<td>pattern_search</td>
-<td><code>pattern_search_workflow</code></td>
-<td>Structural pattern search with CPG constraints</td>
+<td>interface_docs_sync</td>
+<td><code>interface_docs_sync_workflow</code></td>
+<td>Interface documentation sync</td>
 </tr>
+</tbody>
+</table></div>
+<p>Composites (no numeric ID):</p>
+<div class="table-wrapper"><table>
+<thead>
 <tr>
-<td>—</td>
+<th>ID</th>
+<th>Name</th>
+<th>Entry Point</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&ndash;</td>
 <td>audit</td>
 <td><code>AuditRunner</code></td>
-<td>Composite: 12-dimension quality audit</td>
+<td>12-dimension quality audit (9 sub-scenarios parallel, 600s)</td>
 </tr>
 <tr>
-<td>—</td>
+<td>&ndash;</td>
 <td>interface_docs_sync</td>
 <td><code>InterfaceDocsSyncRunner</code></td>
-<td>Composite: interface documentation sync (7 interfaces)</td>
+<td>5-phase pipeline (7 interfaces, 120s)</td>
+</tr>
+<tr>
+<td>&ndash;</td>
+<td>story_validation</td>
+<td><code>StoryValidationRunner</code></td>
+<td>User story validation (5 interfaces)</td>
 </tr>
 </tbody>
 </table></div>
 <h3  id="handler-base-class"><span id="handler_base_class"></span>Handler Base Class<a class="heading-anchor" href="#handler-base-class" title="Link to this section">&para;</a></h3>
-<p>All scenario handlers inherit from <code>BaseHandler</code>:</p>
+<p>All scenario handlers inherit from <code>BaseHandler</code>.</p>
 <p><strong>Location:</strong> <code>src/workflow/scenarios/_base/handler.py</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios._base.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseHandler</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios._base.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">HandlerResult</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HandlerResult</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">T</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cpg_results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">retrieved_functions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">answer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">evidence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">should_return</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">llm_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</code></pre></div>
+
+<p><code>BaseHandler</code> constructor and key attributes:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BaseHandler</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cpg</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">MultiScenarioState</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpg</span> <span class="o">=</span> <span class="n">cpg</span>          <span class="c1"># CPGQueryService instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>      <span class="c1"># MultiScenarioState dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;query&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;context&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">language</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;en&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cfg</span> <span class="o">=</span> <span class="n">get_unified_config</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Public methods:</p>
+<ul>
+<li><code>can_handle(query_info: Dict) -&gt; bool</code> &ndash; returns True by default, override for custom routing logic</li>
+<li><code>handle(query_info: Dict) -&gt; HandlerResult[T]</code> &ndash; abstract, implement scenario-specific logic</li>
+<li><code>apply_result(result: HandlerResult) -&gt; MultiScenarioState</code> &ndash; applies HandlerResult fields to state</li>
+<li><code>log_info(message: str)</code> / <code>log_debug(message: str)</code> / <code>log_warning(message: str)</code> &ndash; logging with class context</li>
+</ul>
+<p>Usage example:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios._base.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseHandler</span><span class="p">,</span> <span class="n">HandlerResult</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MyHandler</span><span class="p">(</span><span class="n">BaseHandler</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HandlerResult</span><span class="p">:</span>
-        <span class="c1"># self.cpg   — CPGQueryService instance</span>
-        <span class="c1"># self.state  — MultiScenarioState dict</span>
-        <span class="c1"># self.cfg    — Unified config</span>
-        <span class="c1"># self.query  — Original query string</span>
-        <span class="c1"># self.language — &quot;en&quot; or &quot;ru&quot;</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HandlerResult</span><span class="p">:</span>
         <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpg</span><span class="o">.</span><span class="n">get_methods_by_subsystem</span><span class="p">(</span><span class="s2">&quot;executor&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">HandlerResult</span><span class="p">(</span>
             <span class="n">answer</span><span class="o">=</span><span class="s2">&quot;Found methods...&quot;</span><span class="p">,</span>
-            <span class="n">evidence</span><span class="o">=</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">evidence</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;method_a at line 42&quot;</span><span class="p">],</span>
             <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;handler&quot;</span><span class="p">:</span> <span class="s2">&quot;my_handler&quot;</span><span class="p">}</span>
         <span class="p">)</span>
 </code></pre></div>
 
 <blockquote class="callout">
-<p><strong>Warning:</strong> Do NOT use <code>AnalysisHandler</code> from <code>src/workflow/handlers/analysis.py</code> as a base class — its constructor signature is incompatible with the scenario registry.</p>
+<p><strong>Warning:</strong> Do NOT use <code>AnalysisHandler</code> from <code>src/workflow/handlers/analysis.py</code> as a base class &ndash; its <code>__init__</code> signature is incompatible with the scenario registry (<code>self.cpg</code> and <code>self.state</code> will not be set).</p>
 </blockquote>
 <h2  id="composite-workflows"><span id="composite_workflows"></span>Composite Workflows<a class="heading-anchor" href="#composite-workflows" title="Link to this section">&para;</a></h2>
-<p>Four composite orchestrators run sub-scenarios in parallel or sequentially:</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Composite</th>
-<th>Scenario IDs</th>
-<th>Mode</th>
-<th>Timeout</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>code_optimization (S18)</td>
-<td>02, 05, 06, 11, 12</td>
-<td>Parallel</td>
-<td>60s</td>
-</tr>
-<tr>
-<td>standards_check (S19)</td>
-<td>08, 17, 18</td>
-<td>Sequential</td>
-<td>45s</td>
-</tr>
-<tr>
-<td>audit</td>
-<td>02, 03, 05, 06, 07, 08, 11, 12, 16</td>
-<td>Parallel</td>
-<td>600s</td>
-</tr>
-<tr>
-<td>interface_docs_sync</td>
-<td>Discovery, DocParse, DriftDetect</td>
-<td>5-phase pipeline</td>
-<td>120s</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Audit</strong> runs 9 sub-scenarios in parallel, covering 12 code quality dimensions (security, complexity, duplication, dependencies, naming, error handling, testing, documentation, performance, portability, style, architecture). Exposed via:</p>
+<p>Composite workflows orchestrate multiple sub-scenarios with conflict resolution and timeout management.</p>
+<p><strong>S18 code_optimization</strong> (composite variant):</p>
+<ul>
+<li>Sub-scenarios: 02 (security), 05 (refactoring), 06 (performance), 11 (architecture), 12 (tech_debt)</li>
+<li>Mode: parallel</li>
+<li>Timeout: 60s</li>
+<li>Triggered by <code>composite_mode=True</code> via <code>optimization_composite_workflow</code></li>
+</ul>
+<p><strong>S19 standards_check</strong> (composite variant):</p>
+<ul>
+<li>Sub-scenarios: 08 (compliance), 17 (file_editing), 18 (code_optimization)</li>
+<li>Mode: sequential</li>
+<li>Timeout: 45s</li>
+<li>Triggered by <code>composite_mode=True</code> via <code>standards_check_composite_workflow</code></li>
+</ul>
+<p><strong>Audit</strong> (<code>AuditRunner</code>):</p>
+<ul>
+<li>9 sub-scenarios run in parallel</li>
+<li>12 code quality dimensions: security, complexity, duplication, dependencies, naming, error handling, testing, documentation, performance, portability, style, architecture</li>
+<li>Timeout: 600s</li>
+<li>FP-reduction pipeline (V25-V32)</li>
+</ul>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span>--autofix<span class="w">  </span><span class="c1"># Audit + autofix suggestions</span>
 </code></pre></div>
 
-<p>The <code>--autofix</code> flag generates automated fix suggestions for security vulnerabilities found during the audit, using <code>AutofixEngine</code> on taint paths. Configuration in <code>config.yaml</code> → <code>autofix</code> section.</p>
-<p><strong>Interface Docs Sync</strong> runs a 5-phase pipeline: Discovery → Doc Parsing → Generation → Drift Detection → Report. Scans 7 interfaces (REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket) for documentation drift. Exposed via:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--check<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--interfaces<span class="w"> </span>rest_api,cli<span class="o">]</span>
+<p><strong>Interface Docs Sync</strong> (<code>InterfaceDocsSyncRunner</code>):</p>
+<ul>
+<li>5-phase pipeline: Discovery -&gt; Doc Parsing -&gt; Generation -&gt; Drift Detection -&gt; Report</li>
+<li>Scans 7 interfaces: REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket</li>
+<li>Timeout: 120s</li>
+<li>DriftType: UNDOCUMENTED, STALE, OUTDATED, COVERED</li>
+</ul>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--check<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span>
 </code></pre></div>
 
-<p>Also available as MCP tool <code>codegraph_docs_sync</code> and REST endpoint <code>POST /api/v1/documentation/sync</code>. CI integration via <code>.github/workflows/docs-sync.yml</code>. Configuration in <code>config.yaml</code> → <code>composition.orchestrators.interface_docs_sync</code>.</p>
-<p><strong>Exec</strong> provides non-interactive CI/CD execution with PR security review:</p>
+<p>Also available as MCP tool <code>codegraph_docs_sync</code> and REST endpoint <code>POST /api/v1/documentation/sync</code>.</p>
+<p><strong>Story Validation</strong> (<code>StoryValidationRunner</code>):</p>
+<ul>
+<li>Validates Done user stories against 5 interfaces</li>
+<li>Evidence types: dedicated (threshold 0.8), passthrough (threshold 0.5), scenario_map (0.7)</li>
+<li>Tracks all matched function names via <code>all_matched_names</code></li>
+<li>Supports Go CPG via <code>--go-db</code> parameter</li>
+</ul>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-stories
+</code></pre></div>
+
+<p><strong>Conflict resolution</strong> across all composites uses priority mode: security findings get a 1.5x boost, compliance findings get 1.3x. Configuration: <code>config.yaml</code> -&gt; <code>composition</code>.</p>
+<h2  id="exec-pipeline"><span id="exec_pipeline"></span>Exec Pipeline<a class="heading-anchor" href="#exec-pipeline" title="Link to this section">&para;</a></h2>
+<p>Separate CI/CD tool &ndash; not a composite workflow. Designed for non-interactive PR security review in CI pipelines.</p>
+<p><strong>Location:</strong> <code>src/cli/exec_command.py</code></p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Review security&quot;</span><span class="w"> </span>--base-ref<span class="w"> </span>origin/main<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--sarif-file<span class="w"> </span>out.sarif<span class="w"> </span>--comment-file<span class="w"> </span>comment.md<span class="w"> </span>--sandbox<span class="w"> </span>read-only
 </code></pre></div>
 
-<p>The exec pipeline gets changed files, scans changed methods, computes &ldquo;New vs Fixed&rdquo; delta via fingerprinting, generates SARIF 2.1.0 output (via <code>SARIFExporter</code>), and PR comment markdown. Configuration in <code>config.yaml</code> → <code>reporting</code>.</p>
-<p>Conflict resolution uses priority mode with security (1.5x) and compliance (1.3x) boosts. Configuration in <code>config.yaml</code> → <code>composition</code>.</p>
+<p>The exec pipeline:</p>
+<ol>
+<li>Gets changed files from <code>--base-ref</code></li>
+<li>Scans changed methods via CPG</li>
+<li>Computes &ldquo;New vs Fixed&rdquo; delta via fingerprinting</li>
+<li>Generates SARIF 2.1.0 output via <code>SARIFExporter</code> (<code>src/security/sarif_exporter.py</code>)</li>
+<li>Generates PR comment markdown</li>
+</ol>
+<p>Configuration: <code>config.yaml</code> -&gt; <code>reporting</code>.</p>
 <h2  id="error-handling"><span id="error_handling"></span>Error Handling<a class="heading-anchor" href="#error-handling" title="Link to this section">&para;</a></h2>
 <h3  id="retry-logic"><span id="retry_logic"></span>Retry Logic<a class="heading-anchor" href="#retry-logic" title="Link to this section">&para;</a></h3>
 <p>Workflows support automatic retry with query refinement:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Built into the graph — configurable via state[&#39;retry_count&#39;]</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Built into the graph -- configurable via state[&#39;retry_count&#39;]</span>
 <span class="c1"># Default: up to 2 retries with adaptive query refinement</span>
 </code></pre></div>
 
+<p>The <code>retry_count</code> field in <code>MultiScenarioState</code> tracks the current retry attempt. When a scenario handler raises an exception, the graph increments <code>retry_count</code> and re-invokes the handler with a refined query.</p>
 <h3  id="fallback-strategies"><span id="fallback_strategies"></span>Fallback Strategies<a class="heading-anchor" href="#fallback-strategies" title="Link to this section">&para;</a></h3>
-<p>When LLM-based generation fails, workflows fall back to template-based query matching:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Automatic fallback chain:</span>
-<span class="c1"># 1. LLM-generated SQL query</span>
-<span class="c1"># 2. Template-matched query from query examples</span>
-<span class="c1"># 3. Direct CPG method call</span>
+<p>When LLM-based generation fails, workflows fall back through a chain:</p>
+<div class="highlight"><pre><span></span><code>1. LLM-generated SQL query
+2. Template-matched query from query examples
+3. Direct CPG method call
 </code></pre></div>
 
+<p>If all fallbacks fail, the <code>error</code> field in <code>MultiScenarioState</code> is populated with a descriptive message and <code>answer</code> contains a user-friendly explanation.</p>
 <h2  id="custom-workflows"><span id="custom_workflows"></span>Custom Workflows<a class="heading-anchor" href="#custom-workflows" title="Link to this section">&para;</a></h2>
 <h3  id="creating-a-custom-workflow"><span id="creating_a_custom_workflow"></span>Creating a Custom Workflow<a class="heading-anchor" href="#creating-a-custom-workflow" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">StateGraph</span>
@@ -699,39 +799,45 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <h3  id="conditional-routing"><span id="conditional_routing"></span>Conditional Routing<a class="heading-anchor" href="#conditional-routing" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">route_by_intent</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">MultiScenarioState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;find_vulnerabilities&quot;</span><span class="p">:</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">my_router</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">MultiScenarioState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;security_audit&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;security_node&quot;</span>
-    <span class="k">elif</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;find_performance&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;performance&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;performance_node&quot;</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;general_node&quot;</span>
 
 <span class="n">workflow</span><span class="o">.</span><span class="n">add_conditional_edges</span><span class="p">(</span>
-    <span class="s2">&quot;analyze&quot;</span><span class="p">,</span>
-    <span class="n">route_by_intent</span><span class="p">,</span>
+    <span class="s2">&quot;classify&quot;</span><span class="p">,</span>
+    <span class="n">my_router</span><span class="p">,</span>
     <span class="p">{</span>
         <span class="s2">&quot;security_node&quot;</span><span class="p">:</span> <span class="s2">&quot;security&quot;</span><span class="p">,</span>
         <span class="s2">&quot;performance_node&quot;</span><span class="p">:</span> <span class="s2">&quot;performance&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;general_node&quot;</span><span class="p">:</span> <span class="s2">&quot;general&quot;</span>
+        <span class="s2">&quot;general_node&quot;</span><span class="p">:</span> <span class="s2">&quot;general&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 <span class="p">)</span>
 </code></pre></div>
 
 <h2 id="streaming">Streaming<a class="heading-anchor" href="#streaming" title="Link to this section">&para;</a></h2>
-<p>Progress streaming is supported through the LangGraph streaming interface:</p>
-<div class="highlight"><pre><span></span><code><span class="n">copilot</span> <span class="o">=</span> <span class="n">MultiScenarioCopilot</span><span class="p">()</span>
+<p><code>MultiScenarioCopilot.run()</code> is synchronous. Streaming is implemented at the API/WebSocket layer via thread pool executor.</p>
+<ul>
+<li><code>ChatService.process_query_stream()</code> in <code>src/api/services/chat_service.py</code> &ndash; AsyncGenerator producing SSE events</li>
+<li><code>POST /api/v1/chat/stream</code> in <code>src/api/routers/chat.py</code> &ndash; SSE endpoint</li>
+<li>WebSocket support in <code>src/api/websocket/handlers.py</code></li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.services.chat_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatService</span>
 
-<span class="c1"># Streaming is handled at the API/TUI layer</span>
-<span class="c1"># See src/api/routers/ for WebSocket streaming</span>
-<span class="c1"># See src/tui/ for terminal streaming</span>
+<span class="c1"># Streaming is handled at the API layer</span>
+<span class="c1"># MultiScenarioCopilot.run() runs in a thread pool executor</span>
+<span class="c1"># Results are streamed as SSE events to the client</span>
 </code></pre></div>
 
-<h2  id="next-steps"><span id="next_steps"></span>Next Steps<a class="heading-anchor" href="#next-steps" title="Link to this section">&para;</a></h2>
+<h2  id="related-documentation"><span id="related_documentation"></span>Related Documentation<a class="heading-anchor" href="#related-documentation" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="API.html">API Reference</a> - Complete API</li>
-<li><a href="AGENTS.html">Agents Reference</a> - Agent details</li>
-<li><a href="../../guides/SCENARIOS.html">Scenarios Guide</a> - Scenario usage examples</li>
+<li><a href="API.html">API Reference</a> &ndash; REST API endpoints</li>
+<li><a href="AGENTS.html">Agents Reference</a> &ndash; Agent system details</li>
+<li><a href="ANALYSIS_MODULES.html">Analysis Modules</a> &ndash; CPG analysis classes</li>
+<li><a href="../../guides/SCENARIOS.html">Scenarios Guide</a> &ndash; Scenario usage examples</li>
 </ul>
       </article>
 
@@ -751,7 +857,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-06</span>
+        <span>Last updated: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/WORKFLOWS.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -769,6 +875,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#specialized-states" class="level-3">Specialized States</a></li>
 <li><a href="#workflow-nodes" class="level-2">Workflow Nodes</a></li>
 <li><a href="#intent-classification" class="level-3">Intent Classification</a></li>
+<li><a href="#pre-retrieval" class="level-3">Pre-Retrieval</a></li>
 <li><a href="#scenario-routing" class="level-3">Scenario Routing</a></li>
 <li><a href="#scenario-execution" class="level-3">Scenario Execution</a></li>
 <li><a href="#scenario-workflows" class="level-2">Scenario Workflows</a></li>
@@ -776,6 +883,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#available-scenarios" class="level-3">Available Scenarios</a></li>
 <li><a href="#handler-base-class" class="level-3">Handler Base Class</a></li>
 <li><a href="#composite-workflows" class="level-2">Composite Workflows</a></li>
+<li><a href="#exec-pipeline" class="level-2">Exec Pipeline</a></li>
 <li><a href="#error-handling" class="level-2">Error Handling</a></li>
 <li><a href="#retry-logic" class="level-3">Retry Logic</a></li>
 <li><a href="#fallback-strategies" class="level-3">Fallback Strategies</a></li>
@@ -783,7 +891,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#creating-a-custom-workflow" class="level-3">Creating a Custom Workflow</a></li>
 <li><a href="#conditional-routing" class="level-3">Conditional Routing</a></li>
 <li><a href="#streaming" class="level-2">Streaming</a></li>
-<li><a href="#next-steps" class="level-2">Next Steps</a></li>
+<li><a href="#related-documentation" class="level-2">Related Documentation</a></li>
       </ul>
     </aside>
   </div>

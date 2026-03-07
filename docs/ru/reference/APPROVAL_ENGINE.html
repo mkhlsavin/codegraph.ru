@@ -160,7 +160,7 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="AGENTS.html">Справочник агентов</a></li>
         <li><a href="ANALYSIS_MODULES.html">Справочник модулей анализа</a></li>
-        <li><a href="API.html">Справочник API</a></li>
+        <li><a href="API.html">Справочник Python SDK</a></li>
         <li><a href="APPROVAL_ENGINE.html" class="active">Механизм подтверждения операций</a></li>
         <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
         <li><a href="FAQ.html">Часто задаваемые вопросы (FAQ)</a></li>
@@ -204,6 +204,39 @@
       <article class="doc-content">
         <h1  id="mehanizm-podtverzhdeniya-operatsiy"><span id="mehanizm_podtverzhdeniya_operatsiy"></span>Механизм подтверждения операций<a class="heading-anchor" href="#mehanizm-podtverzhdeniya-operatsiy" title="Link to this section">&para;</a></h1>
 <p>Механизм подтверждения на основе обратных вызовов для контроля деструктивных и чувствительных операций. Часть унифицированного сервисного слоя <code>CodeGraphHarness</code>.</p>
+<h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#obzor">Обзор</a></li>
+<li><a href="#arhitektura">Архитектура</a></li>
+<li><a href="#struktura-modulya">Структура модуля</a></li>
+<li><a href="#codegraphharness">CodeGraphHarness</a></li>
+<li><a href="#get_harness">get_harness()</a></li>
+<li><a href="#reset_harness">reset_harness()</a></li>
+<li><a href="#spravochnik-api">Справочник API</a></li>
+<li><a href="#approvalrequest">ApprovalRequest</a></li>
+<li><a href="#approvaldecision">ApprovalDecision</a></li>
+<li><a href="#approvalengine">ApprovalEngine</a></li>
+<li><a href="#modeli-sessiy">Модели сессий</a></li>
+<li><a href="#item">Item</a></li>
+<li><a href="#turn">Turn</a></li>
+<li><a href="#thread">Thread</a></li>
+<li><a href="#harnesssessionmanager">HarnessSessionManager</a></li>
+<li><a href="#konfiguratsiya">Конфигурация</a></li>
+<li><a href="#harnessconfig">HarnessConfig</a></li>
+<li><a href="#yaml-konfiguratsiya">YAML-конфигурация</a></li>
+<li><a href="#ispolzovanie">Использование</a></li>
+<li><a href="#zapros-podtverzhdeniya">Запрос подтверждения</a></li>
+<li><a href="#razreshenie-iz-ui">Разрешение из UI</a></li>
+<li><a href="#sessionnoe-podtverzhdenie">Сессионное подтверждение</a></li>
+<li><a href="#logika-prinyatiya-resheniy">Логика принятия решений</a></li>
+<li><a href="#klassifikatsiya-operatsiy-po-umolchaniyu">Классификация операций по умолчанию</a></li>
+<li><a href="#tochki-integratsii">Точки интеграции</a></li>
+<li><a href="#avtoispravleniya">Автоисправления</a></li>
+<li><a href="#shablony-cli">Шаблоны CLI</a></li>
+<li><a href="#shablony-rest">Шаблоны REST</a></li>
+<li><a href="#acp-otdelnaya-sistema">ACP (отдельная система)</a></li>
+<li><a href="#svyazannaya-dokumentatsiya">Связанная документация</a></li>
+</ul>
 <h2 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h2>
 <p>Механизм подтверждения определяет, требуют ли операции (применение автоисправлений, исправления по шаблонам, выполнение команд) явного подтверждения пользователя. Поддерживает три политики:</p>
 <div class="table-wrapper"><table>
@@ -229,36 +262,132 @@
 </tbody>
 </table></div>
 <h2 id="arhitektura">Архитектура<a class="heading-anchor" href="#arhitektura" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>Пользователь/CLI/IDE  ←→  ApprovalEngine  ←→  Harness  ←→  Модули анализа
-                                │
-                          ┌─────┴─────┐
-                          │ Политики  │
-                          ├───────────┤
-                          │ auto      │  ← Проверка белого списка, затем запрос
-                          │ ask       │  ← Всегда запрос
-                          │ read_only │  ← Всегда отклонять запись
-                          └───────────┘
+<div class="highlight"><pre><span></span><code><span class="n">flowchart</span><span class="w"> </span><span class="n">TB</span>
+<span class="w">    </span><span class="n">User</span><span class="o">[</span><span class="s">&quot;Пользователь / CLI / IDE&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="n">AE</span><span class="o">[</span><span class="s">&quot;ApprovalEngine&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="n">Harness</span><span class="o">[</span><span class="s">&quot;CodeGraphHarness&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="n">Modules</span><span class="o">[</span><span class="s">&quot;Модули анализа&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="n">Auto</span><span class="o">[</span><span class="s">&quot;auto — проверка белого списка, затем запрос&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="n">Ask</span><span class="o">[</span><span class="s">&quot;ask_always — всегда запрос&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="n">RO</span><span class="o">[</span><span class="s">&quot;read_only — всегда отклонять запись&quot;</span><span class="o">]</span>
+
+<span class="w">    </span><span class="n">User</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
+<span class="w">    </span><span class="n">AE</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">Harness</span>
+<span class="w">    </span><span class="n">Harness</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">Modules</span>
+<span class="w">    </span><span class="n">AE</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">Policies</span>
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="n">Policies</span><span class="o">[</span><span class="s">&quot;Политики&quot;</span><span class="o">]</span>
+<span class="w">        </span><span class="n">Auto</span>
+<span class="w">        </span><span class="n">Ask</span>
+<span class="w">        </span><span class="n">RO</span>
+<span class="w">    </span><span class="k">end</span>
 </code></pre></div>
 
+<h2  id="struktura-modulya"><span id="struktura_modulya"></span>Структура модуля<a class="heading-anchor" href="#struktura-modulya" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>src/harness/
+├── __init__.py          # Публичные экспорты
+├── approval.py          # ApprovalEngine
+├── config.py            # HarnessConfig (dataclass)
+├── core.py              # CodeGraphHarness (синглтон), get_harness()
+├── models.py            # Item, Turn, Thread, ApprovalRequest, ApprovalDecision
+└── session.py           # HarnessSessionManager
+</code></pre></div>
+
+<h2 id="codegraphharness">CodeGraphHarness<a class="heading-anchor" href="#codegraphharness" title="Link to this section">&para;</a></h2>
+<p>Центральный синглтон, предоставляющий доступ ко всем подсистемам harness. Создаётся через фабричную функцию <code>get_harness()</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.harness.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">CodeGraphHarness</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CodeGraphHarness</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">HarnessConfig</span><span class="p">,</span> <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<p>Ленивые свойства (инициализируются при первом обращении):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cpg</code></td>
+<td><code>CPGQueryService</code></td>
+<td>Клиент DuckDB для запросов к CPG</td>
+</tr>
+<tr>
+<td><code>gocpg</code></td>
+<td><code>GoCPGClient</code></td>
+<td>Клиент Go CPG-генератора</td>
+</tr>
+<tr>
+<td><code>copilot</code></td>
+<td><code>MultiScenarioCopilot</code></td>
+<td>LangGraph-оркестратор</td>
+</tr>
+<tr>
+<td><code>vector_store</code></td>
+<td><code>VectorStore</code></td>
+<td>Хранилище векторных представлений</td>
+</tr>
+<tr>
+<td><code>sessions</code></td>
+<td><code>HarnessSessionManager</code></td>
+<td>Менеджер сессий</td>
+</tr>
+<tr>
+<td><code>approval</code></td>
+<td><code>ApprovalEngine</code></td>
+<td>Механизм подтверждения операций</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="get-harness"><span id="get_harness"></span>get_harness()<a class="heading-anchor" href="#get-harness" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_harness</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CodeGraphHarness</span>
+</code></pre></div>
+
+<p>Фабричная функция для получения экземпляра <code>CodeGraphHarness</code>:</p>
+<ul>
+<li><code>db_path=None</code> — возвращает глобальный синглтон</li>
+<li><code>db_path="path"</code> — возвращает LRU-кешированный экземпляр (максимум 5 одновременных)</li>
+</ul>
+<p>Пример:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.harness</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_harness</span>
+
+<span class="c1"># Глобальный синглтон</span>
+<span class="n">harness</span> <span class="o">=</span> <span class="n">get_harness</span><span class="p">()</span>
+
+<span class="c1"># Экземпляр для конкретного проекта (multi-tenant)</span>
+<span class="n">harness</span> <span class="o">=</span> <span class="n">get_harness</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;/data/projects/myproject.duckdb&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3  id="reset-harness"><span id="reset_harness"></span>reset_harness()<a class="heading-anchor" href="#reset-harness" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_harness</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Сбрасывает глобальный синглтон. Предназначена для использования в тестах.</p>
 <h2  id="spravochnik-api"><span id="spravochnik_api"></span>Справочник API<a class="heading-anchor" href="#spravochnik-api" title="Link to this section">&para;</a></h2>
 <h3 id="approvalrequest">ApprovalRequest<a class="heading-anchor" href="#approvalrequest" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ApprovalRequest</span><span class="p">:</span>
-    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>                     <span class="c1"># Уникальный ID запроса (UUID)</span>
-    <span class="n">thread_id</span><span class="p">:</span> <span class="nb">str</span>              <span class="c1"># ID потока сессии</span>
-    <span class="n">action_type</span><span class="p">:</span> <span class="nb">str</span>            <span class="c1"># Например, &#39;apply_autofix&#39;, &#39;command_execution&#39;</span>
-    <span class="n">details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>     <span class="c1"># Произвольные детали операции</span>
-    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>                 <span class="c1"># &#39;pending&#39; | &#39;accepted&#39; | &#39;declined&#39; | &#39;cancelled&#39;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">_new_id</span><span class="p">)</span>   <span class="c1"># Автогенерация UUID</span>
+    <span class="n">thread_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>                         <span class="c1"># ID потока сессии</span>
+    <span class="n">action_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>                       <span class="c1"># Например, &#39;apply_autofix&#39;, &#39;command_execution&#39;</span>
+    <span class="n">details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>  <span class="c1"># Произвольные детали операции</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;pending&quot;</span>                     <span class="c1"># &#39;pending&#39; | &#39;accepted&#39; | &#39;declined&#39; | &#39;cancelled&#39;</span>
 </code></pre></div>
 
+<p>Все поля имеют значения по умолчанию. Поле <code>id</code> автоматически генерируется как UUID при создании экземпляра.</p>
 <h3 id="approvaldecision">ApprovalDecision<a class="heading-anchor" href="#approvaldecision" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ApprovalDecision</span><span class="p">:</span>
-    <span class="n">decision</span><span class="p">:</span> <span class="nb">str</span>               <span class="c1"># &#39;accept&#39; | &#39;accept_for_session&#39; | &#39;decline&#39; | &#39;cancel&#39;</span>
-    <span class="n">reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>       <span class="c1"># Необязательная причина</span>
-    <span class="n">scope</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>        <span class="c1"># Область для &#39;accept_for_session&#39;</span>
+    <span class="n">decision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;decline&quot;</span>           <span class="c1"># &#39;accept&#39; | &#39;accept_for_session&#39; | &#39;decline&#39; | &#39;cancel&#39;</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>        <span class="c1"># Необязательная причина</span>
+    <span class="n">scope</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>         <span class="c1"># Область для &#39;accept_for_session&#39;</span>
 </code></pre></div>
 
+<p>Безопасное значение по умолчанию: при отсутствии явной инициализации поле <code>decision</code> равно <code>"decline"</code>, что гарантирует отклонение операции.</p>
 <h3 id="approvalengine">ApprovalEngine<a class="heading-anchor" href="#approvalengine" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ApprovalEngine</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">HarnessConfig</span><span class="p">):</span>
@@ -300,20 +429,123 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Очистить сессионные автоодобрения при завершении сессии.&quot;&quot;&quot;</span>
 </code></pre></div>
 
+<h2  id="modeli-sessiy"><span id="modeli_sessiy"></span>Модели сессий<a class="heading-anchor" href="#modeli-sessiy" title="Link to this section">&para;</a></h2>
+<p>Иерархия сессий: <code>Thread</code> содержит <code>Turn</code>, каждый <code>Turn</code> содержит <code>Item</code>.</p>
+<h3 id="item">Item<a class="heading-anchor" href="#item" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Item</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>                             <span class="c1"># Уникальный идентификатор элемента</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span>                           <span class="c1"># Тип элемента</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>                        <span class="c1"># Содержимое</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>            <span class="c1"># Метаданные</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>                         <span class="c1"># Статус элемента</span>
+    <span class="n">created_at</span><span class="p">:</span> <span class="nb">str</span>                     <span class="c1"># Временная метка создания</span>
+</code></pre></div>
+
+<p>Методы: <code>to_dict()</code>, <code>from_dict()</code>.</p>
+<h3 id="turn">Turn<a class="heading-anchor" href="#turn" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Turn</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>                             <span class="c1"># Уникальный идентификатор хода</span>
+    <span class="n">thread_id</span><span class="p">:</span> <span class="nb">str</span>                      <span class="c1"># ID родительского потока</span>
+    <span class="n">items</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Item</span><span class="p">]</span>                   <span class="c1"># Элементы в ходе</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>                         <span class="c1"># Статус хода</span>
+    <span class="n">started_at</span><span class="p">:</span> <span class="nb">str</span>                     <span class="c1"># Время начала</span>
+    <span class="n">completed_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>         <span class="c1"># Время завершения</span>
+</code></pre></div>
+
+<p>Методы: <code>to_dict()</code>, <code>from_dict()</code>.</p>
+<h3 id="thread">Thread<a class="heading-anchor" href="#thread" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Thread</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>                             <span class="c1"># Уникальный идентификатор потока</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>                           <span class="c1"># Имя потока</span>
+    <span class="n">turns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Turn</span><span class="p">]</span>                   <span class="c1"># Ходы в потоке</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>                         <span class="c1"># Статус потока</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>              <span class="c1"># Конфигурация потока</span>
+    <span class="n">created_at</span><span class="p">:</span> <span class="nb">str</span>                     <span class="c1"># Время создания</span>
+    <span class="n">updated_at</span><span class="p">:</span> <span class="nb">str</span>                     <span class="c1"># Время последнего обновления</span>
+</code></pre></div>
+
+<p>Методы: <code>to_dict()</code>, <code>from_dict()</code>.</p>
+<h2 id="harnesssessionmanager">HarnessSessionManager<a class="heading-anchor" href="#harnesssessionmanager" title="Link to this section">&para;</a></h2>
+<p>Менеджер сессий, доступный через свойство <code>harness.sessions</code>. Обеспечивает персистенцию потоков в JSON-файлах.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">HarnessSessionManager</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">HarnessConfig</span><span class="p">):</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<p>Публичные асинхронные методы:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create_thread()</code></td>
+<td>Создать новый поток</td>
+</tr>
+<tr>
+<td><code>get_thread()</code></td>
+<td>Получить поток по ID</td>
+</tr>
+<tr>
+<td><code>list_threads()</code></td>
+<td>Получить список всех потоков</td>
+</tr>
+<tr>
+<td><code>archive_thread()</code></td>
+<td>Архивировать поток</td>
+</tr>
+<tr>
+<td><code>start_turn()</code></td>
+<td>Начать новый ход в потоке</td>
+</tr>
+<tr>
+<td><code>complete_turn()</code></td>
+<td>Завершить текущий ход</td>
+</tr>
+<tr>
+<td><code>add_item()</code></td>
+<td>Добавить элемент к текущему ходу</td>
+</tr>
+<tr>
+<td><code>update_item_status()</code></td>
+<td>Обновить статус элемента</td>
+</tr>
+</tbody>
+</table></div>
+<p>Хранение: JSON-файлы в <code>data/sessions/{thread_id}.json</code>. Используется кеш в памяти с синхронизацией на диск. Устаревшие потоки очищаются по TTL (настраивается через <code>thread_ttl_hours</code>).</p>
 <h2 id="konfiguratsiya">Конфигурация<a class="heading-anchor" href="#konfiguratsiya" title="Link to this section">&para;</a></h2>
+<h3 id="harnessconfig">HarnessConfig<a class="heading-anchor" href="#harnessconfig" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HarnessConfig</span><span class="p">:</span>
+    <span class="n">session_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;./data/sessions&quot;</span>
+    <span class="n">max_threads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">thread_ttl_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">168</span>                     <span class="c1"># 7 дней</span>
+    <span class="n">default_approval_policy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span>           <span class="c1"># auto | ask_always | read_only</span>
+    <span class="n">auto_approve</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">require_approval</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Имя поля в dataclass: <code>default_approval_policy</code>. В YAML-конфигурации используется ключ <code>default_policy</code>, который маппится на это поле при загрузке.</p>
+<h3  id="yaml-konfiguratsiya"><span id="yaml_konfiguratsiya"></span>YAML-конфигурация<a class="heading-anchor" href="#yaml-konfiguratsiya" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
 <span class="nt">harness</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">session_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./data/sessions</span>
 <span class="w">  </span><span class="nt">max_threads</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-<span class="w">  </span><span class="nt">thread_ttl_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168</span><span class="w">            </span><span class="c1"># 7 дней</span>
+<span class="w">  </span><span class="nt">thread_ttl_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168</span><span class="w">                  </span><span class="c1"># 7 дней</span>
 <span class="w">  </span><span class="nt">approval</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">default_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">auto</span><span class="w">             </span><span class="c1"># auto | ask_always | read_only</span>
-<span class="w">    </span><span class="nt">auto_approve</span><span class="p">:</span><span class="w">                    </span><span class="c1"># Автоматически одобряемые операции</span>
+<span class="w">    </span><span class="nt">default_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">auto</span><span class="w">                 </span><span class="c1"># Маппится на поле default_approval_policy</span>
+<span class="w">    </span><span class="nt">auto_approve</span><span class="p">:</span><span class="w">                        </span><span class="c1"># Автоматически одобряемые операции</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_query</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_find_callers</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_find_callees</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_explain</span>
-<span class="w">    </span><span class="nt">require_approval</span><span class="p">:</span><span class="w">                </span><span class="c1"># Операции, требующие подтверждения</span>
+<span class="w">    </span><span class="nt">require_approval</span><span class="p">:</span><span class="w">                    </span><span class="c1"># Операции, требующие подтверждения</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apply_autofix</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apply_pattern_fix</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">command_execution</span>
@@ -344,6 +576,8 @@
 
 <h3  id="razreshenie-iz-ui"><span id="razreshenie_iz_ui"></span>Разрешение из UI<a class="heading-anchor" href="#razreshenie-iz-ui" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Вызывается из CLI/TUI/IDE при решении пользователя</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.harness.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApprovalDecision</span>
+
 <span class="n">harness</span><span class="o">.</span><span class="n">approval</span><span class="o">.</span><span class="n">resolve_approval</span><span class="p">(</span>
     <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;req_abc123&quot;</span><span class="p">,</span>
     <span class="n">decision</span><span class="o">=</span><span class="n">ApprovalDecision</span><span class="p">(</span><span class="n">decision</span><span class="o">=</span><span class="s2">&quot;accept&quot;</span><span class="p">)</span>
@@ -358,7 +592,7 @@
 
 <span class="c1"># Последующие запросы autofix одобряются автоматически</span>
 <span class="n">decision</span> <span class="o">=</span> <span class="k">await</span> <span class="n">harness</span><span class="o">.</span><span class="n">approval</span><span class="o">.</span><span class="n">request_approval</span><span class="p">(</span>
-    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_autofix&quot;</span><span class="p">,</span>  <span class="c1"># Тот же тип → автоодобрение</span>
+    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_autofix&quot;</span><span class="p">,</span>  <span class="c1"># Тот же тип — автоодобрение</span>
     <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>
     <span class="n">thread_id</span><span class="o">=</span><span class="s2">&quot;session_abc&quot;</span>       <span class="c1"># Тот же поток</span>
 <span class="p">)</span>
@@ -366,22 +600,31 @@
 </code></pre></div>
 
 <h2  id="logika-prinyatiya-resheniy"><span id="logika_prinyatiya_resheniy"></span>Логика принятия решений<a class="heading-anchor" href="#logika-prinyatiya-resheniy" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">request_approval</span><span class="p">(</span><span class="n">action_type</span><span class="p">,</span><span class="w"> </span><span class="n">details</span><span class="p">,</span><span class="w"> </span><span class="n">thread_id</span><span class="p">)</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">├─</span><span class="w"> </span><span class="n">action_type</span><span class="w"> </span><span class="n">в</span><span class="w"> </span><span class="n">списке</span><span class="w"> </span><span class="n">auto_approve</span><span class="vm">?</span>
-<span class="w">    </span><span class="err">│</span><span class="w">   </span><span class="err">└─</span><span class="w"> </span><span class="n">ДА</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">немедленно</span><span class="w"> </span><span class="n">вернуть</span><span class="w"> </span><span class="n">accept</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">├─</span><span class="w"> </span><span class="n">action_type</span><span class="w"> </span><span class="n">в</span><span class="w"> </span><span class="n">session_approvals</span><span class="o">[</span><span class="n">thread_id</span><span class="o">]</span><span class="vm">?</span>
-<span class="w">    </span><span class="err">│</span><span class="w">   </span><span class="err">└─</span><span class="w"> </span><span class="n">ДА</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">вернуть</span><span class="w"> </span><span class="n">accept</span><span class="w"> </span><span class="p">(</span><span class="n">сессионное</span><span class="p">)</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">├─</span><span class="w"> </span><span class="n">default_policy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">read_only</span><span class="vm">?</span>
-<span class="w">    </span><span class="err">│</span><span class="w">   </span><span class="err">└─</span><span class="w"> </span><span class="n">ДА</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">вернуть</span><span class="w"> </span><span class="n">decline</span><span class="p">(</span><span class="ss">&quot;политика read_only&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">└─</span><span class="w"> </span><span class="n">Создать</span><span class="w"> </span><span class="n">ожидающий</span><span class="w"> </span><span class="n">запрос</span><span class="p">,</span><span class="w"> </span><span class="n">ждать</span><span class="w"> </span><span class="n">решения</span><span class="w"> </span><span class="n">пользователя</span>
-<span class="w">        </span><span class="err">├─</span><span class="w"> </span><span class="n">accept</span><span class="w">              </span><span class="err">→</span><span class="w"> </span><span class="n">выполнить</span><span class="w"> </span><span class="n">операцию</span>
-<span class="w">        </span><span class="err">├─</span><span class="w"> </span><span class="n">accept_for_session</span><span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="n">выполнить</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">запомнить</span><span class="w"> </span><span class="n">для</span><span class="w"> </span><span class="n">сессии</span>
-<span class="w">        </span><span class="err">├─</span><span class="w"> </span><span class="n">decline</span><span class="w">             </span><span class="err">→</span><span class="w"> </span><span class="n">пропустить</span><span class="w"> </span><span class="n">операцию</span>
-<span class="w">        </span><span class="err">└─</span><span class="w"> </span><span class="n">cancel</span><span class="w">              </span><span class="err">→</span><span class="w"> </span><span class="n">отменить</span><span class="w"> </span><span class="n">операцию</span>
+<div class="highlight"><pre><span></span><code><span class="nx">flowchart</span><span class="w"> </span><span class="nx">TD</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">[</span><span class="s">&quot;request_approval(action_type, details, thread_id)&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">CheckAuto</span><span class="p">{</span><span class="s">&quot;action_type в списке auto_approve?&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="nx">CheckSession</span><span class="p">{</span><span class="s">&quot;action_type в session_approvals для thread_id?&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="nx">CheckReadOnly</span><span class="p">{</span><span class="s">&quot;default_policy == read_only?&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="nx">Accept1</span><span class="p">[</span><span class="s">&quot;Вернуть accept&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">Accept2</span><span class="p">[</span><span class="s">&quot;Вернуть accept (сессионное)&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">Decline</span><span class="p">[</span><span class="s">&quot;Вернуть decline (политика read_only)&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">Wait</span><span class="p">[</span><span class="s">&quot;Создать ожидающий запрос, ждать решения&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">ResAccept</span><span class="p">[</span><span class="s">&quot;accept — выполнить операцию&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">ResSession</span><span class="p">[</span><span class="s">&quot;accept_for_session — выполнить + запомнить&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">ResDecline</span><span class="p">[</span><span class="s">&quot;decline — пропустить операцию&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">ResCancel</span><span class="p">[</span><span class="s">&quot;cancel — отменить операцию&quot;</span><span class="p">]</span>
+
+<span class="w">    </span><span class="nx">Start</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">CheckAuto</span>
+<span class="w">    </span><span class="nx">CheckAuto</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">Да</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">Accept1</span>
+<span class="w">    </span><span class="nx">CheckAuto</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">Нет</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">CheckSession</span>
+<span class="w">    </span><span class="nx">CheckSession</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">Да</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">Accept2</span>
+<span class="w">    </span><span class="nx">CheckSession</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">Нет</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">CheckReadOnly</span>
+<span class="w">    </span><span class="nx">CheckReadOnly</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">Да</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">Decline</span>
+<span class="w">    </span><span class="nx">CheckReadOnly</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">Нет</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">Wait</span>
+<span class="w">    </span><span class="nx">Wait</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">ResAccept</span>
+<span class="w">    </span><span class="nx">Wait</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">ResSession</span>
+<span class="w">    </span><span class="nx">Wait</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">ResDecline</span>
+<span class="w">    </span><span class="nx">Wait</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">ResCancel</span>
 </code></pre></div>
 
 <h2  id="klassifikatsiya-operatsiy-po-umolchaniyu"><span id="klassifikatsiya_operatsiy_po_umolchaniyu"></span>Классификация операций по умолчанию<a class="heading-anchor" href="#klassifikatsiya-operatsiy-po-umolchaniyu" title="Link to this section">&para;</a></h2>
@@ -412,12 +655,31 @@
 </tbody>
 </table></div>
 <h2  id="tochki-integratsii"><span id="tochki_integratsii"></span>Точки интеграции<a class="heading-anchor" href="#tochki-integratsii" title="Link to this section">&para;</a></h2>
-<p>Механизм подтверждения используется в:
-- <strong>Автоисправления</strong> (<code>src/analysis/autofix/</code>) — применение исправлений безопасности
-- <strong>Исправления по шаблонам</strong> (<code>src/analysis/patterns/</code>) — применение структурных перезаписей
-- <strong>Редактирование файлов</strong> (<code>src/editing/</code>) — модификации на основе AST
-- <strong>MCP-инструменты</strong> — операции записи через MCP-сервер
-- <strong>ACP-сессии</strong> — операции, инициированные из IDE</p>
+<p>Механизм подтверждения <code>ApprovalEngine</code> используется в следующих компонентах:</p>
+<h3 id="avtoispravleniya">Автоисправления<a class="heading-anchor" href="#avtoispravleniya" title="Link to this section">&para;</a></h3>
+<p>Файл: <code>src/analysis/autofix/engine.py</code></p>
+<p>Метод <code>AutofixEngine.apply_with_approval()</code> вызывает <code>harness.approval.request_approval()</code> с типом операции <code>apply_autofix</code> перед применением исправлений безопасности.</p>
+<div class="highlight"><pre><span></span><code><span class="n">decision</span> <span class="o">=</span> <span class="k">await</span> <span class="n">harness</span><span class="o">.</span><span class="n">approval</span><span class="o">.</span><span class="n">request_approval</span><span class="p">(</span>
+    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_autofix&quot;</span><span class="p">,</span>
+    <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="n">path</span><span class="p">,</span> <span class="s2">&quot;fix&quot;</span><span class="p">:</span> <span class="n">description</span><span class="p">,</span> <span class="s2">&quot;cwe&quot;</span><span class="p">:</span> <span class="n">cwe_id</span><span class="p">},</span>
+    <span class="n">thread_id</span><span class="o">=</span><span class="n">thread_id</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3  id="shablony-cli"><span id="shablony_cli"></span>Шаблоны CLI<a class="heading-anchor" href="#shablony-cli" title="Link to this section">&para;</a></h3>
+<p>Файл: <code>src/cli/patterns_command.py</code></p>
+<p>Функция <code>_run_fix()</code> вызывает <code>harness.approval.request_approval()</code> с типом операции <code>apply_pattern_fix</code> при исправлении структурных нарушений через командную строку.</p>
+<h3  id="shablony-rest"><span id="shablony_rest"></span>Шаблоны REST<a class="heading-anchor" href="#shablony-rest" title="Link to this section">&para;</a></h3>
+<p>Файл: <code>src/api/routers/patterns.py</code></p>
+<p>Маршрут применения исправлений по шаблонам использует механизм подтверждения в контексте REST API.</p>
+<h3  id="acp-otdelnaya-sistema"><span id="acp_otdelnaya_sistema"></span>ACP (отдельная система)<a class="heading-anchor" href="#acp-otdelnaya-sistema" title="Link to this section">&para;</a></h3>
+<p>Протокол ACP использует <strong>отдельную</strong> реализацию подтверждения — <code>ACPApprovalBridge</code> (<code>src/acp/server/approval_bridge.py</code>), а не <code>ApprovalEngine</code> из harness. Этот компонент имеет собственный API:</p>
+<ul>
+<li>Метод <code>request_file_change_approval()</code> для запроса подтверждения изменения файлов</li>
+<li>Таймаут 300 секунд</li>
+<li>Уведомления через <code>item/fileChange/requestApproval</code></li>
+</ul>
+<p>Подробности в <a href="../../api/ACP_INTEGRATION.html">Интеграция ACP</a>.</p>
 <h2  id="svyazannaya-dokumentatsiya"><span id="svyazannaya_dokumentatsiya"></span>Связанная документация<a class="heading-anchor" href="#svyazannaya-dokumentatsiya" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="./SECURITY.html">Безопасность</a> — автоисправления и анализ безопасности</li>
@@ -427,7 +689,7 @@
 </ul>
 <hr />
 <p><em>Модуль: <code>src/harness/</code></em>
-<em>Последнее обновление: февраль 2026</em></p>
+<em>Последнее обновление: март 2026</em></p>
       </article>
 
       <!-- Page Navigation -->
@@ -446,7 +708,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-06</span>
+        <span>Обновлено: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/APPROVAL_ENGINE.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -456,13 +718,25 @@
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#mehanizm-podtverzhdeniya-operatsiy" class="level-1">Механизм подтверждения операций</a></li>
+<li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#obzor" class="level-2">Обзор</a></li>
 <li><a href="#arhitektura" class="level-2">Архитектура</a></li>
+<li><a href="#struktura-modulya" class="level-2">Структура модуля</a></li>
+<li><a href="#codegraphharness" class="level-2">CodeGraphHarness</a></li>
+<li><a href="#get-harness" class="level-3">get_harness()</a></li>
+<li><a href="#reset-harness" class="level-3">reset_harness()</a></li>
 <li><a href="#spravochnik-api" class="level-2">Справочник API</a></li>
 <li><a href="#approvalrequest" class="level-3">ApprovalRequest</a></li>
 <li><a href="#approvaldecision" class="level-3">ApprovalDecision</a></li>
 <li><a href="#approvalengine" class="level-3">ApprovalEngine</a></li>
+<li><a href="#modeli-sessiy" class="level-2">Модели сессий</a></li>
+<li><a href="#item" class="level-3">Item</a></li>
+<li><a href="#turn" class="level-3">Turn</a></li>
+<li><a href="#thread" class="level-3">Thread</a></li>
+<li><a href="#harnesssessionmanager" class="level-2">HarnessSessionManager</a></li>
 <li><a href="#konfiguratsiya" class="level-2">Конфигурация</a></li>
+<li><a href="#harnessconfig" class="level-3">HarnessConfig</a></li>
+<li><a href="#yaml-konfiguratsiya" class="level-3">YAML-конфигурация</a></li>
 <li><a href="#ispolzovanie" class="level-2">Использование</a></li>
 <li><a href="#zapros-podtverzhdeniya" class="level-3">Запрос подтверждения</a></li>
 <li><a href="#razreshenie-iz-ui" class="level-3">Разрешение из UI</a></li>
@@ -470,6 +744,10 @@
 <li><a href="#logika-prinyatiya-resheniy" class="level-2">Логика принятия решений</a></li>
 <li><a href="#klassifikatsiya-operatsiy-po-umolchaniyu" class="level-2">Классификация операций по умолчанию</a></li>
 <li><a href="#tochki-integratsii" class="level-2">Точки интеграции</a></li>
+<li><a href="#avtoispravleniya" class="level-3">Автоисправления</a></li>
+<li><a href="#shablony-cli" class="level-3">Шаблоны CLI</a></li>
+<li><a href="#shablony-rest" class="level-3">Шаблоны REST</a></li>
+<li><a href="#acp-otdelnaya-sistema" class="level-3">ACP (отдельная система)</a></li>
 <li><a href="#svyazannaya-dokumentatsiya" class="level-2">Связанная документация</a></li>
       </ul>
     </aside>

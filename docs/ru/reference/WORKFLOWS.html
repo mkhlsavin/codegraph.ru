@@ -160,7 +160,7 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="AGENTS.html">Справочник агентов</a></li>
         <li><a href="ANALYSIS_MODULES.html">Справочник модулей анализа</a></li>
-        <li><a href="API.html">Справочник API</a></li>
+        <li><a href="API.html">Справочник Python SDK</a></li>
         <li><a href="APPROVAL_ENGINE.html">Механизм подтверждения операций</a></li>
         <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
         <li><a href="FAQ.html">Часто задаваемые вопросы (FAQ)</a></li>
@@ -203,68 +203,106 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="spravochnik-po-rabochim-protsessam"><span id="spravochnik_po_rabochim_protsessam"></span>Справочник по рабочим процессам<a class="heading-anchor" href="#spravochnik-po-rabochim-protsessam" title="Link to this section">&para;</a></h1>
-<p>Документация по системе рабочих процессов CodeGraph.</p>
+<p>Документация по системе рабочих процессов CodeGraph: оркестрация на базе LangGraph, 21 пронумерованный сценарий, композитные рабочие процессы, пайплайн exec и потоковая передача данных.</p>
 <h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="#workflow-architecture">Архитектура рабочего процесса</a></li>
+<li><a href="#arhitektura-rabochego-protsessa">Архитектура рабочего процесса</a></li>
 <li><a href="#multiscenariocopilot">MultiScenarioCopilot</a></li>
-<li><a href="#workflow-state">Состояние рабочего процесса</a></li>
+<li><a href="#sostoyanie-rabochego-protsessa">Состояние рабочего процесса</a></li>
 <li><a href="#multiscenariostate">MultiScenarioState</a></li>
-<li><a href="#specialized-states">Специализированные состояния</a></li>
-<li><a href="#workflow-nodes">Узлы рабочего процесса</a></li>
-<li><a href="#intent-classification">Классификация намерений</a></li>
-<li><a href="#scenario-routing">Маршрутизация сценариев</a></li>
-<li><a href="#scenario-execution">Выполнение сценария</a></li>
-<li><a href="#scenario-workflows">Сценарные рабочие процессы</a></li>
-<li><a href="#structure">Структура</a></li>
-<li><a href="#available-scenarios">Доступные сценарии</a></li>
-<li><a href="#handler-base-class">Базовый класс обработчика</a></li>
-<li><a href="#composite-workflows">Композитные рабочие процессы</a></li>
-<li><a href="#error-handling">Обработка ошибок</a></li>
-<li><a href="#retry-logic">Логика повторных попыток</a></li>
-<li><a href="#fallback-strategies">Резервные стратегии</a></li>
-<li><a href="#custom-workflows">Пользовательские рабочие процессы</a></li>
-<li><a href="#creating-a-custom-workflow">Создание пользовательского рабочего процесса</a></li>
-<li><a href="#conditional-routing">Условная маршрутизация</a></li>
-<li><a href="#streaming">Потоковая передача данных</a></li>
-<li><a href="#next-steps">Дальнейшие шаги</a></li>
+<li><a href="#spetsializirovannye-sostoyaniya">Специализированные состояния</a></li>
+<li><a href="#uzly-rabochego-protsessa">Узлы рабочего процесса</a></li>
+<li><a href="#klassifikatsiya-namereniy">Классификация намерений</a></li>
+<li><a href="#predvaritelnyy-poisk">Предварительный поиск</a></li>
+<li><a href="#marshrutizatsiya-stsenariev">Маршрутизация сценариев</a></li>
+<li><a href="#vypolnenie-stsenariya">Выполнение сценария</a></li>
+<li><a href="#stsenarnye-rabochie-protsessy">Сценарные рабочие процессы</a></li>
+<li><a href="#struktura-katalogov">Структура каталогов</a></li>
+<li><a href="#tablitsa-stsenariev">Таблица сценариев</a></li>
+<li><a href="#basehandler-i-handlerresult">BaseHandler и HandlerResult</a></li>
+<li><a href="#kompozitnye-rabochie-protsessy">Композитные рабочие процессы</a></li>
+<li><a href="#audit">Аудит</a></li>
+<li><a href="#sinhronizatsiya-dokumentatsii-po-interfeysam">Синхронизация документации по интерфейсам</a></li>
+<li><a href="#validatsiya-polzovatelskih-istoriy">Валидация пользовательских историй</a></li>
+<li><a href="#payplayn-exec">Пайплайн Exec</a></li>
+<li><a href="#obrabotka-oshibok">Обработка ошибок</a></li>
+<li><a href="#logika-povtornyh-popytok">Логика повторных попыток</a></li>
+<li><a href="#rezervnye-strategii">Резервные стратегии</a></li>
+<li><a href="#polzovatelskie-rabochie-protsessy">Пользовательские рабочие процессы</a></li>
+<li><a href="#sozdanie-polzovatelskogo-rabochego-protsessa">Создание пользовательского рабочего процесса</a></li>
+<li><a href="#uslovnaya-marshrutizatsiya">Условная маршрутизация</a></li>
+<li><a href="#potokovaya-peredacha-dannyh">Потоковая передача данных</a></li>
+<li><a href="#svyazannaya-dokumentatsiya">Связанная документация</a></li>
+<li><a href="#raspolozhenie-klyuchevyh-faylov">Расположение ключевых файлов</a></li>
 </ul>
-<h2  id="workflow-architecture"><span id="arhitektura-rabochego-protsessa"></span><span id="arhitektura_rabochego_protsessa"></span><span id="workflow_architecture"></span>Архитектура рабочего процесса<a class="heading-anchor" href="#workflow-architecture" title="Link to this section">&para;</a></h2>
-<p>CodeGraph использует LangGraph для оркестрации рабочих процессов. Все запросы проходят через единую точку входа — <code>MultiScenarioCopilot</code> — который классифицирует намерение и маршрутизирует запрос к соответствующему сценарию.</p>
-<div class="highlight"><pre><span></span><code>                    ┌──────────────────┐
-                    │   Точка входа    │
-                    │  (Запрос польз.) │
-                    └────────┬─────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  Классификация   │
-                    │  (Ключ. + LLM)  │
-                    └────────┬─────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  Маршрутизатор   │
-                    │ (21 сценарий)   │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-     ┌────────▼───┐  ┌──────▼─────┐  ┌────▼────────┐
-     │Безопасность│  │  Онбординг │  │ Произв./... │
-     │  Workflow  │  │  Workflow  │  │  Workflows  │
-     └────────┬───┘  └──────┬─────┘  └────┬────────┘
-              │              │              │
-              └──────────────┼──────────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │    Результат     │
-                    │  (Ответ +        │
-                    │   Доказательства)│
-                    └──────────────────┘
+<h2  id="arhitektura-rabochego-protsessa"><span id="arhitektura_rabochego_protsessa"></span>Архитектура рабочего процесса<a class="heading-anchor" href="#arhitektura-rabochego-protsessa" title="Link to this section">&para;</a></h2>
+<p>CodeGraph использует LangGraph для оркестрации рабочих процессов. Все запросы проходят через единую точку входа &ndash; <code>MultiScenarioCopilot</code> &ndash; который классифицирует намерение, выполняет предварительный поиск и маршрутизирует запрос к соответствующему сценарию.</p>
+<p>Цепочка узлов графа:</p>
+<div class="highlight"><pre><span></span><code>classify_intent -&gt; pre_retrieval -&gt; route_by_intent -&gt; scenarios -&gt; END
+</code></pre></div>
+
+<p>Общая схема:</p>
+<div class="highlight"><pre><span></span><code><span class="n">graph</span><span class="w"> </span><span class="n">TD</span>
+<span class="w">    </span><span class="n">A</span><span class="o">[</span><span class="n">Запрос пользователя</span><span class="o">]</span><span class="w"> </span><span class="c1">--&gt; B[classify_intent]</span>
+<span class="w">    </span><span class="n">B</span><span class="w"> </span><span class="c1">--&gt; C[pre_retrieval]</span>
+<span class="w">    </span><span class="n">C</span><span class="w"> </span><span class="c1">--&gt; D[route_by_intent]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S01[onboarding_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S02[security_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S03[documentation_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S04[feature_dev_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S05[refactoring_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S06[performance_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S07[test_coverage_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S08[compliance_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S09[code_review_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S10[cross_repo_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S11[architecture_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S12[tech_debt_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S13[mass_refactoring_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S14[security_incident_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S15[debugging_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S16[entry_points_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S17[file_editing_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S18[optimization_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S19[standards_check_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S20[dependencies_workflow]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="c1">--&gt; S21[interface_docs_sync_workflow]</span>
+<span class="w">    </span><span class="n">S01</span><span class="w"> </span><span class="c1">--&gt; E[END]</span>
+<span class="w">    </span><span class="n">S02</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S03</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S04</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S05</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S06</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S07</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S08</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S09</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S10</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S11</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S12</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S13</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S14</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S15</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S16</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S17</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S18</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S19</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S20</span><span class="w"> </span><span class="c1">--&gt; E</span>
+<span class="w">    </span><span class="n">S21</span><span class="w"> </span><span class="c1">--&gt; E</span>
 </code></pre></div>
 
 <h2 id="multiscenariocopilot">MultiScenarioCopilot<a class="heading-anchor" href="#multiscenariocopilot" title="Link to this section">&para;</a></h2>
 <p>Главная точка входа для выполнения всех рабочих процессов.</p>
 <p><strong>Расположение:</strong> <code>src/workflow/orchestration/copilot.py</code> (реэкспорт из <code>src/workflow/</code>)</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MultiScenarioCopilot</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">build_multi_scenario_graph</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<p>Метод <code>run()</code> синхронный. Потоковая передача симулируется через thread pool executor на уровне API.</p>
+<p>Пример использования:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiScenarioCopilot</span>
 
 <span class="n">copilot</span> <span class="o">=</span> <span class="n">MultiScenarioCopilot</span><span class="p">()</span>
@@ -280,34 +318,32 @@
 
 <span class="c1"># Структура результата</span>
 <span class="p">{</span>
-    <span class="s1">&#39;query&#39;</span><span class="p">:</span> <span class="s1">&#39;Найти SQL-инъекции&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;intent&#39;</span><span class="p">:</span> <span class="s1">&#39;security_audit&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;scenario_id&#39;</span><span class="p">:</span> <span class="s1">&#39;scenario_2&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;confidence&#39;</span><span class="p">:</span> <span class="mf">0.92</span><span class="p">,</span>
-    <span class="s1">&#39;answer&#39;</span><span class="p">:</span> <span class="s1">&#39;Обнаружено 3 потенциальных SQL-инъекции...&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;evidence&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Функция exec_simple_query в строке 142...&#39;</span><span class="p">],</span>
-    <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>
+    <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;Найти SQL-инъекции&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;intent&quot;</span><span class="p">:</span> <span class="s2">&quot;security_audit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;scenario_id&quot;</span><span class="p">:</span> <span class="s2">&quot;scenario_2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.92</span><span class="p">,</span>
+    <span class="s2">&quot;answer&quot;</span><span class="p">:</span> <span class="s2">&quot;Обнаружено 3 потенциальных SQL-инъекции...&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;evidence&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Функция exec_simple_query в строке 142...&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Копилот внутренне строит граф LangGraph через <code>build_multi_scenario_graph()</code>, который связывает классификацию намерений, маршрутизацию сценариев и выполнение обработчиков.</p>
-<h2  id="workflow-state"><span id="sostoyanie-rabochego-protsessa"></span><span id="sostoyanie_rabochego_protsessa"></span><span id="workflow_state"></span>Состояние рабочего процесса<a class="heading-anchor" href="#workflow-state" title="Link to this section">&para;</a></h2>
+<p>Внутренне копилот строит граф LangGraph через <code>build_multi_scenario_graph()</code>, который связывает классификацию намерений, предварительный поиск, маршрутизацию и выполнение обработчиков.</p>
+<h2  id="sostoyanie-rabochego-protsessa"><span id="sostoyanie_rabochego_protsessa"></span>Состояние рабочего процесса<a class="heading-anchor" href="#sostoyanie-rabochego-protsessa" title="Link to this section">&para;</a></h2>
 <h3 id="multiscenariostate">MultiScenarioState<a class="heading-anchor" href="#multiscenariostate" title="Link to this section">&para;</a></h3>
-<p>Все рабочие процессы используют <code>MultiScenarioState</code> — <code>TypedDict</code>, который проходит через узлы LangGraph.</p>
+<p>Все рабочие процессы используют <code>MultiScenarioState</code> &ndash; <code>TypedDict</code> из 21 поля, который проходит через узлы LangGraph.</p>
 <p><strong>Расположение:</strong> <code>src/workflow/state.py</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypedDict</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">MultiScenarioState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MultiScenarioState</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
     <span class="c1"># Входные данные</span>
     <span class="n">query</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
     <span class="n">language</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>               <span class="c1"># &quot;en&quot; или &quot;ru&quot;</span>
 
     <span class="c1"># Классификация намерений</span>
-    <span class="n">intent</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                 <span class="c1"># напр., &quot;security_audit&quot;</span>
-    <span class="n">scenario_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>            <span class="c1"># напр., &quot;scenario_2&quot;</span>
-    <span class="n">confidence</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>           <span class="c1"># 0.0–1.0</span>
-    <span class="n">classification_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># &quot;keyword&quot; или &quot;llm&quot;</span>
+    <span class="n">intent</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">scenario_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">classification_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 
     <span class="c1"># Данные CPG</span>
     <span class="n">cpg_results</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]]</span>
@@ -325,22 +361,28 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">retry_count</span><span class="p">:</span> <span class="nb">int</span>
 
-    <span class="c1"># Конфигурация рабочего процесса</span>
+    <span class="c1"># Конфигурация</span>
     <span class="n">enrichment_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
     <span class="n">vector_store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+
+    <span class="c1"># Мультитенантная изоляция</span>
+    <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">collection_prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+    <span class="c1"># Результаты предварительного поиска (Phase E)</span>
+    <span class="n">pre_retrieval_results</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>
 </code></pre></div>
 
-<p>Создание начального состояния с помощью вспомогательной функции:</p>
+<p>Создание начального состояния &ndash; функция <code>create_initial_state()</code> принимает только <code>query</code> и <code>context</code>, без параметра <code>language</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.state</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_initial_state</span>
 
 <span class="n">state</span> <span class="o">=</span> <span class="n">create_initial_state</span><span class="p">(</span>
     <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Найти утечки памяти&quot;</span><span class="p">,</span>
-    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
     <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;subsystem&quot;</span><span class="p">:</span> <span class="s2">&quot;executor&quot;</span><span class="p">}</span>
 <span class="p">)</span>
 </code></pre></div>
 
-<h3  id="specialized-states"><span id="specialized_states"></span><span id="spetsializirovannye-sostoyaniya"></span><span id="spetsializirovannye_sostoyaniya"></span>Специализированные состояния<a class="heading-anchor" href="#specialized-states" title="Link to this section">&para;</a></h3>
+<h3  id="spetsializirovannye-sostoyaniya"><span id="spetsializirovannye_sostoyaniya"></span>Специализированные состояния<a class="heading-anchor" href="#spetsializirovannye-sostoyaniya" title="Link to this section">&para;</a></h3>
 <p>Некоторые сценарии расширяют базовое состояние дополнительными полями:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -356,84 +398,119 @@
 </tr>
 <tr>
 <td><code>PerformanceWorkflowState</code></td>
-<td><code>hotspots</code>, <code>complexity_metrics</code>, <code>bottlenecks</code></td>
+<td><code>hotspots</code>, <code>complexity_metrics</code>, <code>bottlenecks</code>, <code>optimization_suggestions</code></td>
 </tr>
 <tr>
 <td><code>ArchitectureWorkflowState</code></td>
-<td><code>dependency_graph</code>, <code>layer_violations</code>, <code>module_coupling</code></td>
+<td><code>dependencies</code>, <code>layer_violations</code>, <code>circular_deps</code>, <code>subsystem_info</code></td>
 </tr>
 </tbody>
 </table></div>
-<h2  id="workflow-nodes"><span id="uzly-rabochego-protsessa"></span><span id="uzly_rabochego_protsessa"></span><span id="workflow_nodes"></span>Узлы рабочего процесса<a class="heading-anchor" href="#workflow-nodes" title="Link to this section">&para;</a></h2>
-<h3  id="intent-classification"><span id="intent_classification"></span><span id="klassifikatsiya-namereniy"></span><span id="klassifikatsiya_namereniy"></span>Классификация намерений<a class="heading-anchor" href="#intent-classification" title="Link to this section">&para;</a></h3>
-<p>Первый узел классифицирует запрос пользователя в сценарий, используя двуязычное (EN/RU) сопоставление ключевых слов и необязательный резервный вызов LLM.</p>
-<p><strong>Расположение:</strong> <code>src/workflow/scenarios/_intent/</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration</span><span class="w"> </span><span class="kn">import</span> <span class="n">classify_intent_node</span>
+<h2  id="uzly-rabochego-protsessa"><span id="uzly_rabochego_protsessa"></span>Узлы рабочего процесса<a class="heading-anchor" href="#uzly-rabochego-protsessa" title="Link to this section">&para;</a></h2>
+<h3  id="klassifikatsiya-namereniy"><span id="klassifikatsiya_namereniy"></span>Классификация намерений<a class="heading-anchor" href="#klassifikatsiya-namereniy" title="Link to this section">&para;</a></h3>
+<p>Первый узел графа классифицирует запрос пользователя в один из 21 сценария, используя двуязычное (EN/RU) сопоставление ключевых слов и необязательный резервный вызов LLM.</p>
+<p><strong>Расположение:</strong> <code>src/workflow/orchestration/intent_classifier.py</code></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration.intent_classifier</span><span class="w"> </span><span class="kn">import</span> <span class="n">classify_intent_node</span>
 
 <span class="c1"># Вызывается внутренне графом</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">classify_intent_node</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
-<span class="c1"># Заполняет: state[&#39;intent&#39;], state[&#39;scenario_id&#39;], state[&#39;confidence&#39;]</span>
+<span class="c1"># Заполняет: state[&quot;intent&quot;], state[&quot;scenario_id&quot;], state[&quot;confidence&quot;],</span>
+<span class="c1">#             state[&quot;classification_method&quot;]</span>
 </code></pre></div>
 
-<h3  id="scenario-routing"><span id="marshrutizatsiya-stsenariev"></span><span id="marshrutizatsiya_stsenariev"></span><span id="scenario_routing"></span>Маршрутизация сценариев<a class="heading-anchor" href="#scenario-routing" title="Link to this section">&para;</a></h3>
-<p>После классификации маршрутизатор направляет запрос к соответствующему сценарию.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration</span><span class="w"> </span><span class="kn">import</span> <span class="n">route_by_intent</span>
+<p>Результат <code>classification_method</code> &ndash; <code>"keyword"</code> или <code>"llm"</code>.</p>
+<h3  id="predvaritelnyy-poisk"><span id="predvaritelnyy_poisk"></span>Предварительный поиск<a class="heading-anchor" href="#predvaritelnyy-poisk" title="Link to this section">&para;</a></h3>
+<p>Второй узел выполняет предварительный гибридный поиск (Phase E) между классификацией намерений и маршрутизацией. Результаты сохраняются в <code>state["pre_retrieval_results"]</code> и доступны обработчикам сценариев.</p>
+<p><strong>Расположение:</strong> <code>src/workflow/orchestration/pre_retrieval.py</code></p>
+<p>Включён по умолчанию. Конфигурация: <code>config.yaml</code> -&gt; <code>workflows.pre_retrieval</code>.</p>
+<p>Маппинг <code>intent</code> -&gt; <code>query_type</code> для адаптивного взвешивания <code>HybridRetriever</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Тип запроса</th>
+<th>Намерения</th>
+<th>Веса (семантика/структура)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>semantic</code></td>
+<td><code>onboarding</code>, <code>documentation</code>, <code>feature_development</code>, <code>debugging</code>, <code>test_coverage</code></td>
+<td>75/25</td>
+</tr>
+<tr>
+<td><code>structural</code></td>
+<td><code>architecture_violations</code>, <code>cross_repo_impact</code>, <code>dependencies</code>, <code>mass_refactoring</code>, <code>tech_debt</code>, <code>refactoring</code>, <code>performance</code></td>
+<td>25/75</td>
+</tr>
+<tr>
+<td><code>security</code></td>
+<td><code>security_audit</code>, <code>security_incident</code>, <code>entry_points</code>, <code>compliance</code></td>
+<td>специализированные</td>
+</tr>
+<tr>
+<td><code>default</code></td>
+<td><code>code_review</code>, <code>file_editing</code>, <code>code_optimization</code>, <code>standards_check</code></td>
+<td>60/40</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="marshrutizatsiya-stsenariev"><span id="marshrutizatsiya_stsenariev"></span>Маршрутизация сценариев<a class="heading-anchor" href="#marshrutizatsiya-stsenariev" title="Link to this section">&para;</a></h3>
+<p>Третий узел направляет запрос к конкретному сценарному рабочему процессу на основе классифицированного намерения.</p>
+<p><strong>Расположение:</strong> <code>src/workflow/orchestration/router.py</code></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.orchestration.router</span><span class="w"> </span><span class="kn">import</span> <span class="n">route_by_intent</span>
 
 <span class="c1"># Возвращает имя узла сценария</span>
 <span class="n">next_node</span> <span class="o">=</span> <span class="n">route_by_intent</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
-<span class="c1"># напр., &quot;security_workflow&quot;, &quot;onboarding_workflow&quot;</span>
+<span class="c1"># Например: &quot;security_workflow&quot;, &quot;onboarding_workflow&quot;</span>
 </code></pre></div>
 
-<h3  id="scenario-execution"><span id="scenario_execution"></span><span id="vypolnenie-stsenariya"></span><span id="vypolnenie_stsenariya"></span>Выполнение сценария<a class="heading-anchor" href="#scenario-execution" title="Link to this section">&para;</a></h3>
-<p>Каждый сценарный рабочий процесс — это подграф LangGraph, который:
-1. Выполняет запросы к базе CPG через <code>CPGQueryService</code>
-2. Обрабатывает результаты через обработчики, специфичные для сценария
-3. Форматирует ответ с помощью локализованных форматтеров</p>
-<h2  id="scenario-workflows"><span id="scenario_workflows"></span><span id="stsenarnye-rabochie-protsessy"></span><span id="stsenarnye_rabochie_protsessy"></span>Сценарные рабочие процессы<a class="heading-anchor" href="#scenario-workflows" title="Link to this section">&para;</a></h2>
-<h3  id="structure"><span id="struktura"></span>Структура<a class="heading-anchor" href="#structure" title="Link to this section">&para;</a></h3>
-<p>Каждый сценарий следует шаблону <code>src/workflow/scenarios/{name}_handlers/</code>:</p>
+<h3  id="vypolnenie-stsenariya"><span id="vypolnenie_stsenariya"></span>Выполнение сценария<a class="heading-anchor" href="#vypolnenie-stsenariya" title="Link to this section">&para;</a></h3>
+<p>Каждый сценарный рабочий процесс &ndash; это подграф LangGraph, который:</p>
+<ol>
+<li>Выполняет запросы к базе CPG через <code>CPGQueryService</code></li>
+<li>Обрабатывает результаты через обработчики, специфичные для сценария</li>
+<li>Форматирует ответ с помощью локализованных форматтеров</li>
+</ol>
+<h2  id="stsenarnye-rabochie-protsessy"><span id="stsenarnye_rabochie_protsessy"></span>Сценарные рабочие процессы<a class="heading-anchor" href="#stsenarnye-rabochie-protsessy" title="Link to this section">&para;</a></h2>
+<h3  id="struktura-katalogov"><span id="struktura_katalogov"></span>Структура каталогов<a class="heading-anchor" href="#struktura-katalogov" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>src/workflow/scenarios/
-├── _base/                    # Базовый класс обработчика
-│   └── handler.py            # BaseHandler
-├── _intent/                  # Классификация намерений
-├── security/                 # Сценарий безопасности
-│   ├── handlers/
-│   ├── formatters/
-│   └── __init__.py
-├── onboarding/               # Сценарий онбординга
-│   ├── handlers/
-│   └── __init__.py
-├── architecture_handlers/    # Сценарий архитектуры
-│   ├── handlers/
-│   ├── formatters/
-│   └── __init__.py
-├── performance_handlers/     # Сценарий производительности
-├── refactoring_handlers/     # Сценарий рефакторинга
-├── code_review_handlers/     # Сценарий проверка кода
-├── compliance_handlers/      # Сценарий соответствия требованиям
-├── documentation_handlers/   # Сценарий документации
-├── tech_debt_handlers/       # Сценарий техдолга
-├── debugging_handlers/       # Сценарий отладки
-├── concurrency_handlers/     # Сценарий параллелизма
-├── coverage_handlers/        # Сценарий покрытия тестами
-├── cross_repo_handlers/      # Сценарий кросс-репо
-├── feature_dev_handlers/     # Сценарий разработки функций
-├── audit_composite.py        # Аудит (запускает 9 подсценариев)
-├── code_optimization.py      # Оптимизация кода
-├── file_editing.py           # Редактирование файлов
-├── pattern_search_handlers/  # Сценарий поиска структурных шаблонов
-│   ├── handlers/
-│   └── __init__.py
-├── standards_check.py        # Проверка стандартов
-└── dependencies_analysis.py  # Анализ зависимостей
++-- _base/                      # Базовый класс обработчика
+|   +-- handler.py              # BaseHandler, HandlerResult
++-- _intent/                    # Классификация намерений
++-- onboarding/                 # S01 Онбординг
++-- security/                   # S02 Безопасность
++-- documentation_handlers/     # S03 Документация
++-- feature_dev_handlers/       # S04 Разработка функций
++-- refactoring_handlers/       # S05 Рефакторинг
++-- performance_handlers/       # S06 Производительность
++-- coverage_handlers/          # S07 Покрытие тестами
++-- compliance_handlers/        # S08 Соответствие
++-- code_review_handlers/       # S09 Проверка кода
++-- cross_repo_handlers/        # S10 Кросс-репозиторный анализ
++-- architecture_handlers/      # S11 Архитектура
++-- tech_debt_handlers/         # S12 Техдолг
++-- mass_refactoring.py         # S13 Рефакторинг корпоративного масштаба
++-- security_incident.py        # S14 Реагирование на инциденты
++-- debugging_handlers/         # S15 Отладка
++-- entry_points.py             # S16 Точки входа
++-- file_editing.py             # S17 Редактирование файлов
++-- code_optimization.py        # S18 Оптимизация кода
++-- standards_check.py          # S19 Проверка стандартов
++-- dependencies_analysis.py    # S20 Анализ зависимостей
++-- interface_docs_sync_composite.py  # S21 Синхронизация документации
++-- audit_composite.py          # Аудит (композитный)
++-- story_validation_composite.py  # Валидация историй (композитный)
 </code></pre></div>
 
-<h3  id="available-scenarios"><span id="available_scenarios"></span><span id="dostupnye-stsenarii"></span><span id="dostupnye_stsenarii"></span>Доступные сценарии<a class="heading-anchor" href="#available-scenarios" title="Link to this section">&para;</a></h3>
+<h3  id="tablitsa-stsenariev"><span id="tablitsa_stsenariev"></span>Таблица сценариев<a class="heading-anchor" href="#tablitsa-stsenariev" title="Link to this section">&para;</a></h3>
+<p>21 пронумерованный сценарий (нумерация по <code>graph_builder.py</code> и <code>intent_classifier.py</code>):</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>ID</th>
 <th>Название</th>
+<th>Ключ намерения</th>
 <th>Точка входа</th>
 <th>Назначение</th>
 </tr>
@@ -442,223 +519,422 @@
 <tr>
 <td>01</td>
 <td>onboarding</td>
+<td><code>onboarding</code></td>
 <td><code>onboarding_workflow</code></td>
 <td>Онбординг и навигация по кодовой базе</td>
 </tr>
 <tr>
 <td>02</td>
 <td>security</td>
+<td><code>security_audit</code></td>
 <td><code>security_workflow</code></td>
 <td>Обнаружение уязвимостей</td>
 </tr>
 <tr>
 <td>03</td>
-<td>performance</td>
-<td><code>performance_workflow</code></td>
-<td>Производительность и сложность</td>
+<td>documentation</td>
+<td><code>documentation</code></td>
+<td><code>documentation_workflow</code></td>
+<td>Генерация документации</td>
 </tr>
 <tr>
 <td>04</td>
-<td>architecture</td>
-<td><code>architecture_workflow</code></td>
-<td>Архитектурный анализ</td>
+<td>feature_dev</td>
+<td><code>feature_development</code></td>
+<td><code>feature_dev_workflow</code></td>
+<td>Разработка функций</td>
 </tr>
 <tr>
 <td>05</td>
 <td>refactoring</td>
+<td><code>refactoring</code></td>
 <td><code>refactoring_workflow</code></td>
 <td>Помощь в рефакторинге</td>
 </tr>
 <tr>
 <td>06</td>
-<td>documentation</td>
-<td><code>documentation_workflow</code></td>
-<td>Генерация документации</td>
+<td>performance</td>
+<td><code>performance</code></td>
+<td><code>performance_workflow</code></td>
+<td>Производительность и сложность</td>
 </tr>
 <tr>
 <td>07</td>
+<td>test_coverage</td>
+<td><code>test_coverage</code></td>
+<td><code>test_coverage_workflow</code></td>
+<td>Анализ покрытия тестами</td>
+</tr>
+<tr>
+<td>08</td>
 <td>compliance</td>
+<td><code>compliance</code></td>
 <td><code>compliance_workflow</code></td>
 <td>Проверка соответствия</td>
 </tr>
 <tr>
-<td>08</td>
-<td>code_review</td>
-<td><code>code_review_workflow</code></td>
-<td>Автоматизация проверка кода</td>
-</tr>
-<tr>
 <td>09</td>
-<td>tech_debt</td>
-<td><code>tech_debt_workflow</code></td>
-<td>Оценка техдолга</td>
+<td>code_review</td>
+<td><code>code_review</code></td>
+<td><code>code_review_workflow</code></td>
+<td>Автоматизация проверки кода</td>
 </tr>
 <tr>
 <td>10</td>
 <td>cross_repo</td>
+<td><code>cross_repo_impact</code></td>
 <td><code>cross_repo_workflow</code></td>
 <td>Кросс-репозиторный анализ</td>
 </tr>
 <tr>
 <td>11</td>
-<td>debugging</td>
-<td><code>debugging_workflow</code></td>
-<td>Поддержка отладки</td>
+<td>architecture</td>
+<td><code>architecture_violations</code></td>
+<td><code>architecture_workflow</code></td>
+<td>Архитектурный анализ</td>
 </tr>
 <tr>
 <td>12</td>
-<td>concurrency</td>
-<td><code>concurrency_workflow</code></td>
-<td>Анализ параллелизма</td>
+<td>tech_debt</td>
+<td><code>tech_debt</code></td>
+<td><code>tech_debt_workflow</code></td>
+<td>Оценка техдолга</td>
 </tr>
 <tr>
 <td>13</td>
-<td>coverage</td>
-<td><code>test_coverage_workflow</code></td>
-<td>Анализ покрытия тестами</td>
+<td>mass_refactoring</td>
+<td><code>mass_refactoring</code></td>
+<td><code>mass_refactoring_workflow</code></td>
+<td>Рефакторинг корпоративного масштаба</td>
 </tr>
 <tr>
 <td>14</td>
-<td>feature_dev</td>
-<td><code>feature_dev_workflow</code></td>
-<td>Разработка функций</td>
-</tr>
-<tr>
-<td>15</td>
 <td>security_incident</td>
+<td><code>security_incident</code></td>
 <td><code>security_incident_workflow</code></td>
 <td>Реагирование на инциденты</td>
 </tr>
 <tr>
+<td>15</td>
+<td>debugging</td>
+<td><code>debugging</code></td>
+<td><code>debugging_workflow</code></td>
+<td>Поддержка отладки</td>
+</tr>
+<tr>
 <td>16</td>
-<td>large_scale_refactoring</td>
-<td><code>large_scale_refactoring_workflow</code></td>
-<td>Рефакторинг корпоративного масштаба</td>
+<td>entry_points</td>
+<td><code>entry_points</code></td>
+<td><code>entry_points_workflow</code></td>
+<td>Анализ точек входа</td>
 </tr>
 <tr>
 <td>17</td>
 <td>file_editing</td>
+<td><code>file_editing</code></td>
 <td><code>file_editing_workflow</code></td>
 <td>Редактирование файлов на основе AST</td>
 </tr>
 <tr>
 <td>18</td>
 <td>code_optimization</td>
+<td><code>code_optimization</code></td>
 <td><code>optimization_workflow</code></td>
 <td>Оптимизация кода</td>
 </tr>
 <tr>
 <td>19</td>
 <td>standards_check</td>
+<td><code>standards_check</code></td>
 <td><code>standards_check_workflow</code></td>
 <td>Оптимизация по стандартам</td>
 </tr>
 <tr>
 <td>20</td>
 <td>dependencies</td>
+<td><code>dependencies</code></td>
 <td><code>dependencies_workflow</code></td>
 <td>Анализ зависимостей</td>
 </tr>
 <tr>
 <td>21</td>
-<td>pattern_search</td>
-<td><code>pattern_search_workflow</code></td>
-<td>Поиск структурных шаблонов с CPG-ограничениями</td>
-</tr>
-<tr>
-<td>—</td>
-<td>audit</td>
-<td><code>AuditRunner</code></td>
-<td>Композитный: аудит качества по 12 измерениям</td>
-</tr>
-<tr>
-<td>—</td>
 <td>interface_docs_sync</td>
-<td><code>InterfaceDocsSyncRunner</code></td>
-<td>Композитный: синхронизация документации по интерфейсам (7 интерфейсов)</td>
+<td><code>interface_docs_sync</code></td>
+<td><code>interface_docs_sync_workflow</code></td>
+<td>Синхронизация документации по интерфейсам</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="handler-base-class"><span id="bazovyy-klass-obrabotchika"></span><span id="bazovyy_klass_obrabotchika"></span><span id="handler_base_class"></span>Базовый класс обработчика<a class="heading-anchor" href="#handler-base-class" title="Link to this section">&para;</a></h3>
-<p>Все обработчики сценариев наследуют от <code>BaseHandler</code>:</p>
+<h3  id="basehandler-i-handlerresult"><span id="basehandler_i_handlerresult"></span>BaseHandler и HandlerResult<a class="heading-anchor" href="#basehandler-i-handlerresult" title="Link to this section">&para;</a></h3>
+<p>Все обработчики сценариев наследуют от <code>BaseHandler</code>.</p>
 <p><strong>Расположение:</strong> <code>src/workflow/scenarios/_base/handler.py</code></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios._base.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseHandler</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios._base.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">HandlerResult</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">MyHandler</span><span class="p">(</span><span class="n">BaseHandler</span><span class="p">):</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HandlerResult</span><span class="p">:</span>
-        <span class="c1"># self.cpg   — экземпляр CPGQueryService</span>
-        <span class="c1"># self.state  — словарь MultiScenarioState</span>
-        <span class="c1"># self.cfg    — унифицированная конфигурация</span>
-        <span class="c1"># self.query  — исходный запрос</span>
-        <span class="c1"># self.language — &quot;en&quot; или &quot;ru&quot;</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpg</span><span class="o">.</span><span class="n">get_methods_by_subsystem</span><span class="p">(</span><span class="s2">&quot;executor&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">HandlerResult</span><span class="p">(</span>
-            <span class="n">answer</span><span class="o">=</span><span class="s2">&quot;Найдены методы...&quot;</span><span class="p">,</span>
-            <span class="n">evidence</span><span class="o">=</span><span class="n">results</span><span class="p">,</span>
-            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;handler&quot;</span><span class="p">:</span> <span class="s2">&quot;my_handler&quot;</span><span class="p">}</span>
-        <span class="p">)</span>
+<h4 id="basehandler">BaseHandler<a class="heading-anchor" href="#basehandler" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BaseHandler</span><span class="p">(</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cpg</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">MultiScenarioState</span><span class="p">):</span>
+        <span class="o">...</span>
 </code></pre></div>
 
-<blockquote class="callout">
-<p><strong>Предупреждение:</strong> НЕ используйте <code>AnalysisHandler</code> из <code>src/workflow/handlers/analysis.py</code> в качестве базового класса — его сигнатура конструктора несовместима с реестром сценариев.</p>
-</blockquote>
-<h2  id="composite-workflows"><span id="composite_workflows"></span><span id="kompozitnye-rabochie-protsessy"></span><span id="kompozitnye_rabochie_protsessy"></span>Композитные рабочие процессы<a class="heading-anchor" href="#composite-workflows" title="Link to this section">&para;</a></h2>
-<p>Четыре композитных оркестратора запускают подсценарии параллельно или последовательно:</p>
+<p>Атрибуты, доступные после инициализации:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Композитный</th>
-<th>ID сценариев</th>
-<th>Режим</th>
-<th>Время ожидания</th>
+<th>Атрибут</th>
+<th>Тип</th>
+<th>Описание</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>code_optimization (С18)</td>
+<td><code>self.cpg</code></td>
+<td><code>CPGQueryService</code></td>
+<td>Экземпляр CPG-сервиса (проектно-изолированный)</td>
+</tr>
+<tr>
+<td><code>self.state</code></td>
+<td><code>MultiScenarioState</code></td>
+<td>Текущее состояние рабочего процесса</td>
+</tr>
+<tr>
+<td><code>self.query</code></td>
+<td><code>str</code></td>
+<td>Исходный запрос пользователя</td>
+</tr>
+<tr>
+<td><code>self.context</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td>Контекст запроса</td>
+</tr>
+<tr>
+<td><code>self.language</code></td>
+<td><code>str</code></td>
+<td>Язык (<code>"en"</code> или <code>"ru"</code>)</td>
+</tr>
+<tr>
+<td><code>self.cfg</code></td>
+<td><code>UnifiedConfig</code></td>
+<td>Унифицированная конфигурация</td>
+</tr>
+</tbody>
+</table></div>
+<p>Основные методы:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>can_handle(query_info)</code></td>
+<td>Проверяет, может ли обработчик обработать запрос (по умолчанию <code>True</code>)</td>
+</tr>
+<tr>
+<td><code>handle(query_info)</code></td>
+<td>Выполняет логику обработчика (абстрактный метод)</td>
+</tr>
+<tr>
+<td><code>apply_result(result)</code></td>
+<td>Применяет результат к состоянию</td>
+</tr>
+<tr>
+<td><code>log_info(message)</code></td>
+<td>Логирование с контекстом обработчика</td>
+</tr>
+<tr>
+<td><code>log_debug(message)</code></td>
+<td>Отладочное логирование</td>
+</tr>
+<tr>
+<td><code>log_warning(message)</code></td>
+<td>Логирование предупреждений</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="callout">
+<p><strong>Предупреждение:</strong> НЕ используйте <code>AnalysisHandler</code> из <code>src/workflow/handlers/analysis.py</code> в качестве базового класса &ndash; его сигнатура конструктора несовместима с реестром сценариев (<code>self.cpg</code> и <code>self.state</code> не будут установлены).</p>
+</blockquote>
+<h4 id="handlerresult">HandlerResult<a class="heading-anchor" href="#handlerresult" title="Link to this section">&para;</a></h4>
+<p><code>HandlerResult</code> &ndash; обобщённый (generic) датакласс с 8 полями:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HandlerResult</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">T</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cpg_results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">retrieved_functions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">answer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">evidence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">should_return</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">llm_context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data</code></td>
+<td><code>Optional[T]</code></td>
+<td><code>None</code></td>
+<td>Структурированные данные (отчёт, результат анализа)</td>
+</tr>
+<tr>
+<td><code>cpg_results</code></td>
+<td><code>List[Dict]</code></td>
+<td><code>[]</code></td>
+<td>Необработанные результаты CPG-запросов</td>
+</tr>
+<tr>
+<td><code>retrieved_functions</code></td>
+<td><code>List[str]</code></td>
+<td><code>[]</code></td>
+<td>Имена найденных функций (для метрик IR)</td>
+</tr>
+<tr>
+<td><code>answer</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>Форматированный ответ</td>
+</tr>
+<tr>
+<td><code>evidence</code></td>
+<td><code>List[str]</code></td>
+<td><code>[]</code></td>
+<td>Доказательная база</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td><code>{}</code></td>
+<td>Дополнительные метаданные</td>
+</tr>
+<tr>
+<td><code>should_return</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td>Если <code>True</code> &ndash; возврат немедленно; если <code>False</code> &ndash; передача в LLM</td>
+</tr>
+<tr>
+<td><code>llm_context</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td><code>{}</code></td>
+<td>Контекст для LLM (при <code>should_return=False</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Пример пользовательского обработчика:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.scenarios._base.handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseHandler</span><span class="p">,</span> <span class="n">HandlerResult</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyHandler</span><span class="p">(</span><span class="n">BaseHandler</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HandlerResult</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpg</span><span class="o">.</span><span class="n">get_methods_by_subsystem</span><span class="p">(</span><span class="s2">&quot;executor&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">HandlerResult</span><span class="p">(</span>
+            <span class="n">answer</span><span class="o">=</span><span class="s2">&quot;Найдены методы...&quot;</span><span class="p">,</span>
+            <span class="n">evidence</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Метод heap_insert в строке 142&quot;</span><span class="p">],</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;handler&quot;</span><span class="p">:</span> <span class="s2">&quot;my_handler&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+</code></pre></div>
+
+<h2  id="kompozitnye-rabochie-protsessy"><span id="kompozitnye_rabochie_protsessy"></span>Композитные рабочие процессы<a class="heading-anchor" href="#kompozitnye-rabochie-protsessy" title="Link to this section">&para;</a></h2>
+<p>Композитные рабочие процессы запускают несколько подсценариев параллельно или последовательно. Они не входят в нумерацию 21 сценария.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Композитный</th>
+<th>Описание</th>
+<th>Подсценарии / фазы</th>
+<th>Режим</th>
+<th>Таймаут</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AuditRunner</code></td>
+<td>Аудит качества по 12 измерениям</td>
+<td>9 подсценариев</td>
+<td>Параллельно</td>
+<td>600 сек</td>
+</tr>
+<tr>
+<td><code>InterfaceDocsSyncRunner</code></td>
+<td>Синхронизация документации по интерфейсам</td>
+<td>5 фаз, 7 интерфейсов</td>
+<td>Пайплайн</td>
+<td>120 сек</td>
+</tr>
+<tr>
+<td><code>StoryValidationRunner</code></td>
+<td>Валидация пользовательских историй</td>
+<td>5 интерфейсов</td>
+<td>&mdash;</td>
+<td>&mdash;</td>
+</tr>
+</tbody>
+</table></div>
+<p>Сценарии S18 и S19 также являются композитными по внутренней реализации:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Сценарий</th>
+<th>ID подсценариев</th>
+<th>Режим</th>
+<th>Таймаут</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S18 code_optimization</td>
 <td>02, 05, 06, 11, 12</td>
 <td>Параллельно</td>
 <td>60 сек</td>
 </tr>
 <tr>
-<td>standards_check (С19)</td>
+<td>S19 standards_check</td>
 <td>08, 17, 18</td>
 <td>Последовательно</td>
 <td>45 сек</td>
 </tr>
-<tr>
-<td>audit</td>
-<td>02, 03, 05, 06, 07, 08, 11, 12, 16</td>
-<td>Параллельно</td>
-<td>600 сек</td>
-</tr>
-<tr>
-<td>interface_docs_sync</td>
-<td>Discovery, DocParse, DriftDetect</td>
-<td>5-фазный пайплайн</td>
-<td>120 сек</td>
-</tr>
 </tbody>
 </table></div>
-<p><strong>Аудит</strong> запускает 9 подсценариев параллельно, покрывая 12 измерений качества кода (безопасность, сложность, дубликаты, зависимости, именование, обработка ошибок, тестирование, документация, производительность, переносимость, стиль, архитектура). Доступен через:</p>
+<h3 id="audit">Аудит<a class="heading-anchor" href="#audit" title="Link to this section">&para;</a></h3>
+<p>Запускает 9 подсценариев параллельно, покрывая 12 измерений качества кода: безопасность, сложность, дубликаты, зависимости, именование, обработка ошибок, тестирование, документация, производительность, переносимость, стиль, архитектура.</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span>
 </code></pre></div>
 
-<p>Разрешение конфликтов использует приоритетный режим с повышением для безопасности (1.5x) и соответствия требованиям (1.3x). Конфигурация в <code>config.yaml</code> → <code>composition</code>.</p>
-<p><strong>Синхронизация документации по интерфейсам</strong> запускает 5-фазный пайплайн: обнаружение → парсинг документации → генерация → детекция дрифта → отчёт. Сканирует 7 интерфейсов (REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket) на предмет расхождений документации. Доступен через:</p>
+<p>Разрешение конфликтов использует приоритетный режим с повышением для безопасности (1.5x) и соответствия требованиям (1.3x). Конфигурация в <code>config.yaml</code> -&gt; <code>composition</code>.</p>
+<h3  id="sinhronizatsiya-dokumentatsii-po-interfeysam"><span id="sinhronizatsiya_dokumentatsii_po_interfeysam"></span>Синхронизация документации по интерфейсам<a class="heading-anchor" href="#sinhronizatsiya-dokumentatsii-po-interfeysam" title="Link to this section">&para;</a></h3>
+<p>5-фазный пайплайн: обнаружение -&gt; парсинг документации -&gt; генерация -&gt; детекция дрифта -&gt; отчёт. Сканирует 7 интерфейсов (REST API, CLI, TUI, MCP, ACP, gRPC, WebSocket) на предмет расхождений документации.</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--check<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--interfaces<span class="w"> </span>rest_api,cli<span class="o">]</span>
 </code></pre></div>
 
-<p>Также доступен как MCP-инструмент <code>codegraph_docs_sync</code> и REST-эндпоинт <code>POST /api/v1/documentation/sync</code>. CI-интеграция через <code>.github/workflows/docs-sync.yml</code>. Конфигурация в <code>config.yaml</code> → <code>composition.orchestrators.interface_docs_sync</code>.</p>
-<h2  id="error-handling"><span id="error_handling"></span><span id="obrabotka-oshibok"></span><span id="obrabotka_oshibok"></span>Обработка ошибок<a class="heading-anchor" href="#error-handling" title="Link to this section">&para;</a></h2>
-<h3  id="retry-logic"><span id="logika-povtornyh-popytok"></span><span id="logika_povtornyh_popytok"></span><span id="retry_logic"></span>Логика повторных попыток<a class="heading-anchor" href="#retry-logic" title="Link to this section">&para;</a></h3>
-<p>Рабочие процессы поддерживают автоматический повтор с уточнением запроса:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Встроено в граф — настраивается через state[&#39;retry_count&#39;]</span>
+<p>Также доступен как MCP-инструмент <code>codegraph_docs_sync</code> и REST-эндпоинт <code>POST /api/v1/documentation/sync</code>. CI-интеграция через <code>.github/workflows/docs-sync.yml</code>. Конфигурация в <code>config.yaml</code> -&gt; <code>composition.orchestrators.interface_docs_sync</code>.</p>
+<h3  id="validatsiya-polzovatelskih-istoriy"><span id="validatsiya_polzovatelskih_istoriy"></span>Валидация пользовательских историй<a class="heading-anchor" href="#validatsiya-polzovatelskih-istoriy" title="Link to this section">&para;</a></h3>
+<p><code>StoryValidationRunner</code> валидирует пользовательские истории со статусом Done против 5 интерфейсов. Типы свидетельств: dedicated (порог 0.8 и выше), passthrough (порог 0.5 и ниже), scenario_map (0.7). Отслеживает все совпавшие функции через <code>all_matched_names</code>. Поддерживает Go CPG через параметр <code>--go-db</code>.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-stories
+</code></pre></div>
+
+<h2  id="payplayn-exec"><span id="payplayn_exec"></span>Пайплайн Exec<a class="heading-anchor" href="#payplayn-exec" title="Link to this section">&para;</a></h2>
+<p>Отдельный инструмент для CI/CD-пайплайнов, не связанный с LangGraph-графом.</p>
+<p><strong>Расположение:</strong> <code>src/cli/exec_command.py</code></p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Review security&quot;</span><span class="w"> </span>--base-ref<span class="w"> </span>origin/main<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sarif-file<span class="w"> </span>out.sarif<span class="w"> </span>--comment-file<span class="w"> </span>comment.md<span class="w"> </span>--sandbox<span class="w"> </span>read-only
+</code></pre></div>
+
+<p>Поддерживает экспорт результатов в формат SARIF через <code>SARIFExporter</code> (<code>src/security/sarif_exporter.py</code>) и генерацию комментариев для PR.</p>
+<h2  id="obrabotka-oshibok"><span id="obrabotka_oshibok"></span>Обработка ошибок<a class="heading-anchor" href="#obrabotka-oshibok" title="Link to this section">&para;</a></h2>
+<h3  id="logika-povtornyh-popytok"><span id="logika_povtornyh_popytok"></span>Логика повторных попыток<a class="heading-anchor" href="#logika-povtornyh-popytok" title="Link to this section">&para;</a></h3>
+<p>Рабочие процессы поддерживают автоматический повтор с уточнением запроса. Количество попыток контролируется полем <code>state["retry_count"]</code> (по умолчанию до 2 повторов с адаптивным уточнением):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Встроено в граф -- настраивается через state[&quot;retry_count&quot;]</span>
 <span class="c1"># По умолчанию: до 2 повторных попыток с адаптивным уточнением запроса</span>
 </code></pre></div>
 
-<h3  id="fallback-strategies"><span id="fallback_strategies"></span><span id="rezervnye-strategii"></span><span id="rezervnye_strategii"></span>Резервные стратегии<a class="heading-anchor" href="#fallback-strategies" title="Link to this section">&para;</a></h3>
+<h3  id="rezervnye-strategii"><span id="rezervnye_strategii"></span>Резервные стратегии<a class="heading-anchor" href="#rezervnye-strategii" title="Link to this section">&para;</a></h3>
 <p>При сбое генерации на базе LLM рабочие процессы переключаются на сопоставление шаблонов:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Автоматическая цепочка запасных вариантов:</span>
 <span class="c1"># 1. SQL-запрос, сгенерированный LLM</span>
@@ -666,8 +942,8 @@
 <span class="c1"># 3. Прямой вызов метода CPG</span>
 </code></pre></div>
 
-<h2  id="custom-workflows"><span id="custom_workflows"></span><span id="polzovatelskie-rabochie-protsessy"></span><span id="polzovatelskie_rabochie_protsessy"></span>Пользовательские рабочие процессы<a class="heading-anchor" href="#custom-workflows" title="Link to this section">&para;</a></h2>
-<h3  id="creating-a-custom-workflow"><span id="creating_a_custom_workflow"></span><span id="sozdanie-polzovatelskogo-rabochego-protsessa"></span><span id="sozdanie_polzovatelskogo_rabochego_protsessa"></span>Создание пользовательского рабочего процесса<a class="heading-anchor" href="#creating-a-custom-workflow" title="Link to this section">&para;</a></h3>
+<h2  id="polzovatelskie-rabochie-protsessy"><span id="polzovatelskie_rabochie_protsessy"></span>Пользовательские рабочие процессы<a class="heading-anchor" href="#polzovatelskie-rabochie-protsessy" title="Link to this section">&para;</a></h2>
+<h3  id="sozdanie-polzovatelskogo-rabochego-protsessa"><span id="sozdanie_polzovatelskogo_rabochego_protsessa"></span>Создание пользовательского рабочего процесса<a class="heading-anchor" href="#sozdanie-polzovatelskogo-rabochego-protsessa" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">StateGraph</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow.state</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiScenarioState</span>
 
@@ -689,18 +965,18 @@
 <span class="n">result</span> <span class="o">=</span> <span class="n">create_custom_workflow</span><span class="p">()</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">})</span>
 </code></pre></div>
 
-<h3  id="conditional-routing"><span id="conditional_routing"></span><span id="uslovnaya-marshrutizatsiya"></span><span id="uslovnaya_marshrutizatsiya"></span>Условная маршрутизация<a class="heading-anchor" href="#conditional-routing" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">route_by_intent</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">MultiScenarioState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;find_vulnerabilities&quot;</span><span class="p">:</span>
+<h3  id="uslovnaya-marshrutizatsiya"><span id="uslovnaya_marshrutizatsiya"></span>Условная маршрутизация<a class="heading-anchor" href="#uslovnaya-marshrutizatsiya" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">my_route</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">MultiScenarioState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;security_audit&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;security_node&quot;</span>
-    <span class="k">elif</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;find_performance&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;intent&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;performance&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;performance_node&quot;</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;general_node&quot;</span>
 
 <span class="n">workflow</span><span class="o">.</span><span class="n">add_conditional_edges</span><span class="p">(</span>
     <span class="s2">&quot;analyze&quot;</span><span class="p">,</span>
-    <span class="n">route_by_intent</span><span class="p">,</span>
+    <span class="n">my_route</span><span class="p">,</span>
     <span class="p">{</span>
         <span class="s2">&quot;security_node&quot;</span><span class="p">:</span> <span class="s2">&quot;security&quot;</span><span class="p">,</span>
         <span class="s2">&quot;performance_node&quot;</span><span class="p">:</span> <span class="s2">&quot;performance&quot;</span><span class="p">,</span>
@@ -709,21 +985,92 @@
 <span class="p">)</span>
 </code></pre></div>
 
-<h2  id="streaming"><span id="potokovaya-peredacha-dannyh"></span><span id="potokovaya_peredacha_dannyh"></span>Потоковая передача данных<a class="heading-anchor" href="#streaming" title="Link to this section">&para;</a></h2>
-<p>Потоковая передача прогресса поддерживается через интерфейс потоковой передачи LangGraph:</p>
-<div class="highlight"><pre><span></span><code><span class="n">copilot</span> <span class="o">=</span> <span class="n">MultiScenarioCopilot</span><span class="p">()</span>
-
-<span class="c1"># Потоковая передача обрабатывается на уровне API/TUI</span>
-<span class="c1"># См. src/api/routers/ для WebSocket-потоков</span>
-<span class="c1"># См. src/tui/ для терминальных потоков</span>
-</code></pre></div>
-
-<h2  id="next-steps"><span id="dalneyshie-shagi"></span><span id="dalneyshie_shagi"></span><span id="next_steps"></span>Дальнейшие шаги<a class="heading-anchor" href="#next-steps" title="Link to this section">&para;</a></h2>
+<h2  id="potokovaya-peredacha-dannyh"><span id="potokovaya_peredacha_dannyh"></span>Потоковая передача данных<a class="heading-anchor" href="#potokovaya-peredacha-dannyh" title="Link to this section">&para;</a></h2>
+<p>Потоковая передача поддерживается на нескольких уровнях:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Компонент</th>
+<th>Механизм</th>
+<th>Расположение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ChatService.process_query_stream()</code></td>
+<td><code>AsyncGenerator</code> с SSE</td>
+<td><code>src/services/chat_service.py</code></td>
+</tr>
+<tr>
+<td><code>POST /api/v1/chat/stream</code></td>
+<td>SSE-эндпоинт</td>
+<td><code>src/api/routers/</code></td>
+</tr>
+<tr>
+<td>WebSocket</td>
+<td>Полнодуплексное соединение</td>
+<td><code>src/api/websocket/handlers.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>MultiScenarioCopilot.run()</code> &ndash; синхронный метод. Потоковая передача на уровне API симулируется через thread pool executor, оборачивающий синхронный вызов в асинхронный генератор SSE-событий.</p>
+<h2  id="svyazannaya-dokumentatsiya"><span id="svyazannaya_dokumentatsiya"></span>Связанная документация<a class="heading-anchor" href="#svyazannaya-dokumentatsiya" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="API.html">Справочник API</a> — полный API</li>
-<li><a href="AGENTS.html">Справочник агентов</a> — подробности по агентам</li>
-<li><a href="../../guides/SCENARIOS.html">Руководство по сценариям</a> — примеры использования сценариев</li>
+<li><a href="./API.html">Справочник API</a> &ndash; полный справочник REST API</li>
+<li><a href="./AGENTS.html">Справочник агентов</a> &ndash; агенты и ACP-протокол</li>
+<li><a href="../../guides/SCENARIOS.html">Руководство по сценариям</a> &ndash; примеры использования сценариев</li>
 </ul>
+<h2  id="raspolozhenie-klyuchevyh-faylov"><span id="raspolozhenie_klyuchevyh_faylov"></span>Расположение ключевых файлов<a class="heading-anchor" href="#raspolozhenie-klyuchevyh-faylov" title="Link to this section">&para;</a></h2>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Файл</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/workflow/orchestration/copilot.py</code></td>
+<td><code>MultiScenarioCopilot</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/orchestration/graph_builder.py</code></td>
+<td><code>build_multi_scenario_graph()</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/orchestration/intent_classifier.py</code></td>
+<td><code>classify_intent_node()</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/orchestration/router.py</code></td>
+<td><code>route_by_intent()</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/orchestration/pre_retrieval.py</code></td>
+<td><code>pre_retrieval_node()</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/state.py</code></td>
+<td><code>MultiScenarioState</code>, <code>create_initial_state()</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/scenarios/_base/handler.py</code></td>
+<td><code>BaseHandler</code>, <code>HandlerResult</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/scenarios/audit_composite.py</code></td>
+<td><code>AuditRunner</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/scenarios/interface_docs_sync_composite.py</code></td>
+<td><code>InterfaceDocsSyncRunner</code></td>
+</tr>
+<tr>
+<td><code>src/workflow/scenarios/story_validation_composite.py</code></td>
+<td><code>StoryValidationRunner</code></td>
+</tr>
+</tbody>
+</table></div>
       </article>
 
       <!-- Page Navigation -->
@@ -742,7 +1089,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-06</span>
+        <span>Обновлено: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/WORKFLOWS.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -753,28 +1100,34 @@
       <ul class="doc-toc-list">
         <li><a href="#spravochnik-po-rabochim-protsessam" class="level-1">Справочник по рабочим процессам</a></li>
 <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
-<li><a href="#workflow-architecture" class="level-2">Архитектура рабочего процесса</a></li>
+<li><a href="#arhitektura-rabochego-protsessa" class="level-2">Архитектура рабочего процесса</a></li>
 <li><a href="#multiscenariocopilot" class="level-2">MultiScenarioCopilot</a></li>
-<li><a href="#workflow-state" class="level-2">Состояние рабочего процесса</a></li>
+<li><a href="#sostoyanie-rabochego-protsessa" class="level-2">Состояние рабочего процесса</a></li>
 <li><a href="#multiscenariostate" class="level-3">MultiScenarioState</a></li>
-<li><a href="#specialized-states" class="level-3">Специализированные состояния</a></li>
-<li><a href="#workflow-nodes" class="level-2">Узлы рабочего процесса</a></li>
-<li><a href="#intent-classification" class="level-3">Классификация намерений</a></li>
-<li><a href="#scenario-routing" class="level-3">Маршрутизация сценариев</a></li>
-<li><a href="#scenario-execution" class="level-3">Выполнение сценария</a></li>
-<li><a href="#scenario-workflows" class="level-2">Сценарные рабочие процессы</a></li>
-<li><a href="#structure" class="level-3">Структура</a></li>
-<li><a href="#available-scenarios" class="level-3">Доступные сценарии</a></li>
-<li><a href="#handler-base-class" class="level-3">Базовый класс обработчика</a></li>
-<li><a href="#composite-workflows" class="level-2">Композитные рабочие процессы</a></li>
-<li><a href="#error-handling" class="level-2">Обработка ошибок</a></li>
-<li><a href="#retry-logic" class="level-3">Логика повторных попыток</a></li>
-<li><a href="#fallback-strategies" class="level-3">Резервные стратегии</a></li>
-<li><a href="#custom-workflows" class="level-2">Пользовательские рабочие процессы</a></li>
-<li><a href="#creating-a-custom-workflow" class="level-3">Создание пользовательского рабочего процесса</a></li>
-<li><a href="#conditional-routing" class="level-3">Условная маршрутизация</a></li>
-<li><a href="#streaming" class="level-2">Потоковая передача данных</a></li>
-<li><a href="#next-steps" class="level-2">Дальнейшие шаги</a></li>
+<li><a href="#spetsializirovannye-sostoyaniya" class="level-3">Специализированные состояния</a></li>
+<li><a href="#uzly-rabochego-protsessa" class="level-2">Узлы рабочего процесса</a></li>
+<li><a href="#klassifikatsiya-namereniy" class="level-3">Классификация намерений</a></li>
+<li><a href="#predvaritelnyy-poisk" class="level-3">Предварительный поиск</a></li>
+<li><a href="#marshrutizatsiya-stsenariev" class="level-3">Маршрутизация сценариев</a></li>
+<li><a href="#vypolnenie-stsenariya" class="level-3">Выполнение сценария</a></li>
+<li><a href="#stsenarnye-rabochie-protsessy" class="level-2">Сценарные рабочие процессы</a></li>
+<li><a href="#struktura-katalogov" class="level-3">Структура каталогов</a></li>
+<li><a href="#tablitsa-stsenariev" class="level-3">Таблица сценариев</a></li>
+<li><a href="#basehandler-i-handlerresult" class="level-3">BaseHandler и HandlerResult</a></li>
+<li><a href="#kompozitnye-rabochie-protsessy" class="level-2">Композитные рабочие процессы</a></li>
+<li><a href="#audit" class="level-3">Аудит</a></li>
+<li><a href="#sinhronizatsiya-dokumentatsii-po-interfeysam" class="level-3">Синхронизация документации по интерфейсам</a></li>
+<li><a href="#validatsiya-polzovatelskih-istoriy" class="level-3">Валидация пользовательских историй</a></li>
+<li><a href="#payplayn-exec" class="level-2">Пайплайн Exec</a></li>
+<li><a href="#obrabotka-oshibok" class="level-2">Обработка ошибок</a></li>
+<li><a href="#logika-povtornyh-popytok" class="level-3">Логика повторных попыток</a></li>
+<li><a href="#rezervnye-strategii" class="level-3">Резервные стратегии</a></li>
+<li><a href="#polzovatelskie-rabochie-protsessy" class="level-2">Пользовательские рабочие процессы</a></li>
+<li><a href="#sozdanie-polzovatelskogo-rabochego-protsessa" class="level-3">Создание пользовательского рабочего процесса</a></li>
+<li><a href="#uslovnaya-marshrutizatsiya" class="level-3">Условная маршрутизация</a></li>
+<li><a href="#potokovaya-peredacha-dannyh" class="level-2">Потоковая передача данных</a></li>
+<li><a href="#svyazannaya-dokumentatsiya" class="level-2">Связанная документация</a></li>
+<li><a href="#raspolozhenie-klyuchevyh-faylov" class="level-2">Расположение ключевых файлов</a></li>
       </ul>
     </aside>
   </div>

@@ -160,7 +160,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="AGENTS.html">Agents Reference</a></li>
         <li><a href="ANALYSIS_MODULES.html">Analysis Modules Reference</a></li>
-        <li><a href="API.html">API Reference</a></li>
+        <li><a href="API.html">Python SDK Reference</a></li>
         <li><a href="APPROVAL_ENGINE.html" class="active">Approval Engine</a></li>
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="FAQ.html">Frequently Asked Questions (FAQ)</a></li>
@@ -204,6 +204,39 @@
       <article class="doc-content">
         <h1  id="approval-engine"><span id="approval_engine"></span>Approval Engine<a class="heading-anchor" href="#approval-engine" title="Link to this section">&para;</a></h1>
 <p>Callback-based approval flow for gating destructive or sensitive operations. Part of the unified <code>CodeGraphHarness</code> service harness.</p>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#architecture">Architecture</a></li>
+<li><a href="#module-structure">Module Structure</a></li>
+<li><a href="#codegraphharness">CodeGraphHarness</a></li>
+<li><a href="#get_harness">get_harness()</a></li>
+<li><a href="#reset_harness">reset_harness()</a></li>
+<li><a href="#api-reference">API Reference</a></li>
+<li><a href="#approvalrequest">ApprovalRequest</a></li>
+<li><a href="#approvaldecision">ApprovalDecision</a></li>
+<li><a href="#approvalengine">ApprovalEngine</a></li>
+<li><a href="#session-models">Session Models</a></li>
+<li><a href="#item">Item</a></li>
+<li><a href="#turn">Turn</a></li>
+<li><a href="#thread">Thread</a></li>
+<li><a href="#harnesssessionmanager">HarnessSessionManager</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#harnessconfig">HarnessConfig</a></li>
+<li><a href="#yaml-configuration">YAML Configuration</a></li>
+<li><a href="#usage">Usage</a></li>
+<li><a href="#request-approval">Request Approval</a></li>
+<li><a href="#resolve-from-ui">Resolve from UI</a></li>
+<li><a href="#session-scoped-approval">Session-Scoped Approval</a></li>
+<li><a href="#decision-flow">Decision Flow</a></li>
+<li><a href="#default-action-classification">Default Action Classification</a></li>
+<li><a href="#integration-points">Integration Points</a></li>
+<li><a href="#autofix-engine">Autofix Engine</a></li>
+<li><a href="#pattern-fixes-cli">Pattern Fixes CLI</a></li>
+<li><a href="#pattern-fixes-rest-api">Pattern Fixes REST API</a></li>
+<li><a href="#acp-approval-bridge-separate-system">ACP Approval Bridge (separate system)</a></li>
+<li><a href="#related-documentation">Related Documentation</a></li>
+</ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
 <p>The approval engine decides whether operations (autofix application, pattern fixes, command execution) require explicit user confirmation before proceeding. It supports three policies:</p>
 <div class="table-wrapper"><table>
@@ -229,36 +262,136 @@
 </tbody>
 </table></div>
 <h2 id="architecture">Architecture<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>User/CLI/IDE  ←→  ApprovalEngine  ←→  Harness  ←→  Analysis Modules
-                        │
-                   ┌────┴────┐
-                   │ Policies │
-                   ├──────────┤
-                   │ auto     │  ← Check whitelist, then prompt
-                   │ ask      │  ← Always prompt
-                   │ read_only│  ← Always decline writes
-                   └──────────┘
+<div class="highlight"><pre><span></span><code><span class="n">flowchart</span><span class="w"> </span><span class="n">LR</span>
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="n">Surfaces</span>
+<span class="w">        </span><span class="n">CLI</span><span class="p">[</span><span class="n">CLI</span><span class="p">]</span>
+<span class="w">        </span><span class="n">TUI</span><span class="p">[</span><span class="n">TUI</span><span class="p">]</span>
+<span class="w">        </span><span class="n">IDE</span><span class="p">[</span><span class="n">IDE</span><span class="p">]</span>
+<span class="w">        </span><span class="n">REST</span><span class="p">[</span><span class="n">REST</span><span class="w"> </span><span class="n">API</span><span class="p">]</span>
+<span class="w">    </span><span class="n">end</span>
+
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="n">Harness</span><span class="p">[</span><span class="s">&quot;CodeGraphHarness (singleton)&quot;</span><span class="p">]</span>
+<span class="w">        </span><span class="n">AE</span><span class="p">[</span><span class="n">ApprovalEngine</span><span class="p">]</span>
+<span class="w">        </span><span class="n">SM</span><span class="p">[</span><span class="n">HarnessSessionManager</span><span class="p">]</span>
+<span class="w">    </span><span class="n">end</span>
+
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="n">Policies</span>
+<span class="w">        </span><span class="n">P1</span><span class="p">[</span><span class="s">&quot;auto -- check whitelist, then prompt&quot;</span><span class="p">]</span>
+<span class="w">        </span><span class="n">P2</span><span class="p">[</span><span class="s">&quot;ask_always -- always prompt&quot;</span><span class="p">]</span>
+<span class="w">        </span><span class="n">P3</span><span class="p">[</span><span class="s">&quot;read_only -- always decline writes&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="n">end</span>
+
+<span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="n">Analysis</span>
+<span class="w">        </span><span class="n">AF</span><span class="p">[</span><span class="n">Autofix</span><span class="w"> </span><span class="n">Engine</span><span class="p">]</span>
+<span class="w">        </span><span class="n">PF</span><span class="p">[</span><span class="n">Pattern</span><span class="w"> </span><span class="n">Fixes</span><span class="p">]</span>
+<span class="w">    </span><span class="n">end</span>
+
+<span class="w">    </span><span class="n">CLI</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
+<span class="w">    </span><span class="n">TUI</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
+<span class="w">    </span><span class="n">IDE</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
+<span class="w">    </span><span class="n">REST</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
+<span class="w">    </span><span class="n">AE</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">SM</span>
+<span class="w">    </span><span class="n">AE</span><span class="w"> </span><span class="o">---</span><span class="w"> </span><span class="n">Policies</span>
+<span class="w">    </span><span class="n">AF</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">AE</span>
+<span class="w">    </span><span class="n">PF</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">AE</span>
 </code></pre></div>
 
+<h2  id="module-structure"><span id="module_structure"></span>Module Structure<a class="heading-anchor" href="#module-structure" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>src/harness/
+├── __init__.py          # Public exports
+├── approval.py          # ApprovalEngine
+├── config.py            # HarnessConfig dataclass
+├── core.py              # CodeGraphHarness singleton, get_harness()
+├── models.py            # Item, Turn, Thread, ApprovalRequest, ApprovalDecision
+└── session.py           # HarnessSessionManager
+</code></pre></div>
+
+<h2 id="codegraphharness">CodeGraphHarness<a class="heading-anchor" href="#codegraphharness" title="Link to this section">&para;</a></h2>
+<p><code>CodeGraphHarness</code> is the central singleton that owns all services and exposes them through a uniform internal API. All surfaces (CLI, TUI, REST, MCP, ACP) become thin clients.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CodeGraphHarness</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</code></pre></div>
+
+<p>When <code>db_path</code> is <code>None</code>, the harness falls back to <code>ProjectManager.get_active_db_path()</code> for the CLI/TUI path.</p>
+<p>Lazy-loaded properties:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cpg</code></td>
+<td><code>CPGQueryService</code></td>
+<td>DuckDB CPG query client</td>
+</tr>
+<tr>
+<td><code>gocpg</code></td>
+<td><code>GoCPGClient</code></td>
+<td>Go CPG generator client</td>
+</tr>
+<tr>
+<td><code>copilot</code></td>
+<td><code>MultiScenarioCopilot</code></td>
+<td>LangGraph orchestrator</td>
+</tr>
+<tr>
+<td><code>vector_store</code></td>
+<td><code>VectorStore</code></td>
+<td>ChromaDB vector store</td>
+</tr>
+<tr>
+<td><code>sessions</code></td>
+<td><code>HarnessSessionManager</code></td>
+<td>Session manager</td>
+</tr>
+<tr>
+<td><code>approval</code></td>
+<td><code>ApprovalEngine</code></td>
+<td>Approval engine</td>
+</tr>
+</tbody>
+</table></div>
+<p>The <code>reset()</code> method clears all cached services (useful for project switches and testing).</p>
+<h3  id="get-harness"><span id="get_harness"></span>get_harness()<a class="heading-anchor" href="#get-harness" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_harness</span><span class="p">(</span><span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CodeGraphHarness</span>
+</code></pre></div>
+
+<ul>
+<li><code>db_path=None</code> &ndash; returns the global singleton (CLI/TUI path). Created on first call.</li>
+<li><code>db_path="path"</code> &ndash; returns a project-specific harness from an LRU cache (max 5 entries), creating a new one if needed.</li>
+</ul>
+<h3  id="reset-harness"><span id="reset_harness"></span>reset_harness()<a class="heading-anchor" href="#reset-harness" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_harness</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Resets the global singleton and all cached instances. Intended for testing.</p>
 <h2  id="api-reference"><span id="api_reference"></span>API Reference<a class="heading-anchor" href="#api-reference" title="Link to this section">&para;</a></h2>
 <h3 id="approvalrequest">ApprovalRequest<a class="heading-anchor" href="#approvalrequest" title="Link to this section">&para;</a></h3>
+<p>A pending approval request surfaced to the client.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ApprovalRequest</span><span class="p">:</span>
-    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>                     <span class="c1"># Unique request ID (UUID)</span>
-    <span class="n">thread_id</span><span class="p">:</span> <span class="nb">str</span>              <span class="c1"># Session thread ID</span>
-    <span class="n">action_type</span><span class="p">:</span> <span class="nb">str</span>            <span class="c1"># e.g., &#39;apply_autofix&#39;, &#39;command_execution&#39;</span>
-    <span class="n">details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>     <span class="c1"># Arbitrary action details</span>
-    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>                 <span class="c1"># &#39;pending&#39; | &#39;accepted&#39; | &#39;declined&#39; | &#39;cancelled&#39;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">_new_id</span><span class="p">)</span>       <span class="c1"># Auto-generated UUID</span>
+    <span class="n">thread_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>                             <span class="c1"># Session thread ID</span>
+    <span class="n">action_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>                           <span class="c1"># e.g., &#39;apply_autofix&#39;, &#39;apply_pattern_fix&#39;</span>
+    <span class="n">details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>  <span class="c1"># Arbitrary action details</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;pending&quot;</span>                         <span class="c1"># &#39;pending&#39; | &#39;accepted&#39; | &#39;declined&#39; | &#39;cancelled&#39;</span>
 </code></pre></div>
 
+<p>All fields have defaults, so <code>ApprovalRequest()</code> creates a valid instance with an auto-generated <code>id</code> and <code>status="pending"</code>.</p>
 <h3 id="approvaldecision">ApprovalDecision<a class="heading-anchor" href="#approvaldecision" title="Link to this section">&para;</a></h3>
+<p>Client&rsquo;s response to an approval request.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ApprovalDecision</span><span class="p">:</span>
-    <span class="n">decision</span><span class="p">:</span> <span class="nb">str</span>               <span class="c1"># &#39;accept&#39; | &#39;accept_for_session&#39; | &#39;decline&#39; | &#39;cancel&#39;</span>
-    <span class="n">reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>       <span class="c1"># Optional reason text</span>
-    <span class="n">scope</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>        <span class="c1"># Scope for &#39;accept_for_session&#39;</span>
+    <span class="n">decision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;decline&quot;</span>       <span class="c1"># &#39;accept&#39; | &#39;accept_for_session&#39; | &#39;decline&#39; | &#39;cancel&#39;</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1"># Optional reason text</span>
+    <span class="n">scope</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>     <span class="c1"># Scope for &#39;accept_for_session&#39;</span>
 </code></pre></div>
 
+<p><strong>Security default:</strong> the <code>decision</code> field defaults to <code>"decline"</code>. When an <code>ApprovalDecision</code> is created without explicitly setting <code>decision</code>, the operation is declined. This is a deliberate safety measure to prevent unintended approval of destructive operations.</p>
 <h3 id="approvalengine">ApprovalEngine<a class="heading-anchor" href="#approvalengine" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ApprovalEngine</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">HarnessConfig</span><span class="p">):</span>
@@ -300,7 +433,114 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear session-scoped auto-approvals on session end.&quot;&quot;&quot;</span>
 </code></pre></div>
 
+<h2  id="session-models"><span id="session_models"></span>Session Models<a class="heading-anchor" href="#session-models" title="Link to this section">&para;</a></h2>
+<p>The session hierarchy is: <strong>Thread</strong> contains <strong>Turns</strong>, each Turn contains <strong>Items</strong>.</p>
+<h3 id="item">Item<a class="heading-anchor" href="#item" title="Link to this section">&para;</a></h3>
+<p>Atomic unit of work within a Turn.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Item</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">_new_id</span><span class="p">)</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;user_message&quot;</span>          <span class="c1"># user_message | analysis_result | approval_request | error</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;started&quot;</span>             <span class="c1"># started | in_progress | completed</span>
+    <span class="n">content</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">created_at</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Methods: <code>to_dict() -&gt; dict</code>, <code>from_dict(d: dict) -&gt; Item</code> (classmethod).</p>
+<h3 id="turn">Turn<a class="heading-anchor" href="#turn" title="Link to this section">&para;</a></h3>
+<p>A request-response cycle within a Thread.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Turn</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">_new_id</span><span class="p">)</span>
+    <span class="n">thread_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">items</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Item</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;in_progress&quot;</span>         <span class="c1"># in_progress | completed | interrupted | failed</span>
+    <span class="n">started_at</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+    <span class="n">completed_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Methods: <code>to_dict() -&gt; dict</code>, <code>from_dict(d: dict) -&gt; Turn</code> (classmethod).</p>
+<h3 id="thread">Thread<a class="heading-anchor" href="#thread" title="Link to this section">&para;</a></h3>
+<p>Top-level session container, persisted as one JSON file.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Thread</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">_new_id</span><span class="p">)</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">created_at</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+    <span class="n">updated_at</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+    <span class="n">turns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Turn</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;idle&quot;</span>                <span class="c1"># idle | active | archived</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Methods: <code>to_dict() -&gt; dict</code>, <code>from_dict(d: dict) -&gt; Thread</code> (classmethod).</p>
+<h2 id="harnesssessionmanager">HarnessSessionManager<a class="heading-anchor" href="#harnesssessionmanager" title="Link to this section">&para;</a></h2>
+<p>Manages harness threads with an in-memory cache and JSON file persistence. Each thread is stored as <code>data/sessions/{thread_id}.json</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">HarnessSessionManager</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">HarnessConfig</span><span class="p">):</span>
+</code></pre></div>
+
+<p>Accessed via <code>harness.sessions</code>.</p>
+<p>Public async methods:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create_thread(name=None, config=None, thread_id=None) -&gt; Thread</code></td>
+<td>Create a new thread and persist it</td>
+</tr>
+<tr>
+<td><code>get_thread(thread_id) -&gt; Optional[Thread]</code></td>
+<td>Get thread by ID (memory first, then disk)</td>
+</tr>
+<tr>
+<td><code>list_threads(status=None) -&gt; List[Thread]</code></td>
+<td>List threads, optionally filtered by status</td>
+</tr>
+<tr>
+<td><code>archive_thread(thread_id) -&gt; bool</code></td>
+<td>Mark thread as archived, persist, evict from memory</td>
+</tr>
+<tr>
+<td><code>start_turn(thread_id) -&gt; Turn</code></td>
+<td>Start a new turn in the given thread</td>
+</tr>
+<tr>
+<td><code>complete_turn(thread_id, turn_id, status="completed") -&gt; Turn</code></td>
+<td>Complete a turn and persist</td>
+</tr>
+<tr>
+<td><code>add_item(thread_id, turn_id, item_type, content, metadata=None) -&gt; Item</code></td>
+<td>Add an item to a turn</td>
+</tr>
+<tr>
+<td><code>update_item_status(thread_id, turn_id, item_id, status) -&gt; Item</code></td>
+<td>Update the status of an existing item</td>
+</tr>
+</tbody>
+</table></div>
+<p>Expired threads (past <code>thread_ttl_hours</code>) are cleaned up automatically when the thread limit is reached.</p>
 <h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
+<h3 id="harnessconfig">HarnessConfig<a class="heading-anchor" href="#harnessconfig" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HarnessConfig</span><span class="p">:</span>
+    <span class="n">session_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;./data/sessions&quot;</span>
+    <span class="n">max_threads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">thread_ttl_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">168</span>                       <span class="c1"># 7 days</span>
+
+    <span class="n">default_approval_policy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span>             <span class="c1"># auto | ask_always | read_only</span>
+    <span class="n">auto_approve_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>      <span class="c1"># see YAML below</span>
+    <span class="n">require_approval_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># see YAML below</span>
+</code></pre></div>
+
+<p>Note: the dataclass field is named <code>default_approval_policy</code>. In YAML configuration the key is <code>default_policy</code>, which is mapped to this field during config loading.</p>
+<h3  id="yaml-configuration"><span id="yaml_configuration"></span>YAML Configuration<a class="heading-anchor" href="#yaml-configuration" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
 <span class="nt">harness</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">session_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./data/sessions</span>
@@ -358,7 +598,7 @@
 
 <span class="c1"># Subsequent autofix requests auto-approved (no prompt)</span>
 <span class="n">decision</span> <span class="o">=</span> <span class="k">await</span> <span class="n">harness</span><span class="o">.</span><span class="n">approval</span><span class="o">.</span><span class="n">request_approval</span><span class="p">(</span>
-    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_autofix&quot;</span><span class="p">,</span>  <span class="c1"># Same type → auto-approved</span>
+    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_autofix&quot;</span><span class="p">,</span>  <span class="c1"># Same type -&gt; auto-approved</span>
     <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="o">...</span><span class="p">},</span>
     <span class="n">thread_id</span><span class="o">=</span><span class="s2">&quot;session_abc&quot;</span>       <span class="c1"># Same thread</span>
 <span class="p">)</span>
@@ -366,22 +606,18 @@
 </code></pre></div>
 
 <h2  id="decision-flow"><span id="decision_flow"></span>Decision Flow<a class="heading-anchor" href="#decision-flow" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">request_approval</span><span class="p">(</span><span class="n">action_type</span><span class="p">,</span><span class="w"> </span><span class="n">details</span><span class="p">,</span><span class="w"> </span><span class="n">thread_id</span><span class="p">)</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">├─</span><span class="w"> </span><span class="k">Is</span><span class="w"> </span><span class="n">action_type</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">auto_approve</span><span class="w"> </span><span class="n">list</span><span class="vm">?</span>
-<span class="w">    </span><span class="err">│</span><span class="w">   </span><span class="err">└─</span><span class="w"> </span><span class="n">YES</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">accept</span><span class="w"> </span><span class="n">immediately</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">├─</span><span class="w"> </span><span class="k">Is</span><span class="w"> </span><span class="n">action_type</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">session_approvals</span><span class="o">[</span><span class="n">thread_id</span><span class="o">]</span><span class="vm">?</span>
-<span class="w">    </span><span class="err">│</span><span class="w">   </span><span class="err">└─</span><span class="w"> </span><span class="n">YES</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">accept</span><span class="w"> </span><span class="p">(</span><span class="k">session</span><span class="o">-</span><span class="n">scoped</span><span class="p">)</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">├─</span><span class="w"> </span><span class="k">Is</span><span class="w"> </span><span class="n">default_policy</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">read_only</span><span class="vm">?</span>
-<span class="w">    </span><span class="err">│</span><span class="w">   </span><span class="err">└─</span><span class="w"> </span><span class="n">YES</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">decline</span><span class="p">(</span><span class="ss">&quot;read_only policy&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="err">│</span>
-<span class="w">    </span><span class="err">└─</span><span class="w"> </span><span class="k">Create</span><span class="w"> </span><span class="n">pending</span><span class="w"> </span><span class="n">request</span><span class="p">,</span><span class="w"> </span><span class="n">await</span><span class="w"> </span><span class="k">user</span><span class="w"> </span><span class="n">decision</span>
-<span class="w">        </span><span class="err">├─</span><span class="w"> </span><span class="n">accept</span><span class="w">              </span><span class="err">→</span><span class="w"> </span><span class="n">apply</span><span class="w"> </span><span class="k">action</span>
-<span class="w">        </span><span class="err">├─</span><span class="w"> </span><span class="n">accept_for_session</span><span class="w">  </span><span class="err">→</span><span class="w"> </span><span class="n">apply</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">remember</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="k">session</span>
-<span class="w">        </span><span class="err">├─</span><span class="w"> </span><span class="n">decline</span><span class="w">             </span><span class="err">→</span><span class="w"> </span><span class="n">skip</span><span class="w"> </span><span class="k">action</span>
-<span class="w">        </span><span class="err">└─</span><span class="w"> </span><span class="n">cancel</span><span class="w">              </span><span class="err">→</span><span class="w"> </span><span class="n">abort</span><span class="w"> </span><span class="k">operation</span>
+<div class="highlight"><pre><span></span><code><span class="nx">flowchart</span><span class="w"> </span><span class="nx">TD</span>
+<span class="w">    </span><span class="nx">A</span><span class="p">[</span><span class="s">&quot;request_approval(action_type, details, thread_id)&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">B</span><span class="p">{</span><span class="nx">action_type</span><span class="w"> </span><span class="k">in</span><span class="p">&lt;</span><span class="nx">br</span><span class="o">/</span><span class="p">&gt;</span><span class="nx">auto_approve</span><span class="w"> </span><span class="nx">list</span><span class="p">?}</span>
+<span class="w">    </span><span class="nx">B</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">YES</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">C</span><span class="p">[</span><span class="s">&quot;return accept immediately&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">B</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">NO</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">D</span><span class="p">{</span><span class="nx">action_type</span><span class="w"> </span><span class="k">in</span><span class="p">&lt;</span><span class="nx">br</span><span class="o">/</span><span class="p">&gt;</span><span class="nx">session_approvals</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">thread</span><span class="p">?}</span>
+<span class="w">    </span><span class="nx">D</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">YES</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">E</span><span class="p">[</span><span class="s">&quot;return accept (session-scoped)&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">D</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">NO</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">F</span><span class="p">{</span><span class="nx">default_policy</span><span class="p">&lt;</span><span class="nx">br</span><span class="o">/&gt;=</span><span class="p">=</span><span class="w"> </span><span class="nx">read_only</span><span class="p">?}</span>
+<span class="w">    </span><span class="nx">F</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">YES</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">G</span><span class="p">[</span><span class="s">&quot;return decline(&#39;read_only policy&#39;)&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">F</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="nx">NO</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">H</span><span class="p">[</span><span class="s">&quot;Create pending request,&lt;br/&gt;await user decision&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">H</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">I</span><span class="p">[</span><span class="s">&quot;accept -- apply action&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">H</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">J</span><span class="p">[</span><span class="s">&quot;accept_for_session -- apply + remember&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">H</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">K</span><span class="p">[</span><span class="s">&quot;decline -- skip action&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="nx">H</span><span class="w"> </span><span class="o">--</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">L</span><span class="p">[</span><span class="s">&quot;cancel -- abort operation&quot;</span><span class="p">]</span>
 </code></pre></div>
 
 <h2  id="default-action-classification"><span id="default_action_classification"></span>Default Action Classification<a class="heading-anchor" href="#default-action-classification" title="Link to this section">&para;</a></h2>
@@ -412,22 +648,62 @@
 </tbody>
 </table></div>
 <h2  id="integration-points"><span id="integration_points"></span>Integration Points<a class="heading-anchor" href="#integration-points" title="Link to this section">&para;</a></h2>
-<p>The approval engine is used by:
-- <strong>Autofix</strong> (<code>src/analysis/autofix/</code>) — applying security fixes to source code
-- <strong>Pattern fixes</strong> (<code>src/analysis/patterns/</code>) — applying structural pattern rewrites
-- <strong>File editing</strong> (<code>src/editing/</code>) — AST-based code modifications
-- <strong>MCP tools</strong> — write operations via MCP server
-- <strong>ACP sessions</strong> — IDE-initiated operations</p>
+<p>The approval engine is used by three subsystems. ACP has its own separate approval bridge.</p>
+<h3  id="autofix-engine"><span id="autofix_engine"></span>Autofix Engine<a class="heading-anchor" href="#autofix-engine" title="Link to this section">&para;</a></h3>
+<p><code>src/analysis/autofix/engine.py</code> &ndash; <code>AutofixEngine.apply_with_approval()</code> requests approval before applying security fixes:</p>
+<div class="highlight"><pre><span></span><code><span class="n">decision</span> <span class="o">=</span> <span class="k">await</span> <span class="n">approval_engine</span><span class="o">.</span><span class="n">request_approval</span><span class="p">(</span>
+    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_autofix&quot;</span><span class="p">,</span>
+    <span class="n">details</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">fix</span><span class="o">.</span><span class="n">file_path</span><span class="p">,</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">fix</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+        <span class="s2">&quot;diff_preview&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">fix</span><span class="o">.</span><span class="n">diff_patch</span><span class="p">[:</span><span class="mi">500</span><span class="p">],</span>
+    <span class="p">},</span>
+    <span class="n">thread_id</span><span class="o">=</span><span class="n">thread_id</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3  id="pattern-fixes-cli"><span id="pattern_fixes_cli"></span>Pattern Fixes CLI<a class="heading-anchor" href="#pattern-fixes-cli" title="Link to this section">&para;</a></h3>
+<p><code>src/cli/patterns_command.py</code> &ndash; <code>_run_fix()</code> requests approval before applying pattern-based code rewrites:</p>
+<div class="highlight"><pre><span></span><code><span class="n">harness</span> <span class="o">=</span> <span class="n">get_harness</span><span class="p">()</span>
+<span class="n">decision</span> <span class="o">=</span> <span class="k">await</span> <span class="n">harness</span><span class="o">.</span><span class="n">approval</span><span class="o">.</span><span class="n">request_approval</span><span class="p">(</span>
+    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_pattern_fix&quot;</span><span class="p">,</span>
+    <span class="n">details</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;total_matches&quot;</span><span class="p">:</span> <span class="n">preview</span><span class="o">.</span><span class="n">total_matches</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">thread_id</span><span class="o">=</span><span class="n">thread_id</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3  id="pattern-fixes-rest-api"><span id="pattern_fixes_rest_api"></span>Pattern Fixes REST API<a class="heading-anchor" href="#pattern-fixes-rest-api" title="Link to this section">&para;</a></h3>
+<p><code>src/api/routers/patterns.py</code> &ndash; the fix endpoint requests approval when <code>dry_run=False</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">harness</span> <span class="o">=</span> <span class="n">get_harness</span><span class="p">()</span>
+<span class="n">decision</span> <span class="o">=</span> <span class="k">await</span> <span class="n">harness</span><span class="o">.</span><span class="n">approval</span><span class="o">.</span><span class="n">request_approval</span><span class="p">(</span>
+    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;apply_pattern_fix&quot;</span><span class="p">,</span>
+    <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;rule_id&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">rule_id</span><span class="p">,</span> <span class="s2">&quot;dry_run&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span>
+    <span class="n">thread_id</span><span class="o">=</span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="k">if</span> <span class="n">decision</span><span class="o">.</span><span class="n">decision</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;accept&quot;</span><span class="p">,</span> <span class="s2">&quot;accept_for_session&quot;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Fix rejected by approval engine&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3  id="acp-approval-bridge-separate-system"><span id="acp_approval_bridge_separate_system"></span>ACP Approval Bridge (separate system)<a class="heading-anchor" href="#acp-approval-bridge-separate-system" title="Link to this section">&para;</a></h3>
+<p>ACP uses <code>ACPApprovalBridge</code> (<code>src/acp/server/approval_bridge.py</code>), which is a <strong>separate</strong> implementation from <code>ApprovalEngine</code>. It provides a different API tailored for IDE integration:</p>
+<ul>
+<li>Method: <code>request_file_change_approval()</code></li>
+<li>Timeout: 300 seconds</li>
+<li>Notifications via <code>item/fileChange/requestApproval</code></li>
+</ul>
+<p><code>ACPApprovalBridge</code> does not use <code>ApprovalEngine</code> internally. See the ACP documentation for details.</p>
 <h2  id="related-documentation"><span id="related_documentation"></span>Related Documentation<a class="heading-anchor" href="#related-documentation" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="./SECURITY.html">Security Reference</a> — autofix and security analysis</li>
-<li><a href="./WORKFLOWS.html">Workflows</a> — workflow scenario integration</li>
-<li><a href="../../api/REST_API.html">REST API</a> — API endpoints for approval</li>
-<li><a href="../../api/ACP_INTEGRATION.html">ACP Integration</a> — IDE approval flow</li>
+<li><a href="./SECURITY.html">Security Reference</a> &ndash; autofix and security analysis</li>
+<li><a href="./WORKFLOWS.html">Workflows</a> &ndash; workflow scenario integration</li>
+<li><a href="../../api/REST_API.html">REST API</a> &ndash; API endpoints for approval</li>
+<li><a href="../../api/ACP_INTEGRATION.html">ACP Integration</a> &ndash; IDE approval flow (uses ACPApprovalBridge)</li>
 </ul>
 <hr />
 <p><em>Module: <code>src/harness/</code></em>
-<em>Last updated: February 2026</em></p>
+<em>Last updated: March 2026</em></p>
       </article>
 
       <!-- Page Navigation -->
@@ -446,7 +722,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-06</span>
+        <span>Last updated: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/APPROVAL_ENGINE.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -456,13 +732,25 @@
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#approval-engine" class="level-1">Approval Engine</a></li>
+<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#architecture" class="level-2">Architecture</a></li>
+<li><a href="#module-structure" class="level-2">Module Structure</a></li>
+<li><a href="#codegraphharness" class="level-2">CodeGraphHarness</a></li>
+<li><a href="#get-harness" class="level-3">get_harness()</a></li>
+<li><a href="#reset-harness" class="level-3">reset_harness()</a></li>
 <li><a href="#api-reference" class="level-2">API Reference</a></li>
 <li><a href="#approvalrequest" class="level-3">ApprovalRequest</a></li>
 <li><a href="#approvaldecision" class="level-3">ApprovalDecision</a></li>
 <li><a href="#approvalengine" class="level-3">ApprovalEngine</a></li>
+<li><a href="#session-models" class="level-2">Session Models</a></li>
+<li><a href="#item" class="level-3">Item</a></li>
+<li><a href="#turn" class="level-3">Turn</a></li>
+<li><a href="#thread" class="level-3">Thread</a></li>
+<li><a href="#harnesssessionmanager" class="level-2">HarnessSessionManager</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
+<li><a href="#harnessconfig" class="level-3">HarnessConfig</a></li>
+<li><a href="#yaml-configuration" class="level-3">YAML Configuration</a></li>
 <li><a href="#usage" class="level-2">Usage</a></li>
 <li><a href="#request-approval" class="level-3">Request Approval</a></li>
 <li><a href="#resolve-from-ui" class="level-3">Resolve from UI</a></li>
@@ -470,6 +758,10 @@
 <li><a href="#decision-flow" class="level-2">Decision Flow</a></li>
 <li><a href="#default-action-classification" class="level-2">Default Action Classification</a></li>
 <li><a href="#integration-points" class="level-2">Integration Points</a></li>
+<li><a href="#autofix-engine" class="level-3">Autofix Engine</a></li>
+<li><a href="#pattern-fixes-cli" class="level-3">Pattern Fixes CLI</a></li>
+<li><a href="#pattern-fixes-rest-api" class="level-3">Pattern Fixes REST API</a></li>
+<li><a href="#acp-approval-bridge-separate-system" class="level-3">ACP Approval Bridge (separate system)</a></li>
 <li><a href="#related-documentation" class="level-2">Related Documentation</a></li>
       </ul>
     </aside>

@@ -160,7 +160,7 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="AGENTS.html">Справочник агентов</a></li>
         <li><a href="ANALYSIS_MODULES.html">Справочник модулей анализа</a></li>
-        <li><a href="API.html">Справочник API</a></li>
+        <li><a href="API.html">Справочник Python SDK</a></li>
         <li><a href="APPROVAL_ENGINE.html">Механизм подтверждения операций</a></li>
         <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
         <li><a href="FAQ.html">Часто задаваемые вопросы (FAQ)</a></li>
@@ -279,7 +279,7 @@
    +-- Результат: SQL-запросы DuckDB / PGQ
 
 4. ВЫПОЛНЕНИЕ
-   HypothesisExecutor.execute()
+   QueryExecutor.validate_batch()
    +-- Выполнение запросов к CPG
    +-- Сбор доказательств
    +-- Результат: Evidence[]
@@ -619,18 +619,20 @@ LIMIT 100;
 <hr />
 <h2  id="hypothesis-execution"><span id="hypothesis_execution"></span><span id="vypolnenie-gipotezy"></span><span id="vypolnenie_gipotezy"></span>Выполнение гипотезы<a class="heading-anchor" href="#hypothesis-execution" title="Link to this section">&para;</a></h2>
 <h3  id="executor-usage"><span id="executor_usage"></span><span id="ispolzovanie-ispolnitelya"></span><span id="ispolzovanie_ispolnitelya"></span>Использование исполнителя<a class="heading-anchor" href="#executor-usage" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.security.hypothesis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HypothesisExecutor</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.security.hypothesis</span><span class="w"> </span><span class="kn">import</span> <span class="n">QueryExecutor</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectManager</span>
 
-<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
-<span class="n">executor</span> <span class="o">=</span> <span class="n">HypothesisExecutor</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+<span class="n">executor</span> <span class="o">=</span> <span class="n">QueryExecutor</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
 
-<span class="c1"># Выполнить одну гипотезу {#execute-single-hypothesis}</span>
-<span class="n">evidence</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">hypothesis</span><span class="p">)</span>
+<span class="c1"># Выполнить одну гипотезу с контекстным менеджером {#execute-single-hypothesis}</span>
+<span class="k">with</span> <span class="n">executor</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">execute_hypothesis_query</span><span class="p">(</span><span class="n">hypothesis</span><span class="p">)</span>
 
-<span class="c1"># Выполнить пакетно {#execute-batch}</span>
-<span class="n">results</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">execute_batch</span><span class="p">(</span><span class="n">hypotheses</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># Валидация: выполнить запрос и обновить гипотезу с доказательствами</span>
+    <span class="n">updated</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">validate_hypothesis</span><span class="p">(</span><span class="n">hypothesis</span><span class="p">)</span>
+
+    <span class="c1"># Валидация пакета {#validate-batch}</span>
+    <span class="n">validated</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">validate_batch</span><span class="p">(</span><span class="n">hypotheses</span><span class="p">)</span>
 </code></pre></div>
 
 <h3  id="evidence-collection"><span id="evidence_collection"></span><span id="sbor-dokazatelstv"></span><span id="sbor_dokazatelstv"></span>Сбор доказательств<a class="heading-anchor" href="#evidence-collection" title="Link to this section">&para;</a></h3>
@@ -776,52 +778,32 @@ for pattern in c_patterns:
 <h2  id="python-api"><span id="python_api"></span>Python API<a class="heading-anchor" href="#python-api" title="Link to this section">&para;</a></h2>
 <h3  id="complete-example"><span id="complete_example"></span><span id="polnyy-primer"></span><span id="polnyy_primer"></span>Полный пример<a class="heading-anchor" href="#complete-example" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.security.hypothesis</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">HypothesisGenerator</span><span class="p">,</span>
-    <span class="n">MultiCriteriaScorer</span><span class="p">,</span>
-    <span class="n">QuerySynthesizer</span><span class="p">,</span>
-    <span class="n">HypothesisExecutor</span><span class="p">,</span>
     <span class="n">HypothesisValidator</span><span class="p">,</span>
-    <span class="n">CodebaseStats</span>
+    <span class="n">generate_validation_report</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectManager</span>
 
-<span class="c1"># 1. Подключение к CPG {#1-connect-to-cpg}</span>
-<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
+<span class="c1"># 1. Создание валидатора с путём к базе CPG {#1-create-validator}</span>
+<span class="n">db_path</span> <span class="o">=</span> <span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">()</span>
+<span class="n">validator</span> <span class="o">=</span> <span class="n">HypothesisValidator</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span>
 
-<span class="c1"># 2. Сбор статистики по кодовой базе {#2-gather-codebase-statistics}</span>
-<span class="n">stats</span> <span class="o">=</span> <span class="n">CodebaseStats</span><span class="p">(</span>
-    <span class="n">total_methods</span><span class="o">=</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM nodes_method&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span>
-    <span class="n">total_calls</span><span class="o">=</span><span class="n">conn</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM nodes_call&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<span class="c1"># 2. Запуск полной валидации (генерация → оценка → синтез → выполнение → проверка) {#2-run-validation}</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">validator</span><span class="o">.</span><span class="n">run_validation</span><span class="p">(</span>
+    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">,</span>
+    <span class="n">max_hypotheses</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">min_priority_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">human_language</span><span class="o">=</span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1"># 3. Генерация гипотез {#3-generate-hypotheses}</span>
-<span class="n">generator</span> <span class="o">=</span> <span class="n">HypothesisGenerator</span><span class="p">()</span>
-<span class="n">hypotheses</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">language</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="n">max_hypotheses</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-
-<span class="c1"># 4. Оценка и приоритизация {#4-score-and-prioritize}</span>
-<span class="n">scorer</span> <span class="o">=</span> <span class="n">MultiCriteriaScorer</span><span class="p">()</span>
-<span class="n">scored</span> <span class="o">=</span> <span class="n">scorer</span><span class="o">.</span><span class="n">score_batch</span><span class="p">(</span><span class="n">hypotheses</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span>
-
-<span class="c1"># 5. Генерация SQL-запросов {#5-synthesize-sql-queries}</span>
-<span class="n">synthesizer</span> <span class="o">=</span> <span class="n">QuerySynthesizer</span><span class="p">()</span>
-<span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">scored</span><span class="p">:</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">sql_query</span> <span class="o">=</span> <span class="n">synthesizer</span><span class="o">.</span><span class="n">synthesize_query</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
-
-<span class="c1"># 6. Выполнение запросов к CPG {#6-execute-against-cpg}</span>
-<span class="n">executor</span> <span class="o">=</span> <span class="n">HypothesisExecutor</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">scored</span><span class="p">[:</span><span class="mi">20</span><span class="p">]:</span>  <span class="c1"># Топ-20</span>
-    <span class="n">evidence</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">evidence</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">evidence</span><span class="p">)</span>
-
-<span class="c1"># 7. Проверка и отчёт {#7-validate-and-report}</span>
-<span class="n">validator</span> <span class="o">=</span> <span class="n">HypothesisValidator</span><span class="p">()</span>
-<span class="n">results</span> <span class="o">=</span> <span class="n">validator</span><span class="o">.</span><span class="n">validate_batch</span><span class="p">(</span><span class="n">scored</span><span class="p">)</span>
-
+<span class="c1"># 3. Вывод метрик {#3-print-metrics}</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Частота обнаружения: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">detection_rate</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Точность: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">precision</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Полнота: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">recall</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;F1-мера: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">f1_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># 4. Генерация отчёта в формате Markdown {#4-generate-report}</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">generate_validation_report</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">results</span><span class="o">.</span><span class="n">validated_hypotheses</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
 </code></pre></div>
 
 <hr />
@@ -904,13 +886,13 @@ for pattern in c_patterns:
 
       <a href="API.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Вперед</span>
-        <span class="doc-page-nav-title">Справочник API</span>
+        <span class="doc-page-nav-title">Справочник Python SDK</span>
       </a>
     </nav>
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-06</span>
+        <span>Обновлено: 2026-03-07</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/HYPOTHESIS_SYSTEM.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
