@@ -272,8 +272,6 @@ LLM подключается на границе: когда нужно объя
 
 [Подробнее о продуктивности](https://codegraph.ru/productivity.html) | [Технический обзор](https://codegraph.ru/whitepaper.html)
 
-Первый аудит — бесплатно.
-
 ---
 
 *CodeGraph анализирует код, чтобы вы а также ваш Cursor или Claude Code понимал его за секунды. 11 языков, 33 прохода. Подробнее: [codegraph.ru](https://codegraph.ru)*

@@ -587,8 +587,6 @@ python -m src.cli audit --db data/projects/myproject.duckdb
 
 [Подробнее о технологии CPG](https://codegraph.ru/cpg.html) | [Технический обзор](https://codegraph.ru/whitepaper.html)
 
-Первый аудит — бесплатно.
-
 ---
 
 *CodeGraph анализирует код, чтобы вы понимали его за секунды. 11 языков, 33 прохода. Подробнее: [codegraph.ru](https://codegraph.ru)*
