@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html" class="active">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,20 +181,30 @@
       <article class="doc-content">
         <h1  id="scenario-11-architecture-analysis"><span id="scenario_11_architecture_analysis"></span>Scenario 11: Architecture Analysis<a class="heading-anchor" href="#scenario-11-architecture-analysis" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Software architect understanding and documenting system architecture.</p>
+<p>Software architect understanding and documenting system architecture, detecting violations, and analyzing dependencies.</p>
 </blockquote>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#quick-start">Quick Start</a></li>
-<li><a href="#subsystem-mapping">Subsystem Mapping</a></li>
-<li><a href="#module-overview">Module Overview</a></li>
-<li><a href="#layer-dependencies">Layer Dependencies</a></li>
-<li><a href="#pattern-detection">Pattern Detection</a></li>
-<li><a href="#design-patterns-used">Design Patterns Used</a></li>
-<li><a href="#architecture-violations">Architecture Violations</a></li>
-<li><a href="#component-analysis">Component Analysis</a></li>
-<li><a href="#module-cohesion">Module Cohesion</a></li>
-<li><a href="#interface-analysis">Interface Analysis</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#intent-classification">Intent Classification</a></li>
+<li><a href="#two-phase-architecture">Two-Phase Architecture</a></li>
+<li><a href="#three-architecture-agents">Three Architecture Agents</a></li>
+<li><a href="#dependency-analysis">Dependency Analysis</a></li>
+<li><a href="#circular-dependencies">Circular Dependencies</a></li>
+<li><a href="#god-modules-and-unstable-dependencies">God Modules and Unstable Dependencies</a></li>
+<li><a href="#dependency-fast-path">Dependency Fast-Path</a></li>
+<li><a href="#layer-analysis">Layer Analysis</a></li>
+<li><a href="#layer-hierarchy">Layer Hierarchy</a></li>
+<li><a href="#layer-violations">Layer Violations</a></li>
+<li><a href="#coupling-and-cohesion">Coupling and Cohesion</a></li>
+<li><a href="#fan-in-and-fan-out">Fan-In and Fan-Out</a></li>
+<li><a href="#srp-violations">SRP Violations</a></li>
+<li><a href="#specialized-analysis">Specialized Analysis</a></li>
+<li><a href="#hidden-dependencies">Hidden Dependencies</a></li>
+<li><a href="#extraction-candidates">Extraction Candidates</a></li>
+<li><a href="#change-impact-and-stability-metrics">Change Impact and Stability Metrics</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
 <li><a href="#example-questions">Example Questions</a></li>
 <li><a href="#related-scenarios">Related Scenarios</a></li>
 </ul>
@@ -202,183 +213,415 @@
 /select<span class="w"> </span><span class="m">11</span>
 </code></pre></div>
 
-<h2  id="subsystem-mapping"><span id="subsystem_mapping"></span>Subsystem Mapping<a class="heading-anchor" href="#subsystem-mapping" title="Link to this section">&para;</a></h2>
-<h3  id="module-overview"><span id="module_overview"></span>Module Overview<a class="heading-anchor" href="#module-overview" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Map the PostgreSQL architecture
-
-╭─────────────── Architecture Overview ───────────────────────╮
-│                                                              │
-│  PostgreSQL Subsystem Architecture:                          │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    Client Layer                          │ │
-│  │  libpq, JDBC, ODBC, psql                                 │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                          ↓                                   │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                   Protocol Layer                         │ │
-│  │  PostgresMain, pqcomm, auth                              │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                          ↓                                   │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              Query Processing Layer                      │ │
-│  │  Parser → Analyzer → Planner → Executor                  │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                          ↓                                   │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                  Storage Layer                           │ │
-│  │  Buffer Manager → Heap/Index Access → File Manager       │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3  id="intent-classification"><span id="intent_classification"></span>Intent Classification<a class="heading-anchor" href="#intent-classification" title="Link to this section">&para;</a></h3>
+<p>The <code>ArchitectureIntentDetector</code> classifies queries into one of 17 intents (+ fallback), sorted by priority (lower = more specific = checked first). Each intent has EN and RU keywords with morphological matching, plus domain-specific keywords loaded from the active plugin.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Intent</th>
+<th>Priority</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dependency_cycle</code></td>
+<td>5</td>
+<td>Circular/cyclic dependencies</td>
+</tr>
+<tr>
+<td><code>srp_violation</code></td>
+<td>6</td>
+<td>Single Responsibility Principle violations</td>
+</tr>
+<tr>
+<td><code>wcc_analysis</code></td>
+<td>7</td>
+<td>Weakly connected components</td>
+</tr>
+<tr>
+<td><code>shared_deps</code></td>
+<td>8</td>
+<td>Shared dependencies between modules</td>
+</tr>
+<tr>
+<td><code>transitive_deps</code></td>
+<td>9</td>
+<td>Transitive dependencies from entry points</td>
+</tr>
+<tr>
+<td><code>extraction_candidates</code></td>
+<td>10</td>
+<td>Candidates for extraction to library</td>
+</tr>
+<tr>
+<td><code>di_points</code></td>
+<td>11</td>
+<td>Dependency injection points</td>
+</tr>
+<tr>
+<td><code>hidden_deps</code></td>
+<td>12</td>
+<td>Hidden dependencies via global variables</td>
+</tr>
+<tr>
+<td><code>layer_analysis</code></td>
+<td>13</td>
+<td>Architecture layer analysis</td>
+</tr>
+<tr>
+<td><code>layer_violation</code></td>
+<td>14</td>
+<td>Layer boundary violations</td>
+</tr>
+<tr>
+<td><code>stability_metrics</code></td>
+<td>15</td>
+<td>Dependency stability metrics</td>
+</tr>
+<tr>
+<td><code>change_impact</code></td>
+<td>16</td>
+<td>Change impact analysis</td>
+</tr>
+<tr>
+<td><code>coupling_analysis</code></td>
+<td>17</td>
+<td>Coupling/cohesion, fan-in/fan-out</td>
+</tr>
+<tr>
+<td><code>module_deps</code></td>
+<td>18</td>
+<td>Specific module dependencies</td>
+</tr>
+<tr>
+<td><code>interface_deps</code></td>
+<td>19</td>
+<td>Interface/exported function dependencies</td>
+</tr>
+<tr>
+<td><code>modularity_check</code></td>
+<td>20</td>
+<td>Modularity and encapsulation check</td>
+</tr>
+<tr>
+<td><code>full_analysis</code></td>
+<td>21</td>
+<td>Comprehensive end-to-end analysis</td>
+</tr>
+<tr>
+<td><code>external_dependencies</code></td>
+<td>50</td>
+<td>External libraries and third-party deps</td>
+</tr>
+</tbody>
+</table></div>
+<p>If no intent matches, the fallback <code>general_architecture</code> is used (confidence=0.5).</p>
+<p>The detector also extracts:
+- <strong><code>target_component</code></strong> — subsystem/module name from the query
+- <strong><code>severity_filter</code></strong> — critical / high / medium / low / all (EN + RU morphological matching)</p>
+<h3  id="two-phase-architecture"><span id="two_phase_architecture"></span>Two-Phase Architecture<a class="heading-anchor" href="#two-phase-architecture" title="Link to this section">&para;</a></h3>
+<p>S11 uses a two-phase approach for optimal performance:</p>
+<p><strong>Phase 1: Handler-based (no LLM).</strong> The <code>integrate_handlers()</code> function tries 17 registered template-based handlers. Each handler produces structured reports directly from CPG data using <code>ArchitectureReportFormatter</code>. If a handler matches the detected intent and finds results, the response is returned without calling the LLM.</p>
+<p><strong>Phase 2: LLM fallback.</strong> If no handler matched or the handler found 0 results, the full pipeline runs: <code>DependencyAnalyzer</code> detects violations, <code>LayerValidator</code> checks layering rules, <code>CallGraphAnalyzer</code> analyzes dependency paths, and <code>ArchitectureReporter</code> generates a prioritized report — then LLM enriches the response.</p>
+<div class="highlight"><pre><span></span><code>Query -&gt; ArchitectureIntentDetector -&gt; integrate_handlers()
+  |                                          |
+  |  Phase 1: Handler matched?      Yes -&gt; Structured report (no LLM)
+  |                                 No  -&gt; Phase 2: Full pipeline
+  |
+  Phase 2: DependencyAnalyzer -&gt; LayerValidator
+           -&gt; CallGraphAnalyzer -&gt; ArchitectureReporter -&gt; LLM
 </code></pre></div>
 
-<h3  id="layer-dependencies"><span id="layer_dependencies"></span>Layer Dependencies<a class="heading-anchor" href="#layer-dependencies" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="k">Show</span><span class="w"> </span><span class="nv">dependencies</span><span class="w"> </span><span class="nv">between</span><span class="w"> </span><span class="nv">architectural</span><span class="w"> </span><span class="nv">layers</span>
+<p>The 17 handlers are registered in <code>HandlerRegistry("architecture")</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Priority</th>
+<th>Intent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SRPViolationHandler</code></td>
+<td>8</td>
+<td><code>srp_violation</code></td>
+</tr>
+<tr>
+<td><code>DependencyCycleHandler</code></td>
+<td>10</td>
+<td><code>dependency_cycle</code></td>
+</tr>
+<tr>
+<td><code>LayerAnalysisHandler</code></td>
+<td>11</td>
+<td><code>layer_analysis</code></td>
+</tr>
+<tr>
+<td><code>SharedDepsHandler</code></td>
+<td>12</td>
+<td><code>shared_deps</code></td>
+</tr>
+<tr>
+<td><code>ModuleDepsHandler</code></td>
+<td>13</td>
+<td><code>module_deps</code></td>
+</tr>
+<tr>
+<td><code>WCCAnalysisHandler</code></td>
+<td>14</td>
+<td><code>wcc_analysis</code></td>
+</tr>
+<tr>
+<td><code>CouplingHandler</code></td>
+<td>15</td>
+<td><code>coupling_analysis</code></td>
+</tr>
+<tr>
+<td><code>TransitiveDepsHandler</code></td>
+<td>16</td>
+<td><code>transitive_deps</code></td>
+</tr>
+<tr>
+<td><code>InterfaceDepsHandler</code></td>
+<td>17</td>
+<td><code>interface_deps</code></td>
+</tr>
+<tr>
+<td><code>ChangeImpactHandler</code></td>
+<td>18</td>
+<td><code>change_impact</code></td>
+</tr>
+<tr>
+<td><code>StabilityMetricsHandler</code></td>
+<td>19</td>
+<td><code>stability_metrics</code></td>
+</tr>
+<tr>
+<td><code>LayerViolationHandler</code></td>
+<td>20</td>
+<td><code>layer_violation</code></td>
+</tr>
+<tr>
+<td><code>FullAnalysisHandler</code></td>
+<td>21</td>
+<td><code>full_analysis</code></td>
+</tr>
+<tr>
+<td><code>HiddenDepsHandler</code></td>
+<td>22</td>
+<td><code>hidden_deps</code></td>
+</tr>
+<tr>
+<td><code>DIPointsHandler</code></td>
+<td>23</td>
+<td><code>di_points</code></td>
+</tr>
+<tr>
+<td><code>ExtractionCandidatesHandler</code></td>
+<td>24</td>
+<td><code>extraction_candidates</code></td>
+</tr>
+<tr>
+<td><code>ExternalDepsHandler</code></td>
+<td>30</td>
+<td><code>external_dependencies</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="three-architecture-agents"><span id="three_architecture_agents"></span>Three Architecture Agents<a class="heading-anchor" href="#three-architecture-agents" title="Link to this section">&para;</a></h3>
+<p>The LLM fallback pipeline uses three specialized agents from <code>src/architecture/agents/</code>:</p>
+<p><strong><code>DependencyAnalyzer(cpg_service)</code></strong> — Agent 1. Detects dependency violations using architecture patterns and <code>CallGraphAnalyzer</code>:
+- Circular dependencies between modules
+- God modules (excessive fan-out)
+- Unstable dependencies (stable modules depending on unstable ones)
+- Feature envy (methods too interested in other modules)
+- Inappropriate intimacy (bidirectional tight coupling)
+- Methods: <code>detect_all_violations(limit_per_pattern)</code>, <code>calculate_dependency_metrics()</code>, <code>identify_architectural_chokepoints()</code></p>
+<p><strong><code>LayerValidator(cpg_service, layer_hierarchy=None)</code></strong> — Agent 2. Validates architectural layering:
+- Lower layers calling higher layers (violation)
+- Cross-layer dependencies (skip-layer smell)
+- Default 4-tier hierarchy: system(0), storage/data(1), business/logic(2), presentation/interface(3)
+- Methods: <code>validate_all_layers(limit)</code>, <code>get_layering_violations()</code></p>
+<p><strong><code>ArchitectureReporter()</code></strong> — Agent 3. Generates reports:
+- Structured violation reports with severity breakdown (critical/high/medium/low)
+- Category breakdown (dependency/layering/coupling/cohesion)
+- Remediation recommendations with <code>RemediationAction</code>
+- Methods: <code>generate_report(findings, dependency_analysis, layer_metrics)</code>, <code>create_remediation_plan(findings)</code></p>
+<p>Key data models (<code>src/architecture/agents/models.py</code>):
+- <code>ViolationFinding</code> — detected violation (severity, category, description, affected_files)
+- <code>DependencyAnalysis</code> / <code>DependencyMetrics</code> — analysis results and metrics
+- <code>ArchitectureReport</code> — complete report with findings and remediation
+- <code>RemediationAction</code> — recommended fix with priority</p>
+<h2  id="dependency-analysis"><span id="dependency_analysis"></span>Dependency Analysis<a class="heading-anchor" href="#dependency-analysis" title="Link to this section">&para;</a></h2>
+<h3  id="circular-dependencies"><span id="circular_dependencies"></span>Circular Dependencies<a class="heading-anchor" href="#circular-dependencies" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Find circular dependencies in the codebase
 
-╭───────────────<span class="w"> </span><span class="nv">Layer</span><span class="w"> </span><span class="nv">Dependencies</span><span class="w"> </span>──────────────────────────╮
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Dependency</span><span class="w"> </span><span class="nv">Flow</span><span class="w"> </span><span class="ss">(</span><span class="nv">top</span><span class="o">-</span><span class="nv">down</span><span class="ss">)</span>:<span class="w">                                 </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Protocol</span><span class="w">                                                    </span>│
-│<span class="w">    </span>└──<span class="w"> </span><span class="nv">Query</span><span class="w"> </span><span class="nv">Processing</span><span class="w">                                      </span>│
-│<span class="w">          </span>├──<span class="w"> </span><span class="nv">Storage</span><span class="w">                                         </span>│
-│<span class="w">          </span>│<span class="w">     </span>├──<span class="w"> </span><span class="nv">Buffer</span><span class="w"> </span><span class="nv">Manager</span><span class="w">                            </span>│
-│<span class="w">          </span>│<span class="w">     </span>├──<span class="w"> </span><span class="nv">Lock</span><span class="w"> </span><span class="nv">Manager</span><span class="w">                              </span>│
-│<span class="w">          </span>│<span class="w">     </span>└──<span class="w"> </span><span class="nv">Transaction</span><span class="w"> </span><span class="nv">Manager</span><span class="w">                       </span>│
-│<span class="w">          </span>└──<span class="w"> </span><span class="nv">Catalog</span><span class="w">                                         </span>│
-│<span class="w">                </span>└──<span class="w"> </span><span class="nv">Storage</span><span class="w">                                   </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Cross</span><span class="o">-</span><span class="nv">cutting</span><span class="w"> </span><span class="nv">Concerns</span>:<span class="w">                                     </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Memory</span><span class="w"> </span><span class="nv">Management</span><span class="w"> </span><span class="ss">(</span><span class="nv">all</span><span class="w"> </span><span class="nv">layers</span><span class="ss">)</span><span class="w">                          </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Error</span><span class="w"> </span><span class="nv">Handling</span><span class="w"> </span><span class="ss">(</span><span class="nv">all</span><span class="w"> </span><span class="nv">layers</span><span class="ss">)</span><span class="w">                             </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Logging</span><span class="w"> </span><span class="ss">(</span><span class="nv">all</span><span class="w"> </span><span class="nv">layers</span><span class="ss">)</span><span class="w">                                    </span>│
-│<span class="w">                                                              </span>│
-╰──────────────────────────────────────────────────────────────╯
+╭─────────────── Dependency Cycles ─────────────────────────────╮
+│                                                                │
+│  Detected Cycles: 3                                            │
+│                                                                │
+│  Cycle 1 (critical):                                           │
+│    executor -&gt; planner -&gt; executor                             │
+│    Files: execMain.c, planmain.c                               │
+│    Impact: 12 transitive dependents                            │
+│                                                                │
+│  Cycle 2 (high):                                               │
+│    storage -&gt; catalog -&gt; storage                               │
+│    Files: bufmgr.c, pg_class.c                                 │
+│    Impact: 8 transitive dependents                             │
+│                                                                │
+│  Cycle 3 (medium):                                             │
+│    utils -&gt; parser -&gt; utils                                    │
+│    Files: stringinfo.c, scansup.c                              │
+│    Impact: 3 transitive dependents                             │
+│                                                                │
+╰────────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
-<h2  id="pattern-detection"><span id="pattern_detection"></span>Pattern Detection<a class="heading-anchor" href="#pattern-detection" title="Link to this section">&para;</a></h2>
-<h3  id="design-patterns-used"><span id="design_patterns_used"></span>Design Patterns Used<a class="heading-anchor" href="#design-patterns-used" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Find design patterns in the codebase
+<p>The <code>DependencyCycleHandler</code> uses <code>CallGraphAnalyzer</code> to traverse the call graph and detect cycles, then ranks them by severity based on transitive impact.</p>
+<h3  id="god-modules-and-unstable-dependencies"><span id="god_modules_and_unstable_dependencies"></span>God Modules and Unstable Dependencies<a class="heading-anchor" href="#god-modules-and-unstable-dependencies" title="Link to this section">&para;</a></h3>
+<p><code>DependencyAnalyzer</code> detects additional violation types:
+- <strong>God modules</strong> — modules with excessive fan-out (too many dependencies)
+- <strong>Unstable dependencies</strong> — when a stable module depends on an unstable one (violates the Stable Dependencies Principle)
+- <strong>Feature envy</strong> — methods that access data from other modules more than their own
+- <strong>Inappropriate intimacy</strong> — bidirectional tight coupling between modules</p>
+<h3  id="dependency-fast-path"><span id="dependency_fast_path"></span>Dependency Fast-Path<a class="heading-anchor" href="#dependency-fast-path" title="Link to this section">&para;</a></h3>
+<p>For simple dependency queries (&ldquo;What does X depend on?&rdquo;, &ldquo;Who includes X?&rdquo;), S11 uses a fast-path that bypasses the full agent pipeline:</p>
+<ul>
+<li><code>detect_architecture_query_type()</code> classifies the query into: <code>who_imports_x</code>, <code>what_x_depends_on</code>, or <code>external_deps</code></li>
+<li>Queries the <code>nodes_import</code> table directly for <code>#include</code> / import relationships</li>
+<li>Extracts <code>target_module</code> from query using regex patterns (EN + RU)</li>
+<li>Returns results without LLM involvement</li>
+</ul>
+<h2  id="layer-analysis"><span id="layer_analysis"></span>Layer Analysis<a class="heading-anchor" href="#layer-analysis" title="Link to this section">&para;</a></h2>
+<h3  id="layer-hierarchy"><span id="layer_hierarchy"></span>Layer Hierarchy<a class="heading-anchor" href="#layer-hierarchy" title="Link to this section">&para;</a></h3>
+<p><code>LayerValidator</code> enforces a configurable layer hierarchy. The default 4-tier model:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Level</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>System/Infrastructure</td>
+<td>0</td>
+<td>OS calls, utilities</td>
+</tr>
+<tr>
+<td>Storage/Data</td>
+<td>1</td>
+<td>Buffer management, file I/O</td>
+</tr>
+<tr>
+<td>Business/Logic</td>
+<td>2</td>
+<td>Query processing, optimization</td>
+</tr>
+<tr>
+<td>Presentation/Interface</td>
+<td>3</td>
+<td>UI, CLI, protocols</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Rules:</strong> Higher layers can depend on lower layers. Lower layers CANNOT depend on higher layers. Skip-layer dependencies (e.g., presentation -&gt; storage) are flagged as a smell.</p>
+<h3  id="layer-violations"><span id="layer_violations"></span>Layer Violations<a class="heading-anchor" href="#layer-violations" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Find architecture layer violations
 
-╭─────────────── Design Patterns ─────────────────────────────╮
-│                                                              │
-│  Detected Design Patterns:                                   │
-│                                                              │
-│  Strategy Pattern:                                           │
-│    - Access Methods (heap, btree, hash, gin, gist)           │
-│    - Scan Types (sequential, index, bitmap)                  │
-│                                                              │
-│  Observer Pattern:                                           │
-│    - Event trigger system                                    │
-│    - Hook mechanism (executor hooks, planner hooks)          │
-│                                                              │
-│  Factory Pattern:                                            │
-│    - Node creation (makeNode, copyObject)                    │
-│    - Memory context creation                                 │
-│                                                              │
-│  Singleton Pattern:                                          │
-│    - Shared memory segments                                  │
-│    - System catalogs cache                                   │
-│                                                              │
-│  Iterator Pattern:                                           │
-│    - Executor node iteration (ExecProcNode)                  │
-│    - Heap scan iteration                                     │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
+╭─────────────── Layer Violations ──────────────────────────────╮
+│                                                                │
+│  Violations Found: 5                                           │
+│                                                                │
+│  1. storage -&gt; presentation (critical)                         │
+│     bufmgr.c calls format_output()                             │
+│     Rule: Storage layer cannot call presentation               │
+│                                                                │
+│  2. data -&gt; interface (high)                                   │
+│     catalog.c references client_auth()                         │
+│     Rule: Data layer cannot reference interface                │
+│                                                                │
+│  Remediation:                                                  │
+│    - Introduce abstraction layer between violating modules     │
+│    - Use dependency injection to invert the dependency         │
+│                                                                │
+╰────────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
-<h3  id="architecture-violations"><span id="architecture_violations"></span>Architecture Violations<a class="heading-anchor" href="#architecture-violations" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Find architecture pattern violations
+<h2  id="coupling-and-cohesion"><span id="coupling_and_cohesion"></span>Coupling and Cohesion<a class="heading-anchor" href="#coupling-and-cohesion" title="Link to this section">&para;</a></h2>
+<h3  id="fan-in-and-fan-out"><span id="fan_in_and_fan_out"></span>Fan-In and Fan-Out<a class="heading-anchor" href="#fan-in-and-fan-out" title="Link to this section">&para;</a></h3>
+<p>The <code>CouplingHandler</code> analyzes module coupling using fan-in/fan-out metrics:</p>
+<ul>
+<li><strong>Fan-out</strong> — number of modules a given module depends on (high = potential god module)</li>
+<li><strong>Fan-in</strong> — number of modules that depend on a given module (high = critical infrastructure)</li>
+<li><strong>Coupling score</strong> — combined metric indicating how tightly coupled a module is</li>
+</ul>
+<h3  id="srp-violations"><span id="srp_violations"></span>SRP Violations<a class="heading-anchor" href="#srp-violations" title="Link to this section">&para;</a></h3>
+<p>The <code>SRPViolationHandler</code> detects modules that violate the Single Responsibility Principle — modules with multiple unrelated responsibilities, indicated by low cohesion and high method count across distinct functional areas.</p>
+<h2  id="specialized-analysis"><span id="specialized_analysis"></span>Specialized Analysis<a class="heading-anchor" href="#specialized-analysis" title="Link to this section">&para;</a></h2>
+<h3  id="hidden-dependencies"><span id="hidden_dependencies"></span>Hidden Dependencies<a class="heading-anchor" href="#hidden-dependencies" title="Link to this section">&para;</a></h3>
+<p>The <code>HiddenDepsHandler</code> detects dependencies not visible through imports:
+- Global variable access across modules
+- Implicit dependencies through shared state
+- Side effects that create coupling without explicit imports</p>
+<h3  id="extraction-candidates"><span id="extraction_candidates"></span>Extraction Candidates<a class="heading-anchor" href="#extraction-candidates" title="Link to this section">&para;</a></h3>
+<p>The <code>ExtractionCandidatesHandler</code> identifies modules suitable for extraction into separate libraries:
+- High cohesion (self-contained)
+- Low coupling with the rest of the system
+- Clear interface boundaries</p>
+<h3  id="change-impact-and-stability-metrics"><span id="change_impact_and_stability_metrics"></span>Change Impact and Stability Metrics<a class="heading-anchor" href="#change-impact-and-stability-metrics" title="Link to this section">&para;</a></h3>
+<p><strong>Change impact</strong> (<code>ChangeImpactHandler</code>): Analyzes the blast radius of modifying a specific module — how many other modules would be affected, using <code>CallGraphAnalyzer</code> transitive dependency analysis.</p>
+<p><strong>Stability metrics</strong> (<code>StabilityMetricsHandler</code>): Calculates the Stable Dependencies Principle metrics:
+- Instability = fan-out / (fan-in + fan-out)
+- Stable modules (I close to 0) should not depend on unstable modules (I close to 1)</p>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Find circular dependencies</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find circular dependencies in the codebase&quot;</span>
 
-╭─────────────── Architecture Violations ─────────────────────╮
-│                                                              │
-│  Layer Boundary Violations:                                  │
-│                                                              │
-│  🔴 Direct file access from executor                         │
-│     Location: src/backend/executor/nodeCustom.c:234          │
-│     Issue: Bypasses buffer manager                           │
-│     Fix: Use ReadBuffer() instead of direct read             │
-│                                                              │
-│  🟡 Catalog access without proper locks                      │
-│     Location: src/backend/utils/cache/relcache.c:567         │
-│     Issue: Potential race condition                          │
-│     Fix: Add LockRelationOid() before access                 │
-│                                                              │
-│  Circular Dependencies:                                      │
-│    optimizer ↔ executor (3 locations)                        │
-│                                                              │
-│  Total violations: 5                                         │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
+<span class="c1"># Analyze module dependencies</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;What does the executor module depend on?&quot;</span>
 
-<h2  id="component-analysis"><span id="component_analysis"></span>Component Analysis<a class="heading-anchor" href="#component-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="module-cohesion"><span id="module_cohesion"></span>Module Cohesion<a class="heading-anchor" href="#module-cohesion" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Analyze cohesion of the executor module
+<span class="c1"># Detect layer violations</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find architecture layer violations&quot;</span>
 
-╭─────────────── Cohesion Analysis ───────────────────────────╮
-│                                                              │
-│  Module: src/backend/executor/                               │
-│                                                              │
-│  Cohesion Score: 78% (Good)                                  │
-│                                                              │
-│  Sub-components:                                             │
-│    execMain.c     - Entry points (High cohesion)             │
-│    execProcnode.c - Node dispatch (High cohesion)            │
-│    execQual.c     - Qualification eval (High cohesion)       │
-│    execUtils.c    - Utilities (Medium cohesion)              │
-│                                                              │
-│  Improvement Opportunities:                                  │
-│    - Split execUtils.c into focused modules                  │
-│    - Extract parallel execution to separate module           │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
+<span class="c1"># Coupling analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Show coupling analysis with fan-in fan-out&quot;</span>
 
-<h3  id="interface-analysis"><span id="interface_analysis"></span>Interface Analysis<a class="heading-anchor" href="#interface-analysis" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Show public interfaces of storage layer</span>
+<span class="c1"># Change impact</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;What is the impact of changing the buffer manager?&quot;</span>
 
-╭─────────────── Public Interfaces ───────────────────────────╮
-│                                                              │
-│  Storage Layer Public API:                                   │
-│                                                              │
-│  Buffer Manager (bufmgr.h):                                  │
-│    ReadBuffer()           - Read page into buffer            │
-│    ReleaseBuffer()        - Release buffer pin               │
-│    MarkBufferDirty()      - Mark for write                   │
-│    FlushBuffer()          - Write to disk                    │
-│                                                              │
-│  Heap Access (heapam.h):                                     │
-│    heap_insert()          - Insert tuple                     │
-│    heap_delete()          - Delete tuple                     │
-│    heap_update()          - Update tuple                     │
-│    heap_fetch()           - Fetch tuple by TID               │
-│                                                              │
-│  Lock Manager (lmgr.h):                                      │
-│    LockRelation()         - Lock relation                    │
-│    UnlockRelation()       - Unlock relation                  │
-│    LockTuple()            - Lock tuple                       │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
+<span class="c1"># Full architecture audit (via audit composite)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>--db<span class="w"> </span>path/to/project.duckdb
 </code></pre></div>
 
 <h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
 <ul>
-<li>&ldquo;Map the system architecture&rdquo;</li>
-<li>&ldquo;Show dependencies between layers&rdquo;</li>
-<li>&ldquo;Find design patterns used&rdquo;</li>
-<li>&ldquo;Detect architecture violations&rdquo;</li>
-<li>&ldquo;Analyze module cohesion&rdquo;</li>
-<li>&ldquo;Show public interfaces of [module]&rdquo;</li>
+<li>&ldquo;Find circular dependencies in the codebase&rdquo;</li>
+<li>&ldquo;What does the [module] module depend on?&rdquo;</li>
+<li>&ldquo;Show architecture layer violations&rdquo;</li>
+<li>&ldquo;Analyze coupling and cohesion of [subsystem]&rdquo;</li>
+<li>&ldquo;Find god modules with excessive dependencies&rdquo;</li>
+<li>&ldquo;What is the impact of changing [module]?&rdquo;</li>
+<li>&ldquo;Show stability metrics for all modules&rdquo;</li>
+<li>&ldquo;Find hidden dependencies via global variables&rdquo;</li>
+<li>&ldquo;Which modules are candidates for extraction?&rdquo;</li>
+<li>&ldquo;Detect SRP violations&rdquo;</li>
+<li>&ldquo;Show shared dependencies between [module1] and [module2]&rdquo;</li>
+<li>&ldquo;Find transitive dependencies from main entry point&rdquo;</li>
 </ul>
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="01-onboarding.html">Onboarding</a> - Initial exploration</li>
-<li><a href="03-documentation.html">Documentation</a> - Generate architecture docs</li>
-<li><a href="10-cross-repo.html">Cross-Repo</a> - Multi-repository analysis</li>
-<li><a href="04-feature-development.html">Feature Development</a> - Understanding for development</li>
+<li><a href="01-onboarding.html">Onboarding</a> - Codebase exploration basics</li>
+<li><a href="03-documentation.html">Documentation</a> - Architecture documentation generation</li>
+<li><a href="10-cross-repo.html">Cross-Repo</a> - Multi-repository architecture</li>
+<li><a href="04-feature-development.html">Feature Development</a> - Finding integration points</li>
 </ul>
+<p><strong>S11 and audit:</strong> S11 provides interactive architecture analysis on demand. The audit composite uses S11 for 4 of its 12 quality dimensions: dependency health, modularity assessment, architecture compliance, and coupling analysis. S05 (refactoring) and S12 (tech debt) focus on code improvements, while S11 focuses on structural analysis and violation detection.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -391,13 +634,13 @@
 
       <a href="12-tech-debt.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Next</span>
-        <span class="doc-page-nav-title">Scenario 12: Tech Debt Assessment</span>
+        <span class="doc-page-nav-title">Scenario 12: Technical Debt</span>
       </a>
     </nav>
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/11-architecture.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -409,15 +652,25 @@
         <li><a href="#scenario-11-architecture-analysis" class="level-1">Scenario 11: Architecture Analysis</a></li>
 <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#subsystem-mapping" class="level-2">Subsystem Mapping</a></li>
-<li><a href="#module-overview" class="level-3">Module Overview</a></li>
-<li><a href="#layer-dependencies" class="level-3">Layer Dependencies</a></li>
-<li><a href="#pattern-detection" class="level-2">Pattern Detection</a></li>
-<li><a href="#design-patterns-used" class="level-3">Design Patterns Used</a></li>
-<li><a href="#architecture-violations" class="level-3">Architecture Violations</a></li>
-<li><a href="#component-analysis" class="level-2">Component Analysis</a></li>
-<li><a href="#module-cohesion" class="level-3">Module Cohesion</a></li>
-<li><a href="#interface-analysis" class="level-3">Interface Analysis</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#intent-classification" class="level-3">Intent Classification</a></li>
+<li><a href="#two-phase-architecture" class="level-3">Two-Phase Architecture</a></li>
+<li><a href="#three-architecture-agents" class="level-3">Three Architecture Agents</a></li>
+<li><a href="#dependency-analysis" class="level-2">Dependency Analysis</a></li>
+<li><a href="#circular-dependencies" class="level-3">Circular Dependencies</a></li>
+<li><a href="#god-modules-and-unstable-dependencies" class="level-3">God Modules and Unstable Dependencies</a></li>
+<li><a href="#dependency-fast-path" class="level-3">Dependency Fast-Path</a></li>
+<li><a href="#layer-analysis" class="level-2">Layer Analysis</a></li>
+<li><a href="#layer-hierarchy" class="level-3">Layer Hierarchy</a></li>
+<li><a href="#layer-violations" class="level-3">Layer Violations</a></li>
+<li><a href="#coupling-and-cohesion" class="level-2">Coupling and Cohesion</a></li>
+<li><a href="#fan-in-and-fan-out" class="level-3">Fan-In and Fan-Out</a></li>
+<li><a href="#srp-violations" class="level-3">SRP Violations</a></li>
+<li><a href="#specialized-analysis" class="level-2">Specialized Analysis</a></li>
+<li><a href="#hidden-dependencies" class="level-3">Hidden Dependencies</a></li>
+<li><a href="#extraction-candidates" class="level-3">Extraction Candidates</a></li>
+<li><a href="#change-impact-and-stability-metrics" class="level-3">Change Impact and Stability Metrics</a></li>
+<li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>

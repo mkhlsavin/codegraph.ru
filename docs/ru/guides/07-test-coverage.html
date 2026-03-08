@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Обзор</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Руководство по настройке</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Руководство по установке</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Начало работы</a></li>
       </ul>
     </div>
 
@@ -91,10 +92,10 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
-        <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
@@ -113,10 +114,10 @@
         <li><a href="06-performance.html">Сценарий 06: Анализ производительности</a></li>
         <li><a href="07-test-coverage.html" class="active">Сценарий 07: Покрытие тестами</a></li>
         <li><a href="08-compliance.html">Сценарий 08: Проверка соответствия</a></li>
-        <li><a href="09-code-review.html">Сценарий 09: Проверка кода</a></li>
+        <li><a href="09-code-review.html">Сценарий 09: Обзор кода</a></li>
         <li><a href="10-cross-repo.html">Сценарий 10: Межрепозиторный анализ</a></li>
         <li><a href="11-architecture.html">Сценарий 11: Анализ архитектуры</a></li>
-        <li><a href="12-tech-debt.html">Сценарий 12: Оценка технического долга</a></li>
+        <li><a href="12-tech-debt.html">Сценарий 12: Технический долг</a></li>
         <li><a href="13-mass-refactoring.html">Сценарий 13: Массовый рефакторинг</a></li>
         <li><a href="14-incident-response.html">Сценарий 14: Реагирование на инциденты ИБ</a></li>
         <li><a href="15-debugging.html">Сценарий 15: Поддержка отладки</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Сценарий 18: Оптимизация кода</a></li>
         <li><a href="19-standards-check.html">Сценарий 19: Проверка по стандартам</a></li>
         <li><a href="20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
-        <li><a href="21-pattern-search.html">Сценарий 21: Структурный поиск шаблонов</a></li>
+        <li><a href="21-pattern-search.html">Структурный поиск шаблонов</a></li>
         <li><a href="composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
@@ -180,158 +181,389 @@
       <article class="doc-content">
         <h1  id="stsenariy-07-pokrytie-testami"><span id="stsenariy_07_pokrytie_testami"></span>Сценарий 07: Покрытие тестами<a class="heading-anchor" href="#stsenariy-07-pokrytie-testami" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Инженер по качеству, выявляющий непротестированные участки кода, импортирующий данные выполнения покрытия и получающий рекомендации по тестам на основе CPG.</p>
+<p>Обнаружение непротестированного кода на основе CPG, приоритизация тестирования, рекомендации по генерации тестов, импорт покрытия и гибридный анализ.</p>
 </blockquote>
-<h2  id="bystryy-start"><span id="bystryy_start"></span>Быстрый старт<a class="heading-anchor" href="#bystryy-start" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Выберите сценарий &quot;Покрытие тестами&quot;</span>
-/select<span class="w"> </span><span class="m">07</span>
+<h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#quick-start">Быстрый старт</a></li>
+<li><a href="#how-it-works">Как это работает</a></li>
+<li><a href="#architecture">Архитектура</a></li>
+<li><a href="#intent-detection">Определение намерения</a></li>
+<li><a href="#handler-registry">Реестр обработчиков</a></li>
+<li><a href="#detection-modes">Режимы обнаружения</a></li>
+<li><a href="#heuristic-detection">Эвристическое обнаружение</a></li>
+<li><a href="#hybrid-detection">Гибридное обнаружение</a></li>
+<li><a href="#handlers">Обработчики</a></li>
+<li><a href="#untestedcodehandler">UntestedCodeHandler</a></li>
+<li><a href="#testgenerationhandler">TestGenerationHandler</a></li>
+<li><a href="#testpriorityhandler">TestPriorityHandler</a></li>
+<li><a href="#impact-analysis">Анализ влияния</a></li>
+<li><a href="#cpg-based-recommendations">Рекомендации на основе CPG</a></li>
+<li><a href="#runtime-coverage-import">Импорт покрытия</a></li>
+<li><a href="#configuration">Конфигурация</a></li>
+<li><a href="#cli-usage">Использование CLI</a></li>
+<li><a href="#rest-api">REST API</a></li>
+<li><a href="#use-cases">Сценарии использования</a></li>
+<li><a href="#example-questions">Примеры вопросов</a></li>
+<li><a href="#related-scenarios">Связанные сценарии</a></li>
+</ul>
+<h2  id="quick-start"><span id="bystryy-start"></span><span id="bystryy_start"></span><span id="quick_start"></span>Быстрый старт<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>/select<span class="w"> </span><span class="m">07</span>
 </code></pre></div>
 
-<h2  id="poisk-probelov-v-pokrytii"><span id="poisk_probelov_v_pokrytii"></span>Поиск пробелов в покрытии<a class="heading-anchor" href="#poisk-probelov-v-pokrytii" title="Link to this section">&para;</a></h2>
-<h3  id="vyyavlenie-neprotestirovannyh-funktsiy"><span id="vyyavlenie_neprotestirovannyh_funktsiy"></span>Выявление непротестированных функций<a class="heading-anchor" href="#vyyavlenie-neprotestirovannyh-funktsiy" title="Link to this section">&para;</a></h3>
-<p>Обработчик по умолчанию использует <strong>эвристическое обнаружение</strong>: функции, у которых нет вызовов из <code>test_*</code> функций в графе вызовов, считаются непротестированными.</p>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Какие функции не покрыты тестами?</span>
-
-+-------------- Пробелы в покрытии ----------------+
-| Функции без прямых тестов:                       |
-|                                                  |
-| Критические (executor):                         |
-|   - ExecParallelHashJoinNewBatch()               |
-|   - ExecReScanGather()                           |
-|                                                  |
-| Высокий приоритет (storage):                     |
-|   - heap_lock_updated_tuple()                    |
-|   - heap_abort_speculative()                     |
-|                                                  |
-| Всего непротестированных: 234 функции            |
-| Оценка покрытия: 78%                             |
-| Режим обнаружения: Эвристика                     |
-+--------------------------------------------------+
+<h2  id="how-it-works"><span id="how_it_works"></span><span id="kak_eto_rabotaet"></span>Как это работает<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3  id="architecture"><span id="arhitektura"></span>Архитектура<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h3>
+<p>Модуль покрытия тестами (<code>src/workflow/scenarios/coverage_handlers/</code>, 13 файлов) состоит из 6 компонентов:</p>
+<div class="highlight"><pre><span></span><code>Запрос пользователя
+    |
+    v
+CoverageIntentDetector (5 типов намерений, двуязычный)
+    |
+    v
+HandlerRegistry (диспетчеризация по приоритету)
+    |
+    +---&gt; TestGenerationHandler (приоритет 5)
+    |         генерация рекомендаций по тестам для конкретных функций
+    |
+    +---&gt; UntestedCodeHandler (приоритет 10)
+    |         поиск непротестированного кода (эвристика или гибрид)
+    |
+    +---&gt; TestPriorityHandler (приоритет 20)
+    |         ранжирование непротестированных функций по критичности
+    |
+    v
+CoverageReportFormatter (двуязычный вывод в Markdown)
+    |
+    v
+CallGraphAnalyzer ──&gt; ImpactAnalysis (impact_score, вызывающие, вызываемые)
 </code></pre></div>
 
-<h3  id="opredelenie-prioritetov-testirovaniya"><span id="opredelenie_prioritetov_testirovaniya"></span>Определение приоритетов тестирования<a class="heading-anchor" href="#opredelenie-prioritetov-testirovaniya" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Какие непротестированные функции оказывают наибольшее влияние?</span>
-
-+-------------- Список приоритетов ----------------+
-| Высокое влияние + отсутствие тестов:             |
-|                                                  |
-| 1. heap_lock_updated_tuple()                     |
-|    Влияние: Целостность транзакций               |
-|    Количество вызовов: 23                        |
-|                                                  |
-| 2. ExecParallelHashJoinNewBatch()                |
-|    Влияние: Корректность параллельных запросов   |
-|    Количество вызовов: 8                         |
-|                                                  |
-| 3. AtEOXact_RelationCache()                      |
-|    Влияние: Согласованность кеша                 |
-|    Количество вызовов: 4                         |
-+--------------------------------------------------+
-</code></pre></div>
-
-<h3  id="poisk-neprotestirovannyh-putey-obrabotki-oshibok"><span id="poisk_neprotestirovannyh_putey_obrabotki_oshibok"></span>Поиск непротестированных путей обработки ошибок<a class="heading-anchor" href="#poisk-neprotestirovannyh-putey-obrabotki-oshibok" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Найти непротестированные пути обработки ошибок
-&gt; Показать точки входа без тестов
-</code></pre></div>
-
-<hr />
-<h2  id="import-pokrytiya-vremeni-vypolneniya"><span id="import_pokrytiya_vremeni_vypolneniya"></span>Импорт покрытия времени выполнения<a class="heading-anchor" href="#import-pokrytiya-vremeni-vypolneniya" title="Link to this section">&para;</a></h2>
-<p>Импортируйте данные покрытия из внешних инструментов для включения <strong>гибридного обнаружения</strong> (данные выполнения + эвристика).</p>
-<h3  id="podderzhivaemye-formaty"><span id="podderzhivaemye_formaty"></span>Поддерживаемые форматы<a class="heading-anchor" href="#podderzhivaemye-formaty" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Формат</th>
-<th>Инструмент</th>
-<th>Тип файла</th>
+<th>Компонент</th>
+<th>Модуль</th>
+<th>Назначение</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>pytest-cov</code></td>
-<td>pytest-cov (<code>--cov-report=json</code>)</td>
-<td>JSON</td>
+<td><code>CoverageIntentDetector</code></td>
+<td><code>intent_detector.py</code></td>
+<td>Определение намерения запроса среди 5 типов с морфологическим сопоставлением</td>
 </tr>
 <tr>
-<td><code>lcov</code></td>
-<td>gcov / lcov / geninfo</td>
-<td>Текст (<code>.info</code>, <code>.lcov</code>)</td>
+<td><code>TestGenerationHandler</code></td>
+<td><code>handlers/test_generator.py</code></td>
+<td>Генерация рекомендаций по тестам для именованных функций</td>
 </tr>
 <tr>
-<td><code>cobertura</code></td>
-<td>Cobertura, JaCoCo, coverage.py XML</td>
-<td>XML</td>
+<td><code>UntestedCodeHandler</code></td>
+<td><code>handlers/untested.py</code></td>
+<td>Поиск непротестированного кода (эвристика + гибрид)</td>
+</tr>
+<tr>
+<td><code>TestPriorityHandler</code></td>
+<td><code>handlers/priority.py</code></td>
+<td>Ранжирование непротестированных функций по 4 факторам</td>
+</tr>
+<tr>
+<td><code>CoverageReportFormatter</code></td>
+<td><code>formatters/coverage_report.py</code></td>
+<td>Форматирование отчётов с <code>FormatterLocalization</code> (EN/RU)</td>
+</tr>
+<tr>
+<td><code>TestCoverageScanner</code></td>
+<td><code>handlers/coverage_scanner.py</code></td>
+<td>Сканирование интерфейсного покрытия (двойное: <code>edges_call</code> + эвристика по путям)</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="komandy-cli"><span id="komandy_cli"></span>Команды CLI<a class="heading-anchor" href="#komandy-cli" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Импорт JSON-отчёта pytest-cov</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.json<span class="w"> </span>--format<span class="w"> </span>pytest-cov<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb
+<h3  id="intent-detection"><span id="intent_detection"></span><span id="opredelenie-namereniya"></span><span id="opredelenie_namereniya"></span>Определение намерения<a class="heading-anchor" href="#intent-detection" title="Link to this section">&para;</a></h3>
+<p><code>CoverageIntentDetector</code> классифицирует запросы в 5 типов намерений с морфологическим сопоставлением и границами кириллических слов:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Тип намерения</th>
+<th>Приоритет</th>
+<th>Ключевые слова EN</th>
+<th>Ключевые слова RU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_generation</code></td>
+<td>5</td>
+<td>generate test, create test, write test, test suite, mutation test, stress test, property-based, chaos engineering</td>
+<td>сгенерировать тест, создать тест, написать тест, модульный тест, стресс-тесты, мутационное тестирование</td>
+</tr>
+<tr>
+<td><code>untested_code_scan</code></td>
+<td>10</td>
+<td>untested, no test, missing test, not covered, uncovered</td>
+<td>непротестированный, без теста, нет тестов, непокрытый</td>
+</tr>
+<tr>
+<td><code>test_priority</code></td>
+<td>20</td>
+<td>test priority, should test, critical test, high priority test</td>
+<td>приоритет теста, протестировать, критический тест, важный тест</td>
+</tr>
+<tr>
+<td><code>coverage_gap</code></td>
+<td>30</td>
+<td>coverage gap, low coverage, coverage report, test coverage</td>
+<td>пробел покрытия, низкое покрытие, отчет покрытия, покрытие тестами</td>
+</tr>
+<tr>
+<td><code>coverage_improvement</code></td>
+<td>40</td>
+<td>improve coverage, increase coverage, better coverage</td>
+<td>улучшить покрытие, увеличить покрытие, повысить покрытие</td>
+</tr>
+</tbody>
+</table></div>
+<p>Дополнительное извлечение:
+- <code>_extract_criticality(query)</code> — возвращает <code>"critical"</code>, <code>"high"</code>, <code>"medium"</code> или <code>"all"</code>
+- <code>_extract_scope(query)</code> — возвращает <code>"method"</code>, <code>"class"</code>, <code>"module"</code> или <code>"all"</code></p>
+<h3  id="handler-registry"><span id="handler_registry"></span><span id="reestr-obrabotchikov"></span><span id="reestr_obrabotchikov"></span>Реестр обработчиков<a class="heading-anchor" href="#handler-registry" title="Link to this section">&para;</a></h3>
+<p>Обработчики регистрируются через <code>HandlerRegistry("coverage")</code> с диспетчеризацией по приоритету. Меньший приоритет = более высокий приоритет обработки:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@coverage_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestGenerationHandlerRegistered</span><span class="p">(</span><span class="n">TestGenerationHandler</span><span class="p">):</span> <span class="o">...</span>
 
-<span class="c1"># Импорт lcov trace файла</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>lcov.info<span class="w"> </span>--format<span class="w"> </span>lcov
+<span class="nd">@coverage_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UntestedCodeHandlerRegistered</span><span class="p">(</span><span class="n">UntestedCodeHandler</span><span class="p">):</span> <span class="o">...</span>
 
-<span class="c1"># Импорт Cobertura XML (например, из Java/C# инструментов)</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.xml<span class="w"> </span>--format<span class="w"> </span>cobertura<span class="w"> </span>--source-root<span class="w"> </span>/project
-
-<span class="c1"># Просмотр импортированных данных</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>show
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>show<span class="w"> </span>--uncovered-only
+<span class="nd">@coverage_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestPriorityHandlerRegistered</span><span class="p">(</span><span class="n">TestPriorityHandler</span><span class="p">):</span> <span class="o">...</span>
 </code></pre></div>
 
-<h3  id="kak-eto-rabotaet"><span id="kak_eto_rabotaet"></span>Как это работает<a class="heading-anchor" href="#kak-eto-rabotaet" title="Link to this section">&para;</a></h3>
-<ol>
-<li>Парсер читает отчёт покрытия и извлекает построчные данные по каждому файлу</li>
-<li>Импортёр добавляет колонку <code>coverage_percent</code> в <code>nodes_method</code> (если отсутствует)</li>
-<li>Каждый метод сопоставляется с данными покрытия через <strong>суффиксное сопоставление</strong> имени файла и пересечение диапазона строк метода с покрытыми строками</li>
-<li><code>coverage_percent</code> вычисляется как <code>покрытые_строки_в_диапазоне / всего_строк_в_диапазоне * 100</code></li>
-</ol>
-<p><strong>Нормализация путей:</strong> Отчёты покрытия часто содержат абсолютные пути, а CPG хранит относительные. Импортёр нормализует пути (убирает <code>./</code>, конвертирует обратные слэши) и использует суффиксное сопоставление. Параметр <code>--source-root</code> позволяет обрезать общий префикс для лучшего сопоставления.</p>
-<h3  id="rezultat-importa"><span id="rezultat_importa"></span>Результат импорта<a class="heading-anchor" href="#rezultat-importa" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nb">+--------------</span><span class="c"> Результат импорта покрытия </span><span class="nb">--------+</span>
-<span class="c">| Формат: pytest</span><span class="nb">-</span><span class="c">cov                               |</span>
-<span class="c">| Методов обновлено: 1 247 / 3 891                  |</span>
-<span class="c">| Файлов сопоставлено: 89 / 112                    |</span>
-<span class="nb">+--------------------------------------------------+</span>
+<p>Каждый обработчик реализует <code>can_handle(query_info) -&gt; bool</code> и <code>handle(query_info) -&gt; HandlerResult</code>. Реестр перебирает обработчики по приоритету и использует первый подходящий.</p>
+<h2  id="detection-modes"><span id="detection_modes"></span><span id="rezhimy-obnaruzheniya"></span><span id="rezhimy_obnaruzheniya"></span>Режимы обнаружения<a class="heading-anchor" href="#detection-modes" title="Link to this section">&para;</a></h2>
+<h3  id="heuristic-detection"><span id="evristicheskoe-obnaruzhenie"></span><span id="evristicheskoe_obnaruzhenie"></span><span id="heuristic_detection"></span>Эвристическое обнаружение<a class="heading-anchor" href="#heuristic-detection" title="Link to this section">&para;</a></h3>
+<p>Режим по умолчанию, когда данные покрытия не импортированы. Методы без вызывающих <code>test_*</code> в <code>edges_call</code> помечаются как непротестированные:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Методы без вызовов из тестов</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">edges_call</span><span class="w"> </span><span class="n">ec</span>
+<span class="w">    </span><span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">caller</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">ec</span><span class="p">.</span><span class="n">source_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caller</span><span class="p">.</span><span class="n">id</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">ec</span><span class="p">.</span><span class="n">target_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">caller</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;test_%&#39;</span>
+<span class="p">)</span>
 </code></pre></div>
 
-<hr />
-<h2  id="gibridnoe-obnaruzhenie"><span id="gibridnoe_obnaruzhenie"></span>Гибридное обнаружение<a class="heading-anchor" href="#gibridnoe-obnaruzhenie" title="Link to this section">&para;</a></h2>
-<p>После импорта данных выполнения запросы на непротестированный код <strong>автоматически переключаются в гибридный режим</strong>:</p>
+<h3  id="hybrid-detection"><span id="gibridnoe-obnaruzhenie"></span><span id="gibridnoe_obnaruzhenie"></span><span id="hybrid_detection"></span>Гибридное обнаружение<a class="heading-anchor" href="#hybrid-detection" title="Link to this section">&para;</a></h3>
+<p>Автоматически активируется при наличии колонки <code>coverage_percent</code> в <code>nodes_method</code> (заполняется через <code>coverage import</code>):</p>
 <ul>
-<li>Методы с <code>coverage_percent &lt; 1.0</code> помечаются по <strong>данные выполнения</strong>-данным</li>
-<li>Методы с <code>NULL coverage_percent</code> (нет данных выполнения) используют <strong>эвристическое</strong> обнаружение по вызовам тестов</li>
+<li>Методы с <code>coverage_percent &lt; 1.0</code> → помечаются по <strong>данным выполнения</strong></li>
+<li>Методы с <code>NULL coverage_percent</code> → откат на <strong>эвристический</strong> анализ</li>
 <li>Каждый кандидат получает метку <code>detection_method</code>: <code>"runtime"</code> или <code>"heuristic"</code></li>
-<li>Оценка покрытия использует <code>AVG(coverage_percent)</code> из данных выполнения вместо эвристического подсчёта</li>
+<li>Оценка покрытия использует <code>AVG(coverage_percent)</code> из данных выполнения</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти непротестированный код</span>
-
-+------------- Пробелы в покрытии (Гибрид) --------+
-| Метод             | Обнаружение | Покрытие | ...  |
-|-------------------|-------------|----------|------|
-| parse_query()     | Данные выполнения     | 0.0%     | ...  |
-| exec_plan()       | Данные выполнения     | 12.5%    | ...  |
-| helper_func()     | Эвристика   | ---      | ...  |
-|                                                   |
-| Режим обнаружения: Данные выполнения + Эвристика            |
-| Оценка покрытия: 62.3% (по данным выполнения)        |
-+---------------------------------------------------+
-</code></pre></div>
-
-<p><strong>Обратная совместимость:</strong> Если данные покрытия не были импортированы, обработчик работает идентично эвристическому режиму. Проверка <code>_has_coverage_column()</code> гарантирует отсутствие изменений в поведении.</p>
-<hr />
-<h2  id="rekomendatsii-testov-na-osnove-cpg"><span id="rekomendatsii_testov_na_osnove_cpg"></span>Рекомендации тестов на основе CPG<a class="heading-anchor" href="#rekomendatsii-testov-na-osnove-cpg" title="Link to this section">&para;</a></h2>
-<p>Для каждого непротестированного метода (топ-20 по критичности) обработчик анализирует CPG и генерирует конкретные рекомендации по тестированию.</p>
-<h3  id="analiz-pokrytiya-vetok"><span id="analiz_pokrytiya_vetok"></span>Анализ покрытия веток<a class="heading-anchor" href="#analiz-pokrytiya-vetok" title="Link to this section">&para;</a></h3>
-<p>Подсчитывает управляющие структуры (<code>IF</code>, <code>FOR</code>, <code>WHILE</code>, <code>SWITCH</code>) из <code>nodes_control_structure</code> и оценивает количество тестовых сценариев, необходимых для покрытия веток.</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Найти</span><span class="w"> </span><span class="n">непротестированный</span><span class="w"> </span><span class="n">код</span>
-
-<span class="c1">### `parse_query`</span>
-<span class="mf">1.</span><span class="w"> </span><span class="n">Добавьте</span><span class="w"> </span><span class="mi">8</span><span class="w"> </span><span class="n">тестовых</span><span class="w"> </span><span class="n">сценариев</span><span class="w"> </span><span class="n">для</span><span class="w"> </span><span class="n">покрытия</span><span class="w"> </span><span class="n">веток</span><span class="w"> </span><span class="p">(</span><span class="k">IF</span><span class="o">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="k">FOR</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">SWITCH</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
-<span class="mf">2.</span><span class="w"> </span><span class="n">Протестируйте</span><span class="w"> </span><span class="n">граничные</span><span class="w"> </span><span class="n">значения</span><span class="w"> </span><span class="n">параметра</span><span class="w"> </span><span class="n n-Quoted">`query_len`</span><span class="w"> </span><span class="p">(</span><span class="n">zero</span><span class="p">,</span><span class="w"> </span><span class="n">negative</span><span class="p">,</span><span class="w"> </span><span class="n">max</span><span class="p">,</span><span class="w"> </span><span class="n">min</span><span class="p">)</span>
-<span class="mf">3.</span><span class="w"> </span><span class="n">Протестируйте</span><span class="w"> </span><span class="n">обработку</span><span class="w"> </span><span class="n">ошибок</span><span class="o">:</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="n">try</span><span class="o">/</span><span class="n">catch</span><span class="w"> </span><span class="n">блока</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="k">return</span>
-</code></pre></div>
-
+<p>Проверка <code>_has_coverage_data()</code> гарантирует отсутствие изменений при отсутствии импортированных данных.</p>
+<h2  id="handlers"><span id="obrabotchiki"></span>Обработчики<a class="heading-anchor" href="#handlers" title="Link to this section">&para;</a></h2>
+<h3 id="untestedcodehandler">UntestedCodeHandler<a class="heading-anchor" href="#untestedcodehandler" title="Link to this section">&para;</a></h3>
+<p>Обрабатывает намерение <code>untested_code_scan</code>. Ключевые методы:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>can_handle(query_info)</code></td>
+<td>Возвращает True при <code>type == "untested_code_scan"</code></td>
+</tr>
+<tr>
+<td><code>handle(query_info)</code></td>
+<td>Поиск непротестированного кода, классификация по критичности, генерация рекомендаций</td>
+</tr>
+<tr>
+<td><code>_find_untested_functions()</code></td>
+<td>Эвристика + необязательное обнаружение по данным покрытия</td>
+</tr>
+<tr>
+<td><code>_classify_by_criticality(candidates)</code></td>
+<td>Группировка по уровню риска (critical/high/medium/low)</td>
+</tr>
+<tr>
+<td><code>_estimate_coverage(candidates)</code></td>
+<td>Расчёт процента покрытия</td>
+</tr>
+<tr>
+<td><code>_has_coverage_data()</code></td>
+<td>Проверка наличия колонки <code>coverage_percent</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Обогащает топ-20 кандидатов рекомендациями на основе CPG (покрытие ветвей, граничные значения параметров, пути ошибок).</p>
+<h3 id="testgenerationhandler">TestGenerationHandler<a class="heading-anchor" href="#testgenerationhandler" title="Link to this section">&para;</a></h3>
+<p>Обрабатывает намерение <code>test_generation</code>. Ключевые методы:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>can_handle(query_info)</code></td>
+<td>Возвращает True при <code>type == "test_generation"</code> и извлекаемых именах функций</td>
+</tr>
+<tr>
+<td><code>handle(query_info)</code></td>
+<td>Генерация рекомендаций по тестам для конкретных функций</td>
+</tr>
+<tr>
+<td><code>_extract_function_names(query)</code></td>
+<td>Извлечение имён функций через приоритетные шаблоны</td>
+</tr>
+<tr>
+<td><code>_search_functions_by_keywords(query)</code></td>
+<td>Концептуальный поиск функций (например, «тесты для выполнения запросов»)</td>
+</tr>
+<tr>
+<td><code>_get_function_info(func_name)</code></td>
+<td>Регистронезависимый поиск функции</td>
+</tr>
+<tr>
+<td><code>_get_function_callees(func_name)</code></td>
+<td>Зависимости для мокирования</td>
+</tr>
+<tr>
+<td><code>_get_function_callers(func_name)</code></td>
+<td>Тестовые сценарии из вызывающих</td>
+</tr>
+<tr>
+<td><code>_suggest_test_approach(...)</code></td>
+<td>Генерация стратегии (модульные/интеграционные/граничные тесты)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="testpriorityhandler">TestPriorityHandler<a class="heading-anchor" href="#testpriorityhandler" title="Link to this section">&para;</a></h3>
+<p>Обрабатывает намерение <code>test_priority</code>. Ранжирует непротестированные функции по 4 факторам:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Фактор</th>
+<th>Баллы</th>
+<th>Условие</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Критичность модуля</td>
+<td>+3.0</td>
+<td>Модули api, interface, core</td>
+</tr>
+<tr>
+<td>Критичность модуля</td>
+<td>+2.0</td>
+<td>Модули main, engine, system</td>
+</tr>
+<tr>
+<td>Сложность</td>
+<td>+1.5</td>
+<td>Длина сигнатуры &gt; 200 символов</td>
+</tr>
+<tr>
+<td>Сложность</td>
+<td>+1.0</td>
+<td>Длина сигнатуры &gt; 100 символов</td>
+</tr>
+<tr>
+<td>Публичный API</td>
+<td>+1.0</td>
+<td>Имя без префикса подчёркивания</td>
+</tr>
+<tr>
+<td>Количество вызывающих</td>
+<td>+2.0</td>
+<td>Выше порога высокой конкуренции</td>
+</tr>
+<tr>
+<td>Количество вызывающих</td>
+<td>+1.0</td>
+<td>Выше среднего порога</td>
+</tr>
+</tbody>
+</table></div>
+<p>Оценка преобразуется в уровень приоритета через <code>_score_to_rating()</code>: high (≥ порога), medium, low.</p>
+<h2  id="impact-analysis"><span id="analiz-vliyaniya"></span><span id="analiz_vliyaniya"></span><span id="impact_analysis"></span>Анализ влияния<a class="heading-anchor" href="#impact-analysis" title="Link to this section">&para;</a></h2>
+<p>Workflow использует <code>CallGraphAnalyzer</code> (Graph Method #2) из <code>src/analysis/callgraph/analyzer.py</code> для анализа влияния непротестированных методов.</p>
+<p>Датакласс <code>ImpactAnalysis</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method_name</code></td>
+<td>str</td>
+<td>Анализируемый метод</td>
+</tr>
+<tr>
+<td><code>direct_callers</code></td>
+<td>list[str]</td>
+<td>Методы, вызывающие напрямую</td>
+</tr>
+<tr>
+<td><code>transitive_callers</code></td>
+<td>list[str]</td>
+<td>Все транзитивные вызывающие</td>
+</tr>
+<tr>
+<td><code>direct_callees</code></td>
+<td>list[str]</td>
+<td>Методы, вызываемые напрямую</td>
+</tr>
+<tr>
+<td><code>transitive_callees</code></td>
+<td>list[str]</td>
+<td>Все транзитивные вызываемые</td>
+</tr>
+<tr>
+<td><code>impact_score</code></td>
+<td>float</td>
+<td>Оценка влияния 0.0–1.0</td>
+</tr>
+</tbody>
+</table></div>
+<p>3 категории инсайтов в <code>state["metadata"]</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Инсайт</th>
+<th>Условие</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>high_impact_untested</code></td>
+<td><code>impact_score &gt; thresholds.high_impact</code></td>
+</tr>
+<tr>
+<td><code>untested_entry_points</code></td>
+<td>Много вызывающих + мало вызываемых</td>
+</tr>
+<tr>
+<td><code>critical_untested</code></td>
+<td><code>callers &gt; min_callers &amp;&amp; impact_score &gt; impact_score_medium</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="cpg-based-recommendations"><span id="cpg_based_recommendations"></span><span id="rekomendatsii-na-osnove-cpg"></span><span id="rekomendatsii_na_osnove_cpg"></span>Рекомендации на основе CPG<a class="heading-anchor" href="#cpg-based-recommendations" title="Link to this section">&para;</a></h2>
+<p>Для каждого непротестированного метода (топ-20 по критичности) обработчик генерирует конкретные рекомендации:</p>
+<h3  id="analiz-pokrytiya-vetvey"><span id="analiz_pokrytiya_vetvey"></span>Анализ покрытия ветвей<a class="heading-anchor" href="#analiz-pokrytiya-vetvey" title="Link to this section">&para;</a></h3>
+<p>Подсчитывает управляющие структуры (<code>IF</code>, <code>FOR</code>, <code>WHILE</code>, <code>SWITCH</code>) из <code>nodes_control_structure</code> и оценивает число тестовых сценариев.</p>
 <h3  id="analiz-granichnyh-znacheniy-parametrov"><span id="analiz_granichnyh_znacheniy_parametrov"></span>Анализ граничных значений параметров<a class="heading-anchor" href="#analiz-granichnyh-znacheniy-parametrov" title="Link to this section">&para;</a></h3>
 <p>Сопоставляет типы параметров из <code>nodes_param</code> с рекомендациями по граничным значениям:</p>
 <div class="table-wrapper"><table>
@@ -365,60 +597,372 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </tbody>
 </table></div>
 <h3  id="analiz-putey-oshibok"><span id="analiz_putey_oshibok"></span>Анализ путей ошибок<a class="heading-anchor" href="#analiz-putey-oshibok" title="Link to this section">&para;</a></h3>
-<p>Подсчитывает блоки <code>TRY</code> в <code>nodes_control_structure</code> и операторы <code>RETURN</code> в <code>nodes_return</code>. Множественные операторы return указывают на пути обработки ошибок, требующие тестирования.</p>
-<hr />
-<h2  id="generatsiya-testovyh-sluchaev"><span id="generatsiya_testovyh_sluchaev"></span>Генерация тестовых случаев<a class="heading-anchor" href="#generatsiya-testovyh-sluchaev" title="Link to this section">&para;</a></h2>
-<p>Обработчик генерации тестов предоставляет детальные рекомендации для конкретных функций на основе анализа графа вызовов.</p>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Сгенерировать</span><span class="w"> </span><span class="nx">тестовые</span><span class="w"> </span><span class="nx">случаи</span><span class="w"> </span><span class="nx">для</span><span class="w"> </span><span class="nx">heap_insert</span>
+<p>Подсчитывает блоки <code>TRY</code> в <code>nodes_control_structure</code> и операторы <code>RETURN</code> в <code>nodes_return</code>. Множественные return указывают на пути обработки ошибок.</p>
+<h2  id="runtime-coverage-import"><span id="import-pokrytiya"></span><span id="import_pokrytiya"></span><span id="runtime_coverage_import"></span>Импорт покрытия<a class="heading-anchor" href="#runtime-coverage-import" title="Link to this section">&para;</a></h2>
+<p>Импорт данных покрытия из внешних инструментов для включения гибридного обнаружения.</p>
+<h3  id="podderzhivaemye-formaty"><span id="podderzhivaemye_formaty"></span>Поддерживаемые форматы<a class="heading-anchor" href="#podderzhivaemye-formaty" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Формат</th>
+<th>Инструмент</th>
+<th>Тип файла</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pytest-cov</code></td>
+<td>pytest-cov (<code>--cov-report=json</code>)</td>
+<td>JSON</td>
+</tr>
+<tr>
+<td><code>lcov</code></td>
+<td>gcov / lcov / geninfo</td>
+<td>Текст (<code>.info</code>, <code>.lcov</code>)</td>
+</tr>
+<tr>
+<td><code>cobertura</code></td>
+<td>Cobertura, JaCoCo, coverage.py XML</td>
+<td>XML</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="kak-eto-rabotaet">Как это работает<a class="heading-anchor" href="#kak-eto-rabotaet" title="Link to this section">&para;</a></h3>
+<ol>
+<li>Парсер читает отчёт покрытия и извлекает построчные данные по каждому файлу</li>
+<li>Импортёр добавляет колонку <code>coverage_percent</code> в <code>nodes_method</code> (если отсутствует)</li>
+<li>Каждый метод сопоставляется с данными покрытия через <strong>суффиксное сопоставление</strong> имени файла и пересечение диапазона строк с покрытыми строками</li>
+<li><code>coverage_percent</code> вычисляется как <code>покрытые_строки / всего_строк * 100</code></li>
+</ol>
+<p><strong>Нормализация путей:</strong> Отчёты покрытия часто содержат абсолютные пути, а CPG хранит относительные. Импортёр нормализует пути (убирает <code>./</code>, конвертирует обратные слэши) и использует суффиксное сопоставление. Параметр <code>--source-root</code> позволяет обрезать общий префикс.</p>
+<h2  id="configuration"><span id="konfiguratsiya"></span>Конфигурация<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
+<p>Параметры покрытия из <code>get_unified_config()</code>:</p>
+<h3  id="porogovye-znacheniya"><span id="porogovye_znacheniya"></span>Пороговые значения<a class="heading-anchor" href="#porogovye-znacheniya" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>coverage_high</code></td>
+<td>0.75</td>
+<td>Порог высокого покрытия</td>
+</tr>
+<tr>
+<td><code>coverage_low</code></td>
+<td>0.25</td>
+<td>Порог низкого покрытия</td>
+</tr>
+<tr>
+<td><code>test_coverage_minimum</code></td>
+<td>50</td>
+<td>Минимально требуемое покрытие %</td>
+</tr>
+<tr>
+<td><code>test_coverage_good</code></td>
+<td>80</td>
+<td>Хорошее покрытие %</td>
+</tr>
+<tr>
+<td><code>high_impact</code></td>
+<td>—</td>
+<td>Мин. оценка для высоковлиятельных методов</td>
+</tr>
+<tr>
+<td><code>min_callers</code></td>
+<td>—</td>
+<td>Мин. вызывающих для критической классификации</td>
+</tr>
+<tr>
+<td><code>impact_score_medium</code></td>
+<td>—</td>
+<td>Порог среднего влияния</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="vesovye-koeffitsienty"><span id="vesovye_koeffitsienty"></span>Весовые коэффициенты<a class="heading-anchor" href="#vesovye-koeffitsienty" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>coverage_base_score</code></td>
+<td>5.0</td>
+<td>Базовая оценка приоритета</td>
+</tr>
+<tr>
+<td><code>coverage_critical_module</code></td>
+<td>3.0</td>
+<td>Бонус за критический модуль</td>
+</tr>
+<tr>
+<td><code>coverage_important_module</code></td>
+<td>2.0</td>
+<td>Бонус за важный модуль</td>
+</tr>
+<tr>
+<td><code>coverage_long_signature</code></td>
+<td>1.5</td>
+<td>Бонус за сложную сигнатуру (&gt;200 символов)</td>
+</tr>
+<tr>
+<td><code>coverage_medium_signature</code></td>
+<td>1.0</td>
+<td>Бонус за среднюю сигнатуру (&gt;100 символов)</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="limity-obrabotchikov"><span id="limity_obrabotchikov"></span>Лимиты обработчиков<a class="heading-anchor" href="#limity-obrabotchikov" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>display_items</code></td>
+<td>15</td>
+<td>Элементов в отчёте</td>
+</tr>
+<tr>
+<td><code>summary_items</code></td>
+<td>5</td>
+<td>Элементов в сводке</td>
+</tr>
+<tr>
+<td><code>query_medium</code></td>
+<td>30</td>
+<td>Лимит среднего запроса (анализ влияния)</td>
+</tr>
+<tr>
+<td><code>cpg_results</code></td>
+<td>50</td>
+<td>Лимит результатов CPG</td>
+</tr>
+<tr>
+<td><code>retrieved_functions</code></td>
+<td>25</td>
+<td>Функций для оценки бенчмарка</td>
+</tr>
+<tr>
+<td><code>priority_functions</code></td>
+<td>10</td>
+<td>Размер приоритетного списка</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="cli-usage"><span id="cli_usage"></span><span id="ispolzovanie-cli"></span><span id="ispolzovanie_cli"></span>Использование CLI<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Импорт JSON-отчёта pytest-cov</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.json<span class="w"> </span>--format<span class="w"> </span>pytest-cov<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb
 
-<span class="o">+-------------</span><span class="w"> </span><span class="nx">Тестовые</span><span class="w"> </span><span class="nx">случаи</span><span class="w"> </span><span class="o">----------------------+</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Функция</span><span class="p">:</span><span class="w"> </span><span class="nx">heap_insert</span><span class="p">()</span><span class="w">                             </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Файл</span><span class="p">:</span><span class="w"> </span><span class="nx">src</span><span class="o">/</span><span class="nx">backend</span><span class="o">/</span><span class="nx">access</span><span class="o">/</span><span class="nx">heap</span><span class="o">/</span><span class="nx">heapam</span><span class="p">.</span><span class="nx">c</span><span class="p">:</span><span class="mi">2156</span><span class="w">        </span><span class="o">|</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Стратегия</span><span class="w"> </span><span class="nx">тестового</span><span class="w"> </span><span class="nx">покрытия</span><span class="p">:</span><span class="w">                      </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="nx">Модульные</span><span class="w"> </span><span class="nx">тесты</span><span class="p">:</span><span class="w"> </span><span class="nx">Тестируйте</span><span class="w"> </span><span class="nx">heap_insert</span><span class="w">          </span><span class="o">|</span>
-<span class="o">|</span><span class="w">     </span><span class="nx">изолированно</span><span class="p">,</span><span class="w"> </span><span class="nx">мокируя</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="nx">зависимостей</span><span class="w">           </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="nx">Интеграционные</span><span class="w"> </span><span class="nx">тесты</span><span class="p">:</span><span class="w"> </span><span class="nx">Тестируйте</span><span class="w"> </span><span class="nx">heap_insert</span><span class="w">     </span><span class="o">|</span>
-<span class="o">|</span><span class="w">     </span><span class="nx">через</span><span class="w"> </span><span class="mi">23</span><span class="w"> </span><span class="nx">вызывающие</span><span class="w"> </span><span class="nx">функции</span><span class="w">                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="nx">Граничные</span><span class="w"> </span><span class="nx">случаи</span><span class="p">:</span><span class="w"> </span><span class="nx">Тестируйте</span><span class="w"> </span><span class="nx">граничные</span><span class="w"> </span><span class="nx">условия</span><span class="p">,</span><span class="w">  </span><span class="o">|</span>
-<span class="o">|</span><span class="w">     </span><span class="nx">null</span><span class="o">-</span><span class="nx">ввод</span><span class="p">,</span><span class="w"> </span><span class="nx">обработку</span><span class="w"> </span><span class="nx">ошибок</span><span class="w">                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Зависимости</span><span class="w"> </span><span class="nx">для</span><span class="w"> </span><span class="nx">мокирования</span><span class="p">:</span><span class="w">                       </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">RelationGetBufferForTuple</span><span class="p">()</span><span class="w">                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">heap_prepare_insert</span><span class="p">()</span><span class="w">                          </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">XLogInsert</span><span class="p">()</span><span class="w">                                   </span><span class="o">|</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Тестовые</span><span class="w"> </span><span class="nx">сценарии</span><span class="w"> </span><span class="nx">из</span><span class="w"> </span><span class="nx">вызывающих</span><span class="w"> </span><span class="nx">функций</span><span class="p">:</span><span class="w">           </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">simple_heap_insert</span><span class="p">()</span><span class="w"> </span><span class="nx">использует</span><span class="w"> </span><span class="nx">heap_insert</span><span class="o">...</span><span class="w"> </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">toast_save_datum</span><span class="p">()</span><span class="w"> </span><span class="nx">использует</span><span class="w"> </span><span class="nx">heap_insert</span><span class="o">...</span><span class="w">   </span><span class="o">|</span>
-<span class="o">+----------------------------------------------------+</span>
+<span class="c1"># Импорт lcov trace файла</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>lcov.info<span class="w"> </span>--format<span class="w"> </span>lcov
+
+<span class="c1"># Импорт Cobertura XML (например, из Java/C# инструментов)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.xml<span class="w"> </span>--format<span class="w"> </span>cobertura<span class="w"> </span>--source-root<span class="w"> </span>/project
+
+<span class="c1"># Просмотр импортированных данных</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>show
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>show<span class="w"> </span>--uncovered-only
 </code></pre></div>
 
-<hr />
-<h2  id="primery-zaprosov"><span id="primery_zaprosov"></span>Примеры запросов<a class="heading-anchor" href="#primery-zaprosov" title="Link to this section">&para;</a></h2>
+<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
+<p>Запросы покрытия тестами обрабатываются через сценарный роутер:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Эндпоинт</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/scenarios/test_coverage/query</code></td>
+<td>Выполнение анализа покрытия</td>
+</tr>
+</tbody>
+</table></div>
+<p>Модель запроса (<code>ScenarioQueryRequest</code>):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>query</code></td>
+<td>str</td>
+<td>Запрос на анализ (1–10000 символов)</td>
+</tr>
+<tr>
+<td><code>session_id</code></td>
+<td>str?</td>
+<td>Идентификатор сессии</td>
+</tr>
+<tr>
+<td><code>language</code></td>
+<td>str</td>
+<td><code>"en"</code> или <code>"ru"</code> (по умолчанию: <code>"en"</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Модель ответа (<code>ScenarioQueryResponse</code>):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>answer</code></td>
+<td>str</td>
+<td>Форматированный результат анализа</td>
+</tr>
+<tr>
+<td><code>scenario_id</code></td>
+<td>str</td>
+<td><code>"test_coverage"</code></td>
+</tr>
+<tr>
+<td><code>confidence</code></td>
+<td>float</td>
+<td>Уверенность определения намерения</td>
+</tr>
+<tr>
+<td><code>evidence</code></td>
+<td>list[dict]</td>
+<td>Подтверждающие факты</td>
+</tr>
+<tr>
+<td><code>processing_time_ms</code></td>
+<td>float</td>
+<td>Время обработки</td>
+</tr>
+</tbody>
+</table></div>
+<p>Пример:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/scenarios/test_coverage/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;query&quot;: &quot;Find untested functions&quot;, &quot;language&quot;: &quot;en&quot;}&#39;</span>
+</code></pre></div>
+
+<h2  id="use-cases"><span id="stsenarii-ispolzovaniya"></span><span id="stsenarii_ispolzovaniya"></span><span id="use_cases"></span>Сценарии использования<a class="heading-anchor" href="#use-cases" title="Link to this section">&para;</a></h2>
+<h3  id="poisk-neprotestirovannogo-koda"><span id="poisk_neprotestirovannogo_koda"></span>Поиск непротестированного кода<a class="heading-anchor" href="#poisk-neprotestirovannogo-koda" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Какие функции не покрыты тестами?
+
+## Пробелы в покрытии
+
+**Режим обнаружения:** Эвристика
+**Всего непротестированных:** 234 функции
+**Оценка покрытия:** 78%
+
+### Критические (executor)
+- ExecParallelHashJoinNewBatch()
+- ExecReScanGather()
+
+### Высокий приоритет (storage)
+- heap_lock_updated_tuple()
+- heap_abort_speculative()
+
+### Рекомендации для `heap_lock_updated_tuple`
+1. Добавьте 5 тестовых сценариев для покрытия ветвей (IF: 3, SWITCH: 1)
+2. Протестируйте граничные значения параметра `flags` (zero, negative, max)
+3. Протестируйте обработку ошибок: 2 try/catch блока
+</code></pre></div>
+
+<h3  id="prioritizatsiya-testirovaniya"><span id="prioritizatsiya_testirovaniya"></span>Приоритизация тестирования<a class="heading-anchor" href="#prioritizatsiya-testirovaniya" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Какие критические функции нужно протестировать в первую очередь?
+
+## Рейтинг приоритетов тестирования
+
+| Функция | Баллы | Приоритет | Причина |
+|---------|-------|-----------|---------|
+| heap_lock_updated_tuple | 8.5 | high | критический модуль, 23 вызывающих, публичный API |
+| ExecParallelHashJoinNewBatch | 7.0 | high | модуль engine, сложная сигнатура |
+| AtEOXact_RelationCache | 5.0 | medium | системный модуль, 4 вызывающих |
+</code></pre></div>
+
+<h3  id="generatsiya-testovyh-sluchaev"><span id="generatsiya_testovyh_sluchaev"></span>Генерация тестовых случаев<a class="heading-anchor" href="#generatsiya-testovyh-sluchaev" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Сгенерировать тестовые случаи для heap_insert
+
+## Рекомендации по тестам: heap_insert()
+
+**Файл:** src/backend/access/heap/heapam.c:2156
+
+**Стратегия:**
+- Модульные тесты: тестировать heap_insert изолированно, мокируя 5 зависимостей
+- Интеграционные тесты: тестировать через 23 вызывающие функции
+- Граничные случаи: тестировать граничные условия, null-ввод, обработку ошибок
+
+**Зависимости для мокирования:**
+- RelationGetBufferForTuple()
+- heap_prepare_insert()
+- XLogInsert()
+
+**Тестовые сценарии из вызывающих функций:**
+- simple_heap_insert() использует heap_insert для...
+- toast_save_datum() использует heap_insert для...
+</code></pre></div>
+
+<h3  id="gibridnoe-obnaruzhenie-s-dannymi-pokrytiya"><span id="gibridnoe_obnaruzhenie_s_dannymi_pokrytiya"></span>Гибридное обнаружение (с данными покрытия)<a class="heading-anchor" href="#gibridnoe-obnaruzhenie-s-dannymi-pokrytiya" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Найти непротестированный код
+
+## Пробелы в покрытии (Гибрид)
+
+**Режим обнаружения:** Данные выполнения + Эвристика
+**Оценка покрытия:** 62.3% (по данным выполнения)
+
+| Метод | Обнаружение | Покрытие | Причина |
+|-------|-------------|----------|---------|
+| parse_query() | Данные выполнения | 0.0% | Нет покрытых строк |
+| exec_plan() | Данные выполнения | 12.5% | Частичное покрытие |
+| helper_func() | Эвристика | --- | Нет вызовов из тестов |
+</code></pre></div>
+
+<h2  id="example-questions"><span id="example_questions"></span><span id="primery-voprosov"></span><span id="primery_voprosov"></span>Примеры вопросов<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
 <p><strong>Обнаружение непротестированного кода:</strong>
-- &ldquo;Какие функции не покрыты тестами?&rdquo;
-- &ldquo;Найти непротестированный код&rdquo;
-- &ldquo;Показать функции без тестов&rdquo;
-- &ldquo;Какой код не покрыт тестами?&rdquo;</p>
+- «Какие функции не покрыты тестами?»
+- «Найти непротестированный код»
+- «Показать функции без тестов»
+- «Какой код не покрыт тестами?»</p>
 <p><strong>Приоритизация тестирования:</strong>
-- &ldquo;Какие критические функции нужно протестировать в первую очередь?&rdquo;
-- &ldquo;Что нужно протестировать в первую очередь?&rdquo;
-- &ldquo;Приоритет тестирования&rdquo;</p>
+- «Какие критические функции нужно протестировать в первую очередь?»
+- «Что нужно протестировать в первую очередь?»
+- «Приоритет тестирования»</p>
 <p><strong>Генерация тестов:</strong>
-- &ldquo;Сгенерировать тестовые случаи для [function_name]&rdquo;
-- &ldquo;Создать тесты для [function_name]&rdquo;
-- &ldquo;Какие граничные случаи следует протестировать в [function_name]?&rdquo;</p>
+- «Сгенерировать тестовые случаи для heap_insert»
+- «Создать тесты для функции palloc»
+- «Какие граничные случаи следует протестировать в ExecInitNode?»
+- «Написать мутационные тесты для парсера запросов»</p>
 <p><strong>Обзор покрытия:</strong>
-- &ldquo;Показать пробелы в покрытии&rdquo;
-- &ldquo;Отчёт покрытия&rdquo;
-- &ldquo;Как улучшить тестовое покрытие?&rdquo;</p>
-<h2  id="svyazannye-stsenarii"><span id="svyazannye_stsenarii"></span>Связанные сценарии<a class="heading-anchor" href="#svyazannye-stsenarii" title="Link to this section">&para;</a></h2>
+- «Показать пробелы в покрытии»
+- «Отчёт покрытия»
+- «Как улучшить тестовое покрытие?»</p>
+<h2  id="related-scenarios"><span id="related_scenarios"></span><span id="svyazannye-stsenarii"></span><span id="svyazannye_stsenarii"></span>Связанные сценарии<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="02-security-audit.html">Аудит безопасности</a> — Тестирование безопасности</li>
-<li><a href="05-refactoring.html">Рефакторинг</a> — Поиск неиспользуемого кода и рефакторинг</li>
-<li><a href="15-debugging.html">Отладка</a> — Отладка проблем в коде</li>
+<li><a href="02-security-audit.html">Аудит безопасности (S02)</a> — Тестирование безопасности</li>
+<li><a href="05-refactoring.html">Рефакторинг (S05)</a> — Поиск неиспользуемого кода и рефакторинг</li>
+<li><a href="15-debugging.html">Отладка (S15)</a> — Отладка проблем в коде</li>
 </ul>
       </article>
 
@@ -438,7 +982,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-07</span>
+        <span>Обновлено: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/07-test-coverage.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -448,24 +992,40 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#stsenariy-07-pokrytie-testami" class="level-1">Сценарий 07: Покрытие тестами</a></li>
-<li><a href="#bystryy-start" class="level-2">Быстрый старт</a></li>
-<li><a href="#poisk-probelov-v-pokrytii" class="level-2">Поиск пробелов в покрытии</a></li>
-<li><a href="#vyyavlenie-neprotestirovannyh-funktsiy" class="level-3">Выявление непротестированных функций</a></li>
-<li><a href="#opredelenie-prioritetov-testirovaniya" class="level-3">Определение приоритетов тестирования</a></li>
-<li><a href="#poisk-neprotestirovannyh-putey-obrabotki-oshibok" class="level-3">Поиск непротестированных путей обработки ошибок</a></li>
-<li><a href="#import-pokrytiya-vremeni-vypolneniya" class="level-2">Импорт покрытия времени выполнения</a></li>
-<li><a href="#podderzhivaemye-formaty" class="level-3">Поддерживаемые форматы</a></li>
-<li><a href="#komandy-cli" class="level-3">Команды CLI</a></li>
-<li><a href="#kak-eto-rabotaet" class="level-3">Как это работает</a></li>
-<li><a href="#rezultat-importa" class="level-3">Результат импорта</a></li>
-<li><a href="#gibridnoe-obnaruzhenie" class="level-2">Гибридное обнаружение</a></li>
-<li><a href="#rekomendatsii-testov-na-osnove-cpg" class="level-2">Рекомендации тестов на основе CPG</a></li>
-<li><a href="#analiz-pokrytiya-vetok" class="level-3">Анализ покрытия веток</a></li>
+<li><a href="#soderzhanie" class="level-2">Содержание</a></li>
+<li><a href="#quick-start" class="level-2">Быстрый старт</a></li>
+<li><a href="#how-it-works" class="level-2">Как это работает</a></li>
+<li><a href="#architecture" class="level-3">Архитектура</a></li>
+<li><a href="#intent-detection" class="level-3">Определение намерения</a></li>
+<li><a href="#handler-registry" class="level-3">Реестр обработчиков</a></li>
+<li><a href="#detection-modes" class="level-2">Режимы обнаружения</a></li>
+<li><a href="#heuristic-detection" class="level-3">Эвристическое обнаружение</a></li>
+<li><a href="#hybrid-detection" class="level-3">Гибридное обнаружение</a></li>
+<li><a href="#handlers" class="level-2">Обработчики</a></li>
+<li><a href="#untestedcodehandler" class="level-3">UntestedCodeHandler</a></li>
+<li><a href="#testgenerationhandler" class="level-3">TestGenerationHandler</a></li>
+<li><a href="#testpriorityhandler" class="level-3">TestPriorityHandler</a></li>
+<li><a href="#impact-analysis" class="level-2">Анализ влияния</a></li>
+<li><a href="#cpg-based-recommendations" class="level-2">Рекомендации на основе CPG</a></li>
+<li><a href="#analiz-pokrytiya-vetvey" class="level-3">Анализ покрытия ветвей</a></li>
 <li><a href="#analiz-granichnyh-znacheniy-parametrov" class="level-3">Анализ граничных значений параметров</a></li>
 <li><a href="#analiz-putey-oshibok" class="level-3">Анализ путей ошибок</a></li>
-<li><a href="#generatsiya-testovyh-sluchaev" class="level-2">Генерация тестовых случаев</a></li>
-<li><a href="#primery-zaprosov" class="level-2">Примеры запросов</a></li>
-<li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>
+<li><a href="#runtime-coverage-import" class="level-2">Импорт покрытия</a></li>
+<li><a href="#podderzhivaemye-formaty" class="level-3">Поддерживаемые форматы</a></li>
+<li><a href="#kak-eto-rabotaet" class="level-3">Как это работает</a></li>
+<li><a href="#configuration" class="level-2">Конфигурация</a></li>
+<li><a href="#porogovye-znacheniya" class="level-3">Пороговые значения</a></li>
+<li><a href="#vesovye-koeffitsienty" class="level-3">Весовые коэффициенты</a></li>
+<li><a href="#limity-obrabotchikov" class="level-3">Лимиты обработчиков</a></li>
+<li><a href="#cli-usage" class="level-2">Использование CLI</a></li>
+<li><a href="#rest-api" class="level-2">REST API</a></li>
+<li><a href="#use-cases" class="level-2">Сценарии использования</a></li>
+<li><a href="#poisk-neprotestirovannogo-koda" class="level-3">Поиск непротестированного кода</a></li>
+<li><a href="#prioritizatsiya-testirovaniya" class="level-3">Приоритизация тестирования</a></li>
+<li><a href="#generatsiya-testovyh-sluchaev" class="level-3">Генерация тестовых случаев</a></li>
+<li><a href="#gibridnoe-obnaruzhenie-s-dannymi-pokrytiya" class="level-3">Гибридное обнаружение (с данными покрытия)</a></li>
+<li><a href="#example-questions" class="level-2">Примеры вопросов</a></li>
+<li><a href="#related-scenarios" class="level-2">Связанные сценарии</a></li>
       </ul>
     </aside>
   </div>

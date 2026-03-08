@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,158 +181,389 @@
       <article class="doc-content">
         <h1  id="scenario-07-test-coverage"><span id="scenario_07_test_coverage"></span>Scenario 07: Test Coverage<a class="heading-anchor" href="#scenario-07-test-coverage" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>QA engineer identifying untested code paths, importing runtime coverage data, and getting CPG-based test recommendations.</p>
+<p>CPG-based untested code detection, test prioritization, test generation recommendations, runtime coverage import, and hybrid analysis.</p>
 </blockquote>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#architecture">Architecture</a></li>
+<li><a href="#intent-detection">Intent Detection</a></li>
+<li><a href="#handler-registry">Handler Registry</a></li>
+<li><a href="#detection-modes">Detection Modes</a></li>
+<li><a href="#heuristic-detection">Heuristic Detection</a></li>
+<li><a href="#hybrid-detection">Hybrid Detection</a></li>
+<li><a href="#handlers">Handlers</a></li>
+<li><a href="#untestedcodehandler">UntestedCodeHandler</a></li>
+<li><a href="#testgenerationhandler">TestGenerationHandler</a></li>
+<li><a href="#testpriorityhandler">TestPriorityHandler</a></li>
+<li><a href="#impact-analysis">Impact Analysis</a></li>
+<li><a href="#cpg-based-recommendations">CPG-Based Recommendations</a></li>
+<li><a href="#runtime-coverage-import">Runtime Coverage Import</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
+<li><a href="#rest-api">REST API</a></li>
+<li><a href="#use-cases">Use Cases</a></li>
+<li><a href="#example-questions">Example Questions</a></li>
+<li><a href="#related-scenarios">Related Scenarios</a></li>
+</ul>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Select Test Coverage Scenario</span>
-/select<span class="w"> </span><span class="m">07</span>
+<div class="highlight"><pre><span></span><code>/select<span class="w"> </span><span class="m">07</span>
 </code></pre></div>
 
-<h2  id="finding-coverage-gaps"><span id="finding_coverage_gaps"></span>Finding Coverage Gaps<a class="heading-anchor" href="#finding-coverage-gaps" title="Link to this section">&para;</a></h2>
-<h3  id="identify-untested-functions"><span id="identify_untested_functions"></span>Identify Untested Functions<a class="heading-anchor" href="#identify-untested-functions" title="Link to this section">&para;</a></h3>
-<p>The handler uses <strong>heuristic detection</strong> by default: methods without <code>test_*</code> callers in the call graph are flagged as untested.</p>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">What functions lack test coverage?</span>
-
-+--------------- Coverage Gaps ---------------+
-| Functions without direct tests:             |
-|                                             |
-| Critical (executor):                        |
-|   - ExecParallelHashJoinNewBatch()          |
-|   - ExecReScanGather()                      |
-|                                             |
-| High priority (storage):                    |
-|   - heap_lock_updated_tuple()               |
-|   - heap_abort_speculative()                |
-|                                             |
-| Total untested: 234 functions               |
-| Coverage estimate: 78%                      |
-| Detection mode: Heuristic                   |
-+---------------------------------------------+
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3 id="architecture">Architecture<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h3>
+<p>The test coverage module (<code>src/workflow/scenarios/coverage_handlers/</code>, 13 files) consists of 6 components:</p>
+<div class="highlight"><pre><span></span><code>User Query
+    |
+    v
+CoverageIntentDetector (5 intent types, bilingual)
+    |
+    v
+HandlerRegistry (priority-ordered dispatch)
+    |
+    +---&gt; TestGenerationHandler (priority 5)
+    |         generate test recommendations for specific functions
+    |
+    +---&gt; UntestedCodeHandler (priority 10)
+    |         find untested code via heuristic or hybrid detection
+    |
+    +---&gt; TestPriorityHandler (priority 20)
+    |         rank untested functions by criticality
+    |
+    v
+CoverageReportFormatter (bilingual markdown output)
+    |
+    v
+CallGraphAnalyzer ──&gt; ImpactAnalysis (impact_score, callers, callees)
 </code></pre></div>
 
-<h3  id="prioritize-testing"><span id="prioritize_testing"></span>Prioritize Testing<a class="heading-anchor" href="#prioritize-testing" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Which untested functions have highest impact?</span>
-
-+--------------- Priority List ---------------+
-| High Impact + No Tests:                     |
-|                                             |
-| 1. heap_lock_updated_tuple()                |
-|    Impact: Transaction integrity            |
-|    Callers: 23                              |
-|                                             |
-| 2. ExecParallelHashJoinNewBatch()           |
-|    Impact: Parallel query correctness       |
-|    Callers: 8                               |
-|                                             |
-| 3. AtEOXact_RelationCache()                 |
-|    Impact: Cache consistency                |
-|    Callers: 4                               |
-+---------------------------------------------+
-</code></pre></div>
-
-<h3  id="find-untested-error-paths"><span id="find_untested_error_paths"></span>Find Untested Error Paths<a class="heading-anchor" href="#find-untested-error-paths" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">Find</span><span class="w"> </span><span class="nv">untested</span><span class="w"> </span><span class="nv">error</span><span class="w"> </span><span class="nv">handling</span><span class="w"> </span><span class="nv">paths</span>
-<span class="o">&gt;</span><span class="w"> </span><span class="k">Show</span><span class="w"> </span><span class="nv">entry</span><span class="w"> </span><span class="nv">points</span><span class="w"> </span><span class="nv">without</span><span class="w"> </span><span class="nv">tests</span>
-</code></pre></div>
-
-<hr />
-<h2  id="runtime-coverage-import"><span id="runtime_coverage_import"></span>Runtime Coverage Import<a class="heading-anchor" href="#runtime-coverage-import" title="Link to this section">&para;</a></h2>
-<p>Import coverage data from external tools to enable <strong>hybrid detection</strong> (runtime + heuristic).</p>
-<h3  id="supported-formats"><span id="supported_formats"></span>Supported Formats<a class="heading-anchor" href="#supported-formats" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Format</th>
-<th>Tool</th>
-<th>File Type</th>
+<th>Component</th>
+<th>Module</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>pytest-cov</code></td>
-<td>pytest-cov (<code>--cov-report=json</code>)</td>
-<td>JSON</td>
+<td><code>CoverageIntentDetector</code></td>
+<td><code>intent_detector.py</code></td>
+<td>Detect query intent among 5 types with morphological matching</td>
 </tr>
 <tr>
-<td><code>lcov</code></td>
-<td>gcov / lcov / geninfo</td>
-<td>Text (<code>.info</code>, <code>.lcov</code>)</td>
+<td><code>TestGenerationHandler</code></td>
+<td><code>handlers/test_generator.py</code></td>
+<td>Generate test recommendations for named functions</td>
 </tr>
 <tr>
-<td><code>cobertura</code></td>
-<td>Cobertura, JaCoCo, coverage.py XML</td>
-<td>XML</td>
+<td><code>UntestedCodeHandler</code></td>
+<td><code>handlers/untested.py</code></td>
+<td>Find untested code (heuristic + hybrid runtime detection)</td>
+</tr>
+<tr>
+<td><code>TestPriorityHandler</code></td>
+<td><code>handlers/priority.py</code></td>
+<td>Rank untested functions by 4 scoring factors</td>
+</tr>
+<tr>
+<td><code>CoverageReportFormatter</code></td>
+<td><code>formatters/coverage_report.py</code></td>
+<td>Format reports with <code>FormatterLocalization</code> (EN/RU)</td>
+</tr>
+<tr>
+<td><code>TestCoverageScanner</code></td>
+<td><code>handlers/coverage_scanner.py</code></td>
+<td>Interface coverage scanning (dual scan: <code>edges_call</code> + file path heuristic)</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="cli-commands"><span id="cli_commands"></span>CLI Commands<a class="heading-anchor" href="#cli-commands" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Import pytest-cov JSON report</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.json<span class="w"> </span>--format<span class="w"> </span>pytest-cov<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb
+<h3  id="intent-detection"><span id="intent_detection"></span>Intent Detection<a class="heading-anchor" href="#intent-detection" title="Link to this section">&para;</a></h3>
+<p><code>CoverageIntentDetector</code> classifies queries into 5 intent types using morphological keyword matching with Cyrillic word boundaries:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Intent Type</th>
+<th>Priority</th>
+<th>EN Keywords</th>
+<th>RU Keywords</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_generation</code></td>
+<td>5</td>
+<td>generate test, create test, write test, test suite, mutation test, stress test, property-based, chaos engineering</td>
+<td>сгенерировать тест, создать тест, написать тест, модульный тест, стресс-тесты, мутационное тестирование</td>
+</tr>
+<tr>
+<td><code>untested_code_scan</code></td>
+<td>10</td>
+<td>untested, no test, missing test, not covered, uncovered</td>
+<td>непротестированный, без теста, нет тестов, непокрытый</td>
+</tr>
+<tr>
+<td><code>test_priority</code></td>
+<td>20</td>
+<td>test priority, should test, critical test, high priority test</td>
+<td>приоритет теста, протестировать, критический тест, важный тест</td>
+</tr>
+<tr>
+<td><code>coverage_gap</code></td>
+<td>30</td>
+<td>coverage gap, low coverage, coverage report, test coverage</td>
+<td>пробел покрытия, низкое покрытие, отчет покрытия, покрытие тестами</td>
+</tr>
+<tr>
+<td><code>coverage_improvement</code></td>
+<td>40</td>
+<td>improve coverage, increase coverage, better coverage</td>
+<td>улучшить покрытие, увеличить покрытие, повысить покрытие</td>
+</tr>
+</tbody>
+</table></div>
+<p>Additional extraction:
+- <code>_extract_criticality(query)</code> — returns <code>"critical"</code>, <code>"high"</code>, <code>"medium"</code>, or <code>"all"</code>
+- <code>_extract_scope(query)</code> — returns <code>"method"</code>, <code>"class"</code>, <code>"module"</code>, or <code>"all"</code></p>
+<h3  id="handler-registry"><span id="handler_registry"></span>Handler Registry<a class="heading-anchor" href="#handler-registry" title="Link to this section">&para;</a></h3>
+<p>Handlers are registered via <code>HandlerRegistry("coverage")</code> with priority-ordered dispatch. Lower priority = higher precedence:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@coverage_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestGenerationHandlerRegistered</span><span class="p">(</span><span class="n">TestGenerationHandler</span><span class="p">):</span> <span class="o">...</span>
 
-<span class="c1"># Import lcov trace file</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>lcov.info<span class="w"> </span>--format<span class="w"> </span>lcov
+<span class="nd">@coverage_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UntestedCodeHandlerRegistered</span><span class="p">(</span><span class="n">UntestedCodeHandler</span><span class="p">):</span> <span class="o">...</span>
 
-<span class="c1"># Import Cobertura XML (e.g., from Java/C# tooling)</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.xml<span class="w"> </span>--format<span class="w"> </span>cobertura<span class="w"> </span>--source-root<span class="w"> </span>/project
-
-<span class="c1"># View imported coverage data</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>show
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>coverage<span class="w"> </span>show<span class="w"> </span>--uncovered-only
+<span class="nd">@coverage_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestPriorityHandlerRegistered</span><span class="p">(</span><span class="n">TestPriorityHandler</span><span class="p">):</span> <span class="o">...</span>
 </code></pre></div>
 
-<h3  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h3>
-<ol>
-<li>The parser reads the coverage report and extracts per-file line-level hit data</li>
-<li>The importer adds a <code>coverage_percent</code> column to <code>nodes_method</code> (if absent)</li>
-<li>Each method is matched to coverage data by <strong>suffix-matching</strong> the filename and intersecting the method&rsquo;s line range with covered lines</li>
-<li><code>coverage_percent</code> is computed as <code>covered_lines_in_range / total_lines_in_range * 100</code></li>
-</ol>
-<p><strong>Path normalization:</strong> Coverage reports often contain absolute paths while the CPG stores relative paths. The importer normalizes paths (strips <code>./</code>, converts backslashes) and falls back to suffix matching. Use <code>--source-root</code> to strip a common prefix for better matching.</p>
-<h3  id="import-result"><span id="import_result"></span>Import Result<a class="heading-anchor" href="#import-result" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nb">+--------------</span><span class="c"> Coverage Import Summary </span><span class="nb">--------------+</span>
-<span class="c">| Format: pytest</span><span class="nb">-</span><span class="c">cov                                  |</span>
-<span class="c">| Methods updated: 1</span><span class="nt">,</span><span class="c">247 / 3</span><span class="nt">,</span><span class="c">891                      |</span>
-<span class="c">| Files matched: 89 / 112                             |</span>
-<span class="nb">+-----------------------------------------------------+</span>
+<p>Each handler implements <code>can_handle(query_info) -&gt; bool</code> and <code>handle(query_info) -&gt; HandlerResult</code>. The registry tries handlers in priority order and uses the first one that matches.</p>
+<h2  id="detection-modes"><span id="detection_modes"></span>Detection Modes<a class="heading-anchor" href="#detection-modes" title="Link to this section">&para;</a></h2>
+<h3  id="heuristic-detection"><span id="heuristic_detection"></span>Heuristic Detection<a class="heading-anchor" href="#heuristic-detection" title="Link to this section">&para;</a></h3>
+<p>Default mode when no runtime coverage data is available. Methods without <code>test_*</code> callers in <code>edges_call</code> are flagged as untested:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Methods with no test callers</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">edges_call</span><span class="w"> </span><span class="n">ec</span>
+<span class="w">    </span><span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">caller</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">ec</span><span class="p">.</span><span class="n">source_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">caller</span><span class="p">.</span><span class="n">id</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">ec</span><span class="p">.</span><span class="n">target_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">caller</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;test_%&#39;</span>
+<span class="p">)</span>
 </code></pre></div>
 
-<hr />
-<h2  id="hybrid-detection"><span id="hybrid_detection"></span>Hybrid Detection<a class="heading-anchor" href="#hybrid-detection" title="Link to this section">&para;</a></h2>
-<p>After importing runtime coverage data, untested code queries <strong>automatically switch to hybrid mode</strong>:</p>
+<h3  id="hybrid-detection"><span id="hybrid_detection"></span>Hybrid Detection<a class="heading-anchor" href="#hybrid-detection" title="Link to this section">&para;</a></h3>
+<p>Automatically activated when <code>coverage_percent</code> column exists in <code>nodes_method</code> (populated via <code>coverage import</code>):</p>
 <ul>
-<li>Methods with <code>coverage_percent &lt; 1.0</code> are flagged via <strong>runtime</strong> data</li>
-<li>Methods with <code>NULL coverage_percent</code> (no runtime data) fall back to <strong>heuristic</strong> test-caller analysis</li>
-<li>Each candidate is tagged with <code>detection_method</code>: <code>"runtime"</code> or <code>"heuristic"</code></li>
-<li>The coverage estimate uses <code>AVG(coverage_percent)</code> from runtime data instead of the heuristic ratio</li>
+<li>Methods with <code>coverage_percent &lt; 1.0</code> → flagged via <strong>runtime</strong> data</li>
+<li>Methods with <code>NULL coverage_percent</code> → fallback to <strong>heuristic</strong> test-caller analysis</li>
+<li>Each candidate tagged with <code>detection_method</code>: <code>"runtime"</code> or <code>"heuristic"</code></li>
+<li>Coverage estimate uses <code>AVG(coverage_percent)</code> from runtime data</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find untested code</span>
-
-+--------------- Coverage Gaps (Hybrid) ---------------+
-| Method              | Detection | Coverage | Reason  |
-|---------------------|-----------|----------|---------|
-| parse_query()       | Runtime   | 0.0%     | ...     |
-| exec_plan()         | Runtime   | 12.5%    | ...     |
-| helper_func()       | Heuristic | ---      | No test |
-|                                                      |
-| Detection mode: Runtime + Heuristic                  |
-| Coverage estimate: 62.3% (from runtime data)         |
-+------------------------------------------------------+
-</code></pre></div>
-
-<p><strong>Backward compatibility:</strong> If no coverage data has been imported, the handler works identically to the heuristic-only mode. The <code>_has_coverage_column()</code> guard ensures zero behavior change.</p>
-<hr />
-<h2  id="cpg-based-test-recommendations"><span id="cpg_based_test_recommendations"></span>CPG-Based Test Recommendations<a class="heading-anchor" href="#cpg-based-test-recommendations" title="Link to this section">&para;</a></h2>
-<p>For each untested method (top 20 by criticality), the handler analyzes CPG data and generates specific, actionable test recommendations.</p>
+<p>The <code>_has_coverage_data()</code> guard ensures zero behavior change when no data is imported.</p>
+<h2 id="handlers">Handlers<a class="heading-anchor" href="#handlers" title="Link to this section">&para;</a></h2>
+<h3 id="untestedcodehandler">UntestedCodeHandler<a class="heading-anchor" href="#untestedcodehandler" title="Link to this section">&para;</a></h3>
+<p>Handles <code>untested_code_scan</code> intent. Key methods:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>can_handle(query_info)</code></td>
+<td>Returns True when <code>type == "untested_code_scan"</code></td>
+</tr>
+<tr>
+<td><code>handle(query_info)</code></td>
+<td>Finds untested code, classifies by criticality, generates recommendations</td>
+</tr>
+<tr>
+<td><code>_find_untested_functions()</code></td>
+<td>Heuristic + optional runtime coverage detection</td>
+</tr>
+<tr>
+<td><code>_classify_by_criticality(candidates)</code></td>
+<td>Groups by risk level (critical/high/medium/low)</td>
+</tr>
+<tr>
+<td><code>_estimate_coverage(candidates)</code></td>
+<td>Calculates coverage percentage</td>
+</tr>
+<tr>
+<td><code>_has_coverage_data()</code></td>
+<td>Checks for <code>coverage_percent</code> column</td>
+</tr>
+</tbody>
+</table></div>
+<p>Enriches top 20 candidates with CPG-based test recommendations (branch coverage, parameter boundaries, error paths).</p>
+<h3 id="testgenerationhandler">TestGenerationHandler<a class="heading-anchor" href="#testgenerationhandler" title="Link to this section">&para;</a></h3>
+<p>Handles <code>test_generation</code> intent. Key methods:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>can_handle(query_info)</code></td>
+<td>Returns True when <code>type == "test_generation"</code> and function names extractable</td>
+</tr>
+<tr>
+<td><code>handle(query_info)</code></td>
+<td>Generates test recommendations for specific functions</td>
+</tr>
+<tr>
+<td><code>_extract_function_names(query)</code></td>
+<td>Extracts function names via priority patterns</td>
+</tr>
+<tr>
+<td><code>_search_functions_by_keywords(query)</code></td>
+<td>Concept-based function search (e.g., &ldquo;tests for query execution&rdquo;)</td>
+</tr>
+<tr>
+<td><code>_get_function_info(func_name)</code></td>
+<td>Case-insensitive function lookup</td>
+</tr>
+<tr>
+<td><code>_get_function_callees(func_name)</code></td>
+<td>Dependencies to mock</td>
+</tr>
+<tr>
+<td><code>_get_function_callers(func_name)</code></td>
+<td>Test scenarios from callers</td>
+</tr>
+<tr>
+<td><code>_suggest_test_approach(...)</code></td>
+<td>Generates unit/integration/edge-case strategy</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="testpriorityhandler">TestPriorityHandler<a class="heading-anchor" href="#testpriorityhandler" title="Link to this section">&para;</a></h3>
+<p>Handles <code>test_priority</code> intent. Ranks untested functions using 4 scoring factors:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Factor</th>
+<th>Score</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Module criticality</td>
+<td>+3.0</td>
+<td>api, interface, core modules</td>
+</tr>
+<tr>
+<td>Module criticality</td>
+<td>+2.0</td>
+<td>main, engine, system modules</td>
+</tr>
+<tr>
+<td>Complexity</td>
+<td>+1.5</td>
+<td>Signature length &gt; 200 chars</td>
+</tr>
+<tr>
+<td>Complexity</td>
+<td>+1.0</td>
+<td>Signature length &gt; 100 chars</td>
+</tr>
+<tr>
+<td>Public API</td>
+<td>+1.0</td>
+<td>No underscore prefix in name</td>
+</tr>
+<tr>
+<td>Caller count</td>
+<td>+2.0</td>
+<td>Above high contention threshold</td>
+</tr>
+<tr>
+<td>Caller count</td>
+<td>+1.0</td>
+<td>Above medium caller threshold</td>
+</tr>
+</tbody>
+</table></div>
+<p>Score is converted to priority level via <code>_score_to_rating()</code>: high (≥ threshold), medium, low.</p>
+<h2  id="impact-analysis"><span id="impact_analysis"></span>Impact Analysis<a class="heading-anchor" href="#impact-analysis" title="Link to this section">&para;</a></h2>
+<p>The workflow uses <code>CallGraphAnalyzer</code> (Graph Method #2) from <code>src/analysis/callgraph/analyzer.py</code> for impact analysis on untested methods.</p>
+<p><code>ImpactAnalysis</code> dataclass:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method_name</code></td>
+<td>str</td>
+<td>Analyzed method</td>
+</tr>
+<tr>
+<td><code>direct_callers</code></td>
+<td>list[str]</td>
+<td>Methods calling this directly</td>
+</tr>
+<tr>
+<td><code>transitive_callers</code></td>
+<td>list[str]</td>
+<td>All transitive callers</td>
+</tr>
+<tr>
+<td><code>direct_callees</code></td>
+<td>list[str]</td>
+<td>Methods called directly</td>
+</tr>
+<tr>
+<td><code>transitive_callees</code></td>
+<td>list[str]</td>
+<td>All transitive callees</td>
+</tr>
+<tr>
+<td><code>impact_score</code></td>
+<td>float</td>
+<td>0.0–1.0 impact score</td>
+</tr>
+</tbody>
+</table></div>
+<p>3 graph insight categories tracked in <code>state["metadata"]</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Insight</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>high_impact_untested</code></td>
+<td><code>impact_score &gt; thresholds.high_impact</code></td>
+</tr>
+<tr>
+<td><code>untested_entry_points</code></td>
+<td>Many callers + few callees</td>
+</tr>
+<tr>
+<td><code>critical_untested</code></td>
+<td><code>callers &gt; min_callers &amp;&amp; impact_score &gt; impact_score_medium</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="cpg-based-recommendations"><span id="cpg_based_recommendations"></span>CPG-Based Recommendations<a class="heading-anchor" href="#cpg-based-recommendations" title="Link to this section">&para;</a></h2>
+<p>For each untested method (top 20 by criticality), the handler generates specific recommendations:</p>
 <h3  id="branch-coverage-analysis"><span id="branch_coverage_analysis"></span>Branch Coverage Analysis<a class="heading-anchor" href="#branch-coverage-analysis" title="Link to this section">&para;</a></h3>
-<p>Counts control structures (<code>IF</code>, <code>FOR</code>, <code>WHILE</code>, <code>SWITCH</code>) from <code>nodes_control_structure</code> and estimates the number of test cases needed for branch coverage.</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Find</span><span class="w"> </span><span class="n">untested</span><span class="w"> </span><span class="k">code</span>
-
-<span class="c1">### `parse_query`</span>
-<span class="mf">1.</span><span class="w"> </span><span class="k">Add</span><span class="w"> </span><span class="mi">8</span><span class="w"> </span><span class="n">test</span><span class="w"> </span><span class="n">cases</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">branch</span><span class="w"> </span><span class="n">coverage</span><span class="w"> </span><span class="p">(</span><span class="k">IF</span><span class="o">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="k">FOR</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">SWITCH</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
-<span class="mf">2.</span><span class="w"> </span><span class="n">Test</span><span class="w"> </span><span class="n">boundary</span><span class="w"> </span><span class="k">values</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">parameter</span><span class="w"> </span><span class="n n-Quoted">`query_len`</span><span class="w"> </span><span class="p">(</span><span class="n">zero</span><span class="p">,</span><span class="w"> </span><span class="n">negative</span><span class="p">,</span><span class="w"> </span><span class="n">max</span><span class="p">,</span><span class="w"> </span><span class="n">min</span><span class="p">)</span>
-<span class="mf">3.</span><span class="w"> </span><span class="n">Test</span><span class="w"> </span><span class="k">error</span><span class="w"> </span><span class="n">handling</span><span class="o">:</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="n">try</span><span class="o">/</span><span class="n">catch</span><span class="w"> </span><span class="n">blocks</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">statements</span>
-</code></pre></div>
-
+<p>Counts control structures (<code>IF</code>, <code>FOR</code>, <code>WHILE</code>, <code>SWITCH</code>) from <code>nodes_control_structure</code> and estimates test cases needed.</p>
 <h3  id="parameter-boundary-analysis"><span id="parameter_boundary_analysis"></span>Parameter Boundary Analysis<a class="heading-anchor" href="#parameter-boundary-analysis" title="Link to this section">&para;</a></h3>
 <p>Maps parameter types from <code>nodes_param</code> to boundary test suggestions:</p>
 <div class="table-wrapper"><table>
@@ -365,37 +597,348 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </tbody>
 </table></div>
 <h3  id="error-path-analysis"><span id="error_path_analysis"></span>Error Path Analysis<a class="heading-anchor" href="#error-path-analysis" title="Link to this section">&para;</a></h3>
-<p>Counts <code>TRY</code> blocks in <code>nodes_control_structure</code> and <code>RETURN</code> statements in <code>nodes_return</code>. Multiple return statements suggest error handling paths that need testing.</p>
-<hr />
-<h2  id="generating-test-cases"><span id="generating_test_cases"></span>Generating Test Cases<a class="heading-anchor" href="#generating-test-cases" title="Link to this section">&para;</a></h2>
-<p>The test generation handler provides detailed test recommendations for specific functions using call graph analysis.</p>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Generate</span><span class="w"> </span><span class="nx">test</span><span class="w"> </span><span class="nx">cases</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">heap_insert</span>
+<p>Counts <code>TRY</code> blocks in <code>nodes_control_structure</code> and <code>RETURN</code> statements in <code>nodes_return</code>. Multiple return statements suggest error handling paths.</p>
+<h2  id="runtime-coverage-import"><span id="runtime_coverage_import"></span>Runtime Coverage Import<a class="heading-anchor" href="#runtime-coverage-import" title="Link to this section">&para;</a></h2>
+<p>Import coverage data from external tools to enable hybrid detection.</p>
+<h3  id="supported-formats"><span id="supported_formats"></span>Supported Formats<a class="heading-anchor" href="#supported-formats" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Tool</th>
+<th>File Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pytest-cov</code></td>
+<td>pytest-cov (<code>--cov-report=json</code>)</td>
+<td>JSON</td>
+</tr>
+<tr>
+<td><code>lcov</code></td>
+<td>gcov / lcov / geninfo</td>
+<td>Text (<code>.info</code>, <code>.lcov</code>)</td>
+</tr>
+<tr>
+<td><code>cobertura</code></td>
+<td>Cobertura, JaCoCo, coverage.py XML</td>
+<td>XML</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="how-it-works_1"><span id="how_it_works_1"></span>How It Works<a class="heading-anchor" href="#how-it-works_1" title="Link to this section">&para;</a></h3>
+<ol>
+<li>The parser reads the coverage report and extracts per-file line-level hit data</li>
+<li>The importer adds a <code>coverage_percent</code> column to <code>nodes_method</code> (if absent)</li>
+<li>Each method is matched to coverage data by <strong>suffix-matching</strong> the filename and intersecting the method&rsquo;s line range with covered lines</li>
+<li><code>coverage_percent</code> is computed as <code>covered_lines_in_range / total_lines_in_range * 100</code></li>
+</ol>
+<p><strong>Path normalization:</strong> Coverage reports often contain absolute paths while the CPG stores relative paths. The importer normalizes paths (strips <code>./</code>, converts backslashes) and falls back to suffix matching. Use <code>--source-root</code> to strip a common prefix.</p>
+<h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
+<p>Coverage-related parameters from <code>get_unified_config()</code>:</p>
+<h3 id="thresholds">Thresholds<a class="heading-anchor" href="#thresholds" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>coverage_high</code></td>
+<td>0.75</td>
+<td>High coverage threshold</td>
+</tr>
+<tr>
+<td><code>coverage_low</code></td>
+<td>0.25</td>
+<td>Low coverage threshold</td>
+</tr>
+<tr>
+<td><code>test_coverage_minimum</code></td>
+<td>50</td>
+<td>Minimum required coverage %</td>
+</tr>
+<tr>
+<td><code>test_coverage_good</code></td>
+<td>80</td>
+<td>Good coverage %</td>
+</tr>
+<tr>
+<td><code>high_impact</code></td>
+<td>—</td>
+<td>Min score for high-impact methods</td>
+</tr>
+<tr>
+<td><code>min_callers</code></td>
+<td>—</td>
+<td>Min callers for critical classification</td>
+</tr>
+<tr>
+<td><code>impact_score_medium</code></td>
+<td>—</td>
+<td>Medium impact threshold</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="scoring-weights"><span id="scoring_weights"></span>Scoring Weights<a class="heading-anchor" href="#scoring-weights" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>coverage_base_score</code></td>
+<td>5.0</td>
+<td>Base priority score</td>
+</tr>
+<tr>
+<td><code>coverage_critical_module</code></td>
+<td>3.0</td>
+<td>Bonus for critical modules</td>
+</tr>
+<tr>
+<td><code>coverage_important_module</code></td>
+<td>2.0</td>
+<td>Bonus for important modules</td>
+</tr>
+<tr>
+<td><code>coverage_long_signature</code></td>
+<td>1.5</td>
+<td>Bonus for complex signatures (&gt;200 chars)</td>
+</tr>
+<tr>
+<td><code>coverage_medium_signature</code></td>
+<td>1.0</td>
+<td>Bonus for medium signatures (&gt;100 chars)</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="handler-limits"><span id="handler_limits"></span>Handler Limits<a class="heading-anchor" href="#handler-limits" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>display_items</code></td>
+<td>15</td>
+<td>Items in report output</td>
+</tr>
+<tr>
+<td><code>summary_items</code></td>
+<td>5</td>
+<td>Summary items</td>
+</tr>
+<tr>
+<td><code>query_medium</code></td>
+<td>30</td>
+<td>Medium query limit (impact analysis)</td>
+</tr>
+<tr>
+<td><code>cpg_results</code></td>
+<td>50</td>
+<td>CPG result limit</td>
+</tr>
+<tr>
+<td><code>retrieved_functions</code></td>
+<td>25</td>
+<td>Functions for benchmark evaluation</td>
+</tr>
+<tr>
+<td><code>priority_functions</code></td>
+<td>10</td>
+<td>Prioritized list size</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Import pytest-cov JSON report</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.json<span class="w"> </span>--format<span class="w"> </span>pytest-cov<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb
 
-<span class="o">+---------------</span><span class="w"> </span><span class="nx">Test</span><span class="w"> </span><span class="nx">Cases</span><span class="w"> </span><span class="o">-------------------------+</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Function</span><span class="p">:</span><span class="w"> </span><span class="nx">heap_insert</span><span class="p">()</span><span class="w">                            </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">File</span><span class="p">:</span><span class="w"> </span><span class="nx">src</span><span class="o">/</span><span class="nx">backend</span><span class="o">/</span><span class="nx">access</span><span class="o">/</span><span class="nx">heap</span><span class="o">/</span><span class="nx">heapam</span><span class="p">.</span><span class="nx">c</span><span class="p">:</span><span class="mi">2156</span><span class="w">        </span><span class="o">|</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Test</span><span class="w"> </span><span class="nx">Coverage</span><span class="w"> </span><span class="nx">Strategy</span><span class="p">:</span><span class="w">                            </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="nx">Unit</span><span class="w"> </span><span class="nx">Tests</span><span class="p">:</span><span class="w"> </span><span class="nx">Test</span><span class="w"> </span><span class="nx">heap_insert</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="nx">isolation</span><span class="w">        </span><span class="o">|</span>
-<span class="o">|</span><span class="w">     </span><span class="nx">by</span><span class="w"> </span><span class="nx">mocking</span><span class="w"> </span><span class="nx">its</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="nx">dependencies</span><span class="w">                  </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="nx">Integration</span><span class="w"> </span><span class="nx">Tests</span><span class="p">:</span><span class="w"> </span><span class="nx">Test</span><span class="w"> </span><span class="nx">heap_insert</span><span class="w"> </span><span class="nx">through</span><span class="w">      </span><span class="o">|</span>
-<span class="o">|</span><span class="w">     </span><span class="nx">its</span><span class="w"> </span><span class="mi">23</span><span class="w"> </span><span class="nx">callers</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">verify</span><span class="w"> </span><span class="nx">real</span><span class="o">-</span><span class="nx">world</span><span class="w"> </span><span class="nx">usage</span><span class="w">      </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="nx">Edge</span><span class="w"> </span><span class="nx">Cases</span><span class="p">:</span><span class="w"> </span><span class="nx">Test</span><span class="w"> </span><span class="nx">boundary</span><span class="w"> </span><span class="nx">conditions</span><span class="p">,</span><span class="w">            </span><span class="o">|</span>
-<span class="o">|</span><span class="w">     </span><span class="nx">null</span><span class="w"> </span><span class="nx">inputs</span><span class="p">,</span><span class="w"> </span><span class="nx">error</span><span class="w"> </span><span class="nx">handling</span><span class="w">                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Dependencies</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">Mock</span><span class="o">/</span><span class="nx">Test</span><span class="p">:</span><span class="w">                         </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">RelationGetBufferForTuple</span><span class="p">()</span><span class="w">                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">heap_prepare_insert</span><span class="p">()</span><span class="w">                          </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">XLogInsert</span><span class="p">()</span><span class="w">                                   </span><span class="o">|</span>
-<span class="o">|</span><span class="w">                                                    </span><span class="o">|</span>
-<span class="o">|</span><span class="w"> </span><span class="nx">Test</span><span class="w"> </span><span class="nx">Scenarios</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">Callers</span><span class="p">:</span><span class="w">                       </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">simple_heap_insert</span><span class="p">()</span><span class="w"> </span><span class="nx">uses</span><span class="w"> </span><span class="nx">heap_insert</span><span class="w"> </span><span class="k">for</span><span class="o">...</span><span class="w">   </span><span class="o">|</span>
-<span class="o">|</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">toast_save_datum</span><span class="p">()</span><span class="w"> </span><span class="nx">uses</span><span class="w"> </span><span class="nx">heap_insert</span><span class="w"> </span><span class="k">for</span><span class="o">...</span><span class="w">     </span><span class="o">|</span>
-<span class="o">+----------------------------------------------------+</span>
+<span class="c1"># Import lcov trace file</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>lcov.info<span class="w"> </span>--format<span class="w"> </span>lcov
+
+<span class="c1"># Import Cobertura XML (e.g., from Java/C# tooling)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>coverage.xml<span class="w"> </span>--format<span class="w"> </span>cobertura<span class="w"> </span>--source-root<span class="w"> </span>/project
+
+<span class="c1"># View imported coverage data</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>show
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>coverage<span class="w"> </span>show<span class="w"> </span>--uncovered-only
 </code></pre></div>
 
-<hr />
+<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
+<p>Test coverage queries are handled via the scenario router:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/scenarios/test_coverage/query</code></td>
+<td>Execute test coverage analysis</td>
+</tr>
+</tbody>
+</table></div>
+<p>Request model (<code>ScenarioQueryRequest</code>):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>query</code></td>
+<td>str</td>
+<td>Analysis query (1–10000 chars)</td>
+</tr>
+<tr>
+<td><code>session_id</code></td>
+<td>str?</td>
+<td>Session identifier</td>
+</tr>
+<tr>
+<td><code>language</code></td>
+<td>str</td>
+<td><code>"en"</code> or <code>"ru"</code> (default: <code>"en"</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Response model (<code>ScenarioQueryResponse</code>):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>answer</code></td>
+<td>str</td>
+<td>Formatted analysis result</td>
+</tr>
+<tr>
+<td><code>scenario_id</code></td>
+<td>str</td>
+<td><code>"test_coverage"</code></td>
+</tr>
+<tr>
+<td><code>confidence</code></td>
+<td>float</td>
+<td>Intent confidence</td>
+</tr>
+<tr>
+<td><code>evidence</code></td>
+<td>list[dict]</td>
+<td>Supporting evidence</td>
+</tr>
+<tr>
+<td><code>processing_time_ms</code></td>
+<td>float</td>
+<td>Processing time</td>
+</tr>
+</tbody>
+</table></div>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/scenarios/test_coverage/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;query&quot;: &quot;Find untested functions&quot;, &quot;language&quot;: &quot;en&quot;}&#39;</span>
+</code></pre></div>
+
+<h2  id="use-cases"><span id="use_cases"></span>Use Cases<a class="heading-anchor" href="#use-cases" title="Link to this section">&para;</a></h2>
+<h3  id="finding-untested-code"><span id="finding_untested_code"></span>Finding Untested Code<a class="heading-anchor" href="#finding-untested-code" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; What functions lack test coverage?
+
+## Coverage Gaps
+
+**Detection mode:** Heuristic
+**Total untested:** 234 functions
+**Coverage estimate:** 78%
+
+### Critical (executor)
+- ExecParallelHashJoinNewBatch()
+- ExecReScanGather()
+
+### High priority (storage)
+- heap_lock_updated_tuple()
+- heap_abort_speculative()
+
+### Recommendations for `heap_lock_updated_tuple`
+1. Add 5 test cases for branch coverage (IF: 3, SWITCH: 1)
+2. Test boundary values for parameter `flags` (zero, negative, max)
+3. Test error handling: 2 try/catch blocks
+</code></pre></div>
+
+<h3  id="test-prioritization"><span id="test_prioritization"></span>Test Prioritization<a class="heading-anchor" href="#test-prioritization" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Which critical functions need tests first?
+
+## Test Priority Ranking
+
+| Function | Score | Priority | Reason |
+|----------|-------|----------|--------|
+| heap_lock_updated_tuple | 8.5 | high | core module, 23 callers, public API |
+| ExecParallelHashJoinNewBatch | 7.0 | high | engine module, complex signature |
+| AtEOXact_RelationCache | 5.0 | medium | system module, 4 callers |
+</code></pre></div>
+
+<h3  id="generating-test-cases"><span id="generating_test_cases"></span>Generating Test Cases<a class="heading-anchor" href="#generating-test-cases" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Generate test cases for heap_insert
+
+## Test Recommendations: heap_insert()
+
+**File:** src/backend/access/heap/heapam.c:2156
+
+**Strategy:**
+- Unit Tests: Test heap_insert in isolation by mocking 5 dependencies
+- Integration Tests: Test through 23 callers to verify real-world usage
+- Edge Cases: Test boundary conditions, null inputs, error handling
+
+**Dependencies to Mock:**
+- RelationGetBufferForTuple()
+- heap_prepare_insert()
+- XLogInsert()
+
+**Test Scenarios from Callers:**
+- simple_heap_insert() uses heap_insert for...
+- toast_save_datum() uses heap_insert for...
+</code></pre></div>
+
+<h3  id="hybrid-detection-with-runtime-data"><span id="hybrid_detection_with_runtime_data"></span>Hybrid Detection (with runtime data)<a class="heading-anchor" href="#hybrid-detection-with-runtime-data" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Find untested code
+
+## Coverage Gaps (Hybrid)
+
+**Detection mode:** Runtime + Heuristic
+**Coverage estimate:** 62.3% (from runtime data)
+
+| Method | Detection | Coverage | Reason |
+|--------|-----------|----------|--------|
+| parse_query() | Runtime | 0.0% | No lines covered |
+| exec_plan() | Runtime | 12.5% | Partial coverage |
+| helper_func() | Heuristic | --- | No test callers |
+</code></pre></div>
+
 <h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
 <p><strong>Untested code detection:</strong>
 - &ldquo;What functions lack test coverage?&rdquo;
@@ -407,18 +950,19 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 - &ldquo;What should I test first?&rdquo;
 - &ldquo;Test priority ranking&rdquo;</p>
 <p><strong>Test generation:</strong>
-- &ldquo;Generate test cases for [function_name]&rdquo;
-- &ldquo;Create tests for [function_name]&rdquo;
-- &ldquo;What edge cases should I test in [function_name]?&rdquo;</p>
+- &ldquo;Generate test cases for heap_insert&rdquo;
+- &ldquo;Create tests for palloc function&rdquo;
+- &ldquo;What edge cases should I test in ExecInitNode?&rdquo;
+- &ldquo;Write mutation tests for query parser&rdquo;</p>
 <p><strong>Coverage overview:</strong>
 - &ldquo;Show coverage gaps&rdquo;
 - &ldquo;Coverage report&rdquo;
 - &ldquo;How to improve test coverage?&rdquo;</p>
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="02-security-audit.html">Security Audit</a> - Security testing</li>
-<li><a href="05-refactoring.html">Refactoring</a> - Find unused code and refactor</li>
-<li><a href="15-debugging.html">Debugging</a> - Debug code issues</li>
+<li><a href="02-security-audit.html">Security Audit (S02)</a> — Security testing</li>
+<li><a href="05-refactoring.html">Refactoring (S05)</a> — Find unused code and refactor</li>
+<li><a href="15-debugging.html">Debugging (S15)</a> — Debug code issues</li>
 </ul>
       </article>
 
@@ -438,7 +982,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/07-test-coverage.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -448,22 +992,38 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#scenario-07-test-coverage" class="level-1">Scenario 07: Test Coverage</a></li>
+<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#finding-coverage-gaps" class="level-2">Finding Coverage Gaps</a></li>
-<li><a href="#identify-untested-functions" class="level-3">Identify Untested Functions</a></li>
-<li><a href="#prioritize-testing" class="level-3">Prioritize Testing</a></li>
-<li><a href="#find-untested-error-paths" class="level-3">Find Untested Error Paths</a></li>
-<li><a href="#runtime-coverage-import" class="level-2">Runtime Coverage Import</a></li>
-<li><a href="#supported-formats" class="level-3">Supported Formats</a></li>
-<li><a href="#cli-commands" class="level-3">CLI Commands</a></li>
-<li><a href="#how-it-works" class="level-3">How It Works</a></li>
-<li><a href="#import-result" class="level-3">Import Result</a></li>
-<li><a href="#hybrid-detection" class="level-2">Hybrid Detection</a></li>
-<li><a href="#cpg-based-test-recommendations" class="level-2">CPG-Based Test Recommendations</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#architecture" class="level-3">Architecture</a></li>
+<li><a href="#intent-detection" class="level-3">Intent Detection</a></li>
+<li><a href="#handler-registry" class="level-3">Handler Registry</a></li>
+<li><a href="#detection-modes" class="level-2">Detection Modes</a></li>
+<li><a href="#heuristic-detection" class="level-3">Heuristic Detection</a></li>
+<li><a href="#hybrid-detection" class="level-3">Hybrid Detection</a></li>
+<li><a href="#handlers" class="level-2">Handlers</a></li>
+<li><a href="#untestedcodehandler" class="level-3">UntestedCodeHandler</a></li>
+<li><a href="#testgenerationhandler" class="level-3">TestGenerationHandler</a></li>
+<li><a href="#testpriorityhandler" class="level-3">TestPriorityHandler</a></li>
+<li><a href="#impact-analysis" class="level-2">Impact Analysis</a></li>
+<li><a href="#cpg-based-recommendations" class="level-2">CPG-Based Recommendations</a></li>
 <li><a href="#branch-coverage-analysis" class="level-3">Branch Coverage Analysis</a></li>
 <li><a href="#parameter-boundary-analysis" class="level-3">Parameter Boundary Analysis</a></li>
 <li><a href="#error-path-analysis" class="level-3">Error Path Analysis</a></li>
-<li><a href="#generating-test-cases" class="level-2">Generating Test Cases</a></li>
+<li><a href="#runtime-coverage-import" class="level-2">Runtime Coverage Import</a></li>
+<li><a href="#supported-formats" class="level-3">Supported Formats</a></li>
+<li><a href="#how-it-works" class="level-3">How It Works</a></li>
+<li><a href="#configuration" class="level-2">Configuration</a></li>
+<li><a href="#thresholds" class="level-3">Thresholds</a></li>
+<li><a href="#scoring-weights" class="level-3">Scoring Weights</a></li>
+<li><a href="#handler-limits" class="level-3">Handler Limits</a></li>
+<li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
+<li><a href="#rest-api" class="level-2">REST API</a></li>
+<li><a href="#use-cases" class="level-2">Use Cases</a></li>
+<li><a href="#finding-untested-code" class="level-3">Finding Untested Code</a></li>
+<li><a href="#test-prioritization" class="level-3">Test Prioritization</a></li>
+<li><a href="#generating-test-cases" class="level-3">Generating Test Cases</a></li>
+<li><a href="#hybrid-detection-with-runtime-data" class="level-3">Hybrid Detection (with runtime data)</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>

@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/MONITORING.html">Monitoring Guide</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="../guides/09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="../guides/10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="../guides/11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="../guides/12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="../guides/12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="../guides/13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="../guides/14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="../guides/15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="../guides/18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="../guides/19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="../guides/20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="../guides/21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="../guides/21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="../guides/composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -203,22 +204,31 @@
 <li><a href="#issuesyncservice">IssueSyncService</a></li>
 <li><a href="#supported-providers">Supported Providers</a></li>
 <li><a href="#available-issue-tags">Available Tags</a></li>
+<li><a href="#creating-issues">Creating Issues</a></li>
 <li><a href="#apmsentry-integration">APM/Sentry Integration</a></li>
 <li><a href="#sentrysyncservice">SentrySyncService</a></li>
 <li><a href="#available-sentry-tags">Available Tags</a></li>
 <li><a href="#using-the-orchestrator">Using the Orchestrator</a></li>
 <li><a href="#python-api">Python API</a></li>
 <li><a href="#cli-interface">CLI Interface</a></li>
-<li><a href="#query-examples">Query Examples</a></li>
-<li><a href="#api-reference">API Reference</a></li>
+<li><a href="#convenience-functions">Convenience Functions</a></li>
+<li><a href="#server-side-api-reference">Server-Side API Reference</a></li>
+<li><a href="#enums">Enums</a></li>
+<li><a href="#core-dataclasses">Core Dataclasses</a></li>
+<li><a href="#git-dataclasses">Git Dataclasses</a></li>
+<li><a href="#issue-dataclasses">Issue Dataclasses</a></li>
+<li><a href="#sentry-dataclasses">Sentry Dataclasses</a></li>
+<li><a href="#externalcontextbase">ExternalContextBase</a></li>
+<li><a href="#orchestratorresult">OrchestratorResult</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#next-steps">Next Steps</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
 <p>External Context Integration allows you to link code entities (methods, functions, classes) in your Code Property Graph (CPG) with metadata from external systems:</p>
 <ul>
-<li><strong>Git</strong>: Author information, commit history, code churn</li>
+<li><strong>Git</strong>: Author information, commit history, code churn, blame data</li>
 <li><strong>Issue Trackers</strong>: Jira, GitHub Issues, GitLab Issues</li>
-<li><strong>APM/Error Tracking</strong>: Sentry error data, frequency, severity</li>
+<li><strong>APM/Error Tracking</strong>: Sentry error data, frequency buckets, severity</li>
 </ul>
 <p>This enables powerful queries like:
 - &ldquo;Who wrote this code?&rdquo;
@@ -226,35 +236,38 @@
 - &ldquo;Which methods have the most production errors?&rdquo;
 - &ldquo;What code changes most frequently?&rdquo;</p>
 <h2 id="architecture">Architecture<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────┐
-│                    External Systems                          │
-├─────────────┬─────────────────────┬─────────────────────────┤
-│    Git      │   Issue Trackers    │        Sentry           │
-│  (commits)  │  (Jira/GitHub/GL)   │       (errors)          │
-└──────┬──────┴──────────┬──────────┴────────────┬────────────┘
-       │                 │                       │
-       ▼                 ▼                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│              ExternalContextOrchestrator                     │
-│  ┌─────────────┐ ┌───────────────┐ ┌───────────────────┐   │
-│  │GitSyncService│ │IssueSyncService│ │SentrySyncService │   │
-│  └─────────────┘ └───────────────┘ └───────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-       │                                         │
-       ▼                                         ▼
-┌──────────────────┐                  ┌──────────────────────┐
-│   PostgreSQL     │                  │      ChromaDB        │
-│ (raw metadata)   │                  │ (semantic search)    │
-└────────┬─────────┘                  └──────────┬───────────┘
-         │                                       │
-         └───────────────────┬───────────────────┘
-                             ▼
-                    ┌─────────────────┐
-                    │   DuckDB CPG    │
-                    │  (nodes_tag)    │
-                    └─────────────────┘
+<div class="highlight"><pre><span></span><code><span class="nb">+-----------------------------------------------------------------+</span>
+<span class="c">|                    External Systems                              |</span>
+<span class="nb">+---------------+---------------------+---------------------------+</span>
+<span class="c">|    Git        |   Issue Trackers    |        Sentry             |</span>
+<span class="c">|  (commits)    |  (Jira/GitHub/GL)   |       (errors)            |</span>
+<span class="nb">+-------+-------+----------+----------+-----------+---------------+</span>
+<span class="c">        |                  |                      |</span>
+<span class="c">        v                  v                      v</span>
+<span class="nb">+-----------------------------------------------------------------+</span>
+<span class="c">|              ExternalContextOrchestrator                         |</span>
+<span class="c">|  </span><span class="nb">+---------------+</span><span class="c"> </span><span class="nb">+-----------------+</span><span class="c"> </span><span class="nb">+---------------------+</span><span class="c">  |</span>
+<span class="c">|  |GitSyncService | |IssueSyncService | |SentrySyncService    |  |</span>
+<span class="c">|  </span><span class="nb">+---------------+</span><span class="c"> </span><span class="nb">+-----------------+</span><span class="c"> </span><span class="nb">+---------------------+</span><span class="c">  |</span>
+<span class="nb">+-----------------------------------------------------------------+</span>
+<span class="c">        |                                          |</span>
+<span class="c">        v                                          v</span>
+<span class="nb">+--------------------+</span><span class="c">                  </span><span class="nb">+------------------------+</span>
+<span class="c">|   PostgreSQL       |                  |      DuckDB CPG        |</span>
+<span class="c">| (raw metadata)     |                  |   (nodes_tag_v2</span><span class="nt">,</span><span class="c">       |</span>
+<span class="c">| </span><span class="nb">-</span><span class="c"> external_context |                  |    edges_tagged_by</span><span class="nt">,</span><span class="c">    |</span>
+<span class="c">| </span><span class="nb">-</span><span class="c"> file_commit_hist |                  |    nodes_method)        |</span>
+<span class="c">| </span><span class="nb">-</span><span class="c"> git_authors      |                  </span><span class="nb">+------------------------+</span>
+<span class="c">| </span><span class="nb">-</span><span class="c"> runtime_metrics  |</span>
+<span class="nb">+--------------------+</span>
 </code></pre></div>
 
+<p>Data flows from external systems through the sync services into two stores:</p>
+<ul>
+<li><strong>PostgreSQL</strong> (optional): stores raw metadata in tables <code>external_context</code>, <code>file_commit_history</code>, <code>git_authors</code>, <code>runtime_metrics</code></li>
+<li><strong>DuckDB CPG</strong>: stores tags in <code>nodes_tag_v2</code> and links them to methods via <code>edges_tagged_by</code></li>
+</ul>
+<p>All tags are stored in <code>nodes_tag_v2</code> (not <code>nodes_tag</code>). Method-tag links go through <code>edges_tagged_by</code>.</p>
 <h2  id="quick-setup"><span id="quick_setup"></span>Quick Setup<a class="heading-anchor" href="#quick-setup" title="Link to this section">&para;</a></h2>
 <h3  id="1-install-dependencies"><span id="1_install_dependencies"></span>1. Install Dependencies<a class="heading-anchor" href="#1-install-dependencies" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
@@ -271,7 +284,6 @@
 
 <span class="c1"># Jira</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">JIRA_TOKEN</span><span class="o">=</span><span class="s2">&quot;your_jira_api_token&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">JIRA_EMAIL</span><span class="o">=</span><span class="s2">&quot;your@email.com&quot;</span>
 
 <span class="c1"># Sentry</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">SENTRY_AUTH_TOKEN</span><span class="o">=</span><span class="s2">&quot;your_sentry_token&quot;</span>
@@ -280,21 +292,27 @@
 <h3  id="3-run-initial-sync"><span id="3_run_initial_sync"></span>3. Run Initial Sync<a class="heading-anchor" href="#3-run-initial-sync" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.external_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExternalContextOrchestrator</span>
 
-<span class="c1"># Initialize orchestrator</span>
 <span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ExternalContextOrchestrator</span><span class="p">(</span>
     <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">your_duckdb_connection</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">your_postgres_connection</span><span class="p">,</span>  <span class="c1"># optional</span>
     <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;/path/to/your/repo&quot;</span>
 <span class="p">)</span>
 
-<span class="c1"># Sync all sources</span>
-<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_all</span><span class="p">(</span>
-    <span class="n">git_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;since_days&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s2">&quot;include_blame&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-    <span class="n">issue_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="s2">&quot;github&quot;</span><span class="p">,</span> <span class="s2">&quot;repo&quot;</span><span class="p">:</span> <span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span> <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">)},</span>
-    <span class="n">sentry_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;org_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;my-org&quot;</span><span class="p">,</span> <span class="s2">&quot;project_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;my-project&quot;</span><span class="p">,</span> <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SENTRY_AUTH_TOKEN&quot;</span><span class="p">)}</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_all</span><span class="p">(</span>
+    <span class="n">git_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;since_days&quot;</span><span class="p">:</span> <span class="mi">90</span><span class="p">,</span> <span class="s2">&quot;use_blame&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="n">issue_config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="s2">&quot;github&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;repo&quot;</span><span class="p">:</span> <span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">),</span>
+    <span class="p">},</span>
+    <span class="n">sentry_config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;org_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;my-org&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;project_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SENTRY_AUTH_TOKEN&quot;</span><span class="p">),</span>
+    <span class="p">},</span>
 <span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total synced: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">total_items_synced</span><span class="si">}</span><span class="s2">, tags: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">total_tags_created</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <h2  id="git-integration"><span id="git_integration"></span>Git Integration<a class="heading-anchor" href="#git-integration" title="Link to this section">&para;</a></h2>
@@ -304,15 +322,88 @@
 
 <span class="n">service</span> <span class="o">=</span> <span class="n">GitSyncService</span><span class="p">(</span>
     <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
-    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>  <span class="c1"># optional, for storing raw data</span>
-    <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;/path/to/repo&quot;</span>
+    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>        <span class="c1"># optional, for storing raw data</span>
+    <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;/path/to/repo&quot;</span><span class="p">,</span>
+    <span class="n">max_commits</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>        <span class="c1"># default</span>
+    <span class="n">since_days</span><span class="o">=</span><span class="mi">90</span>            <span class="c1"># default</span>
 <span class="p">)</span>
 
-<span class="c1"># Sync last 30 days of commits</span>
-<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">since_days</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">include_blame</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># Sync with blame analysis</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">use_blame</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Synced </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">items_synced</span><span class="si">}</span><span class="s2"> commits, created </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">tags_created</span><span class="si">}</span><span class="s2"> tags&quot;</span><span class="p">)</span>
+
+<span class="c1"># Sync only specific files, without blame</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">files</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;src/main.py&quot;</span><span class="p">,</span> <span class="s2">&quot;src/auth.py&quot;</span><span class="p">],</span> <span class="n">use_blame</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
 
+<p>Constructor parameters:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duckdb_conn</code></td>
+<td>connection</td>
+<td>required</td>
+<td>DuckDB connection</td>
+</tr>
+<tr>
+<td><code>pg_conn</code></td>
+<td>connection</td>
+<td><code>None</code></td>
+<td>PostgreSQL connection (optional)</td>
+</tr>
+<tr>
+<td><code>repo_path</code></td>
+<td>str</td>
+<td><code>"."</code></td>
+<td>Path to git repository</td>
+</tr>
+<tr>
+<td><code>max_commits</code></td>
+<td>int</td>
+<td><code>1000</code></td>
+<td>Maximum commits to process</td>
+</tr>
+<tr>
+<td><code>since_days</code></td>
+<td>int</td>
+<td><code>90</code></td>
+<td>How many days back to look</td>
+</tr>
+</tbody>
+</table></div>
+<p>Sync parameters:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td>List[str]</td>
+<td><code>None</code></td>
+<td>Limit sync to specific files</td>
+</tr>
+<tr>
+<td><code>use_blame</code></td>
+<td>bool</td>
+<td><code>True</code></td>
+<td>Run git blame analysis</td>
+</tr>
+</tbody>
+</table></div>
 <h3  id="available-git-tags"><span id="available_git_tags"></span>Available Git Tags<a class="heading-anchor" href="#available-git-tags" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -324,14 +415,14 @@
 </thead>
 <tbody>
 <tr>
-<td><code>git-commit</code></td>
-<td>SHA of last commit modifying this method</td>
-<td><code>a1b2c3d4...</code></td>
-</tr>
-<tr>
 <td><code>git-author</code></td>
 <td>Email of last modifier</td>
 <td><code>dev@company.com</code></td>
+</tr>
+<tr>
+<td><code>git-commit</code></td>
+<td>SHA of last commit modifying this method</td>
+<td><code>a1b2c3d4...</code></td>
 </tr>
 <tr>
 <td><code>git-branch</code></td>
@@ -356,30 +447,40 @@
 </tbody>
 </table></div>
 <h3  id="git-queries"><span id="git_queries"></span>Git Queries<a class="heading-anchor" href="#git-queries" title="Link to this section">&para;</a></h3>
+<p>All queries use <code>nodes_tag_v2</code> (the current tag table).</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Find all methods modified by a specific author</span>
-<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">author</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">author</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">src</span>
-<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;git-author&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;developer@example.com&#39;</span><span class="p">;</span>
 
 <span class="c1">-- Find high-churn code (methods changed &gt; 10 times)</span>
-<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="k">CAST</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="nb">INT</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">churn_count</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="k">CAST</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="nb">INT</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">churn_count</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">src</span>
-<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;git-churn&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="k">CAST</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="nb">INT</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">10</span>
 <span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">churn_count</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
 
 <span class="c1">-- Find bus factor candidates (methods with only 1 author)</span>
-<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">t_author</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">sole_author</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">t_author</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">sole_author</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e1</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e1</span><span class="p">.</span><span class="n">src</span>
-<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag</span><span class="w"> </span><span class="n">t_blame</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e1</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t_blame</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t_blame</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e1</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t_blame</span><span class="p">.</span><span class="n">id</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e2</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e2</span><span class="p">.</span><span class="n">src</span>
-<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag</span><span class="w"> </span><span class="n">t_author</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e2</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t_author</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t_author</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e2</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t_author</span><span class="p">.</span><span class="n">id</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">t_blame</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;git-blame-count&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">t_blame</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;1&#39;</span>
 <span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">t_author</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;git-author&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Find recently modified methods (last 7 days)</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">last_modified</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">src</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;git-last-modified&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="k">CAST</span><span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">NOW</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nb">INTERVAL</span><span class="w"> </span><span class="s1">&#39;7 days&#39;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
 </code></pre></div>
 
 <h2  id="issue-tracker-integration"><span id="issue_tracker_integration"></span>Issue Tracker Integration<a class="heading-anchor" href="#issue-tracker-integration" title="Link to this section">&para;</a></h2>
@@ -393,23 +494,117 @@
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span>
     <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
-    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">)</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">),</span>
+    <span class="n">max_issues</span><span class="o">=</span><span class="mi">500</span>  <span class="c1"># default</span>
+<span class="p">)</span>
+
+<span class="c1"># GitLab</span>
+<span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
+    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;gitlab&quot;</span><span class="p">,</span>
+    <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://gitlab.company.com&quot;</span><span class="p">,</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITLAB_TOKEN&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 
 <span class="c1"># Jira</span>
 <span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
     <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
-    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;jira&quot;</span><span class="p">,</span>
-    <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;PROJ&quot;</span><span class="p">,</span>  <span class="c1"># Jira project key</span>
-    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JIRA_TOKEN&quot;</span><span class="p">),</span>
+    <span class="n">project_key</span><span class="o">=</span><span class="s2">&quot;PROJ&quot;</span><span class="p">,</span>
     <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://company.atlassian.net&quot;</span><span class="p">,</span>
-    <span class="n">email</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JIRA_EMAIL&quot;</span><span class="p">)</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JIRA_TOKEN&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 
-<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">sync</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">since_days</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">link_via_commits</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 
+<p>Constructor parameters:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duckdb_conn</code></td>
+<td>connection</td>
+<td>required</td>
+<td>DuckDB connection</td>
+</tr>
+<tr>
+<td><code>pg_conn</code></td>
+<td>connection</td>
+<td><code>None</code></td>
+<td>PostgreSQL connection (optional)</td>
+</tr>
+<tr>
+<td><code>provider</code></td>
+<td>str</td>
+<td><code>"github"</code></td>
+<td>Provider: <code>github</code>, <code>gitlab</code>, <code>jira</code></td>
+</tr>
+<tr>
+<td><code>repo</code></td>
+<td>str</td>
+<td><code>None</code></td>
+<td>Repository (GitHub/GitLab: <code>owner/repo</code>)</td>
+</tr>
+<tr>
+<td><code>base_url</code></td>
+<td>str</td>
+<td><code>None</code></td>
+<td>Base URL for self-hosted instances</td>
+</tr>
+<tr>
+<td><code>project_key</code></td>
+<td>str</td>
+<td><code>None</code></td>
+<td>Jira project key (e.g., <code>PROJ</code>)</td>
+</tr>
+<tr>
+<td><code>token</code></td>
+<td>str</td>
+<td><code>None</code></td>
+<td>API authentication token</td>
+</tr>
+<tr>
+<td><code>max_issues</code></td>
+<td>int</td>
+<td><code>500</code></td>
+<td>Maximum issues to fetch</td>
+</tr>
+</tbody>
+</table></div>
+<p>Sync parameters:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>since_days</code></td>
+<td>int</td>
+<td><code>90</code></td>
+<td>How many days back to look</td>
+</tr>
+<tr>
+<td><code>link_via_commits</code></td>
+<td>bool</td>
+<td><code>True</code></td>
+<td>Link issues to code through commit refs</td>
+</tr>
+</tbody>
+</table></div>
 <h3  id="supported-providers"><span id="supported_providers"></span>Supported Providers<a class="heading-anchor" href="#supported-providers" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -422,21 +617,22 @@
 <tbody>
 <tr>
 <td>GitHub</td>
-<td><code>provider="github"</code></td>
+<td><code>provider="github"</code>, <code>repo="owner/repo"</code></td>
 <td><code>#123</code>, <code>GH-123</code></td>
 </tr>
 <tr>
 <td>GitLab</td>
-<td><code>provider="gitlab"</code></td>
+<td><code>provider="gitlab"</code>, <code>repo="owner/repo"</code></td>
 <td><code>#123</code>, <code>!123</code> (MRs)</td>
 </tr>
 <tr>
 <td>Jira</td>
-<td><code>provider="jira"</code></td>
+<td><code>provider="jira"</code>, <code>project_key="PROJ"</code></td>
 <td><code>PROJ-123</code></td>
 </tr>
 </tbody>
 </table></div>
+<p>Note: For Jira, use the <code>project_key</code> parameter (not <code>repo</code>).</p>
 <h3  id="available-issue-tags"><span id="available_issue_tags"></span>Available Issue Tags<a class="heading-anchor" href="#available-issue-tags" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -463,12 +659,38 @@
 <td><code>open</code>, <code>closed</code>, <code>in_progress</code></td>
 </tr>
 <tr>
+<td><code>issue-priority</code></td>
+<td>Issue priority</td>
+<td><code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code></td>
+</tr>
+<tr>
 <td><code>issue-label</code></td>
 <td>Issue labels</td>
 <td><code>critical</code>, <code>tech-debt</code></td>
 </tr>
 </tbody>
 </table></div>
+<h3  id="creating-issues"><span id="creating_issues"></span>Creating Issues<a class="heading-anchor" href="#creating-issues" title="Link to this section">&para;</a></h3>
+<p>The <code>IssueSyncService</code> can create Jira issues programmatically:</p>
+<div class="highlight"><pre><span></span><code><span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
+    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;jira&quot;</span><span class="p">,</span>
+    <span class="n">project_key</span><span class="o">=</span><span class="s2">&quot;PROJ&quot;</span><span class="p">,</span>
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://company.atlassian.net&quot;</span><span class="p">,</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;JIRA_TOKEN&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">issue_key</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">create_jira_issue</span><span class="p">(</span>
+    <span class="n">summary</span><span class="o">=</span><span class="s2">&quot;Fix NullPointerException in AuthService&quot;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Method authenticate() throws NPE when token is expired&quot;</span><span class="p">,</span>
+    <span class="n">issue_type</span><span class="o">=</span><span class="s2">&quot;Bug&quot;</span><span class="p">,</span>        <span class="c1"># default</span>
+    <span class="n">priority</span><span class="o">=</span><span class="s2">&quot;Medium&quot;</span><span class="p">,</span>       <span class="c1"># default</span>
+    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;codegraph&quot;</span><span class="p">,</span> <span class="s2">&quot;auto-detected&quot;</span><span class="p">],</span>
+    <span class="n">components</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;auth&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="c1"># Returns &quot;PROJ-456&quot; or None on failure</span>
+</code></pre></div>
+
 <h2  id="apmsentry-integration"><span id="apmsentry_integration"></span>APM/Sentry Integration<a class="heading-anchor" href="#apmsentry-integration" title="Link to this section">&para;</a></h2>
 <h3 id="sentrysyncservice">SentrySyncService<a class="heading-anchor" href="#sentrysyncservice" title="Link to this section">&para;</a></h3>
 <p>Syncs error data from Sentry to identify error-prone code.</p>
@@ -479,12 +701,94 @@
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
     <span class="n">org_slug</span><span class="o">=</span><span class="s2">&quot;my-organization&quot;</span><span class="p">,</span>
     <span class="n">project_slug</span><span class="o">=</span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
-    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SENTRY_AUTH_TOKEN&quot;</span><span class="p">)</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SENTRY_AUTH_TOKEN&quot;</span><span class="p">),</span>
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://sentry.io&quot;</span><span class="p">,</span>  <span class="c1"># default; override for self-hosted</span>
+    <span class="n">max_issues</span><span class="o">=</span><span class="mi">200</span>                  <span class="c1"># default</span>
 <span class="p">)</span>
 
-<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">days_back</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">sync</span><span class="p">(</span><span class="n">since_days</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">min_events</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </code></pre></div>
 
+<p>Constructor parameters:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duckdb_conn</code></td>
+<td>connection</td>
+<td>required</td>
+<td>DuckDB connection</td>
+</tr>
+<tr>
+<td><code>pg_conn</code></td>
+<td>connection</td>
+<td><code>None</code></td>
+<td>PostgreSQL connection (optional)</td>
+</tr>
+<tr>
+<td><code>org_slug</code></td>
+<td>str</td>
+<td><code>None</code></td>
+<td>Sentry organization slug</td>
+</tr>
+<tr>
+<td><code>project_slug</code></td>
+<td>str</td>
+<td><code>None</code></td>
+<td>Sentry project slug</td>
+</tr>
+<tr>
+<td><code>token</code></td>
+<td>str</td>
+<td><code>None</code></td>
+<td>Sentry auth token</td>
+</tr>
+<tr>
+<td><code>base_url</code></td>
+<td>str</td>
+<td><code>"https://sentry.io"</code></td>
+<td>Base URL (override for self-hosted)</td>
+</tr>
+<tr>
+<td><code>max_issues</code></td>
+<td>int</td>
+<td><code>200</code></td>
+<td>Maximum issues to fetch</td>
+</tr>
+</tbody>
+</table></div>
+<p>Sync parameters:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>since_days</code></td>
+<td>int</td>
+<td><code>30</code></td>
+<td>How many days back to look</td>
+</tr>
+<tr>
+<td><code>min_events</code></td>
+<td>int</td>
+<td><code>1</code></td>
+<td>Minimum event count to include</td>
+</tr>
+</tbody>
+</table></div>
 <h3  id="available-sentry-tags"><span id="available_sentry_tags"></span>Available Sentry Tags<a class="heading-anchor" href="#available-sentry-tags" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -502,8 +806,13 @@
 </tr>
 <tr>
 <td><code>error-frequency</code></td>
-<td>Errors per day</td>
-<td><code>150</code></td>
+<td>Frequency bucket based on event count</td>
+<td><code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code>, <code>rare</code></td>
+</tr>
+<tr>
+<td><code>error-type</code></td>
+<td>Exception type</td>
+<td><code>NullPointerException</code></td>
 </tr>
 <tr>
 <td><code>error-level</code></td>
@@ -511,201 +820,1106 @@
 <td><code>error</code>, <code>fatal</code>, <code>warning</code></td>
 </tr>
 <tr>
-<td><code>error-type</code></td>
-<td>Exception type</td>
-<td><code>NullPointerException</code></td>
+<td><code>sentry-first-seen</code></td>
+<td>When error was first observed</td>
+<td><code>2025-06-15T08:30:00Z</code></td>
 </tr>
 </tbody>
 </table></div>
+<p>The <code>error-frequency</code> tag uses buckets based on total event count:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th>Event Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>critical</code></td>
+<td>&gt;= 10000</td>
+</tr>
+<tr>
+<td><code>high</code></td>
+<td>&gt;= 1000</td>
+</tr>
+<tr>
+<td><code>medium</code></td>
+<td>&gt;= 100</td>
+</tr>
+<tr>
+<td><code>low</code></td>
+<td>&gt;= 10</td>
+</tr>
+<tr>
+<td><code>rare</code></td>
+<td>&lt; 10</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Find methods with critical error frequency</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">frequency</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">src</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;error-frequency&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;critical&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Find methods by error type</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">error_type</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">src</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;error-type&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%NullPointer%&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Combine: methods with high+ frequency AND fatal level</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e1</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e1</span><span class="p">.</span><span class="n">src</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t_freq</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e1</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t_freq</span><span class="p">.</span><span class="n">id</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="n">e2</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e2</span><span class="p">.</span><span class="n">src</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="n">t_level</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">e2</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t_level</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">t_freq</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;error-frequency&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">t_freq</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;critical&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;high&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">t_level</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;error-level&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">t_level</span><span class="p">.</span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;fatal&#39;</span><span class="p">;</span>
+</code></pre></div>
+
 <h2  id="using-the-orchestrator"><span id="using_the_orchestrator"></span>Using the Orchestrator<a class="heading-anchor" href="#using-the-orchestrator" title="Link to this section">&para;</a></h2>
 <h3  id="python-api"><span id="python_api"></span>Python API<a class="heading-anchor" href="#python-api" title="Link to this section">&para;</a></h3>
+<p>The <code>ExternalContextOrchestrator</code> coordinates all sync services.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.external_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExternalContextOrchestrator</span>
 
 <span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ExternalContextOrchestrator</span><span class="p">(</span>
     <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
-    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
-    <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span>
+    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>       <span class="c1"># optional</span>
+    <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
+    <span class="n">vector_store</span><span class="o">=</span><span class="kc">None</span>      <span class="c1"># optional, for semantic indexing</span>
 <span class="p">)</span>
 
-<span class="c1"># Sync all sources</span>
-<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_all</span><span class="p">(</span>
-    <span class="n">git_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;since_days&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">&quot;include_blame&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-    <span class="n">issue_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="s2">&quot;github&quot;</span><span class="p">,</span> <span class="s2">&quot;repo&quot;</span><span class="p">:</span> <span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span> <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">},</span>
-    <span class="n">sentry_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;org_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;org&quot;</span><span class="p">,</span> <span class="s2">&quot;project_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;proj&quot;</span><span class="p">,</span> <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">sentry_token</span><span class="p">},</span>
-    <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Run syncs in parallel</span>
+<span class="c1"># Sync all sources at once</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_all</span><span class="p">(</span>
+    <span class="n">git_config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;since_days&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">&quot;use_blame&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="n">issue_config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;provider&quot;</span><span class="p">:</span> <span class="s2">&quot;github&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;repo&quot;</span><span class="p">:</span> <span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">sentry_config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;org_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;org&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;project_slug&quot;</span><span class="p">:</span> <span class="s2">&quot;proj&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;token&quot;</span><span class="p">:</span> <span class="n">sentry_token</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># run syncs in parallel</span>
 <span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Success: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Items synced: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">total_items_synced</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tags created: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">total_tags_created</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Edges created: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">total_edges_created</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duration: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">duration_seconds</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+
+<span class="c1"># Access per-source results</span>
+<span class="k">for</span> <span class="n">source</span><span class="p">,</span> <span class="n">src_result</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">source_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">src_result</span><span class="o">.</span><span class="n">items_synced</span><span class="si">}</span><span class="s2"> items, </span><span class="si">{</span><span class="n">src_result</span><span class="o">.</span><span class="n">tags_created</span><span class="si">}</span><span class="s2"> tags&quot;</span><span class="p">)</span>
 
 <span class="c1"># Sync individual sources</span>
-<span class="n">git_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_git</span><span class="p">(</span><span class="n">since_days</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-<span class="n">issue_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_issues</span><span class="p">(</span><span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span> <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span><span class="p">)</span>
-<span class="n">sentry_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_sentry</span><span class="p">(</span><span class="n">org_slug</span><span class="o">=</span><span class="s2">&quot;org&quot;</span><span class="p">,</span> <span class="n">project_slug</span><span class="o">=</span><span class="s2">&quot;proj&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span><span class="p">)</span>
+<span class="n">git_result</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_git</span><span class="p">(</span><span class="n">since_days</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">use_blame</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">issue_result</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_issues</span><span class="p">(</span>
+    <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span> <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span>
+<span class="p">)</span>
+<span class="n">sentry_result</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">sync_sentry</span><span class="p">(</span>
+    <span class="n">org_slug</span><span class="o">=</span><span class="s2">&quot;org&quot;</span><span class="p">,</span> <span class="n">project_slug</span><span class="o">=</span><span class="s2">&quot;proj&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span>
+<span class="p">)</span>
+
+<span class="c1"># Get sync statistics</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">get_sync_stats</span><span class="p">()</span>
 </code></pre></div>
 
 <h3  id="cli-interface"><span id="cli_interface"></span>CLI Interface<a class="heading-anchor" href="#cli-interface" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Sync git history</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--repo-path<span class="w"> </span>/path/to/repo<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--git<span class="w"> </span>--git-days<span class="w"> </span><span class="m">30</span><span class="w"> </span>--git-blame
+<span class="w">    </span>--sync-git<span class="w"> </span>--git-since-days<span class="w"> </span><span class="m">30</span>
+
+<span class="c1"># Sync git without blame analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-git<span class="w"> </span>--no-blame
+
+<span class="c1"># Sync git with custom max commits</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-git<span class="w"> </span>--git-max-commits<span class="w"> </span><span class="m">2000</span>
 
 <span class="c1"># Sync GitHub issues</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--repo-path<span class="w"> </span>/path/to/repo<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--issues<span class="w"> </span>--issue-provider<span class="w"> </span>github<span class="w"> </span>--issue-repo<span class="w"> </span>owner/repo
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-issues<span class="w"> </span>--issue-provider<span class="w"> </span>github<span class="w"> </span>--issue-repo<span class="w"> </span>owner/repo<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--issue-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$GITHUB_TOKEN</span><span class="s2">&quot;</span>
+
+<span class="c1"># Sync GitLab issues (self-hosted)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-issues<span class="w"> </span>--issue-provider<span class="w"> </span>gitlab<span class="w"> </span>--issue-repo<span class="w"> </span>owner/repo<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--issue-url<span class="w"> </span>https://gitlab.company.com<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--issue-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$GITLAB_TOKEN</span><span class="s2">&quot;</span>
+
+<span class="c1"># Sync Jira issues</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-issues<span class="w"> </span>--issue-provider<span class="w"> </span>jira<span class="w"> </span>--issue-project<span class="w"> </span>PROJ<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--issue-url<span class="w"> </span>https://company.atlassian.net<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--issue-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$JIRA_TOKEN</span><span class="s2">&quot;</span>
 
 <span class="c1"># Sync Sentry errors</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--repo-path<span class="w"> </span>/path/to/repo<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--sentry<span class="w"> </span>--sentry-org<span class="w"> </span>my-org<span class="w"> </span>--sentry-project<span class="w"> </span>my-project
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-sentry<span class="w"> </span>--sentry-org<span class="w"> </span>my-org<span class="w"> </span>--sentry-project<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sentry-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SENTRY_AUTH_TOKEN</span><span class="s2">&quot;</span>
 
-<span class="c1"># Sync all</span>
+<span class="c1"># Sync Sentry (self-hosted)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-sentry<span class="w"> </span>--sentry-org<span class="w"> </span>my-org<span class="w"> </span>--sentry-project<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sentry-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SENTRY_AUTH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span>--sentry-url<span class="w"> </span>https://sentry.company.com
+
+<span class="c1"># Sync all sources</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--repo-path<span class="w"> </span>/path/to/repo<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--all<span class="w"> </span>--parallel
+<span class="w">    </span>--sync-all
+
+<span class="c1"># View sync statistics</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span>--stats
+
+<span class="c1"># Verbose output</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span>--sync-git<span class="w"> </span>--verbose
 </code></pre></div>
 
-<h2  id="query-examples"><span id="query_examples"></span>Query Examples<a class="heading-anchor" href="#query-examples" title="Link to this section">&para;</a></h2>
-<h3  id="using-cpgqueryservice"><span id="using_cpgqueryservice"></span>Using CPGQueryService<a class="heading-anchor" href="#using-cpgqueryservice" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.cpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGQueryService</span>
-
-<span class="n">cpg</span> <span class="o">=</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="n">duckdb_conn</span><span class="p">)</span>
-
-<span class="c1"># Find methods by author</span>
-<span class="n">methods</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_methods_by_author</span><span class="p">(</span><span class="s2">&quot;developer@example.com&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
-
-<span class="c1"># List all contributors</span>
-<span class="n">authors</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_git_authors</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
-
-<span class="c1"># Find methods linked to an issue</span>
-<span class="n">methods</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_methods_by_issue</span><span class="p">(</span><span class="s2">&quot;PROJ-123&quot;</span><span class="p">)</span>
-
-<span class="c1"># Find error-prone methods</span>
-<span class="n">errors</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_error_prone_methods</span><span class="p">(</span><span class="n">min_frequency</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-
-<span class="c1"># Find high-churn code</span>
-<span class="n">hotspots</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_git_hotspots</span><span class="p">(</span><span class="n">min_churn</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-
-<span class="c1"># Find risky code by author (security-risk + author)</span>
-<span class="n">risky</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_risky_code_by_author</span><span class="p">(</span><span class="s2">&quot;developer@example.com&quot;</span><span class="p">)</span>
-
-<span class="c1"># Find bus factor candidates</span>
-<span class="n">bus_factor</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_bus_factor_candidates</span><span class="p">(</span><span class="n">max_authors</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-<span class="c1"># Get external context statistics</span>
-<span class="n">stats</span> <span class="o">=</span> <span class="n">cpg</span><span class="o">.</span><span class="n">get_external_context_stats</span><span class="p">()</span>
-</code></pre></div>
-
-<h3  id="natural-language-queries"><span id="natural_language_queries"></span>Natural Language Queries<a class="heading-anchor" href="#natural-language-queries" title="Link to this section">&para;</a></h3>
-<p>The onboarding workflow supports natural language queries for external context:</p>
-<ul>
-<li><strong>English</strong>: &ldquo;Who wrote the authentication module?&rdquo;, &ldquo;What issues are linked to the parser?&rdquo;, &ldquo;Which methods have production errors?&rdquo;</li>
-<li><strong>Russian</strong>: &ldquo;Кто написал модуль аутентификации?&rdquo;, &ldquo;Какие задачи связаны с парсером?&rdquo;, &ldquo;Какие методы вызывают ошибки?&rdquo;</li>
-</ul>
-<h2  id="api-reference"><span id="api_reference"></span>API Reference<a class="heading-anchor" href="#api-reference" title="Link to this section">&para;</a></h2>
-<h3  id="cpgqueryservice-methods"><span id="cpgqueryservice_methods"></span>CPGQueryService Methods<a class="heading-anchor" href="#cpgqueryservice-methods" title="Link to this section">&para;</a></h3>
+<p>Full CLI flags reference:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Method</th>
+<th>Flag</th>
 <th>Description</th>
-<th>Parameters</th>
+<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>get_methods_by_author(email, limit)</code></td>
-<td>Find methods by author</td>
-<td>email: str, limit: int</td>
+<td><code>--duckdb</code></td>
+<td>Path to DuckDB database</td>
+<td>required</td>
 </tr>
 <tr>
-<td><code>get_git_authors(limit)</code></td>
-<td>List all contributors</td>
-<td>limit: int</td>
+<td><code>--pg-url</code></td>
+<td>PostgreSQL connection URL</td>
+<td><code>None</code></td>
 </tr>
 <tr>
-<td><code>get_methods_by_issue(issue_id, limit)</code></td>
-<td>Find methods by issue</td>
-<td>issue_id: str, limit: int</td>
+<td><code>--repo-path</code></td>
+<td>Path to git repository</td>
+<td><code>.</code></td>
 </tr>
 <tr>
-<td><code>get_error_prone_methods(min_frequency, limit)</code></td>
-<td>Find error hotspots</td>
-<td>min_frequency: int, limit: int</td>
+<td><code>--sync-all</code></td>
+<td>Sync all sources</td>
+<td>-</td>
 </tr>
 <tr>
-<td><code>get_git_hotspots(min_churn, limit)</code></td>
-<td>Find high-churn code</td>
-<td>min_churn: int, limit: int</td>
+<td><code>--sync-git</code></td>
+<td>Sync git history</td>
+<td>-</td>
 </tr>
 <tr>
-<td><code>get_risky_code_by_author(email, limit)</code></td>
-<td>Author + security risk</td>
-<td>email: str, limit: int</td>
+<td><code>--sync-issues</code></td>
+<td>Sync issue tracker</td>
+<td>-</td>
 </tr>
 <tr>
-<td><code>get_bus_factor_candidates(max_authors, limit)</code></td>
-<td>Single-owner code</td>
-<td>max_authors: int, limit: int</td>
+<td><code>--sync-sentry</code></td>
+<td>Sync Sentry errors</td>
+<td>-</td>
 </tr>
 <tr>
-<td><code>get_external_context_stats()</code></td>
-<td>Tag statistics</td>
+<td><code>--git-since-days</code></td>
+<td>Git lookback period in days</td>
+<td><code>90</code></td>
+</tr>
+<tr>
+<td><code>--git-max-commits</code></td>
+<td>Maximum git commits to process</td>
+<td><code>1000</code></td>
+</tr>
+<tr>
+<td><code>--no-blame</code></td>
+<td>Skip git blame analysis</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--issue-provider</code></td>
+<td>Issue provider (<code>github</code>, <code>gitlab</code>, <code>jira</code>)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--issue-repo</code></td>
+<td>Repository for GitHub/GitLab</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--issue-project</code></td>
+<td>Project key for Jira</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--issue-url</code></td>
+<td>Base URL for self-hosted instances</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--issue-token</code></td>
+<td>Issue tracker API token</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--sentry-org</code></td>
+<td>Sentry organization slug</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--sentry-project</code></td>
+<td>Sentry project slug</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--sentry-token</code></td>
+<td>Sentry auth token</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--sentry-url</code></td>
+<td>Sentry base URL (self-hosted)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--stats</code></td>
+<td>Show sync statistics</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td>Verbose output</td>
 <td>-</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="hybridexternalsearch-methods"><span id="hybridexternalsearch_methods"></span>HybridExternalSearch Methods<a class="heading-anchor" href="#hybridexternalsearch-methods" title="Link to this section">&para;</a></h3>
+<h2  id="convenience-functions"><span id="convenience_functions"></span>Convenience Functions<a class="heading-anchor" href="#convenience-functions" title="Link to this section">&para;</a></h2>
+<p>The <code>src.services.external_context</code> package exports three convenience functions for quick one-off syncs:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.external_context</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">sync_git_to_cpg</span><span class="p">,</span>
+    <span class="n">sync_issues_to_cpg</span><span class="p">,</span>
+    <span class="n">sync_sentry_to_cpg</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Sync git metadata</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">sync_git_to_cpg</span><span class="p">(</span>
+    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>       <span class="c1"># optional</span>
+    <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
+    <span class="n">since_days</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">use_blame</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Sync issues</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">sync_issues_to_cpg</span><span class="p">(</span>
+    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
+    <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span>
+    <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Sync Sentry errors</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">sync_sentry_to_cpg</span><span class="p">(</span>
+    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
+    <span class="n">org_slug</span><span class="o">=</span><span class="s2">&quot;my-org&quot;</span><span class="p">,</span>
+    <span class="n">project_slug</span><span class="o">=</span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SENTRY_AUTH_TOKEN&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p>All three return a <code>SyncResult</code> dataclass.</p>
+<h2  id="server-side-api-reference"><span id="server_side_api_reference"></span>Server-Side API Reference<a class="heading-anchor" href="#server-side-api-reference" title="Link to this section">&para;</a></h2>
+<h3 id="enums">Enums<a class="heading-anchor" href="#enums" title="Link to this section">&para;</a></h3>
+<p><strong><code>ExternalSource</code></strong> &ndash; identifies the external system:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Method</th>
+<th>Value</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>find_methods_by_author(email)</code></td>
-<td>Hybrid search for author&rsquo;s code</td>
+<td><code>GIT</code></td>
+<td>Git repository</td>
 </tr>
 <tr>
-<td><code>find_methods_by_issue(issue_id)</code></td>
-<td>Hybrid search for issue-linked code</td>
+<td><code>JIRA</code></td>
+<td>Jira issue tracker</td>
 </tr>
 <tr>
-<td><code>find_error_prone_methods()</code></td>
-<td>Hybrid search for error hotspots</td>
+<td><code>GITHUB</code></td>
+<td>GitHub</td>
 </tr>
 <tr>
-<td><code>find_code_for_incident(description)</code></td>
-<td>Semantic search for incident-related code</td>
+<td><code>GITLAB</code></td>
+<td>GitLab</td>
+</tr>
+<tr>
+<td><code>SENTRY</code></td>
+<td>Sentry error tracking</td>
+</tr>
+<tr>
+<td><code>SONARQUBE</code></td>
+<td>SonarQube code quality</td>
 </tr>
 </tbody>
 </table></div>
+<p><strong><code>ContextType</code></strong> &ndash; type of external context:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>COMMIT</code></td>
+<td>Git commit</td>
+</tr>
+<tr>
+<td><code>ISSUE</code></td>
+<td>Issue/ticket</td>
+</tr>
+<tr>
+<td><code>ERROR</code></td>
+<td>Error/exception</td>
+</tr>
+<tr>
+<td><code>METRIC</code></td>
+<td>Performance metric</td>
+</tr>
+<tr>
+<td><code>REVIEW</code></td>
+<td>Code review</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="core-dataclasses"><span id="core_dataclasses"></span>Core Dataclasses<a class="heading-anchor" href="#core-dataclasses" title="Link to this section">&para;</a></h3>
+<p><strong><code>SyncResult</code></strong> &ndash; result of a sync operation:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source</code></td>
+<td><code>ExternalSource</code></td>
+<td>required</td>
+<td>Source system</td>
+</tr>
+<tr>
+<td><code>context_type</code></td>
+<td><code>ContextType</code></td>
+<td>required</td>
+<td>Type of context</td>
+</tr>
+<tr>
+<td><code>success</code></td>
+<td><code>bool</code></td>
+<td>required</td>
+<td>Whether sync succeeded</td>
+</tr>
+<tr>
+<td><code>items_synced</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Number of items synced</td>
+</tr>
+<tr>
+<td><code>items_failed</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Number of items that failed</td>
+</tr>
+<tr>
+<td><code>tags_created</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Number of tags created</td>
+</tr>
+<tr>
+<td><code>edges_created</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Number of edges created</td>
+</tr>
+<tr>
+<td><code>duration_seconds</code></td>
+<td><code>float</code></td>
+<td><code>0.0</code></td>
+<td>Duration of sync</td>
+</tr>
+<tr>
+<td><code>errors</code></td>
+<td><code>List[str]</code></td>
+<td><code>field(default_factory=list)</code></td>
+<td>Error messages</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td><code>field(default_factory=dict)</code></td>
+<td>Additional metadata</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><code>ExternalTag</code></strong> &ndash; a tag to attach to a CPG node:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Tag name (e.g., <code>git-author</code>)</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Tag value</td>
+</tr>
+<tr>
+<td><code>external_source</code></td>
+<td><code>ExternalSource</code></td>
+<td>required</td>
+<td>Source system</td>
+</tr>
+<tr>
+<td><code>external_id</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>ID in external system</td>
+</tr>
+<tr>
+<td><code>external_url</code></td>
+<td><code>Optional[str]</code></td>
+<td><code>None</code></td>
+<td>URL in external system</td>
+</tr>
+<tr>
+<td><code>confidence</code></td>
+<td><code>float</code></td>
+<td><code>1.0</code></td>
+<td>Confidence of the link</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td><code>field(default_factory=dict)</code></td>
+<td>Additional metadata</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><code>MethodTagLink</code></strong> &ndash; links a method to a tag:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method_id</code></td>
+<td><code>int</code></td>
+<td>CPG method node ID</td>
+</tr>
+<tr>
+<td><code>method_full_name</code></td>
+<td><code>str</code></td>
+<td>Fully qualified method name</td>
+</tr>
+<tr>
+<td><code>filename</code></td>
+<td><code>str</code></td>
+<td>Source file path</td>
+</tr>
+<tr>
+<td><code>line_start</code></td>
+<td><code>int</code></td>
+<td>Method start line</td>
+</tr>
+<tr>
+<td><code>line_end</code></td>
+<td><code>int</code></td>
+<td>Method end line</td>
+</tr>
+<tr>
+<td><code>tag</code></td>
+<td><code>ExternalTag</code></td>
+<td>The tag to attach</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="git-dataclasses"><span id="git_dataclasses"></span>Git Dataclasses<a class="heading-anchor" href="#git-dataclasses" title="Link to this section">&para;</a></h3>
+<p><strong><code>GitCommit</code></strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sha</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Commit SHA</td>
+</tr>
+<tr>
+<td><code>author_email</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Author email</td>
+</tr>
+<tr>
+<td><code>author_name</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Author name</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>datetime</code></td>
+<td>required</td>
+<td>Commit timestamp</td>
+</tr>
+<tr>
+<td><code>message</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Commit message</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td><code>List[str]</code></td>
+<td>required</td>
+<td>Changed files</td>
+</tr>
+<tr>
+<td><code>lines_added</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Lines added</td>
+</tr>
+<tr>
+<td><code>lines_deleted</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Lines deleted</td>
+</tr>
+<tr>
+<td><code>branch</code></td>
+<td><code>Optional[str]</code></td>
+<td><code>None</code></td>
+<td>Branch name</td>
+</tr>
+<tr>
+<td><code>issue_refs</code></td>
+<td><code>List[str]</code></td>
+<td><code>None</code></td>
+<td>Referenced issue IDs</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><code>GitBlameEntry</code></strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>commit_sha</code></td>
+<td><code>str</code></td>
+<td>Commit SHA</td>
+</tr>
+<tr>
+<td><code>author_email</code></td>
+<td><code>str</code></td>
+<td>Author email</td>
+</tr>
+<tr>
+<td><code>author_name</code></td>
+<td><code>str</code></td>
+<td>Author name</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>datetime</code></td>
+<td>Commit timestamp</td>
+</tr>
+<tr>
+<td><code>line_number</code></td>
+<td><code>int</code></td>
+<td>Line number</td>
+</tr>
+<tr>
+<td><code>line_content</code></td>
+<td><code>str</code></td>
+<td>Line content</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="issue-dataclasses"><span id="issue_dataclasses"></span>Issue Dataclasses<a class="heading-anchor" href="#issue-dataclasses" title="Link to this section">&para;</a></h3>
+<p><strong><code>Issue</code></strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Issue ID</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Issue title</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td><code>Optional[str]</code></td>
+<td>required</td>
+<td>Issue description</td>
+</tr>
+<tr>
+<td><code>issue_type</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Type (bug, feature, etc.)</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Current status</td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td><code>Optional[str]</code></td>
+<td>required</td>
+<td>Priority level</td>
+</tr>
+<tr>
+<td><code>assignee</code></td>
+<td><code>Optional[str]</code></td>
+<td>required</td>
+<td>Assignee</td>
+</tr>
+<tr>
+<td><code>reporter</code></td>
+<td><code>Optional[str]</code></td>
+<td>required</td>
+<td>Reporter</td>
+</tr>
+<tr>
+<td><code>labels</code></td>
+<td><code>List[str]</code></td>
+<td>required</td>
+<td>Labels</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td><code>Optional[datetime]</code></td>
+<td>required</td>
+<td>Creation timestamp</td>
+</tr>
+<tr>
+<td><code>updated_at</code></td>
+<td><code>Optional[datetime]</code></td>
+<td>required</td>
+<td>Last update timestamp</td>
+</tr>
+<tr>
+<td><code>url</code></td>
+<td><code>Optional[str]</code></td>
+<td>required</td>
+<td>Issue URL</td>
+</tr>
+<tr>
+<td><code>linked_commits</code></td>
+<td><code>List[str]</code></td>
+<td>required</td>
+<td>Linked commit SHAs</td>
+</tr>
+<tr>
+<td><code>linked_files</code></td>
+<td><code>List[str]</code></td>
+<td>required</td>
+<td>Linked file paths</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="sentry-dataclasses"><span id="sentry_dataclasses"></span>Sentry Dataclasses<a class="heading-anchor" href="#sentry-dataclasses" title="Link to this section">&para;</a></h3>
+<p><strong><code>SentryIssue</code></strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Sentry issue ID</td>
+</tr>
+<tr>
+<td><code>short_id</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Short ID (e.g., <code>PROJ-ABC</code>)</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Issue title</td>
+</tr>
+<tr>
+<td><code>culprit</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Culprit (function/file)</td>
+</tr>
+<tr>
+<td><code>level</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Severity level</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Issue status</td>
+</tr>
+<tr>
+<td><code>count</code></td>
+<td><code>int</code></td>
+<td>required</td>
+<td>Total event count</td>
+</tr>
+<tr>
+<td><code>user_count</code></td>
+<td><code>int</code></td>
+<td>required</td>
+<td>Affected user count</td>
+</tr>
+<tr>
+<td><code>first_seen</code></td>
+<td><code>datetime</code></td>
+<td>required</td>
+<td>First occurrence</td>
+</tr>
+<tr>
+<td><code>last_seen</code></td>
+<td><code>datetime</code></td>
+<td>required</td>
+<td>Last occurrence</td>
+</tr>
+<tr>
+<td><code>url</code></td>
+<td><code>Optional[str]</code></td>
+<td><code>None</code></td>
+<td>Sentry issue URL</td>
+</tr>
+<tr>
+<td><code>stacktrace_frames</code></td>
+<td><code>List[Dict]</code></td>
+<td>required</td>
+<td>Raw stacktrace frames</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td><code>Dict[str, str]</code></td>
+<td>required</td>
+<td>Sentry tags</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong><code>StackFrame</code></strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>filename</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Source file</td>
+</tr>
+<tr>
+<td><code>function</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Function name</td>
+</tr>
+<tr>
+<td><code>lineno</code></td>
+<td><code>int</code></td>
+<td>required</td>
+<td>Line number</td>
+</tr>
+<tr>
+<td><code>context_line</code></td>
+<td><code>Optional[str]</code></td>
+<td><code>None</code></td>
+<td>Source line content</td>
+</tr>
+<tr>
+<td><code>in_app</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td>Whether frame is in-app code</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="externalcontextbase">ExternalContextBase<a class="heading-anchor" href="#externalcontextbase" title="Link to this section">&para;</a></h3>
+<p>Abstract base class for all sync services. Located in <code>src/services/external_context/base.py</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExternalContextBase</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duckdb_conn</span><span class="p">,</span> <span class="n">pg_conn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">ExternalSource</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<p>Concrete methods:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create_tag</code></td>
+<td><code>tag: ExternalTag</code></td>
+<td><code>int</code></td>
+<td>Creates a tag in <code>nodes_tag_v2</code>, returns tag ID</td>
+</tr>
+<tr>
+<td><code>create_tag_edge</code></td>
+<td><code>method_id: int, tag_id: int</code></td>
+<td><code>bool</code></td>
+<td>Creates edge in <code>edges_tagged_by</code></td>
+</tr>
+<tr>
+<td><code>find_methods_by_file_lines</code></td>
+<td><code>filename: str, line_start: int, line_end: int</code></td>
+<td><code>List[Dict]</code></td>
+<td>Finds methods overlapping the given line range</td>
+</tr>
+<tr>
+<td><code>store_external_context</code></td>
+<td><code>external_id, context_type, raw_data, linked_files=None, linked_cpg_nodes=None, external_url=None</code></td>
+<td><code>bool</code></td>
+<td>Stores raw context in PostgreSQL</td>
+</tr>
+<tr>
+<td><code>get_existing_tags</code></td>
+<td><code>tag_name: str</code></td>
+<td><code>Dict[str, int]</code></td>
+<td>Returns existing tags by name as <code>{value: id}</code> dict</td>
+</tr>
+</tbody>
+</table></div>
+<p>Abstract methods (must be implemented by subclasses):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sync(**kwargs)</code></td>
+<td><code>SyncResult</code></td>
+<td>Perform the sync operation</td>
+</tr>
+<tr>
+<td><code>get_supported_tag_categories()</code></td>
+<td><code>List[str]</code></td>
+<td>Return list of tag categories this service creates</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="orchestratorresult">OrchestratorResult<a class="heading-anchor" href="#orchestratorresult" title="Link to this section">&para;</a></h3>
+<p>Result of an orchestrated multi-source sync.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>success</code></td>
+<td><code>bool</code></td>
+<td><code>True</code></td>
+<td>Overall success</td>
+</tr>
+<tr>
+<td><code>total_items_synced</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Total items across all sources</td>
+</tr>
+<tr>
+<td><code>total_tags_created</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Total tags created</td>
+</tr>
+<tr>
+<td><code>total_edges_created</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Total edges created</td>
+</tr>
+<tr>
+<td><code>duration_seconds</code></td>
+<td><code>float</code></td>
+<td><code>0.0</code></td>
+<td>Total duration</td>
+</tr>
+<tr>
+<td><code>source_results</code></td>
+<td><code>Dict[str, SyncResult]</code></td>
+<td><code>field(default_factory=dict)</code></td>
+<td>Per-source results</td>
+</tr>
+<tr>
+<td><code>errors</code></td>
+<td><code>List[str]</code></td>
+<td><code>field(default_factory=list)</code></td>
+<td>Collected errors</td>
+</tr>
+</tbody>
+</table></div>
+<p>Method: <code>add_result(source: str, result: SyncResult)</code> &ndash; adds a source result and updates totals.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
 <h3  id="no-tags-created"><span id="no_tags_created"></span>No Tags Created<a class="heading-anchor" href="#no-tags-created" title="Link to this section">&para;</a></h3>
 <ol>
-<li>Check that CPG database has methods in <code>nodes_method</code></li>
-<li>Verify file paths in CPG match repository structure</li>
-<li>Run sync with <code>include_blame=True</code> for git</li>
+<li>Verify the CPG database has methods in <code>nodes_method</code>:
+   <code>sql
+   SELECT COUNT(*) FROM nodes_method;</code></li>
+<li>Check that file paths in the CPG match the repository structure. Path mismatches (e.g., absolute vs. relative) will prevent method-to-commit linking.</li>
+<li>Run sync with <code>use_blame=True</code> (the default) for git &ndash; blame provides line-level precision.</li>
 </ol>
+<h3  id="git-sync-issues"><span id="git_sync_issues"></span>Git Sync Issues<a class="heading-anchor" href="#git-sync-issues" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Verify git history is accessible</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-git<span class="w"> </span>--git-since-days<span class="w"> </span><span class="m">7</span><span class="w"> </span>--verbose
+
+<span class="c1"># Skip blame if it&#39;s too slow on large repos</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.services.external_context.orchestrator<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--duckdb<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sync-git<span class="w"> </span>--no-blame
+</code></pre></div>
+
 <h3  id="github-rate-limiting"><span id="github_rate_limiting"></span>GitHub Rate Limiting<a class="heading-anchor" href="#github-rate-limiting" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Use authenticated requests</span>
-<span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
+<p>Use an authenticated token for higher rate limits:</p>
+<div class="highlight"><pre><span></span><code><span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
+    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span>
-    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">)</span>  <span class="c1"># Required for higher rate limits</span>
+    <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
+    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 </code></pre></div>
 
 <h3  id="sentry-api-errors"><span id="sentry_api_errors"></span>Sentry API Errors<a class="heading-anchor" href="#sentry-api-errors" title="Link to this section">&para;</a></h3>
 <ol>
-<li>Verify <code>org_slug</code> and <code>project_slug</code> are correct</li>
-<li>Check token has <code>project:read</code> and <code>event:read</code> scopes</li>
-<li>Try with <code>--sentry-days 7</code> for smaller data set</li>
+<li>Verify <code>org_slug</code> and <code>project_slug</code> are correct (check Sentry dashboard URL)</li>
+<li>Check the token has <code>project:read</code> and <code>event:read</code> scopes</li>
+<li>Try a smaller date range with <code>--git-since-days 7</code> to confirm connectivity</li>
+<li>For self-hosted Sentry, set <code>--sentry-url</code> to your instance URL</li>
 </ol>
+<h3  id="tags-exist-but-no-edges"><span id="tags_exist_but_no_edges"></span>Tags Exist but No Edges<a class="heading-anchor" href="#tags-exist-but-no-edges" title="Link to this section">&para;</a></h3>
+<p>If tags appear in <code>nodes_tag_v2</code> but there are no edges in <code>edges_tagged_by</code>, it typically means file paths in the CPG don&rsquo;t match the paths returned by git/Sentry. Check:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Inspect tag values</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="k">LIMIT</span><span class="w"> </span><span class="mi">20</span><span class="p">;</span>
+
+<span class="c1">-- Check edge count</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="p">;</span>
+</code></pre></div>
+
 <h2  id="next-steps"><span id="next_steps"></span>Next Steps<a class="heading-anchor" href="#next-steps" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="../../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook</a> - More SQL examples</li>
-<li><a href="../../guides/01-onboarding.html">Onboarding Scenario</a> - Using external context in queries</li>
-<li><a href="../../development/ARCHITECTURE.html">Architecture</a> - System architecture details</li>
+<li><a href="../../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook</a> &ndash; more SQL examples for CPG queries</li>
+<li><a href="../../guides/01-onboarding.html">Onboarding Scenario</a> &ndash; using external context in natural language queries</li>
+<li><a href="../../development/ARCHITECTURE.html">Architecture</a> &ndash; system architecture details</li>
 </ul>
       </article>
 
@@ -725,7 +1939,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/EXTERNAL_CONTEXT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -750,22 +1964,28 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 <li><a href="#issuesyncservice" class="level-3">IssueSyncService</a></li>
 <li><a href="#supported-providers" class="level-3">Supported Providers</a></li>
 <li><a href="#available-issue-tags" class="level-3">Available Issue Tags</a></li>
+<li><a href="#creating-issues" class="level-3">Creating Issues</a></li>
 <li><a href="#apmsentry-integration" class="level-2">APM/Sentry Integration</a></li>
 <li><a href="#sentrysyncservice" class="level-3">SentrySyncService</a></li>
 <li><a href="#available-sentry-tags" class="level-3">Available Sentry Tags</a></li>
 <li><a href="#using-the-orchestrator" class="level-2">Using the Orchestrator</a></li>
 <li><a href="#python-api" class="level-3">Python API</a></li>
 <li><a href="#cli-interface" class="level-3">CLI Interface</a></li>
-<li><a href="#query-examples" class="level-2">Query Examples</a></li>
-<li><a href="#using-cpgqueryservice" class="level-3">Using CPGQueryService</a></li>
-<li><a href="#natural-language-queries" class="level-3">Natural Language Queries</a></li>
-<li><a href="#api-reference" class="level-2">API Reference</a></li>
-<li><a href="#cpgqueryservice-methods" class="level-3">CPGQueryService Methods</a></li>
-<li><a href="#hybridexternalsearch-methods" class="level-3">HybridExternalSearch Methods</a></li>
+<li><a href="#convenience-functions" class="level-2">Convenience Functions</a></li>
+<li><a href="#server-side-api-reference" class="level-2">Server-Side API Reference</a></li>
+<li><a href="#enums" class="level-3">Enums</a></li>
+<li><a href="#core-dataclasses" class="level-3">Core Dataclasses</a></li>
+<li><a href="#git-dataclasses" class="level-3">Git Dataclasses</a></li>
+<li><a href="#issue-dataclasses" class="level-3">Issue Dataclasses</a></li>
+<li><a href="#sentry-dataclasses" class="level-3">Sentry Dataclasses</a></li>
+<li><a href="#externalcontextbase" class="level-3">ExternalContextBase</a></li>
+<li><a href="#orchestratorresult" class="level-3">OrchestratorResult</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
 <li><a href="#no-tags-created" class="level-3">No Tags Created</a></li>
+<li><a href="#git-sync-issues" class="level-3">Git Sync Issues</a></li>
 <li><a href="#github-rate-limiting" class="level-3">GitHub Rate Limiting</a></li>
 <li><a href="#sentry-api-errors" class="level-3">Sentry API Errors</a></li>
+<li><a href="#tags-exist-but-no-edges" class="level-3">Tags Exist but No Edges</a></li>
 <li><a href="#next-steps" class="level-2">Next Steps</a></li>
       </ul>
     </aside>

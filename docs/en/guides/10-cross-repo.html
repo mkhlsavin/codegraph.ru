@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html" class="active">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,166 +181,341 @@
       <article class="doc-content">
         <h1  id="scenario-10-cross-repository-analysis"><span id="scenario_10_cross_repository_analysis"></span>Scenario 10: Cross-Repository Analysis<a class="heading-anchor" href="#scenario-10-cross-repository-analysis" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Architect analyzing dependencies and impacts across multiple repositories.</p>
+<p>Architect analyzing dependencies, duplications, and consolidation opportunities across multiple repositories using CPG-based agents and graph methods.</p>
 </blockquote>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#two-phase-architecture">Two-Phase Architecture</a></li>
+<li><a href="#intent-detection">Intent Detection</a></li>
+<li><a href="#handler-phase">Handler Phase</a></li>
+<li><a href="#3-handlers">3 Handlers</a></li>
+<li><a href="#crossrepohandler-base-methods">CrossRepoHandler Base Methods</a></li>
+<li><a href="#report-formatters">Report Formatters</a></li>
+<li><a href="#llm-phase">LLM Phase</a></li>
+<li><a href="#3-agents">3 Agents</a></li>
+<li><a href="#callgraphanalyzer-integration">CallGraphAnalyzer Integration</a></li>
+<li><a href="#graph-insights">Graph Insights</a></li>
+<li><a href="#data-models">Data Models</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
+<li><a href="#example-questions">Example Questions</a></li>
+<li><a href="#related-scenarios">Related Scenarios</a></li>
+</ul>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Select Cross-Repository Scenario</span>
 /select<span class="w"> </span><span class="m">10</span>
 </code></pre></div>
 
-<h2  id="multi-project-setup"><span id="multi_project_setup"></span>Multi-Project Setup<a class="heading-anchor" href="#multi-project-setup" title="Link to this section">&para;</a></h2>
-<h3  id="configure-cross-repo-analysis"><span id="configure_cross_repo_analysis"></span>Configure Cross-Repo Analysis<a class="heading-anchor" href="#configure-cross-repo-analysis" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Add multiple projects</span>
-/project<span class="w"> </span>add<span class="w"> </span>postgres<span class="w"> </span>data/projects/postgres.duckdb<span class="w"> </span>c<span class="w"> </span><span class="s2">&quot;PostgreSQL core&quot;</span>
-/project<span class="w"> </span>add<span class="w"> </span>extension1<span class="w"> </span>data/projects/extension1.duckdb<span class="w"> </span>c<span class="w"> </span><span class="s2">&quot;Extension module 1&quot;</span>
-/project<span class="w"> </span>add<span class="w"> </span>extension2<span class="w"> </span>data/projects/extension2.duckdb<span class="w"> </span>c<span class="w"> </span><span class="s2">&quot;Extension module 2&quot;</span>
-
-<span class="c1"># Enable cross-repo mode</span>
-/config<span class="w"> </span>cross_repo<span class="w"> </span>enabled<span class="w"> </span><span class="nb">true</span>
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3  id="two-phase-architecture"><span id="two_phase_architecture"></span>Two-Phase Architecture<a class="heading-anchor" href="#two-phase-architecture" title="Link to this section">&para;</a></h3>
+<p>S10 uses the standard two-phase architecture with handler-based Phase 1 and LLM fallback Phase 2:</p>
+<div class="highlight"><pre><span></span><code>Query -&gt; CrossRepoIntentDetector.detect()
+  |
+  Phase 1: integrate_handlers(state)
+    -&gt; HandlerRegistry(&quot;cross_repo&quot;) -&gt; match handler by intent
+    -&gt; handler.handle() -&gt; CrossRepoReportFormatter -&gt; answer
+    |
+    handled=True  -&gt; return formatted result (no LLM)
+    handled=False -&gt; Phase 2
+  |
+  Phase 2: cross_repo_workflow() [LLM fallback]
+    -&gt; 3 Agents (RepositoryIndexer, CrossRepoAnalyzer, DependencyMapper)
+    -&gt; CallGraphAnalyzer (graph insights)
+    -&gt; PromptRegistry -&gt; LLMInterface.generate() -&gt; answer
 </code></pre></div>
 
-<h2  id="dependency-analysis"><span id="dependency_analysis"></span>Dependency Analysis<a class="heading-anchor" href="#dependency-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="cross-repository-function-calls"><span id="cross_repository_function_calls"></span>Cross-Repository Function Calls<a class="heading-anchor" href="#cross-repository-function-calls" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find functions in extension1 that call PostgreSQL core</span>
-
-╭─────────────── Cross-Repo Dependencies ─────────────────────╮
-│                                                              │
-│  Extension1 → PostgreSQL Core Dependencies:                  │
-│                                                              │
-│  API Calls:                                                  │
-│    palloc()           12 calls   Memory allocation           │
-│    ereport()          8 calls    Error reporting             │
-│    SPI_connect()      5 calls    SQL interface               │
-│    GetCurrentTransactionId() 3 calls  Transaction access     │
-│                                                              │
-│  Direct Function Calls:                                      │
-│    heap_insert()      4 calls    Tuple insertion             │
-│    index_insert()     2 calls    Index maintenance           │
-│                                                              │
-│  Total dependencies: 34 function calls                       │
-│  Risk level: MEDIUM (uses internal APIs)                     │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
+<p><code>cross_repo_workflow()</code> in <code>cross_repo.py</code> first calls <code>integrate_handlers(state)</code>. If a handler matches (<code>handled=True</code>), the result is returned without LLM. Otherwise, the full LLM-based workflow executes with 3 agents and graph analysis.</p>
+<h3  id="intent-detection"><span id="intent_detection"></span>Intent Detection<a class="heading-anchor" href="#intent-detection" title="Link to this section">&para;</a></h3>
+<p><code>CrossRepoIntentDetector(IntentDetector)</code> in <code>cross_repo_handlers/intent_detector.py</code> defines 6 intents sorted by priority:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Intent</th>
+<th>Priority</th>
+<th>Keywords (EN + RU)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hook_usage</code></td>
+<td>5</td>
+<td>hook, extension hook, callback, хук, точка расширения</td>
+</tr>
+<tr>
+<td><code>spi_dependency</code></td>
+<td>8</td>
+<td>spi, server programming interface, серверный интерфейс</td>
+</tr>
+<tr>
+<td><code>code_consolidation</code></td>
+<td>10</td>
+<td>consolidate, merge, combine, unified, консолидация, объединить</td>
+</tr>
+<tr>
+<td><code>duplicate_detection</code></td>
+<td>20</td>
+<td>duplicate, clone, copy, redundant, дубликат, клон</td>
+</tr>
+<tr>
+<td><code>cross_repo_search</code></td>
+<td>30</td>
+<td>across repo, cross repo, all repo, кросс-репозиторий</td>
+</tr>
+<tr>
+<td><code>consistency_check</code></td>
+<td>40</td>
+<td>consistency, standard, naming convention, согласованность</td>
+</tr>
+</tbody>
+</table></div>
+<p>Fallback: <code>general_cross_repo</code> (confidence=0.5) when no pattern matches.</p>
+<p>Keyword matching uses <code>keyword_match_morphological()</code> for Russian lemma support. Domain-specific hook keywords are loaded dynamically via <code>_get_domain_hook_keywords()</code> from the active domain plugin.</p>
+<h2  id="handler-phase"><span id="handler_phase"></span>Handler Phase<a class="heading-anchor" href="#handler-phase" title="Link to this section">&para;</a></h2>
+<h3  id="3-handlers"><span id="3_handlers"></span>3 Handlers<a class="heading-anchor" href="#3-handlers" title="Link to this section">&para;</a></h3>
+<p><code>cross_repo_handlers/workflow.py</code> registers 3 handlers in <code>HandlerRegistry("cross_repo")</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Priority</th>
+<th>Intent</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExtensionDependenciesHandler</code></td>
+<td>5</td>
+<td>hook_usage, spi_dependency</td>
+<td>Extension API and SPI dependency analysis</td>
+</tr>
+<tr>
+<td><code>ConsolidationHandler</code></td>
+<td>10</td>
+<td>code_consolidation</td>
+<td>Code consolidation candidate detection</td>
+</tr>
+<tr>
+<td><code>DuplicateDetectionHandler</code></td>
+<td>20</td>
+<td>duplicate_detection</td>
+<td>Duplicate code detection across files</td>
+</tr>
+</tbody>
+</table></div>
+<p>All handlers inherit from <code>CrossRepoHandler(BaseHandler)</code>.</p>
+<h3  id="crossrepohandler-base-methods"><span id="crossrepohandler_base_methods"></span>CrossRepoHandler Base Methods<a class="heading-anchor" href="#crossrepohandler-base-methods" title="Link to this section">&para;</a></h3>
+<p><code>CrossRepoHandler</code> in <code>cross_repo_handlers/handlers/base.py</code> provides 4 shared CPG query methods:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_find_duplicate_code(min_similarity, limit)</code></td>
+<td>Find duplicate code patterns via signature matching</td>
+</tr>
+<tr>
+<td><code>_search_across_files(pattern, scope, limit)</code></td>
+<td>Search for methods matching a pattern across files</td>
+</tr>
+<tr>
+<td><code>_check_naming_consistency(pattern_type)</code></td>
+<td>Check naming convention consistency (snake_case, camelCase, PascalCase)</td>
+</tr>
+<tr>
+<td><code>_analyze_consolidation_candidates(threshold)</code></td>
+<td>Find code consolidation candidates grouped by signature</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>ExtensionDependenciesHandler</code> additionally uses <code>get_extension_dependency_patterns_from_plugin()</code> and <code>build_sql_like_clause()</code> from <code>_plugin_helpers</code> to load domain-specific extension API patterns (domain-agnostic approach).</p>
+<h3  id="report-formatters"><span id="report_formatters"></span>Report Formatters<a class="heading-anchor" href="#report-formatters" title="Link to this section">&para;</a></h3>
+<p><code>CrossRepoReportFormatter(CrossRepoFormatter)</code> in <code>cross_repo_handlers/formatters/cross_repo_report.py</code> provides 2 report formatters:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format_consolidation_report(report_data, language)</code></td>
+<td>ConsolidationHandler</td>
+</tr>
+<tr>
+<td><code>format_duplicate_report(report_data, language)</code></td>
+<td>DuplicateDetectionHandler</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>CrossRepoFormatter(BaseFormatter)</code> provides helper methods: <code>format_file_list()</code>, <code>format_consolidation_badge()</code>, <code>format_similarity_badge()</code>. All formatters support EN/RU localization.</p>
+<h2  id="llm-phase"><span id="llm_phase"></span>LLM Phase<a class="heading-anchor" href="#llm-phase" title="Link to this section">&para;</a></h2>
+<h3  id="3-agents"><span id="3_agents"></span>3 Agents<a class="heading-anchor" href="#3-agents" title="Link to this section">&para;</a></h3>
+<p>When no handler matches, <code>cross_repo_workflow()</code> executes the full LLM pipeline with 3 agents from <code>src/cross_repo/cross_repo_agents.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Role</th>
+<th>Key Methods</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RepositoryIndexer</code></td>
+<td>Discover repos, extract metadata, index into CPG</td>
+<td><code>discover_repositories(path)</code>, <code>index_repository_cpg(repo)</code></td>
+</tr>
+<tr>
+<td><code>CrossRepoAnalyzer</code></td>
+<td>Detect code duplications and consolidation opportunities</td>
+<td><code>find_code_duplications(repos, min_similarity, min_lines)</code>, <code>find_similar_utilities(repos)</code>, <code>identify_consolidation_opportunities(dups)</code></td>
+</tr>
+<tr>
+<td><code>DependencyMapper</code></td>
+<td>Map dependencies, detect circular deps, generate report</td>
+<td><code>map_dependencies(repos)</code>, <code>generate_dependency_graph(deps)</code>, <code>detect_circular_dependencies(graph)</code>, <code>generate_dependency_report(...)</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The pipeline:
+1. <code>RepositoryIndexer</code> discovers and indexes repositories from <code>workspace_path</code>
+2. <code>CrossRepoAnalyzer</code> finds duplications and consolidation opportunities
+3. <code>DependencyMapper</code> maps dependencies, detects circular dependencies, generates report
+4. Evidence list built from duplications, opportunities, and high-risk dependencies
+5. <code>PromptRegistry.get_agent_prompt("cross_repo_analyzer", ...)</code> builds the prompt
+6. <code>LLMInterface().generate()</code> produces the final answer</p>
+<h3  id="callgraphanalyzer-integration"><span id="callgraphanalyzer_integration"></span>CallGraphAnalyzer Integration<a class="heading-anchor" href="#callgraphanalyzer-integration" title="Link to this section">&para;</a></h3>
+<p>After the 3 agents complete, <code>CallGraphAnalyzer(cpg)</code> from <code>src/analysis</code> performs graph-based analysis:</p>
+<ul>
+<li><strong>Shared methods:</strong> For each duplication, analyzes callers/callees/impact via <code>find_all_callers()</code>, <code>find_all_callees()</code>, <code>analyze_impact()</code>. Calculates <code>consolidation_score = (callers + callees) * instances</code>.</li>
+<li><strong>Cross-repo calls:</strong> For dependencies with <code>source_method</code>, finds callees to detect tight coupling. Flags high-coupling dependencies for decoupling priority.</li>
+<li><strong>Consolidation patterns:</strong> Groups methods by call graph signature (set of callees). Methods with identical call patterns are consolidation candidates.</li>
+</ul>
+<h3  id="graph-insights"><span id="graph_insights"></span>Graph Insights<a class="heading-anchor" href="#graph-insights" title="Link to this section">&para;</a></h3>
+<p>Graph analysis produces 3 insight categories stored in <code>state["metadata"]["graph_insights"]</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shared_methods</code></td>
+<td>Methods with consolidation_benefit (high/medium/low) and consolidation_score</td>
+</tr>
+<tr>
+<td><code>cross_repo_calls</code></td>
+<td>High-coupling dependencies with decoupling_priority</td>
+</tr>
+<tr>
+<td><code>consolidation_patterns</code></td>
+<td>Method groups with same call signature — &ldquo;Extract to shared library&rdquo; candidates</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="data-models"><span id="data_models"></span>Data Models<a class="heading-anchor" href="#data-models" title="Link to this section">&para;</a></h2>
+<p>Key dataclasses from <code>src/cross_repo/repo_patterns.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Key Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RepositoryInfo</code></td>
+<td>repo_id, name, language, method_count, file_count</td>
+</tr>
+<tr>
+<td><code>CodeDuplication</code></td>
+<td>pattern_name, similarity_score, severity, instances (List[CodeInstance]), potential_savings</td>
+</tr>
+<tr>
+<td><code>CrossRepoDependency</code></td>
+<td>source_repo, target_repo, dependency_type (DependencyType), coupling_score, risk_level (RiskLevel)</td>
+</tr>
+<tr>
+<td><code>ConsolidationOpportunity</code></td>
+<td>title, priority, estimated_savings, estimated_effort</td>
+</tr>
+<tr>
+<td><code>ConsolidationReport</code></td>
+<td>total_repos, total_methods, risk_summary, estimated_total_savings</td>
+</tr>
+</tbody>
+</table></div>
+<p>Enums: <code>DependencyType</code> (import, function_call, type_reference, &hellip;), <code>RiskLevel</code> (critical, high, medium, low).</p>
+<h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
+<p>S10 is domain-agnostic. All domain-specific data is loaded from plugins:</p>
+<ul>
+<li><code>_get_api_keywords()</code> — API keyword-to-function mapping from <code>domain.get_api_keywords()</code></li>
+<li><code>_get_domain_hook_keywords()</code> — hook-specific keywords from <code>domain.get_intent_keywords("CROSS_REPO")</code></li>
+<li><code>get_extension_dependency_patterns_from_plugin()</code> — extension dependency patterns</li>
+</ul>
+<p>Project configuration in <code>config.yaml</code> → <code>projects</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">projects</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">registry</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">postgres</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/projects/postgres.duckdb</span>
+<span class="w">      </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span>
+<span class="w">    </span><span class="nt">extension1</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/projects/extension1.duckdb</span>
+<span class="w">      </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span>
 </code></pre></div>
 
-<h3  id="api-boundary-mapping"><span id="api_boundary_mapping"></span>API Boundary Mapping<a class="heading-anchor" href="#api-boundary-mapping" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Show API boundaries between projects</span>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Cross-repo dependency analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find cross-repository dependencies&quot;</span>
 
-╭─────────────── API Boundaries ──────────────────────────────╮
-│                                                              │
-│  PostgreSQL Core Exports:                                    │
-│                                                              │
-│  Stable APIs (safe to use):                                  │
-│    ├── SPI_* (12 functions)                                  │
-│    ├── PG_FUNCTION_* macros                                  │
-│    └── Standard extension hooks                              │
-│                                                              │
-│  Internal APIs (use with caution):                           │
-│    ├── heap_* (23 functions)                                 │
-│    ├── index_* (18 functions)                                │
-│    └── buffer_* (15 functions)                               │
-│                                                              │
-│  Extension1 Usage:                                           │
-│    Stable APIs: 67%                                          │
-│    Internal APIs: 33%  ⚠️                                    │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
+<span class="c1"># Duplicate detection</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find duplicate code across repositories&quot;</span>
 
-<h2  id="impact-analysis"><span id="impact_analysis"></span>Impact Analysis<a class="heading-anchor" href="#impact-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="breaking-change-detection"><span id="breaking_change_detection"></span>Breaking Change Detection<a class="heading-anchor" href="#breaking-change-detection" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">What</span><span class="w"> </span><span class="n">extensions</span><span class="w"> </span><span class="n">would</span><span class="w"> </span><span class="k">break</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">heap_insert</span><span class="w"> </span><span class="n">signature</span><span class="w"> </span><span class="n">changes</span><span class="err">?</span>
+<span class="c1"># Consolidation analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Show consolidation opportunities&quot;</span>
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="n">Breaking</span><span class="w"> </span><span class="n">Change</span><span class="w"> </span><span class="n">Impact</span><span class="w"> </span><span class="err">──────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Target</span><span class="p">:</span><span class="w"> </span><span class="n">heap_insert</span><span class="p">()</span><span class="w">                                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Signature</span><span class="p">:</span><span class="w"> </span><span class="nb nb-Type">void</span><span class="w"> </span><span class="n">heap_insert</span><span class="p">(</span><span class="n">Relation</span><span class="p">,</span><span class="w"> </span><span class="n">HeapTuple</span><span class="p">,</span><span class="w"> </span><span class="o">...</span><span class="p">)</span><span class="w">       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Affected</span><span class="w"> </span><span class="n">Extensions</span><span class="p">:</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">🔴</span><span class="w"> </span><span class="n">extension1</span><span class="w"> </span><span class="p">(</span><span class="mi">4</span><span class="w"> </span><span class="n">direct</span><span class="w"> </span><span class="n">calls</span><span class="p">)</span><span class="w">                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="n">Files</span><span class="p">:</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">insert_handler</span><span class="o">.</span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">bulk_loader</span><span class="o">.</span><span class="n">c</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="n">Risk</span><span class="p">:</span><span class="w"> </span><span class="n">HIGH</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Core</span><span class="w"> </span><span class="n">functionality</span><span class="w">                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">🔴</span><span class="w"> </span><span class="n">extension2</span><span class="w"> </span><span class="p">(</span><span class="mi">2</span><span class="w"> </span><span class="n">direct</span><span class="w"> </span><span class="n">calls</span><span class="p">)</span><span class="w">                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="n">Files</span><span class="p">:</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">custom_insert</span><span class="o">.</span><span class="n">c</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="n">Risk</span><span class="p">:</span><span class="w"> </span><span class="n">MEDIUM</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Optional</span><span class="w"> </span><span class="n">feature</span><span class="w">                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Recommended</span><span class="w"> </span><span class="n">Actions</span><span class="p">:</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="mf">1.</span><span class="w"> </span><span class="n">Provide</span><span class="w"> </span><span class="n">wrapper</span><span class="w"> </span><span class="n">function</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="mf">2.</span><span class="w"> </span><span class="n">Deprecation</span><span class="w"> </span><span class="n">period</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="n">major</span><span class="w"> </span><span class="n">versions</span><span class="w">                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="mf">3.</span><span class="w"> </span><span class="n">Update</span><span class="w"> </span><span class="n">extension</span><span class="w"> </span><span class="n">documentation</span><span class="w">                         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">╰──────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
+<span class="c1"># Extension dependency analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Which extensions depend on memory allocation functions?&quot;</span>
 
-<h3  id="version-compatibility-matrix"><span id="version_compatibility_matrix"></span>Version Compatibility Matrix<a class="heading-anchor" href="#version-compatibility-matrix" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Show compatibility matrix for extensions</span>
+<span class="c1"># Hook usage analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find all hook usage patterns&quot;</span>
 
-╭─────────────── Compatibility Matrix ────────────────────────╮
-│                                                              │
-│  Extension Compatibility with PostgreSQL Versions:           │
-│                                                              │
-│  Extension      PG 14    PG 15    PG 16    Issues           │
-│  ─────────────────────────────────────────────────────────── │
-│  extension1     ✅       ✅       ⚠️       heap_insert       │
-│  extension2     ✅       ✅       ✅       -                 │
-│  extension3     ❌       ✅       ✅       Removed API       │
-│                                                              │
-│  Legend:                                                     │
-│    ✅ Compatible  ⚠️ Needs update  ❌ Incompatible           │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="migration-planning"><span id="migration_planning"></span>Migration Planning<a class="heading-anchor" href="#migration-planning" title="Link to this section">&para;</a></h2>
-<h3  id="upgrade-path-analysis"><span id="upgrade_path_analysis"></span>Upgrade Path Analysis<a class="heading-anchor" href="#upgrade-path-analysis" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Plan</span><span class="w"> </span><span class="n">migration</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">PG</span><span class="w"> </span><span class="mh">15</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">PG</span><span class="w"> </span><span class="mh">16</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">extensions</span>
-
-<span class="err">╭───────────────</span><span class="w"> </span><span class="n">Migration</span><span class="w"> </span><span class="n">Plan</span><span class="w"> </span><span class="err">──────────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nl">Migration:</span><span class="w"> </span><span class="n">PostgreSQL</span><span class="w"> </span><span class="mh">15</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mh">16</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="mh">1</span><span class="o">:</span><span class="w"> </span><span class="n">API</span><span class="w"> </span><span class="n">Updates</span><span class="w"> </span><span class="n">Required</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nl">extension1:</span><span class="w">                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="n">Update</span><span class="w"> </span><span class="n">heap_insert</span><span class="p">()</span><span class="w"> </span><span class="n">calls</span><span class="w"> </span><span class="p">(</span><span class="mh">4</span><span class="w"> </span><span class="n">locations</span><span class="p">)</span><span class="w">              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="n">Update</span><span class="w"> </span><span class="n">buffer</span><span class="w"> </span><span class="n">management</span><span class="w"> </span><span class="p">(</span><span class="mh">2</span><span class="w"> </span><span class="n">locations</span><span class="p">)</span><span class="w">                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="mh">2</span><span class="o">:</span><span class="w"> </span><span class="n">Deprecated</span><span class="w"> </span><span class="n">API</span><span class="w"> </span><span class="n">Replacement</span><span class="w">                         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nl">extension3:</span><span class="w">                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="n">Replace</span><span class="w"> </span><span class="n">removed_api</span><span class="p">()</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">new_api</span><span class="p">()</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="mh">3</span><span class="o">:</span><span class="w"> </span><span class="n">Testing</span><span class="w">                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Run</span><span class="w"> </span><span class="n">regression</span><span class="w"> </span><span class="n">tests</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">extensions</span><span class="w">                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Verify</span><span class="w"> </span><span class="n">cross</span><span class="o">-</span><span class="n">extension</span><span class="w"> </span><span class="n">interactions</span><span class="w">                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Estimated</span><span class="w"> </span><span class="nl">changes:</span><span class="w"> </span><span class="mh">12</span><span class="w"> </span><span class="n">files</span><span class="p">,</span><span class="w"> </span><span class="o">~</span><span class="mh">150</span><span class="w"> </span><span class="n">lines</span><span class="w">                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">╰──────────────────────────────────────────────────────────────╯</span>
+<span class="c1"># Consistency check</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Check naming consistency across codebase&quot;</span>
 </code></pre></div>
 
 <h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
 <ul>
 <li>&ldquo;Find cross-repository dependencies&rdquo;</li>
-<li>&ldquo;What extensions use [function_name]?&rdquo;</li>
-<li>&ldquo;Show API boundaries between projects&rdquo;</li>
+<li>&ldquo;Find duplicate code across repositories&rdquo;</li>
+<li>&ldquo;Show consolidation opportunities&rdquo;</li>
+<li>&ldquo;Which extensions use [function_name]?&rdquo;</li>
+<li>&ldquo;Find all hook usage patterns&rdquo;</li>
+<li>&ldquo;Check naming consistency across the codebase&rdquo;</li>
 <li>&ldquo;What would break if [function] changes?&rdquo;</li>
-<li>&ldquo;Plan migration for version upgrade&rdquo;</li>
-<li>&ldquo;Show compatibility matrix&rdquo;</li>
+<li>&ldquo;Show high-risk dependencies&rdquo;</li>
+<li>&ldquo;Find functions used by extensions&rdquo;</li>
 </ul>
-<h2  id="cli-commands"><span id="cli_commands"></span>CLI Commands<a class="heading-anchor" href="#cli-commands" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Cross-repo analysis commands</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.cross_repo<span class="w"> </span>dependencies<span class="w"> </span>--from<span class="w"> </span>extension1<span class="w"> </span>--to<span class="w"> </span>postgres
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.cross_repo<span class="w"> </span>impact<span class="w"> </span>--function<span class="w"> </span>heap_insert
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.cross_repo<span class="w"> </span>compatibility<span class="w"> </span>--versions<span class="w"> </span><span class="s2">&quot;14,15,16&quot;</span>
-</code></pre></div>
-
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="11-architecture.html">Architecture</a> - Architectural analysis</li>
-<li><a href="04-feature-development.html">Feature Development</a> - Understanding dependencies</li>
-<li><a href="13-mass-refactoring.html">Mass Refactoring</a> - Large-scale changes</li>
+<li><a href="11-architecture.html">Architecture</a> - Internal architecture analysis (S11)</li>
+<li><a href="05-refactoring.html">Refactoring</a> - Code smell detection and dead code (S05)</li>
+<li><a href="13-mass-refactoring.html">Mass Refactoring</a> - Large-scale changes across codebase (S13)</li>
+<li><a href="02-security-audit.html">Security Audit</a> - Security vulnerability scanning (S02)</li>
 </ul>
+<p><strong>S10 vs S11:</strong> S10 (Cross-Repository) focuses on multi-repository analysis — duplications across repos, inter-repo dependencies, consolidation opportunities, and cross-repo call graph analysis. S11 (Architecture) focuses on internal architecture of a single project — layer analysis, coupling/cohesion metrics, circular dependencies within one codebase.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -358,7 +534,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.cross_repo<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/10-cross-repo.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -368,19 +544,23 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.cross_repo<span 
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#scenario-10-cross-repository-analysis" class="level-1">Scenario 10: Cross-Repository Analysis</a></li>
+<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#multi-project-setup" class="level-2">Multi-Project Setup</a></li>
-<li><a href="#configure-cross-repo-analysis" class="level-3">Configure Cross-Repo Analysis</a></li>
-<li><a href="#dependency-analysis" class="level-2">Dependency Analysis</a></li>
-<li><a href="#cross-repository-function-calls" class="level-3">Cross-Repository Function Calls</a></li>
-<li><a href="#api-boundary-mapping" class="level-3">API Boundary Mapping</a></li>
-<li><a href="#impact-analysis" class="level-2">Impact Analysis</a></li>
-<li><a href="#breaking-change-detection" class="level-3">Breaking Change Detection</a></li>
-<li><a href="#version-compatibility-matrix" class="level-3">Version Compatibility Matrix</a></li>
-<li><a href="#migration-planning" class="level-2">Migration Planning</a></li>
-<li><a href="#upgrade-path-analysis" class="level-3">Upgrade Path Analysis</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#two-phase-architecture" class="level-3">Two-Phase Architecture</a></li>
+<li><a href="#intent-detection" class="level-3">Intent Detection</a></li>
+<li><a href="#handler-phase" class="level-2">Handler Phase</a></li>
+<li><a href="#3-handlers" class="level-3">3 Handlers</a></li>
+<li><a href="#crossrepohandler-base-methods" class="level-3">CrossRepoHandler Base Methods</a></li>
+<li><a href="#report-formatters" class="level-3">Report Formatters</a></li>
+<li><a href="#llm-phase" class="level-2">LLM Phase</a></li>
+<li><a href="#3-agents" class="level-3">3 Agents</a></li>
+<li><a href="#callgraphanalyzer-integration" class="level-3">CallGraphAnalyzer Integration</a></li>
+<li><a href="#graph-insights" class="level-3">Graph Insights</a></li>
+<li><a href="#data-models" class="level-2">Data Models</a></li>
+<li><a href="#configuration" class="level-2">Configuration</a></li>
+<li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
-<li><a href="#cli-commands" class="level-2">CLI Commands</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>
     </aside>

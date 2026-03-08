@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -187,116 +188,165 @@
 /select<span class="w"> </span><span class="m">06</span>
 </code></pre></div>
 
+<h2 id="architecture">Architecture<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h2>
+<p>The performance workflow uses 4 domain-agnostic components:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PerformanceProfiler</strong></td>
+<td>Pattern-based bottleneck detection</td>
+</tr>
+<tr>
+<td><strong>CallGraphAnalyzer</strong></td>
+<td>Hotspot identification via call graph in-degree/out-degree</td>
+</tr>
+<tr>
+<td><strong>ResourceAnalyzer</strong></td>
+<td>Resource usage and impact analysis</td>
+</tr>
+<tr>
+<td><strong>OptimizationAdvisor</strong></td>
+<td>Prioritized optimization recommendations</td>
+</tr>
+</tbody>
+</table></div>
+<p>Specialized handlers in <code>performance_handlers/</code> provide dedicated analysis for: bottleneck, hotspot, complexity, memory, concurrency, cache, I/O, and inline queries.</p>
+<blockquote class="callout">
+<p><strong>Note:</strong> All analysis is domain-agnostic. Function names, memory APIs, and language-specific patterns are loaded from the active domain plugin via <code>DomainRegistry</code>. Examples below use a C codebase as illustration — actual output depends on the analyzed project.</p>
+</blockquote>
 <h2  id="complexity-analysis"><span id="complexity_analysis"></span>Complexity Analysis<a class="heading-anchor" href="#complexity-analysis" title="Link to this section">&para;</a></h2>
 <h3  id="finding-hot-functions"><span id="finding_hot_functions"></span>Finding Hot Functions<a class="heading-anchor" href="#finding-hot-functions" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Find</span><span class="w"> </span><span class="nx">functions</span><span class="w"> </span><span class="nx">with</span><span class="w"> </span><span class="nx">highest</span><span class="w"> </span><span class="nx">cyclomatic</span><span class="w"> </span><span class="nx">complexity</span>
+<p>The handler queries CPG for functions with high cyclomatic complexity (CFG-based formula: <code>M = E - N + 2</code>) and high in-degree (most called functions):</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find functions with highest cyclomatic complexity</span>
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Complexity</span><span class="w"> </span><span class="nx">Report</span><span class="w"> </span><span class="err">───────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Top</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="nx">Most</span><span class="w"> </span><span class="nx">Complex</span><span class="w"> </span><span class="nx">Functions</span><span class="p">:</span><span class="w">                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">#</span><span class="w">  </span><span class="nx">Function</span><span class="w">                    </span><span class="nx">Complexity</span><span class="w">  </span><span class="nx">Lines</span><span class="w">  </span><span class="nx">File</span><span class="w">      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">───────────────────────────────────────────────────────────</span><span class="w"> </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">1</span><span class="w">  </span><span class="nx">exec_simple_query</span><span class="w">           </span><span class="mi">47</span><span class="w">          </span><span class="mi">234</span><span class="w">    </span><span class="nx">postgres</span><span class="p">.</span><span class="nx">c</span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">2</span><span class="w">  </span><span class="nx">ExecInitNode</span><span class="w">                </span><span class="mi">32</span><span class="w">          </span><span class="mi">189</span><span class="w">    </span><span class="nx">execProc</span><span class="p">..</span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">3</span><span class="w">  </span><span class="nx">parse_analyze</span><span class="w">               </span><span class="mi">28</span><span class="w">          </span><span class="mi">156</span><span class="w">    </span><span class="nx">analyze</span><span class="p">.</span><span class="nx">c</span><span class="w"> </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">4</span><span class="w">  </span><span class="nx">standard_ProcessUtility</span><span class="w">     </span><span class="mi">26</span><span class="w">          </span><span class="mi">312</span><span class="w">    </span><span class="nx">utility</span><span class="p">.</span><span class="nx">c</span><span class="w"> </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">5</span><span class="w">  </span><span class="nx">heap_insert</span><span class="w">                 </span><span class="mi">24</span><span class="w">          </span><span class="mi">178</span><span class="w">    </span><span class="nx">heapam</span><span class="p">.</span><span class="nx">c</span><span class="w">  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Average</span><span class="w"> </span><span class="nx">complexity</span><span class="p">:</span><span class="w"> </span><span class="m m-Double">8.4</span><span class="w">                                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Functions</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="w"> </span><span class="mi">23</span><span class="w">                                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Functions</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">30</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="w">                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">╰──────────────────────────────────────────────────────────────╯</span>
+╭─────────────── Complexity Report ───────────────────────────╮
+│                                                              │
+│  Top Complex Functions (by cyclomatic complexity):           │
+│                                                              │
+│  #  Function                    Complexity  LOC    File      │
+│  ─────────────────────────────────────────────────────────── │
+│  1  process_request              42          287    server.c  │
+│  2  dispatch_command             31          195    cmd.c     │
+│  3  parse_expression             27          163    parser.c  │
+│  4  validate_input               25          312    input.c   │
+│  5  build_index                  22          178    index.c   │
+│                                                              │
+│  Threshold: high_complexity = 20                             │
+│  Functions above threshold: 23                               │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h3  id="deep-nesting-detection"><span id="deep_nesting_detection"></span>Deep Nesting Detection<a class="heading-anchor" href="#deep-nesting-detection" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find functions with deep loop nesting</span>
+<p>Nesting depth is analyzed through cyclomatic complexity and CFG structure:</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find functions with deep nesting</span>
 
 ╭─────────────── Nesting Analysis ────────────────────────────╮
 │                                                              │
-│  Functions with Nesting Depth &gt; 4:                           │
+│  Functions with high nesting and complexity:                 │
 │                                                              │
-│  🔴 join_search_one_level()     depth: 6                     │
-│     Location: src/backend/optimizer/path/joinrels.c:89       │
-│     Pattern: Triple-nested loops with conditions             │
-│     Impact: O(n³) complexity in worst case                   │
+│  process_request()        complexity: 42                     │
+│     File: src/server.c:89                                    │
+│     Pattern: Nested loops with conditional branches          │
 │                                                              │
-│  🟡 ExecHashJoinImpl()          depth: 5                     │
-│     Location: src/backend/executor/nodeHashjoin.c:234        │
-│     Pattern: Nested loop with retry logic                    │
+│  dispatch_command()       complexity: 31                     │
+│     File: src/cmd.c:234                                      │
+│     Pattern: Switch with nested conditions                   │
 │                                                              │
 │  Optimization suggestions available for 12 functions         │
 │                                                              │
 ╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
+<h2  id="call-graph-analysis"><span id="call_graph_analysis"></span>Call Graph Analysis<a class="heading-anchor" href="#call-graph-analysis" title="Link to this section">&para;</a></h2>
+<h3  id="hotspots-in-degree"><span id="hotspots_in_degree"></span>Hotspots (In-Degree)<a class="heading-anchor" href="#hotspots-in-degree" title="Link to this section">&para;</a></h3>
+<p>The handler identifies hotspot functions using <strong>static call graph analysis</strong> — counting the number of distinct callers (in-degree) from the <code>edges_call</code> CPG table. This is a structural metric, not dynamic execution profiling:</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find most called functions</span>
+
+╭─────────────── Call Graph Hotspots ────────────────────────╮
+│                                                              │
+│  Top Functions by In-Degree (number of callers):            │
+│                                                              │
+│  Function                 Callers    Role                    │
+│  ────────────────────────────────────────────────────────────│
+│  validate_input            87        Utility                 │
+│  log_event                 64        Logging                 │
+│  alloc_buffer              51        Memory                  │
+│  format_output             43        Formatting              │
+│                                                              │
+│  Functions with high out-degree (calling many others):      │
+│  process_request           34 callees                        │
+│  dispatch_command          28 callees                        │
+│                                                              │
+│  Graph metrics: PageRank, betweenness centrality            │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+</code></pre></div>
+
+<h3  id="critical-paths"><span id="critical_paths"></span>Critical Paths<a class="heading-anchor" href="#critical-paths" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Show</span><span class="w"> </span><span class="n">critical</span><span class="w"> </span><span class="n">execution</span><span class="w"> </span><span class="n">paths</span>
+
+<span class="err">╭───────────────</span><span class="w"> </span><span class="n">Critical</span><span class="w"> </span><span class="n">Path</span><span class="w"> </span><span class="n">Analysis</span><span class="w"> </span><span class="err">────────────────────╮</span>
+<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Betweenness</span><span class="w"> </span><span class="n">centrality</span><span class="w"> </span><span class="n">identifies</span><span class="w"> </span><span class="n">bottleneck</span><span class="w"> </span><span class="n">functions</span><span class="w">     </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">that</span><span class="w"> </span><span class="n">appear</span><span class="w"> </span><span class="n">on</span><span class="w"> </span><span class="n">many</span><span class="w"> </span><span class="n">shortest</span><span class="w"> </span><span class="n">paths</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">call</span><span class="w"> </span><span class="n">graph</span><span class="p">:</span><span class="w">      </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="mf">1.</span><span class="w"> </span><span class="n">dispatch_command</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">process_request</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">validate_input</span><span class="w">     </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="mf">2.</span><span class="w"> </span><span class="n">main</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">init_server</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">load_config</span><span class="w">                        </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Functions</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">high</span><span class="w"> </span><span class="n">betweenness</span><span class="w"> </span><span class="n">are</span><span class="w"> </span><span class="n">architectural</span><span class="w">          </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">hotspots</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="n">optimizing</span><span class="w"> </span><span class="n">them</span><span class="w"> </span><span class="n">has</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">broadest</span><span class="w"> </span><span class="n">impact</span><span class="o">.</span><span class="w">        </span><span class="err">│</span>
+<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
+<span class="err">╰──────────────────────────────────────────────────────────────╯</span>
+</code></pre></div>
+
 <h2  id="memory-analysis"><span id="memory_analysis"></span>Memory Analysis<a class="heading-anchor" href="#memory-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="allocation-patterns"><span id="allocation_patterns"></span>Allocation Patterns<a class="heading-anchor" href="#allocation-patterns" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Find functions that allocate large amounts of memory
+<p>Memory analysis uses domain plugin functions to find allocation/deallocation patterns. The specific APIs searched depend on the active domain (e.g., <code>malloc</code>/<code>free</code> for C, <code>palloc</code>/<code>pfree</code> for PostgreSQL, <code>new</code>/<code>delete</code> for C++):</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find memory allocation hotspots</span>
 
 ╭─────────────── Memory Allocation Analysis ──────────────────╮
 │                                                              │
-│  High Allocation Functions:                                  │
+│  Memory Management Functions Found: 15                      │
 │                                                              │
-│  Function                   Allocations  Context              │
+│  Function                   Type          File               │
 │  ────────────────────────────────────────────────────────────│
-│  ExecHashTableCreate        palloc x 15  HashMemoryContext   │
-│  MakeTupleTableSlot         palloc x 8   Per-tuple           │
-│  BuildTupleHashTable        palloc x 12  HashMemoryContext   │
+│  alloc_buffer               allocation    memory.c           │
+│  free_buffer                deallocation  memory.c           │
+│  resize_pool                reallocation  pool.c             │
+│  create_context             context       context.c          │
 │                                                              │
-│  Memory Context Hotspots:                                    │
-│    - HashMemoryContext: 45% of allocations                   │
-│    - MessageContext: 23% of allocations                      │
-│    - PortalContext: 18% of allocations                       │
-│                                                              │
-│  Recommendation: Review HashMemoryContext usage              │
+│  Analysis includes:                                          │
+│    - Allocation functions (domain-specific)                  │
+│    - Deallocation and cleanup                                │
+│    - Context/pool management                                 │
+│    - Reallocation patterns                                   │
 │                                                              │
 ╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
-<h2  id="call-frequency-analysis"><span id="call_frequency_analysis"></span>Call Frequency Analysis<a class="heading-anchor" href="#call-frequency-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="hot-paths"><span id="hot_paths"></span>Hot Paths<a class="heading-anchor" href="#hot-paths" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find frequently called functions in query execution</span>
-
-╭─────────────── Call Frequency Analysis ─────────────────────╮
-│                                                              │
-│  Hot Functions (by call count in typical query):             │
-│                                                              │
-│  Function                 Calls/Query   Cumulative           │
-│  ────────────────────────────────────────────────────────────│
-│  slot_getattr             ~10,000       Inner loop           │
-│  ExecQual                 ~5,000        Row filtering        │
-│  ExecProject              ~2,500        Projection           │
-│  ExecProcNode             ~1,000        Node dispatch        │
-│                                                              │
-│  Critical Path:                                              │
-│  ExecutorRun → ExecProcNode → ExecScan → slot_getattr        │
-│                                                              │
-│  Optimization Focus: Inner loop functions                    │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="algorithmic-patterns"><span id="algorithmic_patterns"></span>Algorithmic Patterns<a class="heading-anchor" href="#algorithmic-patterns" title="Link to this section">&para;</a></h2>
-<h3  id="on²-and-worse"><span id="on²_and_worse"></span>O(n²) and Worse<a class="heading-anchor" href="#on²-and-worse" title="Link to this section">&para;</a></h3>
+<h2  id="algorithmic-complexity-queries"><span id="algorithmic_complexity_queries"></span>Algorithmic Complexity Queries<a class="heading-anchor" href="#algorithmic-complexity-queries" title="Link to this section">&para;</a></h2>
+<p>When the query mentions keywords like <code>quadratic</code>, <code>O(n²)</code>, <code>nested</code>, or <code>cognitive</code>, the handler routes to the complexity sub-handler. This combines cyclomatic complexity data with memory function analysis from the domain plugin to identify functions likely to exhibit poor scaling:</p>
 <div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find potential O(n²) patterns</span>
 
-╭─────────────── Algorithmic Complexity ──────────────────────╮
+╭─────────────── Complexity-Based Analysis ─────────────────╮
 │                                                              │
-│  Potentially Quadratic Patterns:                             │
+│  Functions with high complexity (potential scaling issues):  │
 │                                                              │
-│  🔴 list_member() in loop                                    │
-│     Location: src/backend/catalog/dependency.c:456           │
-│     Pattern: Linear search in loop                           │
-│     Fix: Use hash table for membership testing               │
+│  process_request()     complexity: 42                        │
+│     High cyclomatic complexity suggests nested loops         │
 │                                                              │
-│  🟡 bsearch in nested loop                                   │
-│     Location: src/backend/optimizer/path/costsize.c:789      │
-│     Pattern: O(n log n) per iteration                        │
-│     Current complexity: O(n² log n)                          │
+│  build_index()         complexity: 22                        │
+│     Multiple nested iterations detected                      │
 │                                                              │
-│  Total patterns found: 8                                     │
+│  Note: Analysis uses cyclomatic complexity and call graph   │
+│  metrics as proxies for algorithmic complexity.              │
+│  Manual review recommended for confirmed O(n²) patterns.    │
 │                                                              │
 ╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
@@ -304,11 +354,12 @@
 <h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
 <ul>
 <li>&ldquo;Find functions with high complexity&rdquo;</li>
-<li>&ldquo;Show memory allocation hotspots&rdquo;</li>
-<li>&ldquo;Find O(n²) patterns&rdquo;</li>
-<li>&ldquo;What are the most frequently called functions?&rdquo;</li>
+<li>&ldquo;Show most called functions&rdquo;</li>
+<li>&ldquo;Find memory allocation hotspots&rdquo;</li>
+<li>&ldquo;What are the hotspot functions by in-degree?&rdquo;</li>
 <li>&ldquo;Find functions with deep nesting&rdquo;</li>
 <li>&ldquo;Show critical execution paths&rdquo;</li>
+<li>&ldquo;Find potential quadratic patterns&rdquo;</li>
 </ul>
 <h2  id="metrics-reference"><span id="metrics_reference"></span>Metrics Reference<a class="heading-anchor" href="#metrics-reference" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
@@ -316,29 +367,29 @@
 <tr>
 <th>Metric</th>
 <th>Threshold</th>
-<th>Action</th>
+<th>Source</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Cyclomatic complexity</td>
 <td>&gt; 20</td>
-<td>Consider splitting</td>
+<td><code>ThresholdConfig.high_complexity</code></td>
 </tr>
 <tr>
-<td>Nesting depth</td>
-<td>&gt; 4</td>
-<td>Refactor loops</td>
+<td>Function size</td>
+<td>&gt; 500 lines</td>
+<td><code>ThresholdConfig.loc_very_large</code></td>
 </tr>
 <tr>
-<td>Function length</td>
-<td>&gt; 200 lines</td>
-<td>Extract methods</td>
+<td>In-degree (callers)</td>
+<td>&gt; 3</td>
+<td><code>ThresholdConfig.min_in_degree</code></td>
 </tr>
 <tr>
-<td>Allocations per call</td>
-<td>&gt; 10</td>
-<td>Review memory usage</td>
+<td>Impact score</td>
+<td>&gt; 0.7</td>
+<td><code>ThresholdConfig.high_impact</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -366,7 +417,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/06-performance.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -377,15 +428,15 @@
       <ul class="doc-toc-list">
         <li><a href="#scenario-06-performance-analysis" class="level-1">Scenario 06: Performance Analysis</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
+<li><a href="#architecture" class="level-2">Architecture</a></li>
 <li><a href="#complexity-analysis" class="level-2">Complexity Analysis</a></li>
 <li><a href="#finding-hot-functions" class="level-3">Finding Hot Functions</a></li>
 <li><a href="#deep-nesting-detection" class="level-3">Deep Nesting Detection</a></li>
+<li><a href="#call-graph-analysis" class="level-2">Call Graph Analysis</a></li>
+<li><a href="#hotspots-in-degree" class="level-3">Hotspots (In-Degree)</a></li>
+<li><a href="#critical-paths" class="level-3">Critical Paths</a></li>
 <li><a href="#memory-analysis" class="level-2">Memory Analysis</a></li>
-<li><a href="#allocation-patterns" class="level-3">Allocation Patterns</a></li>
-<li><a href="#call-frequency-analysis" class="level-2">Call Frequency Analysis</a></li>
-<li><a href="#hot-paths" class="level-3">Hot Paths</a></li>
-<li><a href="#algorithmic-patterns" class="level-2">Algorithmic Patterns</a></li>
-<li><a href="#on²-and-worse" class="level-3">O(n²) and Worse</a></li>
+<li><a href="#algorithmic-complexity-queries" class="level-2">Algorithmic Complexity Queries</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#metrics-reference" class="level-2">Metrics Reference</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>

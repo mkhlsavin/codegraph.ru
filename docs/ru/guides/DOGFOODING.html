@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Обзор</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Руководство по настройке</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Руководство по установке</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Начало работы</a></li>
       </ul>
     </div>
 
@@ -91,10 +92,10 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
-        <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html" class="active">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
@@ -113,10 +114,10 @@
         <li><a href="06-performance.html">Сценарий 06: Анализ производительности</a></li>
         <li><a href="07-test-coverage.html">Сценарий 07: Покрытие тестами</a></li>
         <li><a href="08-compliance.html">Сценарий 08: Проверка соответствия</a></li>
-        <li><a href="09-code-review.html">Сценарий 09: Проверка кода</a></li>
+        <li><a href="09-code-review.html">Сценарий 09: Обзор кода</a></li>
         <li><a href="10-cross-repo.html">Сценарий 10: Межрепозиторный анализ</a></li>
         <li><a href="11-architecture.html">Сценарий 11: Анализ архитектуры</a></li>
-        <li><a href="12-tech-debt.html">Сценарий 12: Оценка технического долга</a></li>
+        <li><a href="12-tech-debt.html">Сценарий 12: Технический долг</a></li>
         <li><a href="13-mass-refactoring.html">Сценарий 13: Массовый рефакторинг</a></li>
         <li><a href="14-incident-response.html">Сценарий 14: Реагирование на инциденты ИБ</a></li>
         <li><a href="15-debugging.html">Сценарий 15: Поддержка отладки</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Сценарий 18: Оптимизация кода</a></li>
         <li><a href="19-standards-check.html">Сценарий 19: Проверка по стандартам</a></li>
         <li><a href="20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
-        <li><a href="21-pattern-search.html">Сценарий 21: Структурный поиск шаблонов</a></li>
+        <li><a href="21-pattern-search.html">Структурный поиск шаблонов</a></li>
         <li><a href="composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
@@ -179,7 +180,7 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="rukovodstvo-po-samoanalizu-analiz-kommitov-na-baze-cpg"><span id="rukovodstvo_po_samoanalizu_analiz_kommitov_na_baze_cpg"></span>Руководство по самоанализу: анализ коммитов на базе CPG<a class="heading-anchor" href="#rukovodstvo-po-samoanalizu-analiz-kommitov-na-baze-cpg" title="Link to this section">&para;</a></h1>
-<p>CodeGraph анализирует собственную кодовую базу через граф свойств кода (CPG) после каждого коммита, создавая цикл обратной связи <strong>Планирование-Действие-Проверка</strong>. Claude Code получает метрики качества, данные о зоне поражения и сравнение до/после как контекст сразу после коммита.</p>
+<p>CodeGraph анализирует собственную кодовую базу через граф свойств кода (CPG) после каждого коммита, создавая цикл обратной связи <strong>Планирование-Действие-Проверка</strong>. Claude Code получает метрики качества, данные о зоне поражения, анализ влияния на интерфейсы и сравнение до/после как контекст сразу после коммита.</p>
 <h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#kak-eto-rabotaet">Как это работает</a></li>
@@ -191,12 +192,29 @@
 <li><a href="#arhitektura-konveyera">Архитектура конвейера</a></li>
 <li><a href="#potok-dannyh">Поток данных</a></li>
 <li><a href="#byudzhet-ogranicheniy-po-vremeni">Бюджет ограничений по времени</a></li>
-<li><a href="#aktualnost-cpg-i-polnyy-pereparsing">Актуальность CPG и полный перепарсинг</a></li>
+<li><a href="#aktualnost-cpg-i-avtomaticheskoe-obnovlenie">Актуальность CPG и автоматическое обновление</a></li>
 <li><a href="#deduplikatsiya-metodov">Дедупликация методов</a></li>
 <li><a href="#delta-otchyot">Дельта-отчёт</a></li>
+<li><a href="#obnaruzhenie-vliyaniya-na-interfeysy">Обнаружение влияния на интерфейсы</a></li>
+<li><a href="#mezhmodulnye-preduprezhdeniya">Межмодульные предупреждения</a></li>
+<li><a href="#delta-pokrytiya-istoriy">Дельта покрытия историй</a></li>
+<li><a href="#infrastruktura-hukov">Инфраструктура хуков</a></li>
+<li><a href="#moduli-hukov">Модули хуков</a></li>
+<li><a href="#reviewfinding-i-reviewfeedback">ReviewFinding и ReviewFeedback</a></li>
+<li><a href="#metriki-hukov">Метрики хуков</a></li>
+<li><a href="#kesh-sessii">Кеш сессии</a></li>
 <li><a href="#ustanovka">Установка</a></li>
 <li><a href="#cli-komandy">CLI-команды</a></li>
+<li><a href="#dogfood-setup">dogfood setup</a></li>
+<li><a href="#dogfood-status">dogfood status</a></li>
+<li><a href="#dogfood-analyze">dogfood analyze</a></li>
+<li><a href="#dogfood-report">dogfood report</a></li>
+<li><a href="#dogfood-validate-claims">dogfood validate-claims</a></li>
+<li><a href="#dogfood-trend">dogfood trend</a></li>
+<li><a href="#dogfood-hooks-status">dogfood hooks-status</a></li>
+<li><a href="#dogfood-validate-stories">dogfood validate-stories</a></li>
 <li><a href="#konfiguratsiya">Конфигурация</a></li>
+<li><a href="#commitreport">CommitReport</a></li>
 <li><a href="#format-otchyota">Формат отчёта</a></li>
 <li><a href="#masshtabirovanie-na-drugie-proekty">Масштабирование на другие проекты</a></li>
 <li><a href="#ustranenie-nepoladok">Устранение неполадок</a></li>
@@ -211,7 +229,7 @@
 <p><strong>Git-хуки</strong> запускают обновление CPG после каждого коммита, поддерживая базу данных в синхронизации с кодом.</p>
 </li>
 <li>
-<p><strong>Хуки Claude Code</strong> срабатывают после команд <code>git commit</code>, запрашивают CPG по изменённым методам, вычисляют метрики качества и зону поражения, затем внедряют отчёт обратно в диалог как дополнительный контекст.</p>
+<p><strong>Хуки Claude Code</strong> срабатывают после команд <code>git commit</code>, запрашивают CPG по изменённым методам, вычисляют метрики качества, зону поражения, анализ влияния на интерфейсы и межмодульные предупреждения, затем внедряют отчёт обратно в диалог как дополнительный контекст.</p>
 </li>
 </ol>
 <p>Результат: каждый коммит мгновенно получает оценку качества без выхода из IDE и запуска отдельных инструментов.</p>
@@ -223,36 +241,42 @@ Claude: git add src/intent/classifier.py &amp;&amp; git commit -m &quot;refactor
 </code></pre></div>
 
 <p>Хук PostToolUse срабатывает автоматически и внедряет отчёт:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">## Commit Analysis Report</span>
-<span class="o">**</span><span class="n">Summary</span><span class="o">:**</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="n">files</span><span class="p">,</span><span class="w"> </span><span class="mi">45</span><span class="w"> </span><span class="n">methods</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="n">high</span><span class="o">-</span><span class="n">CC</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="n">TODO</span><span class="o">/</span><span class="n">FIXME</span><span class="p">,</span><span class="w"> </span><span class="mi">128</span><span class="w"> </span><span class="n">affected</span><span class="w"> </span><span class="n">callers</span>
-<span class="o">**</span><span class="n">CPG</span><span class="w"> </span><span class="k">status</span><span class="o">:**</span><span class="w"> </span><span class="n">fresh</span>
+<div class="highlight"><pre><span></span><code><span class="gu">## Commit Analysis Report</span>
+<span class="gs">**Summary:**</span> 1 files, 45 methods, 2 high-CC, 3 TODO/FIXME, 128 affected callers
+<span class="gs">**CPG status:**</span> fresh
 
-<span class="o">**</span><span class="n">Impact</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">changes</span><span class="o">:**</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_get_fallback_domain`</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">29</span><span class="o">-&gt;</span><span class="mi">8</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">21</span><span class="p">),</span><span class="w"> </span><span class="n">FanOut</span><span class="w"> </span><span class="mi">18</span><span class="o">-&gt;</span><span class="mi">5</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">13</span><span class="p">)</span>
+<span class="gs">**Impact of changes:**</span>
+<span class="k">-</span><span class="w"> </span><span class="sb">`_get_fallback_domain`</span>: CC 29-&gt;8 (-21), FanOut 18-&gt;5 (-13)
 
-<span class="o">**</span><span class="n">High</span><span class="w"> </span><span class="n">complexity</span><span class="w"> </span><span class="n">methods</span><span class="o">:**</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`classify`</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">:</span><span class="w"> </span><span class="mi">17</span><span class="p">)</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_score_domain`</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">:</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span>
+<span class="gs">**High complexity methods:**</span>
+<span class="k">-</span><span class="w"> </span><span class="sb">`classify`</span> (CC: 17)
+<span class="k">-</span><span class="w"> </span><span class="sb">`_score_domain`</span> (CC: 16)
 
-<span class="o">**</span><span class="n">Blast</span><span class="w"> </span><span class="n">radius</span><span class="o">:**</span><span class="w"> </span><span class="mi">128</span><span class="w"> </span><span class="n">callers</span><span class="w"> </span><span class="n">affected</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`classify`</span><span class="w"> </span><span class="n">called</span><span class="w"> </span><span class="k">by</span><span class="o">:</span><span class="w"> </span><span class="n n-Quoted">`run_intent_classifier`</span><span class="p">,</span><span class="w"> </span><span class="n n-Quoted">`IntentBenchmark._evaluate_single`</span><span class="w"> </span><span class="o">+</span><span class="mi">126</span><span class="w"> </span><span class="n">more</span>
+<span class="gs">**Blast radius:**</span> 128 callers affected
+<span class="k">-</span><span class="w"> </span><span class="sb">`classify`</span> called by: <span class="sb">`run_intent_classifier`</span>, <span class="sb">`IntentBenchmark._evaluate_single`</span> +126 more
+
+<span class="gs">**Interface changes detected:**</span>
+<span class="k">-</span><span class="w"> </span><span class="gs">**CLI**</span>: <span class="sb">`src/cli/intent_commands.py`</span> (<span class="sb">`add_intent_commands`</span>, <span class="sb">`_run_classify`</span>)
+
+<span class="gs">**Cross-module alert**</span> — related interfaces may need updates:
+<span class="k">-</span><span class="w"> </span>Changed CLI → check MCP: <span class="sb">`codegraph_intent`</span>, <span class="sb">`register_intent_tools`</span>
 </code></pre></div>
 
-<p>Claude видит этот контекст и может отреагировать: &ldquo;Рефакторинг снизил сложность <code>_get_fallback_domain</code> с 29 до 8. Два метода всё ещё имеют CC&gt;10: <code>classify</code> и <code>_score_domain</code>.&rdquo;</p>
+<p>Claude видит этот контекст и может отреагировать: &ldquo;Рефакторинг снизил сложность <code>_get_fallback_domain</code> с 29 до 8. Два метода всё ещё имеют CC&gt;10: <code>classify</code> и <code>_score_domain</code>. CLI был изменён — проверьте, нужно ли обновить инструмент MCP.&rdquo;</p>
 <p><strong>Что запускает хук:</strong> Любая команда <code>git commit</code>, выполненная через инструмент Bash. Хук обнаруживает <code>"git commit"</code> в строке команды. Другие Bash-команды (<code>git status</code>, <code>ls</code>) игнорируются.</p>
 <p><strong>Что НЕ запускает хук:</strong> Прямые коммиты из терминала вне Claude Code, <code>git commit --amend</code>, коммиты через другие инструменты.</p>
 <h3  id="stsenariy-2-poisk-i-ispravlenie-problem-kachestva"><span id="stsenariy_2_poisk_i_ispravlenie_problem_kachestva"></span>Сценарий 2: Поиск и исправление проблем качества<a class="heading-anchor" href="#stsenariy-2-poisk-i-ispravlenie-problem-kachestva" title="Link to this section">&para;</a></h3>
 <p>Используйте CPG-запросы для поиска целей по улучшению качества, затем исправляйте их с обратной связью от конвейера:</p>
-<div class="highlight"><pre><span></span><code><span class="err">Вы</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Запроси CPG для методов с CC &gt; 15 и флагами TODO/FIXME в src/workflow/&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="err">выполняет</span><span class="w"> </span><span class="err">запрос</span><span class="w"> </span><span class="err">к</span><span class="w"> </span><span class="n">DuckDB</span><span class="p">]</span>
-<span class="w">  </span><span class="err">Найдено</span><span class="o">:</span><span class="w"> </span><span class="n">_get_fallback_domain</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">=</span><span class="mi">29</span><span class="p">,</span><span class="w"> </span><span class="n">TODO</span><span class="p">),</span><span class="w"> </span><span class="n">PolicyViolationsHandler</span><span class="p">.</span><span class="n">handle</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">=</span><span class="mi">68</span><span class="p">,</span><span class="w"> </span><span class="n">TODO</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code>Вы: &quot;Запроси CPG для методов с CC &gt; 15 и флагами TODO/FIXME в src/workflow/&quot;
+Claude: [выполняет запрос к DuckDB]
+  Найдено: _get_fallback_domain (CC=29, TODO), PolicyViolationsHandler.handle (CC=68, TODO)
 
-<span class="err">Вы</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Отрефактори _get_fallback_domain для снижения сложности&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="err">извлекает</span><span class="w"> </span><span class="err">шаблоны</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="err">таблицу</span><span class="w"> </span><span class="err">данных</span><span class="p">,</span><span class="w"> </span><span class="err">заменяет</span><span class="w"> </span><span class="err">цепочку</span><span class="w"> </span><span class="nf">if</span><span class="o">/</span><span class="n">else</span><span class="w"> </span><span class="err">на</span><span class="w"> </span><span class="err">цикл</span><span class="p">]</span>
+Вы: &quot;Отрефактори _get_fallback_domain для снижения сложности&quot;
+Claude: [извлекает шаблоны в таблицу данных, заменяет цепочку if/else на цикл]
 
-<span class="err">Вы</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Закоммить&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="n">git</span><span class="w"> </span><span class="n">commit</span><span class="w"> </span><span class="o">-</span><span class="n">m</span><span class="w"> </span><span class="s">&quot;refactor: extract fallback patterns to class-level table&quot;</span>
-<span class="w">  </span><span class="o">-&gt;</span><span class="w"> </span><span class="err">Хук</span><span class="w"> </span><span class="err">срабатывает</span><span class="p">,</span><span class="w"> </span><span class="err">отчёт</span><span class="w"> </span><span class="err">показывает</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">29</span><span class="o">-&gt;</span><span class="mi">8</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">21</span><span class="p">)</span>
+Вы: &quot;Закоммить&quot;
+Claude: git commit -m &quot;refactor: extract fallback patterns to class-level table&quot;
+  -&gt; Хук срабатывает, отчёт показывает: CC 29-&gt;8 (-21)
 </code></pre></div>
 
 <p>Это полный цикл Планирование-Действие-Проверка:
@@ -261,13 +285,13 @@ Claude: git add src/intent/classifier.py &amp;&amp; git commit -m &quot;refactor
 3. <strong>Проверка</strong>: Хук подтверждает улучшение конкретными метриками</p>
 <h3  id="stsenariy-3-validatsiya-vliyaniya-refaktoringa"><span id="stsenariy_3_validatsiya_vliyaniya_refaktoringa"></span>Сценарий 3: Валидация влияния рефакторинга<a class="heading-anchor" href="#stsenariy-3-validatsiya-vliyaniya-refaktoringa" title="Link to this section">&para;</a></h3>
 <p>Перед крупным рефакторингом проверьте зону поражения:</p>
-<div class="highlight"><pre><span></span><code><span class="err">Вы</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Какова зона поражения при изменении HierarchicalIntentClassifier.classify?&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="err">запрашивает</span><span class="w"> </span><span class="n">call_containment</span><span class="p">]</span>
-<span class="w">  </span><span class="mi">213</span><span class="w"> </span><span class="err">прямых</span><span class="w"> </span><span class="err">вызывающих</span><span class="w"> </span><span class="err">методов</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="err">рабочем</span><span class="w"> </span><span class="err">коде</span><span class="w"> </span><span class="err">и</span><span class="w"> </span><span class="err">тестах</span>
+<div class="highlight"><pre><span></span><code>Вы: &quot;Какова зона поражения при изменении HierarchicalIntentClassifier.classify?&quot;
+Claude: [запрашивает call_containment]
+  213 прямых вызывающих методов в рабочем коде и тестах
 
-<span class="err">Вы</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Продолжай рефакторинг&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="err">вносит</span><span class="w"> </span><span class="err">изменения</span><span class="p">,</span><span class="w"> </span><span class="err">коммитит</span><span class="p">]</span>
-<span class="w">  </span><span class="o">-&gt;</span><span class="w"> </span><span class="err">Хук</span><span class="w"> </span><span class="err">показывает</span><span class="o">:</span><span class="w"> </span><span class="mi">213</span><span class="w"> </span><span class="err">затронутых</span><span class="w"> </span><span class="err">вызывающих</span><span class="p">,</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="err">без</span><span class="w"> </span><span class="err">изменений</span><span class="p">,</span><span class="w"> </span><span class="err">регрессий</span><span class="w"> </span><span class="err">нет</span>
+Вы: &quot;Продолжай рефакторинг&quot;
+Claude: [вносит изменения, коммитит]
+  -&gt; Хук показывает: 213 затронутых вызывающих, CC без изменений, регрессий нет
 </code></pre></div>
 
 <p>Отчёт о зоне поражения помогает оценить риск изменений до их применения.</p>
@@ -281,42 +305,60 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <span class="c1"># Генерация полного отчёта о качестве</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span>--format<span class="w"> </span>markdown
+
+<span class="c1"># Валидация числовых утверждений в документации</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span>--path<span class="w"> </span>docs/
+
+<span class="c1"># Показать тренд качества по последним коммитам</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span>--commits<span class="w"> </span><span class="m">20</span>
 </code></pre></div>
 
 <h2  id="arhitektura-konveyera"><span id="arhitektura_konveyera"></span>Архитектура конвейера<a class="heading-anchor" href="#arhitektura-konveyera" title="Link to this section">&para;</a></h2>
 <h3  id="potok-dannyh"><span id="potok_dannyh"></span>Поток данных<a class="heading-anchor" href="#potok-dannyh" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">git</span><span class="w"> </span><span class="n">commit</span><span class="w"> </span><span class="p">(</span><span class="err">через</span><span class="w"> </span><span class="err">инструмент</span><span class="w"> </span><span class="n">Bash</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="n">Claude</span><span class="w"> </span><span class="n">Code</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="n">v</span>
-<span class="err">Хук</span><span class="w"> </span><span class="n">PostToolUse</span><span class="w"> </span><span class="err">срабатывает</span><span class="w"> </span><span class="p">(.</span><span class="n">claude</span><span class="o">/</span><span class="n">hooks</span><span class="o">/</span><span class="n">commit_analysis</span><span class="p">.</span><span class="n">py</span><span class="p">,</span><span class="w"> </span><span class="err">время</span><span class="w"> </span><span class="err">ожидания</span><span class="w"> </span><span class="mi">60</span><span class="err">с</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="err">Фаза</span><span class="w"> </span><span class="mi">1</span><span class="o">:</span><span class="w"> </span><span class="err">Проверка</span><span class="w"> </span><span class="err">актуальности</span><span class="w"> </span><span class="n">CPG</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Запрос</span><span class="w"> </span><span class="n">cpg_git_state</span><span class="p">.</span><span class="n">commit_hash</span><span class="p">,</span><span class="w"> </span><span class="err">сравнение</span><span class="w"> </span><span class="err">с</span><span class="w"> </span><span class="n">git</span><span class="w"> </span><span class="n">rev</span><span class="o">-</span><span class="nf">parse</span><span class="w"> </span><span class="n">HEAD</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="err">Фаза</span><span class="w"> </span><span class="mf">1.5</span><span class="o">:</span><span class="w"> </span><span class="err">Захват</span><span class="w"> </span><span class="err">метрик</span><span class="w"> </span><span class="err">до</span><span class="w"> </span><span class="err">обновления</span><span class="w"> </span><span class="p">(</span><span class="err">для</span><span class="w"> </span><span class="err">дельта</span><span class="o">-</span><span class="err">отчёта</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Запрос</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">изменённых</span><span class="w"> </span><span class="err">файлов</span><span class="w"> </span><span class="err">ДО</span><span class="w"> </span><span class="err">обновления</span><span class="w"> </span><span class="n">CPG</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Сохранение</span><span class="w"> </span><span class="p">{</span><span class="n">full_name</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="n">cc</span><span class="p">,</span><span class="w"> </span><span class="n">fan_out</span><span class="p">,</span><span class="w"> </span><span class="p">...}}</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">последующего</span><span class="w"> </span><span class="err">сравнения</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="err">Фаза</span><span class="w"> </span><span class="mi">2</span><span class="o">:</span><span class="w"> </span><span class="err">Обновление</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="p">(</span><span class="o">--</span><span class="n">force</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">точных</span><span class="w"> </span><span class="err">метрик</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">gocpg</span><span class="w"> </span><span class="n">update</span><span class="w"> </span><span class="o">--</span><span class="n">force</span><span class="w"> </span><span class="o">--</span><span class="n">input</span><span class="o">=&lt;</span><span class="n">source</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="kr">output</span><span class="o">=&lt;</span><span class="n">db</span><span class="o">&gt;</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Полный</span><span class="w"> </span><span class="err">перепарсинг</span><span class="w"> </span><span class="err">гарантирует</span><span class="w"> </span><span class="err">вычисление</span><span class="w"> </span><span class="n">CC</span><span class="o">/</span><span class="n">fan_in</span><span class="o">/</span><span class="n">fan_out</span><span class="w"> </span><span class="err">через</span><span class="w"> </span><span class="n">MethodMetricsPass</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="err">Фаза</span><span class="w"> </span><span class="mi">3</span><span class="o">:</span><span class="w"> </span><span class="err">Анализ</span><span class="w"> </span><span class="err">качества</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">зона</span><span class="w"> </span><span class="err">поражения</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Запрос</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">изменённых</span><span class="w"> </span><span class="err">файлов</span><span class="w"> </span><span class="p">(</span><span class="err">после</span><span class="w"> </span><span class="err">обновления</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Дедупликация</span><span class="w"> </span><span class="err">методов</span><span class="w"> </span><span class="p">(</span><span class="err">нормализация</span><span class="w"> </span><span class="err">слешей</span><span class="p">,</span><span class="w"> </span><span class="err">выбор</span><span class="w"> </span><span class="err">наибольшего</span><span class="w"> </span><span class="n">CC</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Сводка</span><span class="w"> </span><span class="err">качества</span><span class="o">:</span><span class="w"> </span><span class="n">high</span><span class="o">-</span><span class="n">CC</span><span class="p">,</span><span class="w"> </span><span class="n">high</span><span class="o">-</span><span class="n">fan_out</span><span class="p">,</span><span class="w"> </span><span class="n">TODO</span><span class="p">,</span><span class="w"> </span><span class="n">debug</span><span class="p">,</span><span class="w"> </span><span class="kr">deprecated</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Запрос</span><span class="w"> </span><span class="n">call_containment</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">вызывающих</span><span class="w"> </span><span class="err">изменённых</span><span class="w"> </span><span class="err">методов</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="err">Фаза</span><span class="w"> </span><span class="mi">4</span><span class="o">:</span><span class="w"> </span><span class="err">Вычисление</span><span class="w"> </span><span class="err">дельты</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Сравнение</span><span class="w"> </span><span class="err">метрик</span><span class="w"> </span><span class="err">до</span><span class="w"> </span><span class="err">и</span><span class="w"> </span><span class="err">после</span><span class="w"> </span><span class="err">обновления</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="err">Генерация</span><span class="w"> </span><span class="err">отчёта</span><span class="w"> </span><span class="err">до</span><span class="o">-&gt;</span><span class="err">после</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;CC 29-&gt;8 (-21)&quot;</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="err">Вывод</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="s">&quot;additionalContext&quot;</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;## Commit Analysis Report\n...&quot;</span><span class="p">}</span>
-<span class="w">            </span><span class="err">Внедряется</span><span class="w"> </span><span class="err">обратно</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="err">диалог</span><span class="w"> </span><span class="n">Claude</span><span class="w"> </span><span class="n">Code</span>
+<div class="highlight"><pre><span></span><code>git commit (через инструмент Bash в Claude Code)
+    |
+    v
+Хук PostToolUse срабатывает (.claude/hooks/commit_analysis.py, время ожидания 58с)
+    |
+    +-- Проверка актуальности CPG
+    |       Запрос cpg_git_state.commit_hash, сравнение с git rev-parse HEAD
+    |
+    +-- Захват метрик до обновления (для дельта-отчёта)
+    |       Запрос nodes_method для изменённых файлов ДО обновления CPG
+    |       Сохранение {full_name: {cc, fan_out, ...}} для последующего сравнения
+    |
+    +-- Обновление CPG если устарел
+    |       gocpg update --input=&lt;source&gt; --output=&lt;db&gt;
+    |
+    +-- Фаза 1: Получение изменённых файлов
+    |       git diff --name-only HEAD~1 HEAD, фильтрация по расширениям кода
+    |
+    +-- Фаза 2: Получение изменённых методов из CPG
+    |       Запрос nodes_method для изменённых файлов, дедупликация
+    |
+    +-- Фаза 3: Сводка качества
+    |       Подсчёт high-CC, high-fan_out, TODO, debug, deprecated
+    |
+    +-- Фаза 4: Зона поражения
+    |       Запрос call_containment (или nodes_call в качестве запасного варианта)
+    |
+    +-- Фаза 5: Обнаружение влияния на интерфейсы
+    |       Проверка принадлежности изменённых файлов к слоям интерфейсов (CLI, REST API, TUI, MCP, ACP)
+    |
+    +-- Фаза 6: Межмодульные предупреждения
+    |       Поиск связанных функций в ДРУГИХ слоях по совпадению ключевых слов
+    |
+    +-- Фаза 7: Дельта покрытия историй
+    |       Определение изменённых слоёв и непокрытых слоёв
+    |
+    +-- Запись снимка качества (таблица cpg_quality_history)
+    |
+    +-- Вывод: {&quot;additionalContext&quot;: &quot;## Commit Analysis Report\n...&quot;}
+            Внедряется обратно в диалог Claude Code
 </code></pre></div>
 
 <h3  id="byudzhet-ogranicheniy-po-vremeni"><span id="byudzhet_ogranicheniy_po_vremeni"></span>Бюджет ограничений по времени<a class="heading-anchor" href="#byudzhet-ogranicheniy-po-vremeni" title="Link to this section">&para;</a></h3>
-<p>Хук имеет общее ограничение по времени 60 секунд с внутренними фазами:</p>
+<p>Хук имеет общее ограничение по времени 58 секунд (2с запас от лимита Claude Code в 60с):</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -337,34 +379,33 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <td>Запрос текущих метрик для изменённых файлов (для дельта-отчёта)</td>
 </tr>
 <tr>
-<td>Обновление CPG (&ndash;force)</td>
+<td>Обновление CPG если устарел</td>
 <td>40с</td>
-<td>Запуск <code>gocpg update --force</code> для полного перепарсинга с метриками</td>
+<td>Запуск <code>gocpg update --input=&lt;source&gt; --output=&lt;db&gt;</code></td>
 </tr>
 <tr>
-<td>Анализ качества</td>
-<td>8с</td>
-<td>Запрос <code>nodes_method</code> для CC, TODO, debug, deprecated</td>
-</tr>
-<tr>
-<td>Зона поражения</td>
-<td>8с</td>
-<td>Запрос <code>call_containment</code> для прямых вызывающих</td>
+<td>Фазы 1–7</td>
+<td>~15с</td>
+<td>Изменённые файлы, методы, качество, зона поражения, интерфейсы, межмодульные, истории</td>
 </tr>
 </tbody>
 </table></div>
 <p>Если какая-либо фаза превышает бюджет, хук корректно снижает функциональность: выдаёт имеющиеся данные или возвращает пустой <code>{}</code>.</p>
-<h3  id="aktualnost-cpg-i-polnyy-pereparsing"><span id="aktualnost_cpg_i_polnyy_pereparsing"></span>Актуальность CPG и полный перепарсинг<a class="heading-anchor" href="#aktualnost-cpg-i-polnyy-pereparsing" title="Link to this section">&para;</a></h3>
-<p>Хук использует флаг <code>--force</code> при запуске <code>gocpg update</code>. Это запускает полный перепарсинг вместо инкрементального обновления. Причина:</p>
-<ul>
-<li>
-<p><strong>Инкрементальное обновление</strong> (<code>gocpg update</code> без <code>--force</code>): Создаёт новые записи методов, но пропускает <code>MethodMetricsPass</code>. Новые записи имеют <code>cyclomatic_complexity=0</code>, <code>fan_in=0</code>, <code>fan_out=0</code>. Быстро, но метрики неполные.</p>
-</li>
-<li>
-<p><strong>Полный перепарсинг</strong> (<code>gocpg update --force</code>): Запускает полный конвейер парсинга включая <code>MethodMetricsPass</code>. Все метрики вычисляются корректно. Медленнее, но точно.</p>
-</li>
-</ul>
-<p>Для самоанализа точность важнее скорости. Бюджет в 40 секунд достаточен для полного перепарсинга проектов до нескольких сотен исходных файлов.</p>
+<h3  id="aktualnost-cpg-i-avtomaticheskoe-obnovlenie"><span id="aktualnost_cpg_i_avtomaticheskoe_obnovlenie"></span>Актуальность CPG и автоматическое обновление<a class="heading-anchor" href="#aktualnost-cpg-i-avtomaticheskoe-obnovlenie" title="Link to this section">&para;</a></h3>
+<p>Хук проверяет актуальность CPG, сравнивая <code>cpg_git_state.commit_hash</code> с <code>git rev-parse HEAD</code>. Если CPG устарел, запускается <code>gocpg update</code>:</p>
+<div class="highlight"><pre><span></span><code>gocpg<span class="w"> </span>update<span class="w"> </span>--input<span class="o">=</span>&lt;source_path&gt;<span class="w"> </span>--output<span class="o">=</span>&lt;db_path&gt;
+</code></pre></div>
+
+<p>Это запускает инкрементальное обновление базы данных CPG. Класс <code>CPGFreshnessChecker</code> в <code>src/dogfooding/cpg_freshness.py</code> управляет этим процессом:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.dogfooding.cpg_freshness</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGFreshnessChecker</span>
+
+<span class="n">checker</span> <span class="o">=</span> <span class="n">CPGFreshnessChecker</span><span class="p">(</span><span class="n">db_path</span><span class="p">,</span> <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">gocpg_binary</span><span class="o">=</span><span class="s2">&quot;gocpg/gocpg.exe&quot;</span><span class="p">)</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">is_fresh</span><span class="p">()</span>           <span class="c1"># True если CPG commit == HEAD</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">commits_behind</span><span class="p">()</span>     <span class="c1"># Количество коммитов отставания CPG</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">ensure_fresh</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">40.0</span><span class="p">,</span> <span class="n">source_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>  <span class="c1"># Обновить если устарел</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>             <span class="c1"># Полный словарь статуса</span>
+</code></pre></div>
+
 <h3  id="deduplikatsiya-metodov"><span id="deduplikatsiya_metodov"></span>Дедупликация методов<a class="heading-anchor" href="#deduplikatsiya-metodov" title="Link to this section">&para;</a></h3>
 <p>GoCPG может хранить один и тот же метод с разными форматами имени файла (прямой слеш <code>src/file.py</code> vs обратный <code>src\file.py</code>). Анализатор дедуплицирует путём нормализации слешей в <code>full_name</code> и сохранения записи с наибольшим значением CC:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># До дедупликации: 2 записи для одного метода</span>
@@ -376,19 +417,159 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <h3  id="delta-otchyot"><span id="delta_otchyot"></span>Дельта-отчёт<a class="heading-anchor" href="#delta-otchyot" title="Link to this section">&para;</a></h3>
-<p>Когда CPG устарел (требует обновления), хук захватывает метрики до обновления перед запуском <code>gocpg update --force</code>, затем сравнивает с метриками после обновления. Это создаёт дельту, показывающую реальное влияние изменений:</p>
-<div class="highlight"><pre><span></span><code><span class="o">**</span><span class="n">Impact</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">changes</span><span class="o">:**</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_get_fallback_domain`</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">29</span><span class="o">-&gt;</span><span class="mi">8</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">21</span><span class="p">),</span><span class="w"> </span><span class="n">FanOut</span><span class="w"> </span><span class="mi">18</span><span class="o">-&gt;</span><span class="mi">5</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">13</span><span class="p">)</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_build_quality_summary`</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">5</span><span class="o">-&gt;</span><span class="mi">3</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+<p>Когда CPG устарел (требует обновления), хук захватывает метрики до обновления перед запуском <code>gocpg update</code>, затем сравнивает с метриками после обновления. Это создаёт дельту, показывающую реальное влияние изменений:</p>
+<div class="highlight"><pre><span></span><code><span class="gs">**Impact of changes:**</span>
+<span class="k">-</span><span class="w"> </span><span class="sb">`_get_fallback_domain`</span>: CC 29-&gt;8 (-21), FanOut 18-&gt;5 (-13)
+<span class="k">-</span><span class="w"> </span><span class="sb">`_build_quality_summary`</span>: CC 5-&gt;3 (-2)
 </code></pre></div>
 
-<p>Методы без изменений метрик пропускаются. Это помогает разработчикам сразу увидеть, улучшил или ухудшил рефакторинг качество кода.</p>
+<p>Методы без изменений метрик пропускаются.</p>
+<h3  id="obnaruzhenie-vliyaniya-na-interfeysy"><span id="obnaruzhenie_vliyaniya_na_interfeysy"></span>Обнаружение влияния на интерфейсы<a class="heading-anchor" href="#obnaruzhenie-vliyaniya-na-interfeysy" title="Link to this section">&para;</a></h3>
+<p>Анализатор отслеживает 5 слоёв интерфейсов, определённых в <code>INTERFACE_LAYERS</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Слой</th>
+<th>Шаблоны путей</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLI</td>
+<td><code>src/cli/</code></td>
+<td>CLI-команды</td>
+</tr>
+<tr>
+<td>REST API</td>
+<td><code>src/api/routers/</code></td>
+<td>API-эндпоинты</td>
+</tr>
+<tr>
+<td>TUI</td>
+<td><code>src/tui/commands/</code></td>
+<td>TUI-команды</td>
+</tr>
+<tr>
+<td>MCP</td>
+<td><code>src/mcp/tools/</code>, <code>src/mcp/</code></td>
+<td>MCP-инструменты</td>
+</tr>
+<tr>
+<td>ACP</td>
+<td><code>src/acp/server/</code>, <code>src/acp/</code></td>
+<td>ACP-обработчики</td>
+</tr>
+</tbody>
+</table></div>
+<p>Когда изменённый файл принадлежит слою интерфейса, отчёт включает секцию <strong>«Interface changes detected»</strong> со списком затронутых слоёв и методов.</p>
+<h3  id="mezhmodulnye-preduprezhdeniya"><span id="mezhmodulnye_preduprezhdeniya"></span>Межмодульные предупреждения<a class="heading-anchor" href="#mezhmodulnye-preduprezhdeniya" title="Link to this section">&para;</a></h3>
+<p>Когда файл в одном слое интерфейса изменяется, анализатор ищет связанные функции в ДРУГИХ слоях, извлекая ключевые слова из имени изменённого файла и запрашивая CPG. Например, при изменении <code>src/cli/reindex_commands.py</code> он ищет функции с &ldquo;reindex&rdquo; в имени в MCP, REST API и т.д.</p>
+<p>Отчёт включает секцию <strong>«Cross-module alert»</strong> с рекомендациями по проверке:</p>
+<div class="highlight"><pre><span></span><code><span class="gs">**Cross-module alert**</span> — related interfaces may need updates:
+<span class="k">-</span><span class="w"> </span>Changed CLI → check MCP: <span class="sb">`codegraph_reindex`</span>, <span class="sb">`register_reindex_tools`</span>
+</code></pre></div>
+
+<h3  id="delta-pokrytiya-istoriy"><span id="delta_pokrytiya_istoriy"></span>Дельта покрытия историй<a class="heading-anchor" href="#delta-pokrytiya-istoriy" title="Link to this section">&para;</a></h3>
+<p>При изменении слоёв интерфейсов анализатор определяет, какие другие слои могут потребовать обновления для поддержания паритета функциональности. Отчёт включает секцию <strong>«Story coverage check»</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="gs">**Story coverage check**</span> — verify other interfaces:
+<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`reindex`</span>), check: MCP, REST API, TUI, ACP
+</code></pre></div>
+
+<h2  id="infrastruktura-hukov"><span id="infrastruktura_hukov"></span>Инфраструктура хуков<a class="heading-anchor" href="#infrastruktura-hukov" title="Link to this section">&para;</a></h2>
+<h3  id="moduli-hukov"><span id="moduli_hukov"></span>Модули хуков<a class="heading-anchor" href="#moduli-hukov" title="Link to this section">&para;</a></h3>
+<p>Директория <code>.claude/hooks/</code> содержит хук анализа коммитов и 4 вспомогательных модуля:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Модуль</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>commit_analysis.py</code></td>
+<td>Хук PostToolUse — анализ коммитов (время ожидания 58с)</td>
+</tr>
+<tr>
+<td><code>_feedback.py</code></td>
+<td>Датаклассы <code>ReviewFinding</code> и <code>ReviewFeedback</code></td>
+</tr>
+<tr>
+<td><code>_metrics.py</code></td>
+<td>Телеметрия хуков — <code>log_hook_metric()</code>, контекстный менеджер <code>timed_hook()</code></td>
+</tr>
+<tr>
+<td><code>_utils.py</code></td>
+<td>Общие утилиты — <code>get_active_project()</code>, <code>run_gocpg_query()</code>, <code>safe_json_output()</code>, <code>load_parse_scope()</code></td>
+</tr>
+<tr>
+<td><code>_session_cache.py</code></td>
+<td>Кеш проекта с TTL 1 час</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="reviewfinding-i-reviewfeedback"><span id="reviewfinding_i_reviewfeedback"></span>ReviewFinding и ReviewFeedback<a class="heading-anchor" href="#reviewfinding-i-reviewfeedback" title="Link to this section">&para;</a></h3>
+<p>Структурированный протокол обратной связи для хуков Claude Code:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReviewFinding</span><span class="p">:</span>
+    <span class="n">file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">line</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>          <span class="c1"># &quot;complexity&quot;, &quot;dead_code&quot;, &quot;blast_radius&quot;, &quot;interface_gap&quot; и др.</span>
+    <span class="n">severity</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;info&quot;</span>  <span class="c1"># &quot;critical&quot;, &quot;high&quot;, &quot;medium&quot;, &quot;low&quot;, &quot;info&quot;</span>
+    <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">suggestion</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">metric_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">scope_limited</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># True если результат зависит от области видимости</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReviewFeedback</span><span class="p">:</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ok&quot;</span>      <span class="c1"># &quot;ok&quot;, &quot;warning&quot;, &quot;block&quot;</span>
+    <span class="n">hook_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">project</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cpg_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ReviewFinding</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">scope_disclaimer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">suppressed_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_markdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="o">...</span>  <span class="c1"># Записывает в stdout как additionalContext JSON</span>
+</code></pre></div>
+
+<h3  id="metriki-hukov"><span id="metriki_hukov"></span>Метрики хуков<a class="heading-anchor" href="#metriki-hukov" title="Link to this section">&para;</a></h3>
+<p><code>_metrics.py</code> записывает телеметрию выполнения в <code>data/hook_metrics.jsonl</code> (формат JSONL, один JSON-объект на строку):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-07T12:34:56.789Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;hook&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commit_analysis&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3250.5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;codegraph&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;cpg_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fresh&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>Контекстный менеджер <code>timed_hook()</code> автоматически замеряет длительность и записывает результат:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">timed_hook</span>
+
+<span class="k">with</span> <span class="n">timed_hook</span><span class="p">(</span><span class="s2">&quot;commit_analysis&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mctx</span><span class="p">:</span>
+    <span class="n">mctx</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;codegraph&quot;</span>
+    <span class="n">mctx</span><span class="p">[</span><span class="s2">&quot;findings_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="c1"># длительность записывается автоматически при выходе</span>
+</code></pre></div>
+
+<p>Просмотр агрегированной статистики через CLI: <code>python -m src.cli.import_commands dogfood hooks-status</code>.</p>
+<h3  id="kesh-sessii"><span id="kesh_sessii"></span>Кеш сессии<a class="heading-anchor" href="#kesh-sessii" title="Link to this section">&para;</a></h3>
+<p><code>_session_cache.py</code> кеширует активный проект в <code>.claude/.cache/session_project.json</code> с TTL 1 час для ускорения определения проекта при каждом вызове хука:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">_session_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_project_with_cache</span><span class="p">,</span> <span class="n">invalidate_cache</span>
+
+<span class="n">project</span> <span class="o">=</span> <span class="n">get_project_with_cache</span><span class="p">()</span>  <span class="c1"># Возвращает из кеша или определяет заново</span>
+<span class="n">invalidate_cache</span><span class="p">()</span>                   <span class="c1"># Принудительное переопределение</span>
+</code></pre></div>
+
 <h2 id="ustanovka">Установка<a class="heading-anchor" href="#ustanovka" title="Link to this section">&para;</a></h2>
 <h3  id="ustanovka-odnoy-komandoy"><span id="ustanovka_odnoy_komandoy"></span>Установка одной командой<a class="heading-anchor" href="#ustanovka-odnoy-komandoy" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 </code></pre></div>
 
-<p>Это устанавливает git-хуки (через gocpg) и проверяет конфигурацию хуков Claude Code.</p>
+<p>Это устанавливает git-хуки (через gocpg) и настраивает хук Claude Code.</p>
+<blockquote class="callout">
+<p><strong>Примечание:</strong> Команда <code>setup</code> записывает хук под ключом <code>SubcommandResult</code> в <code>.claude/settings.json</code>. Реальная конфигурация использует <code>PostToolUse</code> с <code>"matcher": "Bash"</code>. После запуска <code>setup</code> может потребоваться ручная корректировка ключа хука.</p>
+</blockquote>
 <h3  id="ruchnaya-ustanovka"><span id="ruchnaya_ustanovka"></span>Ручная установка<a class="heading-anchor" href="#ruchnaya-ustanovka" title="Link to this section">&para;</a></h3>
 <ol>
 <li>
@@ -414,23 +595,101 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </li>
 </ol>
 <p>Примечание: Поле <code>matcher</code> должно быть строкой (регулярное выражение), а не объектом. <code>"Bash"</code> соответствует конкретно инструменту Bash.</p>
+<p>Полный <code>.claude/settings.json</code> в рабочей конфигурации включает 5 хуков на всех точках жизненного цикла:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Точка жизненного цикла</th>
+<th>Хук</th>
+<th>Время ожидания</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UserPromptSubmit</code></td>
+<td><code>enrich_prompt.py</code></td>
+<td>15с</td>
+</tr>
+<tr>
+<td><code>SessionStart</code></td>
+<td><code>session_context.py</code></td>
+<td>10с</td>
+</tr>
+<tr>
+<td><code>Stop</code></td>
+<td><code>post_analysis.py</code></td>
+<td>10с</td>
+</tr>
+<tr>
+<td><code>PreToolUse</code></td>
+<td><code>pre_tool_use.py</code></td>
+<td>8с</td>
+</tr>
+<tr>
+<td><code>PostToolUse</code> (Bash)</td>
+<td><code>cli_error_monitor.py</code> + <code>commit_analysis.py</code></td>
+<td>5с + 60с</td>
+</tr>
+</tbody>
+</table></div>
 <h3  id="proverka-ustanovki"><span id="proverka_ustanovki"></span>Проверка установки<a class="heading-anchor" href="#proverka-ustanovki" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status
 </code></pre></div>
 
 <p>Ожидаемый вывод показывает актуальность CPG, статус хуков и путь к базе данных.</p>
 <h2  id="cli-komandy"><span id="cli_komandy"></span>CLI-команды<a class="heading-anchor" href="#cli-komandy" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Полная установка (git-хуки + хуки Claude Code)</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>LANG<span class="o">]</span>
+<p>Все команды доступны через <code>python -m src.cli.import_commands dogfood &lt;подкоманда&gt;</code>.</p>
+<h3  id="dogfood-setup"><span id="dogfood_setup"></span>dogfood setup<a class="heading-anchor" href="#dogfood-setup" title="Link to this section">&para;</a></h3>
+<p>Установка git-хуков и настройка хуков Claude Code:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>LANG<span class="o">]</span>
+</code></pre></div>
 
-<span class="c1"># Проверка актуальности CPG и статуса хуков</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<h3  id="dogfood-status"><span id="dogfood_status"></span>dogfood status<a class="heading-anchor" href="#dogfood-status" title="Link to this section">&para;</a></h3>
+<p>Проверка актуальности CPG и статуса хуков:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
 
-<span class="c1"># Запуск анализа коммита по запросу</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span><span class="o">[</span>--base-ref<span class="w"> </span>HEAD~1<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<h3  id="dogfood-analyze"><span id="dogfood_analyze"></span>dogfood analyze<a class="heading-anchor" href="#dogfood-analyze" title="Link to this section">&para;</a></h3>
+<p>Запуск анализа коммита по запросу:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span><span class="o">[</span>--base-ref<span class="w"> </span>HEAD~1<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
 
-<span class="c1"># Генерация отчёта о качестве (markdown или JSON)</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<h3  id="dogfood-report"><span id="dogfood_report"></span>dogfood report<a class="heading-anchor" href="#dogfood-report" title="Link to this section">&para;</a></h3>
+<p>Генерация отчёта о качестве (markdown или JSON):</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-validate-claims"><span id="dogfood_validate_claims"></span>dogfood validate-claims<a class="heading-anchor" href="#dogfood-validate-claims" title="Link to this section">&para;</a></h3>
+<p>Валидация числовых утверждений в документации против CPG. Извлекает числа из markdown (например, «95 обработчиков», «12 сценариев») и проверяет через SQL:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<p>Правила валидации определяются в <code>config.yaml</code> → <code>dogfooding.claims_validation.rules[]</code>. Каждое правило связывает ключевые слова (русские + английские) с SQL-запросом:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">claims_validation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
+<span class="w">  </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">keywords</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;handlers&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;обработчиков&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SELECT</span><span class="nv"> </span><span class="s">COUNT(DISTINCT</span><span class="nv"> </span><span class="s">full_name)</span><span class="nv"> </span><span class="s">FROM</span><span class="nv"> </span><span class="s">nodes_method</span><span class="nv"> </span><span class="s">WHERE</span><span class="nv"> </span><span class="s">...&quot;</span>
+<span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Scenario</span><span class="nv"> </span><span class="s">handler</span><span class="nv"> </span><span class="s">methods&quot;</span>
+</code></pre></div>
+
+<h3  id="dogfood-trend"><span id="dogfood_trend"></span>dogfood trend<a class="heading-anchor" href="#dogfood-trend" title="Link to this section">&para;</a></h3>
+<p>Показать тренд качества по последним коммитам из таблицы <code>cpg_quality_history</code>:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span><span class="o">[</span>--commits<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<p>Выводит ASCII-таблицу с колонками: Commit, Date, Methods, Avg CC, Dead, Hi-CC, TODO.</p>
+<p>Снимки качества записываются автоматически после каждого анализа коммита через <code>record_snapshot()</code> в <code>src/dogfooding/quality_history.py</code>.</p>
+<h3  id="dogfood-hooks-status"><span id="dogfood_hooks_status"></span>dogfood hooks-status<a class="heading-anchor" href="#dogfood-hooks-status" title="Link to this section">&para;</a></h3>
+<p>Показать статистику выполнения хуков из JSONL-лога метрик (<code>data/hook_metrics.jsonl</code>):</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span><span class="o">[</span>--last<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--hook<span class="w"> </span>NAME<span class="o">]</span>
+</code></pre></div>
+
+<p>Агрегирует по имени хука: запуски, ok/error/warning, процент ошибок, средняя/максимальная длительность, общее количество замечаний.</p>
+<h3  id="dogfood-validate-stories"><span id="dogfood_validate_stories"></span>dogfood validate-stories<a class="heading-anchor" href="#dogfood-validate-stories" title="Link to this section">&para;</a></h3>
+<p>Валидация покрытия интерфейсов пользовательскими историями через CPG с использованием <code>StoryValidationRunner</code>:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-stories<span class="w"> </span><span class="o">[</span>--stories<span class="w"> </span><span class="m">2</span>,8,11<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--go-db<span class="w"> </span>PATH<span class="o">]</span>
 </code></pre></div>
 
 <h2 id="konfiguratsiya">Конфигурация<a class="heading-anchor" href="#konfiguratsiya" title="Link to this section">&para;</a></h2>
@@ -445,14 +704,85 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">  </span><span class="nt">blast_radius_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">          </span><span class="c1"># Максимальная глубина обхода вызывающих</span>
 <span class="w">  </span><span class="nt">max_files_per_commit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">       </span><span class="c1"># Максимум файлов для анализа за коммит</span>
 <span class="w">  </span><span class="nt">report_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">markdown</span><span class="w">        </span><span class="c1"># markdown или json</span>
+<span class="w">  </span><span class="nt">record_quality_history</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">   </span><span class="c1"># Записывать QualitySnapshot по каждому коммиту</span>
+<span class="w">  </span><span class="nt">claims_validation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span><span class="w">                 </span><span class="c1"># Секунды на запрос по каждому утверждению</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span><span class="w">                       </span><span class="c1"># Привязки ключевое_слово→SQL для validate-claims</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">keywords</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;handlers&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;обработчиков&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SELECT</span><span class="nv"> </span><span class="s">COUNT(...)</span><span class="nv"> </span><span class="s">FROM</span><span class="nv"> </span><span class="s">nodes_method</span><span class="nv"> </span><span class="s">WHERE</span><span class="nv"> </span><span class="s">...&quot;</span>
+<span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Scenario</span><span class="nv"> </span><span class="s">handler</span><span class="nv"> </span><span class="s">methods&quot;</span>
 </code></pre></div>
 
+<h2 id="commitreport">CommitReport<a class="heading-anchor" href="#commitreport" title="Link to this section">&para;</a></h2>
+<p>Датакласс <code>CommitReport</code> (<code>src/dogfooding/commit_analyzer.py</code>) содержит полный результат анализа:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>changed_files</code></td>
+<td><code>List[str]</code></td>
+<td>Файлы с кодом, изменённые в коммите</td>
+</tr>
+<tr>
+<td><code>changed_methods</code></td>
+<td><code>List[dict]</code></td>
+<td>Методы в изменённых файлах (дедуплицированные)</td>
+</tr>
+<tr>
+<td><code>blast_radius</code></td>
+<td><code>Dict</code></td>
+<td><code>{"callers": {метод: [вызывающие]}, "total_affected": N}</code></td>
+</tr>
+<tr>
+<td><code>quality_summary</code></td>
+<td><code>Dict</code></td>
+<td>Подсчёт high-CC, high-fan_out, TODO, debug, deprecated</td>
+</tr>
+<tr>
+<td><code>interface_impacts</code></td>
+<td><code>List[dict]</code></td>
+<td>Затронутые слои интерфейсов (CLI, REST API, TUI, MCP, ACP)</td>
+</tr>
+<tr>
+<td><code>cross_module_alerts</code></td>
+<td><code>List[dict]</code></td>
+<td>Связанные функции в других слоях интерфейсов</td>
+</tr>
+<tr>
+<td><code>story_coverage_delta</code></td>
+<td><code>List[dict]</code></td>
+<td>Пробелы покрытия историй между слоями</td>
+</tr>
+<tr>
+<td><code>is_cpg_fresh</code></td>
+<td><code>bool</code></td>
+<td>Был ли CPG актуален</td>
+</tr>
+<tr>
+<td><code>analysis_time_ms</code></td>
+<td><code>int</code></td>
+<td>Общее время анализа в миллисекундах</td>
+</tr>
+<tr>
+<td><code>deltas</code></td>
+<td><code>List[dict]</code></td>
+<td>Изменения метрик до→после</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="format-otchyota"><span id="format_otchyota"></span>Формат отчёта<a class="heading-anchor" href="#format-otchyota" title="Link to this section">&para;</a></h2>
 <p>Хук возвращает markdown-отчёт как <code>additionalContext</code> в JSON:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;additionalContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;## Commit Analysis Report\n**Summary:** ...&quot;</span><span class="p">}</span>
 </code></pre></div>
 
-<p>Полная структура отчёта:</p>
+<p>Полная структура отчёта (секции пропускаются если пустые):</p>
 <div class="highlight"><pre><span></span><code><span class="gu">## Commit Analysis Report</span>
 <span class="gs">**Summary:**</span> 3 files, 45 methods, 2 high-CC, 1 TODO/FIXME, 128 affected callers
 <span class="gs">**CPG status:**</span> fresh
@@ -471,10 +801,18 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="k">-</span><span class="w"> </span><span class="sb">`classify`</span> called by: <span class="sb">`run_intent_classifier`</span>, <span class="sb">`IntentBenchmark._evaluate_single`</span> +126 more
 <span class="k">-</span><span class="w"> </span><span class="sb">`_classify_domain`</span> called by: <span class="sb">`classify`</span>, <span class="sb">`get_morph`</span> +4 more
 
+<span class="gs">**Interface changes detected:**</span>
+<span class="k">-</span><span class="w"> </span><span class="gs">**CLI**</span>: <span class="sb">`src/cli/intent_commands.py`</span> (<span class="sb">`add_intent_commands`</span>, <span class="sb">`_run_classify`</span>)
+
+<span class="gs">**Cross-module alert**</span> — related interfaces may need updates:
+<span class="k">-</span><span class="w"> </span>Changed CLI → check MCP: <span class="sb">`codegraph_intent`</span>, <span class="sb">`register_intent_tools`</span>
+
+<span class="gs">**Story coverage check**</span> — verify other interfaces:
+<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`intent`</span>), check: MCP, REST API, TUI, ACP
+
 <span class="ge">*Analysis completed in 95ms*</span>
 </code></pre></div>
 
-<p>Секции пропускаются если пустые (нет high-CC методов = нет секции &ldquo;High complexity&rdquo;).</p>
 <h2  id="masshtabirovanie-na-drugie-proekty"><span id="masshtabirovanie_na_drugie_proekty"></span>Масштабирование на другие проекты<a class="heading-anchor" href="#masshtabirovanie-na-drugie-proekty" title="Link to this section">&para;</a></h2>
 <p>Конвейер самоанализа не привязан к конкретному проекту. Для настройки на любой проект:</p>
 <ol>
@@ -511,10 +849,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <p><strong>CPG всегда показывает устаревший статус:</strong>
 - Убедитесь, что бинарник gocpg существует по пути <code>gocpg/gocpg.exe</code> (или настроенному <code>GOCPG_PATH</code>)
 - Проверьте, что git-хуки установлены: ищите <code>.git/hooks/post-commit</code>
-- Попробуйте ручное обновление: <code>gocpg/gocpg.exe update --force --input=. --output=&lt;db&gt;</code></p>
+- Попробуйте ручное обновление: <code>gocpg/gocpg.exe update --input=. --output=&lt;db&gt;</code></p>
 <p><strong>Значения CC равны 0 после инкрементального обновления:</strong>
-- Это происходит когда <code>gocpg update</code> запускается без <code>--force</code>. Инкрементальное обновление пропускает <code>MethodMetricsPass</code>.
-- Хук использует <code>--force</code> по умолчанию. Если вы видите CC=0, полный перепарсинг мог превысить ограничение по времени. Проверьте бюджет в 40 с.</p>
+- Инкрементальное <code>gocpg update</code> может пропустить <code>MethodMetricsPass</code> для некоторых записей. Новые записи могут иметь <code>cyclomatic_complexity=0</code>.
+- Логика дедупликации сохраняет запись с наибольшим CC, смягчая эту проблему.
+- При постоянных проблемах переимпортируйте проект с нуля: <code>python -m src.cli import /path/to/source</code></p>
 <p><strong>Ошибка блокировки DuckDB (&ldquo;file is being used by another process&rdquo;):</strong>
 - Другой процесс <code>gocpg.exe</code> запущен (например, от <code>gocpg watch</code> или параллельного вызова хука).
 - Хук использует соединения в режиме только для чтения и обрабатывает ошибки блокировки, переключаясь на запросы через подпроцесс.</p>
@@ -522,17 +861,20 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 - Дельта-отчёт появляется только когда CPG был устаревшим до обновления (были захвачены метрики до обновления).
 - Если CPG уже актуален (например, <code>gocpg watch</code> обновил его), метрики до обновления отсутствуют для сравнения.</p>
 <p><strong>Превышение времени ожидания:</strong>
-- Бюджет в 60 с достаточен для большинства коммитов. Для очень больших проектов <code>gocpg update --force</code> может превысить бюджет фазы в 40 с.
-- Уменьшите <code>max_files_per_commit</code> в конфигурации или рассмотрите использование инкрементального обновления (уберите <code>force=True</code> в <code>commit_analysis.py</code>).
+- Бюджет в 58с (лимит Claude Code 60с минус 2с запас) достаточен для большинства коммитов. Для очень больших проектов <code>gocpg update</code> может превысить бюджет фазы в 40с.
+- Уменьшите <code>max_files_per_commit</code> в конфигурации.
 - Убедитесь, что индексы GoCPG актуальны: <code>gocpg/gocpg.exe index --db=&lt;db&gt;</code></p>
+<p><strong>Метрики хуков не отображаются:</strong>
+- Проверьте, что <code>data/hook_metrics.jsonl</code> существует и доступен для записи.
+- Запустите <code>python -m src.cli.import_commands dogfood hooks-status</code> для просмотра агрегированной статистики.</p>
       </article>
 
       <!-- Page Navigation -->
       <nav class="doc-page-nav">
 
-      <a href="DATAFLOW_ANALYSIS_GUIDE_EN.html" class="doc-page-nav-prev">
+      <a href="DATAFLOW_ANALYSIS_GUIDE.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Назад</span>
-        <span class="doc-page-nav-title">Dataflow Analysis User Guide</span>
+        <span class="doc-page-nav-title">Руководство пользователя по анализу потоков данных</span>
       </a>
 
       <a href="composite-workflows.html" class="doc-page-nav-next">
@@ -543,7 +885,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-07</span>
+        <span>Обновлено: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DOGFOODING.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -563,15 +905,32 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#arhitektura-konveyera" class="level-2">Архитектура конвейера</a></li>
 <li><a href="#potok-dannyh" class="level-3">Поток данных</a></li>
 <li><a href="#byudzhet-ogranicheniy-po-vremeni" class="level-3">Бюджет ограничений по времени</a></li>
-<li><a href="#aktualnost-cpg-i-polnyy-pereparsing" class="level-3">Актуальность CPG и полный перепарсинг</a></li>
+<li><a href="#aktualnost-cpg-i-avtomaticheskoe-obnovlenie" class="level-3">Актуальность CPG и автоматическое обновление</a></li>
 <li><a href="#deduplikatsiya-metodov" class="level-3">Дедупликация методов</a></li>
 <li><a href="#delta-otchyot" class="level-3">Дельта-отчёт</a></li>
+<li><a href="#obnaruzhenie-vliyaniya-na-interfeysy" class="level-3">Обнаружение влияния на интерфейсы</a></li>
+<li><a href="#mezhmodulnye-preduprezhdeniya" class="level-3">Межмодульные предупреждения</a></li>
+<li><a href="#delta-pokrytiya-istoriy" class="level-3">Дельта покрытия историй</a></li>
+<li><a href="#infrastruktura-hukov" class="level-2">Инфраструктура хуков</a></li>
+<li><a href="#moduli-hukov" class="level-3">Модули хуков</a></li>
+<li><a href="#reviewfinding-i-reviewfeedback" class="level-3">ReviewFinding и ReviewFeedback</a></li>
+<li><a href="#metriki-hukov" class="level-3">Метрики хуков</a></li>
+<li><a href="#kesh-sessii" class="level-3">Кеш сессии</a></li>
 <li><a href="#ustanovka" class="level-2">Установка</a></li>
 <li><a href="#ustanovka-odnoy-komandoy" class="level-3">Установка одной командой</a></li>
 <li><a href="#ruchnaya-ustanovka" class="level-3">Ручная установка</a></li>
 <li><a href="#proverka-ustanovki" class="level-3">Проверка установки</a></li>
 <li><a href="#cli-komandy" class="level-2">CLI-команды</a></li>
+<li><a href="#dogfood-setup" class="level-3">dogfood setup</a></li>
+<li><a href="#dogfood-status" class="level-3">dogfood status</a></li>
+<li><a href="#dogfood-analyze" class="level-3">dogfood analyze</a></li>
+<li><a href="#dogfood-report" class="level-3">dogfood report</a></li>
+<li><a href="#dogfood-validate-claims" class="level-3">dogfood validate-claims</a></li>
+<li><a href="#dogfood-trend" class="level-3">dogfood trend</a></li>
+<li><a href="#dogfood-hooks-status" class="level-3">dogfood hooks-status</a></li>
+<li><a href="#dogfood-validate-stories" class="level-3">dogfood validate-stories</a></li>
 <li><a href="#konfiguratsiya" class="level-2">Конфигурация</a></li>
+<li><a href="#commitreport" class="level-2">CommitReport</a></li>
 <li><a href="#format-otchyota" class="level-2">Формат отчёта</a></li>
 <li><a href="#masshtabirovanie-na-drugie-proekty" class="level-2">Масштабирование на другие проекты</a></li>
 <li><a href="#ustranenie-nepoladok" class="level-2">Устранение неполадок</a></li>

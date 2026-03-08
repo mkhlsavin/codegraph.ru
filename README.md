@@ -18,7 +18,7 @@ python -m http.server 8000
 ### Лендинг
 
 ```bash
-python scripts/build_landing.py              # Обновить header/footer во всех 6 HTML-страницах
+python scripts/build_landing.py              # Обновить header/footer во всех 7 HTML-страницах
 python scripts/build_landing.py --sections   # Пересобрать index.html из модульных секций
 python scripts/build_landing.py --assets     # Минификация CSS/JS (styles.min.css, main.min.js)
 python scripts/build_landing.py --all        # Всё вместе
@@ -47,6 +47,7 @@ landing/
 ├── productivity.html       # Вертикаль: онбординг, поиск по коду
 ├── compliance.html         # Вертикаль: 152-ФЗ, ГОСТ, ФСТЭК
 ├── cpg.html                # Вертикаль: технология CPG
+├── ai-engineering.html     # Вертикаль: ML-инфраструктура, верификация AI-кода
 │
 ├── css/
 │   ├── styles.css          # Точка входа (@import партиалов)
@@ -67,14 +68,14 @@ landing/
 │
 ├── assets/svg/             # Логотипы, иконки, диаграммы
 ├── docs/{en,ru}/           # HTML-документация
-├── sitemap.xml             # 14 публичных URL с приоритетами
+├── sitemap.xml             # 15 публичных URL с приоритетами
 ├── CNAME                   # codegraph.ru
 └── .nojekyll
 ```
 
 ## Страницы и FAQ
 
-Все 6 HTML-страниц используют общий header/footer из шаблонов. При изменении навигации или футера — обновить все страницы через `build_landing.py` или вручную.
+Все 7 HTML-страниц используют общий header/footer из шаблонов. При изменении навигации или футера — обновить все страницы через `build_landing.py` или вручную.
 
 Каждая вертикальная страница имеет уникальный FAQ (вопросы не пересекаются между страницами) и JSON-LD FAQPage в `<head>`:
 
@@ -85,6 +86,7 @@ landing/
 | `productivity.html` | vs Copilot, миграция, метрики, внедрение | 8 |
 | `compliance.html` | Тендеры, госреференсы, русская документация | 8 |
 | `cpg.html` | CGO/FFI, масштабируемость, глубина анализа, CI/CD | 8 |
+| `ai-engineering.html` | ML-инфраструктура, верификация AI-кода, эксперименты | 8 |
 
 ## Дизайн-система
 
@@ -117,7 +119,7 @@ landing/
 - JSON-LD (Organization, SoftwareApplication, FAQPage) в `index.html` и вертикальных страницах
 - OpenGraph и Twitter Card метатеги
 - `robots.txt` — разрешает всё кроме `/admin/`, `/api/`, `*.json`
-- `sitemap.xml` — 14 URL с приоритетами
+- `sitemap.xml` — 15 URL с приоритетами
 - `BingSiteAuth.xml` — верификация Bing
 
 ## Деплой

@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html" class="active">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -179,7 +180,7 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="dogfooding-guide-cpg-powered-commit-analysis"><span id="dogfooding_guide_cpg_powered_commit_analysis"></span>Dogfooding Guide: CPG-Powered Commit Analysis<a class="heading-anchor" href="#dogfooding-guide-cpg-powered-commit-analysis" title="Link to this section">&para;</a></h1>
-<p>CodeGraph analyzes its own codebase through the Code Property Graph after every commit, creating a <strong>Plan-Act-Review</strong> feedback loop. Claude Code receives quality metrics, blast radius data, and before/after impact comparison as context immediately after committing code.</p>
+<p>CodeGraph analyzes its own codebase through the Code Property Graph after every commit, creating a <strong>Plan-Act-Review</strong> feedback loop. Claude Code receives quality metrics, blast radius data, interface impact analysis, and before/after comparison as context immediately after committing code.</p>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#how-it-works">How It Works</a></li>
@@ -191,12 +192,29 @@
 <li><a href="#pipeline-architecture">Pipeline Architecture</a></li>
 <li><a href="#data-flow">Data flow</a></li>
 <li><a href="#timeout-budget">Timeout budget</a></li>
-<li><a href="#cpg-freshness-and-force-re-parse">CPG freshness and force re-parse</a></li>
+<li><a href="#cpg-freshness-and-automatic-update">CPG freshness and automatic update</a></li>
 <li><a href="#method-deduplication">Method deduplication</a></li>
 <li><a href="#delta-report">Delta report</a></li>
+<li><a href="#interface-impact-detection">Interface impact detection</a></li>
+<li><a href="#cross-module-alerts">Cross-module alerts</a></li>
+<li><a href="#story-coverage-delta">Story coverage delta</a></li>
+<li><a href="#hook-infrastructure">Hook Infrastructure</a></li>
+<li><a href="#hook-modules">Hook modules</a></li>
+<li><a href="#reviewfinding-and-reviewfeedback">ReviewFinding and ReviewFeedback</a></li>
+<li><a href="#hook-metrics">Hook metrics</a></li>
+<li><a href="#session-cache">Session cache</a></li>
 <li><a href="#setup">Setup</a></li>
 <li><a href="#cli-commands">CLI Commands</a></li>
+<li><a href="#dogfood-setup">dogfood setup</a></li>
+<li><a href="#dogfood-status">dogfood status</a></li>
+<li><a href="#dogfood-analyze">dogfood analyze</a></li>
+<li><a href="#dogfood-report">dogfood report</a></li>
+<li><a href="#dogfood-validate-claims">dogfood validate-claims</a></li>
+<li><a href="#dogfood-trend">dogfood trend</a></li>
+<li><a href="#dogfood-hooks-status">dogfood hooks-status</a></li>
+<li><a href="#dogfood-validate-stories">dogfood validate-stories</a></li>
 <li><a href="#configuration">Configuration</a></li>
+<li><a href="#commitreport">CommitReport</a></li>
 <li><a href="#report-format">Report Format</a></li>
 <li><a href="#scaling-to-other-projects">Scaling to Other Projects</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
@@ -211,7 +229,7 @@
 <p><strong>Git hooks</strong> trigger CPG updates after each commit, keeping the database synchronized with the codebase.</p>
 </li>
 <li>
-<p><strong>Claude Code hooks</strong> fire after <code>git commit</code> commands, query the CPG for changed methods, compute quality metrics and blast radius, then inject the report back into the conversation as additional context.</p>
+<p><strong>Claude Code hooks</strong> fire after <code>git commit</code> commands, query the CPG for changed methods, compute quality metrics, blast radius, interface impact and cross-module alerts, then inject the report back into the conversation as additional context.</p>
 </li>
 </ol>
 <p>The result: every commit produces an instant quality assessment without leaving the IDE or running separate tools.</p>
@@ -223,36 +241,42 @@ Claude: git add src/intent/classifier.py &amp;&amp; git commit -m &quot;refactor
 </code></pre></div>
 
 <p>The PostToolUse hook fires automatically and injects a report:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">## Commit Analysis Report</span>
-<span class="o">**</span><span class="n">Summary</span><span class="o">:**</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="n">files</span><span class="p">,</span><span class="w"> </span><span class="mi">45</span><span class="w"> </span><span class="n">methods</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="n">high</span><span class="o">-</span><span class="n">CC</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="n">TODO</span><span class="o">/</span><span class="n">FIXME</span><span class="p">,</span><span class="w"> </span><span class="mi">128</span><span class="w"> </span><span class="n">affected</span><span class="w"> </span><span class="n">callers</span>
-<span class="o">**</span><span class="n">CPG</span><span class="w"> </span><span class="k">status</span><span class="o">:**</span><span class="w"> </span><span class="n">fresh</span>
+<div class="highlight"><pre><span></span><code><span class="gu">## Commit Analysis Report</span>
+<span class="gs">**Summary:**</span> 1 files, 45 methods, 2 high-CC, 3 TODO/FIXME, 128 affected callers
+<span class="gs">**CPG status:**</span> fresh
 
-<span class="o">**</span><span class="n">Impact</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">changes</span><span class="o">:**</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_get_fallback_domain`</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">29</span><span class="o">-&gt;</span><span class="mi">8</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">21</span><span class="p">),</span><span class="w"> </span><span class="n">FanOut</span><span class="w"> </span><span class="mi">18</span><span class="o">-&gt;</span><span class="mi">5</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">13</span><span class="p">)</span>
+<span class="gs">**Impact of changes:**</span>
+<span class="k">-</span><span class="w"> </span><span class="sb">`_get_fallback_domain`</span>: CC 29-&gt;8 (-21), FanOut 18-&gt;5 (-13)
 
-<span class="o">**</span><span class="n">High</span><span class="w"> </span><span class="n">complexity</span><span class="w"> </span><span class="n">methods</span><span class="o">:**</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`classify`</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">:</span><span class="w"> </span><span class="mi">17</span><span class="p">)</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_score_domain`</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">:</span><span class="w"> </span><span class="mi">16</span><span class="p">)</span>
+<span class="gs">**High complexity methods:**</span>
+<span class="k">-</span><span class="w"> </span><span class="sb">`classify`</span> (CC: 17)
+<span class="k">-</span><span class="w"> </span><span class="sb">`_score_domain`</span> (CC: 16)
 
-<span class="o">**</span><span class="n">Blast</span><span class="w"> </span><span class="n">radius</span><span class="o">:**</span><span class="w"> </span><span class="mi">128</span><span class="w"> </span><span class="n">callers</span><span class="w"> </span><span class="n">affected</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`classify`</span><span class="w"> </span><span class="n">called</span><span class="w"> </span><span class="k">by</span><span class="o">:</span><span class="w"> </span><span class="n n-Quoted">`run_intent_classifier`</span><span class="p">,</span><span class="w"> </span><span class="n n-Quoted">`IntentBenchmark._evaluate_single`</span><span class="w"> </span><span class="o">+</span><span class="mi">126</span><span class="w"> </span><span class="n">more</span>
+<span class="gs">**Blast radius:**</span> 128 callers affected
+<span class="k">-</span><span class="w"> </span><span class="sb">`classify`</span> called by: <span class="sb">`run_intent_classifier`</span>, <span class="sb">`IntentBenchmark._evaluate_single`</span> +126 more
+
+<span class="gs">**Interface changes detected:**</span>
+<span class="k">-</span><span class="w"> </span><span class="gs">**CLI**</span>: <span class="sb">`src/cli/intent_commands.py`</span> (<span class="sb">`add_intent_commands`</span>, <span class="sb">`_run_classify`</span>)
+
+<span class="gs">**Cross-module alert**</span> — related interfaces may need updates:
+<span class="k">-</span><span class="w"> </span>Changed CLI → check MCP: <span class="sb">`codegraph_intent`</span>, <span class="sb">`register_intent_tools`</span>
 </code></pre></div>
 
-<p>Claude sees this context and can react: &ldquo;The refactoring reduced <code>_get_fallback_domain</code> complexity from 29 to 8. Two methods still have CC&gt;10: <code>classify</code> and <code>_score_domain</code>.&rdquo;</p>
+<p>Claude sees this context and can react: &ldquo;The refactoring reduced <code>_get_fallback_domain</code> complexity from 29 to 8. Two methods still have CC&gt;10: <code>classify</code> and <code>_score_domain</code>. CLI was changed — check if the MCP tool needs updating.&rdquo;</p>
 <p><strong>What triggers the hook:</strong> Any <code>git commit</code> command executed via the Bash tool. The hook detects <code>"git commit"</code> in the command string. Non-commit Bash commands (e.g., <code>git status</code>, <code>ls</code>) are ignored.</p>
 <p><strong>What does NOT trigger it:</strong> Direct terminal commits outside Claude Code, <code>git commit --amend</code>, or commits via other tools.</p>
 <h3  id="scenario-2-find-and-fix-quality-issues"><span id="scenario_2_find_and_fix_quality_issues"></span>Scenario 2: Find and fix quality issues<a class="heading-anchor" href="#scenario-2-find-and-fix-quality-issues" title="Link to this section">&para;</a></h3>
 <p>Use CPG queries to find code quality targets, then fix them with the pipeline providing feedback:</p>
-<div class="highlight"><pre><span></span><code><span class="n">You</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Query the CPG for methods with CC &gt; 15 and TODO/FIXME flags in src/workflow/&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="n">runs</span><span class="w"> </span><span class="n">DuckDB</span><span class="w"> </span><span class="n">query</span><span class="p">]</span>
-<span class="w">  </span><span class="n">Found</span><span class="o">:</span><span class="w"> </span><span class="n">_get_fallback_domain</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">=</span><span class="mi">29</span><span class="p">,</span><span class="w"> </span><span class="n">TODO</span><span class="p">),</span><span class="w"> </span><span class="n">PolicyViolationsHandler</span><span class="p">.</span><span class="n">handle</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">=</span><span class="mi">68</span><span class="p">,</span><span class="w"> </span><span class="n">TODO</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code>You: &quot;Query the CPG for methods with CC &gt; 15 and TODO/FIXME flags in src/workflow/&quot;
+Claude: [runs DuckDB query]
+  Found: _get_fallback_domain (CC=29, TODO), PolicyViolationsHandler.handle (CC=68, TODO)
 
-<span class="n">You</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Refactor _get_fallback_domain to reduce complexity&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="n">extracts</span><span class="w"> </span><span class="n">patterns</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="kt">data</span><span class="w"> </span><span class="nf">table</span><span class="p">,</span><span class="w"> </span><span class="n">replaces</span><span class="w"> </span><span class="nf">if</span><span class="o">/</span><span class="n">else</span><span class="w"> </span><span class="n">chain</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="nf">loop</span><span class="p">]</span>
+You: &quot;Refactor _get_fallback_domain to reduce complexity&quot;
+Claude: [extracts patterns to data table, replaces if/else chain with loop]
 
-<span class="n">You</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;Commit&quot;</span>
-<span class="n">Claude</span><span class="o">:</span><span class="w"> </span><span class="n">git</span><span class="w"> </span><span class="n">commit</span><span class="w"> </span><span class="o">-</span><span class="n">m</span><span class="w"> </span><span class="s">&quot;refactor: extract fallback patterns to class-level table&quot;</span>
-<span class="w">  </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Hook</span><span class="w"> </span><span class="n">fires</span><span class="p">,</span><span class="w"> </span><span class="n">report</span><span class="w"> </span><span class="n">shows</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">29</span><span class="o">-&gt;</span><span class="mi">8</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">21</span><span class="p">)</span>
+You: &quot;Commit&quot;
+Claude: git commit -m &quot;refactor: extract fallback patterns to class-level table&quot;
+  -&gt; Hook fires, report shows: CC 29-&gt;8 (-21)
 </code></pre></div>
 
 <p>This is the full Plan-Act-Review loop:
@@ -261,13 +285,13 @@ Claude: git add src/intent/classifier.py &amp;&amp; git commit -m &quot;refactor
 3. <strong>Review</strong>: Hook confirms the improvement with concrete metrics</p>
 <h3  id="scenario-3-validate-refactoring-impact"><span id="scenario_3_validate_refactoring_impact"></span>Scenario 3: Validate refactoring impact<a class="heading-anchor" href="#scenario-3-validate-refactoring-impact" title="Link to this section">&para;</a></h3>
 <p>Before making a large refactoring, check the blast radius:</p>
-<div class="highlight"><pre><span></span><code><span class="nl">You</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;What&#39;s the blast radius if I change HierarchicalIntentClassifier.classify?&quot;</span>
-<span class="nl">Claude</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="n">queries</span><span class="w"> </span><span class="n">call_containment</span><span class="p">]</span>
-<span class="w">  </span><span class="mi">213</span><span class="w"> </span><span class="n">direct</span><span class="w"> </span><span class="n">callers</span><span class="w"> </span><span class="n">across</span><span class="w"> </span><span class="n">production</span><span class="w"> </span><span class="n">code</span><span class="w"> </span><span class="n">and</span><span class="w"> </span><span class="n">tests</span>
+<div class="highlight"><pre><span></span><code>You: &quot;What&#39;s the blast radius if I change HierarchicalIntentClassifier.classify?&quot;
+Claude: [queries call_containment]
+  213 direct callers across production code and tests
 
-<span class="nl">You</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Proceed with the refactoring&quot;</span>
-<span class="nl">Claude</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="n">makes</span><span class="w"> </span><span class="n">changes</span><span class="p">,</span><span class="w"> </span><span class="n">commits</span><span class="p">]</span>
-<span class="w">  </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">Hook</span><span class="w"> </span><span class="n">shows</span><span class="o">:</span><span class="w"> </span><span class="mi">213</span><span class="w"> </span><span class="n">affected</span><span class="w"> </span><span class="n">callers</span><span class="p">,</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="n">unchanged</span><span class="p">,</span><span class="w"> </span><span class="n">no</span><span class="w"> </span><span class="n">regressions</span>
+You: &quot;Proceed with the refactoring&quot;
+Claude: [makes changes, commits]
+  -&gt; Hook shows: 213 affected callers, CC unchanged, no regressions
 </code></pre></div>
 
 <p>The blast radius report helps gauge the risk of changes before they happen.</p>
@@ -281,42 +305,60 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <span class="c1"># Generate a full quality report</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span>--format<span class="w"> </span>markdown
+
+<span class="c1"># Validate numeric claims in documentation</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span>--path<span class="w"> </span>docs/
+
+<span class="c1"># Show quality trend across recent commits</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span>--commits<span class="w"> </span><span class="m">20</span>
 </code></pre></div>
 
 <h2  id="pipeline-architecture"><span id="pipeline_architecture"></span>Pipeline Architecture<a class="heading-anchor" href="#pipeline-architecture" title="Link to this section">&para;</a></h2>
 <h3  id="data-flow"><span id="data_flow"></span>Data flow<a class="heading-anchor" href="#data-flow" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">git</span><span class="w"> </span><span class="n">commit</span><span class="w"> </span><span class="p">(</span><span class="n">via</span><span class="w"> </span><span class="n">Bash</span><span class="w"> </span><span class="k">tool</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">Claude</span><span class="w"> </span><span class="n">Code</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="n">v</span>
-<span class="n">PostToolUse</span><span class="w"> </span><span class="n">hook</span><span class="w"> </span><span class="n">fires</span><span class="w"> </span><span class="p">(</span><span class="o">.</span><span class="n">claude</span><span class="o">/</span><span class="n">hooks</span><span class="o">/</span><span class="n">commit_analysis</span><span class="o">.</span><span class="n">py</span><span class="p">,</span><span class="w"> </span><span class="mi">60</span><span class="n">s</span><span class="w"> </span><span class="n">timeout</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Phase</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="n">freshness</span><span class="w"> </span><span class="n">check</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Query</span><span class="w"> </span><span class="n">cpg_git_state</span><span class="o">.</span><span class="n">commit_hash</span><span class="p">,</span><span class="w"> </span><span class="n">compare</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">git</span><span class="w"> </span><span class="n">rev</span><span class="o">-</span><span class="n">parse</span><span class="w"> </span><span class="n">HEAD</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Phase</span><span class="w"> </span><span class="mf">1.5</span><span class="p">:</span><span class="w"> </span><span class="n">Capture</span><span class="w"> </span><span class="n">pre</span><span class="o">-</span><span class="n">update</span><span class="w"> </span><span class="n">metrics</span><span class="w"> </span><span class="p">(</span><span class="k">for</span><span class="w"> </span><span class="n">delta</span><span class="w"> </span><span class="n">report</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Query</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">changed</span><span class="w"> </span><span class="n">files</span><span class="w"> </span><span class="n">BEFORE</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="n">update</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Store</span><span class="w"> </span><span class="p">{</span><span class="n">full_name</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="n">cc</span><span class="p">,</span><span class="w"> </span><span class="n">fan_out</span><span class="p">,</span><span class="w"> </span><span class="o">...</span><span class="p">}}</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">later</span><span class="w"> </span><span class="n">comparison</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Phase</span><span class="w"> </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="n">update</span><span class="w"> </span><span class="p">(</span><span class="o">--</span><span class="n">force</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">accurate</span><span class="w"> </span><span class="n">metrics</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">gocpg</span><span class="w"> </span><span class="n">update</span><span class="w"> </span><span class="o">--</span><span class="n">force</span><span class="w"> </span><span class="o">--</span><span class="n">input</span><span class="o">=&lt;</span><span class="n">source</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="n">output</span><span class="o">=&lt;</span><span class="n">db</span><span class="o">&gt;</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Full</span><span class="w"> </span><span class="n">re</span><span class="o">-</span><span class="n">parse</span><span class="w"> </span><span class="n">ensures</span><span class="w"> </span><span class="n">MethodMetricsPass</span><span class="w"> </span><span class="n">computes</span><span class="w"> </span><span class="n">CC</span><span class="o">/</span><span class="n">fan_in</span><span class="o">/</span><span class="n">fan_out</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Phase</span><span class="w"> </span><span class="mi">3</span><span class="p">:</span><span class="w"> </span><span class="n">Quality</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">blast</span><span class="w"> </span><span class="n">radius</span><span class="w"> </span><span class="n">analysis</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Query</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">changed</span><span class="w"> </span><span class="n">files</span><span class="w"> </span><span class="p">(</span><span class="n">post</span><span class="o">-</span><span class="n">update</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Deduplicate</span><span class="w"> </span><span class="n">methods</span><span class="w"> </span><span class="p">(</span><span class="n">normalize</span><span class="w"> </span><span class="n">slash</span><span class="w"> </span><span class="n">variants</span><span class="p">,</span><span class="w"> </span><span class="n">keep</span><span class="w"> </span><span class="n">highest</span><span class="w"> </span><span class="n">CC</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Compute</span><span class="w"> </span><span class="n">quality</span><span class="w"> </span><span class="n">summary</span><span class="p">:</span><span class="w"> </span><span class="n">high</span><span class="o">-</span><span class="n">CC</span><span class="p">,</span><span class="w"> </span><span class="n">high</span><span class="o">-</span><span class="n">fan_out</span><span class="p">,</span><span class="w"> </span><span class="n">TODO</span><span class="p">,</span><span class="w"> </span><span class="n">debug</span><span class="p">,</span><span class="w"> </span><span class="n">deprecated</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Query</span><span class="w"> </span><span class="n">call_containment</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">callers</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="n">changed</span><span class="w"> </span><span class="n">methods</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Phase</span><span class="w"> </span><span class="mi">4</span><span class="p">:</span><span class="w"> </span><span class="n">Delta</span><span class="w"> </span><span class="n">computation</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Compare</span><span class="w"> </span><span class="n">pre</span><span class="o">-</span><span class="n">update</span><span class="w"> </span><span class="n">vs</span><span class="w"> </span><span class="n">post</span><span class="o">-</span><span class="n">update</span><span class="w"> </span><span class="n">metrics</span>
-<span class="w">    </span><span class="o">|</span><span class="w">       </span><span class="n">Generate</span><span class="w"> </span><span class="n">before</span><span class="o">-&gt;</span><span class="n">after</span><span class="w"> </span><span class="n">report</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CC 29-&gt;8 (-21)&quot;</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">Output</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="s2">&quot;additionalContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;## Commit Analysis Report</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">}</span>
-<span class="w">            </span><span class="n">Injected</span><span class="w"> </span><span class="n">back</span><span class="w"> </span><span class="n">into</span><span class="w"> </span><span class="n">Claude</span><span class="w"> </span><span class="n">Code</span><span class="w"> </span><span class="n">conversation</span>
+<div class="highlight"><pre><span></span><code>git commit (via Bash tool in Claude Code)
+    |
+    v
+PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
+    |
+    +-- CPG freshness check
+    |       Query cpg_git_state.commit_hash, compare to git rev-parse HEAD
+    |
+    +-- Pre-update metrics capture (for delta report)
+    |       Query nodes_method for changed files BEFORE CPG update
+    |       Store {full_name: {cc, fan_out, ...}} for later comparison
+    |
+    +-- CPG update if stale
+    |       gocpg update --input=&lt;source&gt; --output=&lt;db&gt;
+    |
+    +-- Phase 1: Get changed files
+    |       git diff --name-only HEAD~1 HEAD, filter code extensions
+    |
+    +-- Phase 2: Get changed methods from CPG
+    |       Query nodes_method for changed files, deduplicate
+    |
+    +-- Phase 3: Quality summary
+    |       Compute high-CC, high-fan_out, TODO, debug, deprecated counts
+    |
+    +-- Phase 4: Blast radius
+    |       Query call_containment (or nodes_call fallback) for callers
+    |
+    +-- Phase 5: Interface impact detection
+    |       Check if changed files belong to interface layers (CLI, REST API, TUI, MCP, ACP)
+    |
+    +-- Phase 6: Cross-module alerts
+    |       Find related functions in OTHER interface layers by keyword matching
+    |
+    +-- Phase 7: Story coverage delta
+    |       Flag layers that changed vs layers not covered
+    |
+    +-- Record quality snapshot (cpg_quality_history table)
+    |
+    +-- Output: {&quot;additionalContext&quot;: &quot;## Commit Analysis Report\n...&quot;}
+            Injected back into Claude Code conversation
 </code></pre></div>
 
 <h3  id="timeout-budget"><span id="timeout_budget"></span>Timeout budget<a class="heading-anchor" href="#timeout-budget" title="Link to this section">&para;</a></h3>
-<p>The hook has a 60-second total timeout with internal phases:</p>
+<p>The hook has a 58-second total timeout (2s margin from the 60s Claude Code limit):</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -337,34 +379,33 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <td>Query current metrics for changed files (for delta report)</td>
 </tr>
 <tr>
-<td>CPG update (&ndash;force)</td>
+<td>CPG update if stale</td>
 <td>40s</td>
-<td>Run <code>gocpg update --force</code> for full re-parse with metrics</td>
+<td>Run <code>gocpg update --input=&lt;source&gt; --output=&lt;db&gt;</code></td>
 </tr>
 <tr>
-<td>Quality analysis</td>
-<td>8s</td>
-<td>Query <code>nodes_method</code> for CC, TODO, debug, deprecated flags</td>
-</tr>
-<tr>
-<td>Blast radius</td>
-<td>8s</td>
-<td>Query <code>call_containment</code> for direct callers</td>
+<td>Phases 1–7</td>
+<td>~15s</td>
+<td>Changed files, methods, quality, blast radius, interfaces, cross-module, story</td>
 </tr>
 </tbody>
 </table></div>
 <p>If any phase exceeds its budget, the hook degrades gracefully: it produces whatever data it has or returns empty <code>{}</code>.</p>
-<h3  id="cpg-freshness-and-force-re-parse"><span id="cpg_freshness_and_force_re_parse"></span>CPG freshness and force re-parse<a class="heading-anchor" href="#cpg-freshness-and-force-re-parse" title="Link to this section">&para;</a></h3>
-<p>The hook uses <code>--force</code> flag when running <code>gocpg update</code>. This triggers a full re-parse instead of incremental update. The reason:</p>
-<ul>
-<li>
-<p><strong>Incremental update</strong> (<code>gocpg update</code> without <code>--force</code>): Creates new method entries but skips <code>MethodMetricsPass</code>. New entries have <code>cyclomatic_complexity=0</code>, <code>fan_in=0</code>, <code>fan_out=0</code>. Fast but produces incomplete metrics.</p>
-</li>
-<li>
-<p><strong>Force re-parse</strong> (<code>gocpg update --force</code>): Runs the full parse pipeline including <code>MethodMetricsPass</code>. All metrics are computed correctly. Slower but accurate.</p>
-</li>
-</ul>
-<p>For the dogfooding use case, accuracy is more important than speed. The 40-second budget accommodates force re-parse for projects up to several hundred source files.</p>
+<h3  id="cpg-freshness-and-automatic-update"><span id="cpg_freshness_and_automatic_update"></span>CPG freshness and automatic update<a class="heading-anchor" href="#cpg-freshness-and-automatic-update" title="Link to this section">&para;</a></h3>
+<p>The hook checks CPG freshness by comparing <code>cpg_git_state.commit_hash</code> to <code>git rev-parse HEAD</code>. If stale, it runs <code>gocpg update</code>:</p>
+<div class="highlight"><pre><span></span><code>gocpg<span class="w"> </span>update<span class="w"> </span>--input<span class="o">=</span>&lt;source_path&gt;<span class="w"> </span>--output<span class="o">=</span>&lt;db_path&gt;
+</code></pre></div>
+
+<p>This triggers an incremental update of the CPG database. The <code>CPGFreshnessChecker</code> class in <code>src/dogfooding/cpg_freshness.py</code> manages this:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.dogfooding.cpg_freshness</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGFreshnessChecker</span>
+
+<span class="n">checker</span> <span class="o">=</span> <span class="n">CPGFreshnessChecker</span><span class="p">(</span><span class="n">db_path</span><span class="p">,</span> <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">gocpg_binary</span><span class="o">=</span><span class="s2">&quot;gocpg/gocpg.exe&quot;</span><span class="p">)</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">is_fresh</span><span class="p">()</span>           <span class="c1"># True if CPG commit == HEAD</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">commits_behind</span><span class="p">()</span>     <span class="c1"># Number of commits CPG is behind</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">ensure_fresh</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">40.0</span><span class="p">,</span> <span class="n">source_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>  <span class="c1"># Update if stale</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>             <span class="c1"># Full status dict</span>
+</code></pre></div>
+
 <h3  id="method-deduplication"><span id="method_deduplication"></span>Method deduplication<a class="heading-anchor" href="#method-deduplication" title="Link to this section">&para;</a></h3>
 <p>GoCPG may store the same method with different filename formats (forward slash <code>src/file.py</code> vs backslash <code>src\file.py</code>). The analyzer deduplicates by normalizing <code>full_name</code> slashes and keeping the entry with the highest CC value:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Before dedup: 2 entries for the same method</span>
@@ -376,19 +417,159 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <h3  id="delta-report"><span id="delta_report"></span>Delta report<a class="heading-anchor" href="#delta-report" title="Link to this section">&para;</a></h3>
-<p>When the CPG is stale (needs update), the hook captures pre-update metrics before running <code>gocpg update --force</code>, then compares against post-update metrics. This produces a delta showing the actual impact of changes:</p>
-<div class="highlight"><pre><span></span><code><span class="o">**</span><span class="n">Impact</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">changes</span><span class="o">:**</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_get_fallback_domain`</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">29</span><span class="o">-&gt;</span><span class="mi">8</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">21</span><span class="p">),</span><span class="w"> </span><span class="n">FanOut</span><span class="w"> </span><span class="mi">18</span><span class="o">-&gt;</span><span class="mi">5</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">13</span><span class="p">)</span>
-<span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`_build_quality_summary`</span><span class="o">:</span><span class="w"> </span><span class="n">CC</span><span class="w"> </span><span class="mi">5</span><span class="o">-&gt;</span><span class="mi">3</span><span class="w"> </span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+<p>When the CPG is stale (needs update), the hook captures pre-update metrics before running <code>gocpg update</code>, then compares against post-update metrics. This produces a delta showing the actual impact of changes:</p>
+<div class="highlight"><pre><span></span><code><span class="gs">**Impact of changes:**</span>
+<span class="k">-</span><span class="w"> </span><span class="sb">`_get_fallback_domain`</span>: CC 29-&gt;8 (-21), FanOut 18-&gt;5 (-13)
+<span class="k">-</span><span class="w"> </span><span class="sb">`_build_quality_summary`</span>: CC 5-&gt;3 (-2)
 </code></pre></div>
 
-<p>Methods with no metric changes are omitted. This helps developers immediately see whether their refactoring improved or degraded code quality.</p>
+<p>Methods with no metric changes are omitted.</p>
+<h3  id="interface-impact-detection"><span id="interface_impact_detection"></span>Interface impact detection<a class="heading-anchor" href="#interface-impact-detection" title="Link to this section">&para;</a></h3>
+<p>The analyzer tracks 5 interface layers defined in <code>INTERFACE_LAYERS</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Path Patterns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLI</td>
+<td><code>src/cli/</code></td>
+<td>CLI commands</td>
+</tr>
+<tr>
+<td>REST API</td>
+<td><code>src/api/routers/</code></td>
+<td>API endpoints</td>
+</tr>
+<tr>
+<td>TUI</td>
+<td><code>src/tui/commands/</code></td>
+<td>TUI commands</td>
+</tr>
+<tr>
+<td>MCP</td>
+<td><code>src/mcp/tools/</code>, <code>src/mcp/</code></td>
+<td>MCP tools</td>
+</tr>
+<tr>
+<td>ACP</td>
+<td><code>src/acp/server/</code>, <code>src/acp/</code></td>
+<td>ACP handlers</td>
+</tr>
+</tbody>
+</table></div>
+<p>When a changed file belongs to an interface layer, the report includes an <strong>&ldquo;Interface changes detected&rdquo;</strong> section listing affected layers and methods.</p>
+<h3  id="cross-module-alerts"><span id="cross_module_alerts"></span>Cross-module alerts<a class="heading-anchor" href="#cross-module-alerts" title="Link to this section">&para;</a></h3>
+<p>When a file in one interface layer changes, the analyzer searches for related functions in OTHER layers by extracting keywords from the changed filename and querying the CPG. For example, if <code>src/cli/reindex_commands.py</code> changes, it looks for functions with &ldquo;reindex&rdquo; in their name in MCP, REST API, etc.</p>
+<p>The report includes a <strong>&ldquo;Cross-module alert&rdquo;</strong> section suggesting which layers to check:</p>
+<div class="highlight"><pre><span></span><code><span class="gs">**Cross-module alert**</span> — related interfaces may need updates:
+<span class="k">-</span><span class="w"> </span>Changed CLI → check MCP: <span class="sb">`codegraph_reindex`</span>, <span class="sb">`register_reindex_tools`</span>
+</code></pre></div>
+
+<h3  id="story-coverage-delta"><span id="story_coverage_delta"></span>Story coverage delta<a class="heading-anchor" href="#story-coverage-delta" title="Link to this section">&para;</a></h3>
+<p>When interface layers are changed, the analyzer flags which other layers may need updates to maintain feature parity. The report includes a <strong>&ldquo;Story coverage check&rdquo;</strong> section:</p>
+<div class="highlight"><pre><span></span><code><span class="gs">**Story coverage check**</span> — verify other interfaces:
+<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`reindex`</span>), check: MCP, REST API, TUI, ACP
+</code></pre></div>
+
+<h2  id="hook-infrastructure"><span id="hook_infrastructure"></span>Hook Infrastructure<a class="heading-anchor" href="#hook-infrastructure" title="Link to this section">&para;</a></h2>
+<h3  id="hook-modules"><span id="hook_modules"></span>Hook modules<a class="heading-anchor" href="#hook-modules" title="Link to this section">&para;</a></h3>
+<p>The <code>.claude/hooks/</code> directory contains the commit analysis hook and 4 utility modules:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>commit_analysis.py</code></td>
+<td>PostToolUse hook — commit analysis (58s timeout)</td>
+</tr>
+<tr>
+<td><code>_feedback.py</code></td>
+<td><code>ReviewFinding</code> and <code>ReviewFeedback</code> dataclasses</td>
+</tr>
+<tr>
+<td><code>_metrics.py</code></td>
+<td>Hook telemetry — <code>log_hook_metric()</code>, <code>timed_hook()</code> context manager</td>
+</tr>
+<tr>
+<td><code>_utils.py</code></td>
+<td>Shared utilities — <code>get_active_project()</code>, <code>run_gocpg_query()</code>, <code>safe_json_output()</code>, <code>load_parse_scope()</code></td>
+</tr>
+<tr>
+<td><code>_session_cache.py</code></td>
+<td>Project cache with 1-hour TTL</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="reviewfinding-and-reviewfeedback"><span id="reviewfinding_and_reviewfeedback"></span>ReviewFinding and ReviewFeedback<a class="heading-anchor" href="#reviewfinding-and-reviewfeedback" title="Link to this section">&para;</a></h3>
+<p>Structured feedback protocol for Claude Code hooks:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReviewFinding</span><span class="p">:</span>
+    <span class="n">file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">line</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>          <span class="c1"># &quot;complexity&quot;, &quot;dead_code&quot;, &quot;blast_radius&quot;, &quot;interface_gap&quot;, etc.</span>
+    <span class="n">severity</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;info&quot;</span>  <span class="c1"># &quot;critical&quot;, &quot;high&quot;, &quot;medium&quot;, &quot;low&quot;, &quot;info&quot;</span>
+    <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">suggestion</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">metric_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">scope_limited</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># True if finding may be affected by partial scope</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReviewFeedback</span><span class="p">:</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ok&quot;</span>      <span class="c1"># &quot;ok&quot;, &quot;warning&quot;, &quot;block&quot;</span>
+    <span class="n">hook_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">project</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cpg_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ReviewFinding</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">duration_ms</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">scope_disclaimer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">suppressed_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_markdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="o">...</span>  <span class="c1"># Writes to stdout as additionalContext JSON</span>
+</code></pre></div>
+
+<h3  id="hook-metrics"><span id="hook_metrics"></span>Hook metrics<a class="heading-anchor" href="#hook-metrics" title="Link to this section">&para;</a></h3>
+<p><code>_metrics.py</code> records execution telemetry in <code>data/hook_metrics.jsonl</code> (JSONL format, one JSON object per line):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-07T12:34:56.789Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;hook&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commit_analysis&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3250.5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;codegraph&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;cpg_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fresh&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>The <code>timed_hook()</code> context manager automatically measures duration and logs the result:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">timed_hook</span>
+
+<span class="k">with</span> <span class="n">timed_hook</span><span class="p">(</span><span class="s2">&quot;commit_analysis&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mctx</span><span class="p">:</span>
+    <span class="n">mctx</span><span class="p">[</span><span class="s2">&quot;project&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;codegraph&quot;</span>
+    <span class="n">mctx</span><span class="p">[</span><span class="s2">&quot;findings_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="c1"># duration logged automatically on exit</span>
+</code></pre></div>
+
+<p>View aggregated stats via CLI: <code>python -m src.cli.import_commands dogfood hooks-status</code>.</p>
+<h3  id="session-cache"><span id="session_cache"></span>Session cache<a class="heading-anchor" href="#session-cache" title="Link to this section">&para;</a></h3>
+<p><code>_session_cache.py</code> caches the active project in <code>.claude/.cache/session_project.json</code> with a 1-hour TTL to avoid resolving the project on every hook invocation:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">_session_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_project_with_cache</span><span class="p">,</span> <span class="n">invalidate_cache</span>
+
+<span class="n">project</span> <span class="o">=</span> <span class="n">get_project_with_cache</span><span class="p">()</span>  <span class="c1"># Returns cached or resolves fresh</span>
+<span class="n">invalidate_cache</span><span class="p">()</span>                   <span class="c1"># Force re-resolution</span>
+</code></pre></div>
+
 <h2 id="setup">Setup<a class="heading-anchor" href="#setup" title="Link to this section">&para;</a></h2>
 <h3  id="one-command-setup"><span id="one_command_setup"></span>One-command setup<a class="heading-anchor" href="#one-command-setup" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 </code></pre></div>
 
-<p>This installs git hooks (via gocpg) and verifies the Claude Code hook configuration.</p>
+<p>This installs git hooks (via gocpg) and configures the Claude Code hook.</p>
+<blockquote class="callout">
+<p><strong>Note:</strong> The <code>setup</code> command writes the hook under the <code>SubcommandResult</code> key in <code>.claude/settings.json</code>. The actual production configuration uses <code>PostToolUse</code> with <code>"matcher": "Bash"</code>. If <code>setup</code> was run, you may need to manually adjust the hook key.</p>
+</blockquote>
 <h3  id="manual-setup"><span id="manual_setup"></span>Manual setup<a class="heading-anchor" href="#manual-setup" title="Link to this section">&para;</a></h3>
 <ol>
 <li>
@@ -414,23 +595,101 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </li>
 </ol>
 <p>Note: The <code>matcher</code> field must be a string (regex pattern), not an object. <code>"Bash"</code> matches the Bash tool specifically.</p>
+<p>The full production <code>.claude/settings.json</code> includes 5 hooks across all lifecycle points:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Lifecycle Point</th>
+<th>Hook</th>
+<th>Timeout</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UserPromptSubmit</code></td>
+<td><code>enrich_prompt.py</code></td>
+<td>15s</td>
+</tr>
+<tr>
+<td><code>SessionStart</code></td>
+<td><code>session_context.py</code></td>
+<td>10s</td>
+</tr>
+<tr>
+<td><code>Stop</code></td>
+<td><code>post_analysis.py</code></td>
+<td>10s</td>
+</tr>
+<tr>
+<td><code>PreToolUse</code></td>
+<td><code>pre_tool_use.py</code></td>
+<td>8s</td>
+</tr>
+<tr>
+<td><code>PostToolUse</code> (Bash)</td>
+<td><code>cli_error_monitor.py</code> + <code>commit_analysis.py</code></td>
+<td>5s + 60s</td>
+</tr>
+</tbody>
+</table></div>
 <h3  id="verify-setup"><span id="verify_setup"></span>Verify setup<a class="heading-anchor" href="#verify-setup" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status
 </code></pre></div>
 
 <p>Expected output shows CPG freshness, hook status, and database path.</p>
 <h2  id="cli-commands"><span id="cli_commands"></span>CLI Commands<a class="heading-anchor" href="#cli-commands" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Full setup (git hooks + Claude Code hooks)</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>LANG<span class="o">]</span>
+<p>All commands are accessed via <code>python -m src.cli.import_commands dogfood &lt;subcommand&gt;</code>.</p>
+<h3  id="dogfood-setup"><span id="dogfood_setup"></span>dogfood setup<a class="heading-anchor" href="#dogfood-setup" title="Link to this section">&para;</a></h3>
+<p>Install git hooks and configure Claude Code hooks:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>LANG<span class="o">]</span>
+</code></pre></div>
 
-<span class="c1"># Check CPG freshness and hook status</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<h3  id="dogfood-status"><span id="dogfood_status"></span>dogfood status<a class="heading-anchor" href="#dogfood-status" title="Link to this section">&para;</a></h3>
+<p>Check CPG freshness and hook status:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
 
-<span class="c1"># Run commit analysis on demand</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span><span class="o">[</span>--base-ref<span class="w"> </span>HEAD~1<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<h3  id="dogfood-analyze"><span id="dogfood_analyze"></span>dogfood analyze<a class="heading-anchor" href="#dogfood-analyze" title="Link to this section">&para;</a></h3>
+<p>Run commit analysis on demand:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span><span class="o">[</span>--base-ref<span class="w"> </span>HEAD~1<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
 
-<span class="c1"># Generate quality report (markdown or JSON)</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<h3  id="dogfood-report"><span id="dogfood_report"></span>dogfood report<a class="heading-anchor" href="#dogfood-report" title="Link to this section">&para;</a></h3>
+<p>Generate quality report (markdown or JSON):</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-validate-claims"><span id="dogfood_validate_claims"></span>dogfood validate-claims<a class="heading-anchor" href="#dogfood-validate-claims" title="Link to this section">&para;</a></h3>
+<p>Validate numeric claims in documentation against the CPG. Extracts numbers from markdown (e.g., &ldquo;95 handlers&rdquo;, &ldquo;12 scenarios&rdquo;) and verifies via SQL:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<p>Claim rules are defined in <code>config.yaml</code> → <code>dogfooding.claims_validation.rules[]</code>. Each rule maps keywords (English + Russian) to a SQL query:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">claims_validation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
+<span class="w">  </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">keywords</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;handlers&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;обработчиков&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SELECT</span><span class="nv"> </span><span class="s">COUNT(DISTINCT</span><span class="nv"> </span><span class="s">full_name)</span><span class="nv"> </span><span class="s">FROM</span><span class="nv"> </span><span class="s">nodes_method</span><span class="nv"> </span><span class="s">WHERE</span><span class="nv"> </span><span class="s">...&quot;</span>
+<span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Scenario</span><span class="nv"> </span><span class="s">handler</span><span class="nv"> </span><span class="s">methods&quot;</span>
+</code></pre></div>
+
+<h3  id="dogfood-trend"><span id="dogfood_trend"></span>dogfood trend<a class="heading-anchor" href="#dogfood-trend" title="Link to this section">&para;</a></h3>
+<p>Show quality trend across recent commits from the <code>cpg_quality_history</code> table:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span><span class="o">[</span>--commits<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<p>Output is an ASCII table with columns: Commit, Date, Methods, Avg CC, Dead, Hi-CC, TODO.</p>
+<p>Quality snapshots are recorded automatically after each commit analysis via <code>record_snapshot()</code> in <code>src/dogfooding/quality_history.py</code>.</p>
+<h3  id="dogfood-hooks-status"><span id="dogfood_hooks_status"></span>dogfood hooks-status<a class="heading-anchor" href="#dogfood-hooks-status" title="Link to this section">&para;</a></h3>
+<p>Show hook execution statistics from the JSONL metrics log (<code>data/hook_metrics.jsonl</code>):</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span><span class="o">[</span>--last<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--hook<span class="w"> </span>NAME<span class="o">]</span>
+</code></pre></div>
+
+<p>Aggregates by hook name: runs, ok/error/warning counts, fail%, avg/max duration, total findings.</p>
+<h3  id="dogfood-validate-stories"><span id="dogfood_validate_stories"></span>dogfood validate-stories<a class="heading-anchor" href="#dogfood-validate-stories" title="Link to this section">&para;</a></h3>
+<p>Validate user story interface coverage via CPG using <code>StoryValidationRunner</code>:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-stories<span class="w"> </span><span class="o">[</span>--stories<span class="w"> </span><span class="m">2</span>,8,11<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--go-db<span class="w"> </span>PATH<span class="o">]</span>
 </code></pre></div>
 
 <h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
@@ -445,14 +704,85 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">  </span><span class="nt">blast_radius_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">          </span><span class="c1"># Max depth for caller traversal</span>
 <span class="w">  </span><span class="nt">max_files_per_commit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">       </span><span class="c1"># Max files to analyze per commit</span>
 <span class="w">  </span><span class="nt">report_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">markdown</span><span class="w">        </span><span class="c1"># markdown or json</span>
+<span class="w">  </span><span class="nt">record_quality_history</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">   </span><span class="c1"># Record QualitySnapshot per commit</span>
+<span class="w">  </span><span class="nt">claims_validation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span><span class="w">                 </span><span class="c1"># Seconds per claim query</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span><span class="w">                       </span><span class="c1"># Keyword→SQL mappings for validate-claims</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">keywords</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;handlers&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;обработчиков&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SELECT</span><span class="nv"> </span><span class="s">COUNT(...)</span><span class="nv"> </span><span class="s">FROM</span><span class="nv"> </span><span class="s">nodes_method</span><span class="nv"> </span><span class="s">WHERE</span><span class="nv"> </span><span class="s">...&quot;</span>
+<span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Scenario</span><span class="nv"> </span><span class="s">handler</span><span class="nv"> </span><span class="s">methods&quot;</span>
 </code></pre></div>
 
+<h2 id="commitreport">CommitReport<a class="heading-anchor" href="#commitreport" title="Link to this section">&para;</a></h2>
+<p>The <code>CommitReport</code> dataclass (<code>src/dogfooding/commit_analyzer.py</code>) holds the full analysis result:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>changed_files</code></td>
+<td><code>List[str]</code></td>
+<td>Code files changed in the commit</td>
+</tr>
+<tr>
+<td><code>changed_methods</code></td>
+<td><code>List[dict]</code></td>
+<td>Methods in changed files (deduplicated)</td>
+</tr>
+<tr>
+<td><code>blast_radius</code></td>
+<td><code>Dict</code></td>
+<td><code>{"callers": {method: [callers]}, "total_affected": N}</code></td>
+</tr>
+<tr>
+<td><code>quality_summary</code></td>
+<td><code>Dict</code></td>
+<td>High-CC, high-fan_out, TODO, debug, deprecated counts</td>
+</tr>
+<tr>
+<td><code>interface_impacts</code></td>
+<td><code>List[dict]</code></td>
+<td>Interface layers affected (CLI, REST API, TUI, MCP, ACP)</td>
+</tr>
+<tr>
+<td><code>cross_module_alerts</code></td>
+<td><code>List[dict]</code></td>
+<td>Related functions in other interface layers</td>
+</tr>
+<tr>
+<td><code>story_coverage_delta</code></td>
+<td><code>List[dict]</code></td>
+<td>Story coverage gaps across layers</td>
+</tr>
+<tr>
+<td><code>is_cpg_fresh</code></td>
+<td><code>bool</code></td>
+<td>Whether CPG was up-to-date</td>
+</tr>
+<tr>
+<td><code>analysis_time_ms</code></td>
+<td><code>int</code></td>
+<td>Total analysis time in milliseconds</td>
+</tr>
+<tr>
+<td><code>deltas</code></td>
+<td><code>List[dict]</code></td>
+<td>Before→after metric changes</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="report-format"><span id="report_format"></span>Report Format<a class="heading-anchor" href="#report-format" title="Link to this section">&para;</a></h2>
 <p>The hook returns a markdown report as <code>additionalContext</code> in JSON:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;additionalContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;## Commit Analysis Report\n**Summary:** ...&quot;</span><span class="p">}</span>
 </code></pre></div>
 
-<p>Full report structure:</p>
+<p>Full report structure (sections are omitted when empty):</p>
 <div class="highlight"><pre><span></span><code><span class="gu">## Commit Analysis Report</span>
 <span class="gs">**Summary:**</span> 3 files, 45 methods, 2 high-CC, 1 TODO/FIXME, 128 affected callers
 <span class="gs">**CPG status:**</span> fresh
@@ -471,10 +801,18 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="k">-</span><span class="w"> </span><span class="sb">`classify`</span> called by: <span class="sb">`run_intent_classifier`</span>, <span class="sb">`IntentBenchmark._evaluate_single`</span> +126 more
 <span class="k">-</span><span class="w"> </span><span class="sb">`_classify_domain`</span> called by: <span class="sb">`classify`</span>, <span class="sb">`get_morph`</span> +4 more
 
+<span class="gs">**Interface changes detected:**</span>
+<span class="k">-</span><span class="w"> </span><span class="gs">**CLI**</span>: <span class="sb">`src/cli/intent_commands.py`</span> (<span class="sb">`add_intent_commands`</span>, <span class="sb">`_run_classify`</span>)
+
+<span class="gs">**Cross-module alert**</span> — related interfaces may need updates:
+<span class="k">-</span><span class="w"> </span>Changed CLI → check MCP: <span class="sb">`codegraph_intent`</span>, <span class="sb">`register_intent_tools`</span>
+
+<span class="gs">**Story coverage check**</span> — verify other interfaces:
+<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`intent`</span>), check: MCP, REST API, TUI, ACP
+
 <span class="ge">*Analysis completed in 95ms*</span>
 </code></pre></div>
 
-<p>Sections are omitted when empty (e.g., no high-CC methods = no &ldquo;High complexity&rdquo; section).</p>
 <h2  id="scaling-to-other-projects"><span id="scaling_to_other_projects"></span>Scaling to Other Projects<a class="heading-anchor" href="#scaling-to-other-projects" title="Link to this section">&para;</a></h2>
 <p>The dogfooding pipeline is project-agnostic. To set up for any project:</p>
 <ol>
@@ -511,10 +849,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <p><strong>CPG always shows stale:</strong>
 - Ensure gocpg binary exists at <code>gocpg/gocpg.exe</code> (or the configured <code>GOCPG_PATH</code>)
 - Check that git hooks are installed: look for <code>.git/hooks/post-commit</code>
-- Try manual update: <code>gocpg/gocpg.exe update --force --input=. --output=&lt;db&gt;</code></p>
+- Try manual update: <code>gocpg/gocpg.exe update --input=. --output=&lt;db&gt;</code></p>
 <p><strong>CC values are 0 after incremental update:</strong>
-- This happens when <code>gocpg update</code> runs without <code>--force</code>. The incremental update skips <code>MethodMetricsPass</code>.
-- The hook uses <code>--force</code> by default. If you see CC=0, the force re-parse may have timed out. Check the 40s timeout budget.</p>
+- Incremental <code>gocpg update</code> may skip <code>MethodMetricsPass</code> for some entries. New entries can have <code>cyclomatic_complexity=0</code>.
+- The deduplication logic keeps the entry with the highest CC value, mitigating this.
+- If persistent, re-import the project from scratch: <code>python -m src.cli import /path/to/source</code></p>
 <p><strong>DuckDB lock error (&ldquo;file is being used by another process&rdquo;):</strong>
 - Another <code>gocpg.exe</code> process is running (e.g., from <code>gocpg watch</code> or a concurrent hook invocation).
 - The hook uses read-only connections and handles lock errors gracefully, falling back to subprocess queries.</p>
@@ -522,15 +861,18 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 - The delta report only appears when the CPG was stale before the update (pre-update metrics were captured).
 - If the CPG is already fresh (e.g., <code>gocpg watch</code> updated it), there are no pre-update metrics to compare against.</p>
 <p><strong>Timeout exceeded:</strong>
-- The 60s budget accommodates most commits. For very large projects, <code>gocpg update --force</code> may exceed the 40s phase budget.
-- Reduce <code>max_files_per_commit</code> in config or consider using incremental update (remove <code>force=True</code> in <code>commit_analysis.py</code>).
+- The 58s budget (60s Claude Code limit minus 2s margin) accommodates most commits. For very large projects, <code>gocpg update</code> may exceed the 40s phase budget.
+- Reduce <code>max_files_per_commit</code> in config.
 - Ensure GoCPG indexes are up to date: <code>gocpg/gocpg.exe index --db=&lt;db&gt;</code></p>
+<p><strong>Hook metrics not appearing:</strong>
+- Check that <code>data/hook_metrics.jsonl</code> exists and is writable.
+- Run <code>python -m src.cli.import_commands dogfood hooks-status</code> to see aggregated stats.</p>
       </article>
 
       <!-- Page Navigation -->
       <nav class="doc-page-nav">
 
-      <a href="DATAFLOW_ANALYSIS_GUIDE_EN.html" class="doc-page-nav-prev">
+      <a href="DATAFLOW_ANALYSIS_GUIDE.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Previous</span>
         <span class="doc-page-nav-title">Dataflow Analysis User Guide</span>
       </a>
@@ -543,7 +885,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DOGFOODING.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -563,15 +905,32 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#pipeline-architecture" class="level-2">Pipeline Architecture</a></li>
 <li><a href="#data-flow" class="level-3">Data flow</a></li>
 <li><a href="#timeout-budget" class="level-3">Timeout budget</a></li>
-<li><a href="#cpg-freshness-and-force-re-parse" class="level-3">CPG freshness and force re-parse</a></li>
+<li><a href="#cpg-freshness-and-automatic-update" class="level-3">CPG freshness and automatic update</a></li>
 <li><a href="#method-deduplication" class="level-3">Method deduplication</a></li>
 <li><a href="#delta-report" class="level-3">Delta report</a></li>
+<li><a href="#interface-impact-detection" class="level-3">Interface impact detection</a></li>
+<li><a href="#cross-module-alerts" class="level-3">Cross-module alerts</a></li>
+<li><a href="#story-coverage-delta" class="level-3">Story coverage delta</a></li>
+<li><a href="#hook-infrastructure" class="level-2">Hook Infrastructure</a></li>
+<li><a href="#hook-modules" class="level-3">Hook modules</a></li>
+<li><a href="#reviewfinding-and-reviewfeedback" class="level-3">ReviewFinding and ReviewFeedback</a></li>
+<li><a href="#hook-metrics" class="level-3">Hook metrics</a></li>
+<li><a href="#session-cache" class="level-3">Session cache</a></li>
 <li><a href="#setup" class="level-2">Setup</a></li>
 <li><a href="#one-command-setup" class="level-3">One-command setup</a></li>
 <li><a href="#manual-setup" class="level-3">Manual setup</a></li>
 <li><a href="#verify-setup" class="level-3">Verify setup</a></li>
 <li><a href="#cli-commands" class="level-2">CLI Commands</a></li>
+<li><a href="#dogfood-setup" class="level-3">dogfood setup</a></li>
+<li><a href="#dogfood-status" class="level-3">dogfood status</a></li>
+<li><a href="#dogfood-analyze" class="level-3">dogfood analyze</a></li>
+<li><a href="#dogfood-report" class="level-3">dogfood report</a></li>
+<li><a href="#dogfood-validate-claims" class="level-3">dogfood validate-claims</a></li>
+<li><a href="#dogfood-trend" class="level-3">dogfood trend</a></li>
+<li><a href="#dogfood-hooks-status" class="level-3">dogfood hooks-status</a></li>
+<li><a href="#dogfood-validate-stories" class="level-3">dogfood validate-stories</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
+<li><a href="#commitreport" class="level-2">CommitReport</a></li>
 <li><a href="#report-format" class="level-2">Report Format</a></li>
 <li><a href="#scaling-to-other-projects" class="level-2">Scaling to Other Projects</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>

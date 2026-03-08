@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html" class="active">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,16 +181,24 @@
       <article class="doc-content">
         <h1  id="scenario-20-dependency-analysis"><span id="scenario_20_dependency_analysis"></span>Scenario 20: Dependency Analysis<a class="heading-anchor" href="#scenario-20-dependency-analysis" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Security engineer or DevOps lead analyzing project dependencies for vulnerabilities, outdated packages, and license compliance.</p>
+<p>Comprehensive dependency analysis: vulnerability checking, outdated package detection, license compliance, health scoring, and SBOM generation.</p>
 </blockquote>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#quick-start">Quick Start</a></li>
-<li><a href="#overview">Overview</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#architecture">Architecture</a></li>
+<li><a href="#intent-detection">Intent Detection</a></li>
 <li><a href="#supported-package-managers">Supported Package Managers</a></li>
-<li><a href="#analysis-features">Analysis Features</a></li>
-<li><a href="#cli-commands">CLI Commands</a></li>
-<li><a href="#tui-commands">TUI Commands</a></li>
+<li><a href="#data-models">Data Models</a></li>
+<li><a href="#vulnerability-checking">Vulnerability Checking</a></li>
+<li><a href="#dependency-analysis">Dependency Analysis</a></li>
+<li><a href="#license-checking">License Checking</a></li>
+<li><a href="#health-score">Health Score</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
+<li><a href="#rest-api">REST API</a></li>
+<li><a href="#use-cases">Use Cases</a></li>
 <li><a href="#example-questions">Example Questions</a></li>
 <li><a href="#related-scenarios">Related Scenarios</a></li>
 </ul>
@@ -197,451 +206,922 @@
 <div class="highlight"><pre><span></span><code>/select<span class="w"> </span><span class="m">20</span>
 </code></pre></div>
 
-<h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>Scenario 20 provides comprehensive dependency analysis across multiple programming languages and package managers. It scans projects for dependency files, builds dependency graphs, checks for vulnerabilities, and validates license compliance.</p>
-<div class="highlight"><pre><span></span><code>Project Scan → Dependency Graph → Analysis → Report
-                    ↓
-        ┌──────────┬──────────┬──────────┬──────────┐
-        ↓          ↓          ↓          ↓          ↓
-   Vulnerabilities Outdated  Licenses   SBOM      Graph
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3 id="architecture">Architecture<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h3>
+<p>The dependency analysis module (<code>src/dependencies/</code>) consists of 4 components connected in a pipeline:</p>
+<div class="highlight"><pre><span></span><code>Project Source
+    |
+    v
+DependencyGraphBuilder (scan_project, NetworkX graph)
+    |
+    v
+DependencyGraph (files + dependencies + vulnerabilities)
+    |
+    +---&gt; VulnerabilityChecker (OSV API + GitHub Advisory + NVD)
+    |
+    +---&gt; DependencyAnalyzer (find_outdated, find_unused, find_duplicates,
+    |                         suggest_updates, get_health_score)
+    |
+    +---&gt; LicenseChecker (SPDX normalization, copyleft detection, SBOM export)
+    |
+    v
+Report / REST API / CLI
 </code></pre></div>
 
-<h2  id="supported-package-managers"><span id="supported_package_managers"></span>Supported Package Managers<a class="heading-anchor" href="#supported-package-managers" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Language</th>
-<th>Files Detected</th>
-<th>Package Manager</th>
+<th>Component</th>
+<th>Module</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DependencyGraphBuilder</code></td>
+<td><code>graph_builder.py</code></td>
+<td>Scan projects, parse dependency files, build NetworkX graph</td>
+</tr>
+<tr>
+<td><code>VulnerabilityChecker</code></td>
+<td><code>vulnerability.py</code></td>
+<td>Check dependencies against OSV, GitHub Advisory, NVD</td>
+</tr>
+<tr>
+<td><code>DependencyAnalyzer</code></td>
+<td><code>analyzer.py</code></td>
+<td>Find outdated/unused/duplicate packages, suggest updates, health score</td>
+</tr>
+<tr>
+<td><code>LicenseChecker</code></td>
+<td><code>license_checker.py</code></td>
+<td>SPDX normalization, copyleft detection, compatibility, SBOM export</td>
+</tr>
+</tbody>
+</table></div>
+<p>3 language parsers (<code>src/dependencies/parsers/</code>):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parser</th>
+<th>Files</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Python</td>
-<td><code>requirements.txt</code>, <code>Pipfile</code>, <code>pyproject.toml</code>, <code>setup.py</code></td>
-<td>pip, pipenv, poetry</td>
+<td><code>pyproject.toml</code>, <code>requirements.txt</code>, <code>Pipfile</code>, <code>setup.py</code></td>
 </tr>
 <tr>
 <td>JavaScript</td>
-<td><code>package.json</code>, <code>yarn.lock</code>, <code>pnpm-lock.yaml</code></td>
-<td>npm, yarn, pnpm</td>
+<td><code>package.json</code>, <code>package-lock.json</code>, <code>yarn.lock</code>, <code>pnpm-lock.yaml</code></td>
 </tr>
 <tr>
 <td>Go</td>
 <td><code>go.mod</code>, <code>go.sum</code></td>
-<td>go modules</td>
-</tr>
-<tr>
-<td>Ruby</td>
-<td><code>Gemfile</code>, <code>Gemfile.lock</code></td>
-<td>bundler</td>
-</tr>
-<tr>
-<td>Java</td>
-<td><code>pom.xml</code>, <code>build.gradle</code></td>
-<td>maven, gradle</td>
-</tr>
-<tr>
-<td>Rust</td>
-<td><code>Cargo.toml</code>, <code>Cargo.lock</code></td>
-<td>cargo</td>
-</tr>
-<tr>
-<td>PHP</td>
-<td><code>composer.json</code>, <code>composer.lock</code></td>
-<td>composer</td>
 </tr>
 </tbody>
 </table></div>
-<h2  id="analysis-features"><span id="analysis_features"></span>Analysis Features<a class="heading-anchor" href="#analysis-features" title="Link to this section">&para;</a></h2>
-<h3  id="dependency-graph-building"><span id="dependency_graph_building"></span>Dependency Graph Building<a class="heading-anchor" href="#dependency-graph-building" title="Link to this section">&para;</a></h3>
-<p>Scan a project and build the dependency tree:</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Scan</span><span class="w"> </span><span class="n">project</span><span class="w"> </span><span class="n">dependencies</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="p">.</span>
-
-<span class="n">╭───────────────</span><span class="w"> </span><span class="n">Dependency</span><span class="w"> </span><span class="n">Analysis</span><span class="w"> </span><span class="n">Results</span><span class="w"> </span><span class="n">───────────────╮</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="n">Overview</span><span class="o">:</span><span class="w">                                                 </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Total</span><span class="w"> </span><span class="n">dependencies</span><span class="o">:</span><span class="w"> </span><span class="mi">127</span><span class="w">                                 </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Direct</span><span class="w"> </span><span class="n">dependencies</span><span class="o">:</span><span class="w"> </span><span class="mi">23</span><span class="w">                                 </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Dev</span><span class="w"> </span><span class="n">dependencies</span><span class="o">:</span><span class="w"> </span><span class="mi">45</span><span class="w">                                    </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Files</span><span class="w"> </span><span class="n">analyzed</span><span class="o">:</span><span class="w"> </span><span class="mi">3</span><span class="w">                                       </span><span class="n">│</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="n">Dependencies</span><span class="o">:</span><span class="w">                                             </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`fastapi`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">0.104.1</span><span class="w">                                     </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`pydantic`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">2.5.2</span><span class="w">                                      </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`sqlalchemy`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">2.0.23</span><span class="w">                                   </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`uvicorn`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">0.24.0</span><span class="w">                                      </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`httpx`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">0.25.2</span><span class="w">                                        </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`pytest`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">7.4.3</span><span class="w">                                        </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`black`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">23.11.0</span><span class="w">                                       </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`ruff`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">0.1.6</span><span class="w">                                          </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`mypy`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">1.7.1</span><span class="w">                                          </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`rich`</span><span class="w"> </span><span class="err">@</span><span class="w"> </span><span class="mf">13.7.0</span><span class="w">                                         </span><span class="n">│</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="p">...</span><span class="w"> </span><span class="k">and</span><span class="w"> </span><span class="mi">117</span><span class="w"> </span><span class="n">more</span><span class="w"> </span><span class="n">dependencies</span><span class="w">                             </span><span class="n">│</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">╰────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
-
-<h3  id="vulnerability-checking"><span id="vulnerability_checking"></span>Vulnerability Checking<a class="heading-anchor" href="#vulnerability-checking" title="Link to this section">&para;</a></h3>
-<p>Check dependencies against vulnerability databases:</p>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Check dependencies for vulnerabilities</span>
-
-╭─────────────── Vulnerability Check ───────────────────────╮
-│                                                            │
-│  Overview:                                                 │
-│  - Total dependencies: 127                                 │
-│  - Direct dependencies: 23                                 │
-│  - Dev dependencies: 45                                    │
-│  - Files analyzed: 3                                       │
-│                                                            │
-│  Vulnerabilities:                                          │
-│                                                            │
-│  - 🔴 **CVE-2024-12345**: requests                         │
-│    Remote Code Execution in HTTP redirect handling         │
-│    <span class="gs">*Fixed in: 2.32.0*</span>                                      │
-│                                                            │
-│  - 🟠 **CVE-2024-23456**: pillow                           │
-│    Buffer overflow in image processing                     │
-│    <span class="gs">*Fixed in: 10.2.0*</span>                                      │
-│                                                            │
-│  - 🟡 **CVE-2024-34567**: cryptography                     │
-│    Timing side-channel in RSA decryption                   │
-│    <span class="gs">*Fixed in: 41.0.7*</span>                                      │
-│                                                            │
-╰────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h4  id="vulnerability-sources"><span id="vulnerability_sources"></span>Vulnerability Sources<a class="heading-anchor" href="#vulnerability-sources" title="Link to this section">&para;</a></h4>
+<h3  id="intent-detection"><span id="intent_detection"></span>Intent Detection<a class="heading-anchor" href="#intent-detection" title="Link to this section">&para;</a></h3>
+<p>The workflow (<code>src/workflow/scenarios/dependencies_analysis.py</code>) detects dependency-related queries via <code>is_dependency_query()</code> using 36 bilingual keywords:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Source</th>
+<th>Language</th>
+<th>Keywords</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>English (24)</td>
+<td>dependency, dependencies, package, npm, pip, cargo, maven, gradle, go mod, vulnerability, CVE, security audit, outdated, update, license, SBOM, supply chain, dependency graph, package manager, lock file, version conflict, transitive</td>
+</tr>
+<tr>
+<td>Russian (12)</td>
+<td>зависимость, зависимости, пакет, уязвимость, устаревший, обновить, лицензия, граф зависимостей, менеджер пакетов, цепочка поставок</td>
+</tr>
+</tbody>
+</table></div>
+<p>The <code>dependencies_workflow()</code> function is registered in LangGraph via <code>graph_builder.py</code> and routed through <code>intent_classifier.py</code> → <code>router.py</code>. Optional enrichment via <code>EnrichmentAdapter</code> adds vector context.</p>
+<h2  id="supported-package-managers"><span id="supported_package_managers"></span>Supported Package Managers<a class="heading-anchor" href="#supported-package-managers" title="Link to this section">&para;</a></h2>
+<p><code>PackageManager</code> enum (12 values):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Manager</th>
+<th>Language</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PIP</code></td>
+<td>pip</td>
+<td>Python</td>
+</tr>
+<tr>
+<td><code>POETRY</code></td>
+<td>Poetry</td>
+<td>Python</td>
+</tr>
+<tr>
+<td><code>CONDA</code></td>
+<td>Conda</td>
+<td>Python</td>
+</tr>
+<tr>
+<td><code>NPM</code></td>
+<td>npm</td>
+<td>JavaScript</td>
+</tr>
+<tr>
+<td><code>YARN</code></td>
+<td>Yarn</td>
+<td>JavaScript</td>
+</tr>
+<tr>
+<td><code>PNPM</code></td>
+<td>pnpm</td>
+<td>JavaScript</td>
+</tr>
+<tr>
+<td><code>GO</code></td>
+<td>Go Modules</td>
+<td>Go</td>
+</tr>
+<tr>
+<td><code>CARGO</code></td>
+<td>Cargo</td>
+<td>Rust</td>
+</tr>
+<tr>
+<td><code>BUNDLER</code></td>
+<td>Bundler</td>
+<td>Ruby</td>
+</tr>
+<tr>
+<td><code>MAVEN</code></td>
+<td>Maven</td>
+<td>Java</td>
+</tr>
+<tr>
+<td><code>GRADLE</code></td>
+<td>Gradle</td>
+<td>Java</td>
+</tr>
+<tr>
+<td><code>NUGET</code></td>
+<td>NuGet</td>
+<td>.NET</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="data-models"><span id="data_models"></span>Data Models<a class="heading-anchor" href="#data-models" title="Link to this section">&para;</a></h2>
+<h3  id="dependency-14-fields"><span id="dependency_14_fields"></span>Dependency (14 fields)<a class="heading-anchor" href="#dependency-14-fields" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td><code>id</code></td>
+<td>str</td>
+<td>Unique identifier</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>str</td>
+<td>Package name</td>
+</tr>
+<tr>
+<td><code>version_spec</code></td>
+<td>str?</td>
+<td>Version requirement (e.g., <code>&gt;=1.0.0</code>)</td>
+</tr>
+<tr>
+<td><code>resolved_version</code></td>
+<td>str?</td>
+<td>Actually installed version</td>
+</tr>
+<tr>
+<td><code>is_dev</code></td>
+<td>bool</td>
+<td>Development dependency</td>
+</tr>
+<tr>
+<td><code>is_optional</code></td>
+<td>bool</td>
+<td>Optional dependency</td>
+</tr>
+<tr>
+<td><code>is_direct</code></td>
+<td>bool</td>
+<td>Direct vs transitive (default: True)</td>
+</tr>
+<tr>
+<td><code>license</code></td>
+<td>str?</td>
+<td>License identifier</td>
+</tr>
+<tr>
+<td><code>repository_url</code></td>
+<td>str?</td>
+<td>Source repository URL</td>
+</tr>
+<tr>
+<td><code>homepage_url</code></td>
+<td>str?</td>
+<td>Project homepage</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>str?</td>
+<td>Package description</td>
+</tr>
+<tr>
+<td><code>file_id</code></td>
+<td>str?</td>
+<td>Reference to DependencyFile</td>
+</tr>
+<tr>
+<td><code>parent_ids</code></td>
+<td>list[str]</td>
+<td>Parent dependency IDs</td>
+</tr>
+<tr>
+<td><code>child_ids</code></td>
+<td>list[str]</td>
+<td>Child dependency IDs</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="dependencygraph-3-collections-5-methods"><span id="dependencygraph_3_collections_5_methods"></span>DependencyGraph (3 collections + 5 methods)<a class="heading-anchor" href="#dependencygraph-3-collections-5-methods" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field/Method</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td>list[DependencyFile]</td>
+<td>Parsed manifest files</td>
+</tr>
+<tr>
+<td><code>dependencies</code></td>
+<td>dict[str, Dependency]</td>
+<td>All dependencies by ID</td>
+</tr>
+<tr>
+<td><code>vulnerabilities</code></td>
+<td>list[Vulnerability]</td>
+<td>Found vulnerabilities</td>
+</tr>
+<tr>
+<td><code>get_dependency(name)</code></td>
+<td>method</td>
+<td>Find dependency by name</td>
+</tr>
+<tr>
+<td><code>get_direct_dependencies()</code></td>
+<td>method</td>
+<td>Filter direct dependencies</td>
+</tr>
+<tr>
+<td><code>get_transitive_dependencies()</code></td>
+<td>method</td>
+<td>Filter transitive dependencies</td>
+</tr>
+<tr>
+<td><code>get_dev_dependencies()</code></td>
+<td>method</td>
+<td>Filter dev dependencies</td>
+</tr>
+<tr>
+<td><code>to_dict()</code></td>
+<td>method</td>
+<td>Serialize to dictionary</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="vulnerability-15-fields"><span id="vulnerability_15_fields"></span>Vulnerability (15 fields)<a class="heading-anchor" href="#vulnerability-15-fields" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>str</td>
+<td>Internal ID</td>
+</tr>
+<tr>
+<td><code>dependency_name</code></td>
+<td>str</td>
+<td>Affected package</td>
+</tr>
+<tr>
+<td><code>dependency_version</code></td>
+<td>str?</td>
+<td>Affected version</td>
+</tr>
+<tr>
+<td><code>vuln_id</code></td>
+<td>str</td>
+<td>CVE or GHSA identifier</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>VulnerabilitySource</td>
+<td>OSV, GITHUB_ADVISORY, NVD, or SNYK</td>
+</tr>
+<tr>
+<td><code>severity</code></td>
+<td>VulnerabilitySeverity</td>
+<td>CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN</td>
+</tr>
+<tr>
+<td><code>cvss_score</code></td>
+<td>float?</td>
+<td>CVSS score (0.0–10.0)</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>str</td>
+<td>Vulnerability title</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>str</td>
+<td>Detailed description</td>
+</tr>
+<tr>
+<td><code>affected_versions</code></td>
+<td>str?</td>
+<td>Affected version range</td>
+</tr>
+<tr>
+<td><code>fixed_version</code></td>
+<td>str?</td>
+<td>Version with fix</td>
+</tr>
+<tr>
+<td><code>references</code></td>
+<td>list[str]</td>
+<td>Reference URLs</td>
+</tr>
+<tr>
+<td><code>published_at</code></td>
+<td>datetime?</td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>checked_at</code></td>
+<td>datetime?</td>
+<td>When the check was performed</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>dict</td>
+<td>Additional metadata</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="licenseinfo-7-fields"><span id="licenseinfo_7_fields"></span>LicenseInfo (7 fields)<a class="heading-anchor" href="#licenseinfo-7-fields" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dependency_name</code></td>
+<td>str</td>
+<td>Package name</td>
+</tr>
+<tr>
+<td><code>license_id</code></td>
+<td>str</td>
+<td>SPDX identifier</td>
+</tr>
+<tr>
+<td><code>license_name</code></td>
+<td>str</td>
+<td>Human-readable name</td>
+</tr>
+<tr>
+<td><code>is_osi_approved</code></td>
+<td>bool</td>
+<td>OSI-approved license</td>
+</tr>
+<tr>
+<td><code>is_copyleft</code></td>
+<td>bool</td>
+<td>Copyleft license</td>
+</tr>
+<tr>
+<td><code>is_allowed</code></td>
+<td>bool?</td>
+<td>Allowed by project policy</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>str?</td>
+<td>Additional notes</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="dependencyconfig-13-fields"><span id="dependencyconfig_13_fields"></span>DependencyConfig (13 fields)<a class="heading-anchor" href="#dependencyconfig-13-fields" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auto_scan_on_import</code></td>
+<td>bool</td>
+<td>True</td>
+<td>Auto-scan on project import</td>
+</tr>
+<tr>
+<td><code>include_dev</code></td>
+<td>bool</td>
+<td>True</td>
+<td>Include dev dependencies</td>
+</tr>
+<tr>
+<td><code>max_depth</code></td>
+<td>int</td>
+<td>10</td>
+<td>Maximum dependency depth</td>
+</tr>
+<tr>
+<td><code>vulnerability_enabled</code></td>
+<td>bool</td>
+<td>True</td>
+<td>Enable vulnerability checking</td>
+</tr>
+<tr>
+<td><code>vulnerability_sources</code></td>
+<td>list[str]</td>
+<td><code>["osv", "github_advisory", "nvd"]</code></td>
+<td>Active vulnerability sources</td>
+</tr>
+<tr>
+<td><code>check_interval_hours</code></td>
+<td>int</td>
+<td>24</td>
+<td>Re-check interval</td>
+</tr>
+<tr>
+<td><code>severity_threshold</code></td>
+<td>str</td>
+<td><code>"medium"</code></td>
+<td>Minimum severity to report</td>
+</tr>
+<tr>
+<td><code>license_check_enabled</code></td>
+<td>bool</td>
+<td>True</td>
+<td>Enable license checking</td>
+</tr>
+<tr>
+<td><code>allowed_licenses</code></td>
+<td>list[str]</td>
+<td><code>["MIT", "Apache-2.0", ...]</code></td>
+<td>Permitted licenses</td>
+</tr>
+<tr>
+<td><code>flagged_licenses</code></td>
+<td>list[str]</td>
+<td><code>["GPL-3.0", "AGPL-3.0", ...]</code></td>
+<td>Flagged licenses</td>
+</tr>
+<tr>
+<td><code>python_files</code></td>
+<td>list[str]</td>
+<td><code>["pyproject.toml", ...]</code></td>
+<td>Python manifest patterns</td>
+</tr>
+<tr>
+<td><code>javascript_files</code></td>
+<td>list[str]</td>
+<td><code>["package.json", ...]</code></td>
+<td>JavaScript manifest patterns</td>
+</tr>
+<tr>
+<td><code>go_files</code></td>
+<td>list[str]</td>
+<td><code>["go.mod", "go.sum"]</code></td>
+<td>Go manifest patterns</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="vulnerability-checking"><span id="vulnerability_checking"></span>Vulnerability Checking<a class="heading-anchor" href="#vulnerability-checking" title="Link to this section">&para;</a></h2>
+<p><code>VulnerabilityChecker</code> queries 3 vulnerability databases:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Source</th>
+<th>API</th>
+<th>Ecosystems</th>
+</tr>
+</thead>
+<tbody>
+<tr>
 <td>OSV</td>
-<td>Open Source Vulnerabilities database</td>
+<td><code>api.osv.dev/v1</code> (REST)</td>
+<td>PyPI, npm, Go, crates.io, Maven</td>
 </tr>
 <tr>
 <td>GitHub Advisory</td>
-<td>GitHub Security Advisories</td>
+<td>GitHub GraphQL API</td>
+<td>All via GHSA</td>
 </tr>
 <tr>
 <td>NVD</td>
 <td>National Vulnerability Database</td>
-</tr>
-<tr>
-<td>PyPI Advisory</td>
-<td>Python-specific advisories</td>
-</tr>
-<tr>
-<td>npm Audit</td>
-<td>Node.js-specific advisories</td>
+<td>All via CPE</td>
 </tr>
 </tbody>
 </table></div>
-<h4  id="severity-levels"><span id="severity_levels"></span>Severity Levels<a class="heading-anchor" href="#severity-levels" title="Link to this section">&para;</a></h4>
+<p>The <code>VulnerabilitySource</code> enum also includes <code>SNYK</code> but it has no active implementation.</p>
+<p>Severity levels (<code>VulnerabilitySeverity</code> enum):</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Emoji</th>
 <th>Severity</th>
 <th>CVSS Score</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>🔴</td>
-<td>Critical</td>
-<td>9.0-10.0</td>
+<td>CRITICAL</td>
+<td>9.0–10.0</td>
 </tr>
 <tr>
-<td>🟠</td>
-<td>High</td>
-<td>7.0-8.9</td>
+<td>HIGH</td>
+<td>7.0–8.9</td>
 </tr>
 <tr>
-<td>🟡</td>
-<td>Medium</td>
-<td>4.0-6.9</td>
+<td>MEDIUM</td>
+<td>4.0–6.9</td>
 </tr>
 <tr>
-<td>🟢</td>
-<td>Low</td>
-<td>0.1-3.9</td>
+<td>LOW</td>
+<td>0.1–3.9</td>
+</tr>
+<tr>
+<td>UNKNOWN</td>
+<td>Not available</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="outdated-package-detection"><span id="outdated_package_detection"></span>Outdated Package Detection<a class="heading-anchor" href="#outdated-package-detection" title="Link to this section">&para;</a></h3>
-<p>Find packages with available updates:</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="k">Check</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">outdated</span><span class="w"> </span><span class="n">dependencies</span>
-
-<span class="n">╭───────────────</span><span class="w"> </span><span class="n">Outdated</span><span class="w"> </span><span class="n">Packages</span><span class="w"> </span><span class="n">─────────────────────────╮</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="n">Outdated</span><span class="w"> </span><span class="n">Packages</span><span class="o">:</span><span class="w">                                        </span><span class="n">│</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`fastapi`</span><span class="o">:</span><span class="w"> </span><span class="mf">0.104.1</span><span class="w"> </span><span class="n">→</span><span class="w"> </span><span class="mf">0.109.0</span><span class="w">                            </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`pydantic`</span><span class="o">:</span><span class="w"> </span><span class="mf">2.5.2</span><span class="w"> </span><span class="n">→</span><span class="w"> </span><span class="mf">2.6.1</span><span class="w">                               </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`sqlalchemy`</span><span class="o">:</span><span class="w"> </span><span class="mf">2.0.23</span><span class="w"> </span><span class="n">→</span><span class="w"> </span><span class="mf">2.0.25</span><span class="w">                           </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`uvicorn`</span><span class="o">:</span><span class="w"> </span><span class="mf">0.24.0</span><span class="w"> </span><span class="n">→</span><span class="w"> </span><span class="mf">0.27.0</span><span class="w">                              </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n n-Quoted">`pytest`</span><span class="o">:</span><span class="w"> </span><span class="mf">7.4.3</span><span class="w"> </span><span class="n">→</span><span class="w"> </span><span class="mf">8.0.0</span><span class="w">                                 </span><span class="n">│</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">│</span><span class="w">  </span><span class="p">...</span><span class="w"> </span><span class="k">and</span><span class="w"> </span><span class="mi">12</span><span class="w"> </span><span class="n">more</span><span class="w"> </span><span class="n">outdated</span><span class="w"> </span><span class="n">packages</span><span class="w">                         </span><span class="n">│</span>
-<span class="n">│</span><span class="w">                                                            </span><span class="n">│</span>
-<span class="n">╰────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
-
-<h3  id="license-compliance"><span id="license_compliance"></span>License Compliance<a class="heading-anchor" href="#license-compliance" title="Link to this section">&para;</a></h3>
-<p>Check licenses for compatibility issues:</p>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Check</span><span class="w"> </span><span class="nx">dependency</span><span class="w"> </span><span class="nx">licenses</span>
-
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nx">License</span><span class="w"> </span><span class="nx">Analysis</span><span class="w"> </span><span class="err">──────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">License</span><span class="w"> </span><span class="nx">Summary</span><span class="p">:</span><span class="w">                                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">MIT</span><span class="p">:</span><span class="w"> </span><span class="mi">78</span><span class="w"> </span><span class="nx">packages</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Apache</span><span class="o">-</span><span class="m m-Double">2.0</span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="w"> </span><span class="nx">packages</span><span class="w">                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">BSD</span><span class="o">-</span><span class="mi">3</span><span class="o">-</span><span class="nx">Clause</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="w"> </span><span class="nx">packages</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">GPL</span><span class="o">-</span><span class="m m-Double">3.0</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="nx">packages</span><span class="w">                                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Unknown</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="nx">packages</span><span class="w">                                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">License</span><span class="w"> </span><span class="nx">Issues</span><span class="p">:</span><span class="w">                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="err">`</span><span class="nx">some</span><span class="o">-</span><span class="nx">gpl</span><span class="o">-</span><span class="nx">lib</span><span class="err">`</span><span class="p">:</span><span class="w"> </span><span class="nx">GPL</span><span class="o">-</span><span class="m m-Double">3.0</span><span class="w"> </span><span class="nx">may</span><span class="w"> </span><span class="nx">conflict</span><span class="w"> </span><span class="nx">with</span><span class="w"> </span><span class="nx">MIT</span><span class="w"> </span><span class="nx">project</span><span class="w">   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="err">`</span><span class="nx">mystery</span><span class="o">-</span><span class="nx">pkg</span><span class="err">`</span><span class="p">:</span><span class="w"> </span><span class="nx">License</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="nx">specified</span><span class="w">                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="err">`</span><span class="nx">old</span><span class="o">-</span><span class="nx">lib</span><span class="err">`</span><span class="p">:</span><span class="w"> </span><span class="nx">License</span><span class="w"> </span><span class="nx">file</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="nx">found</span><span class="w">                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">╰────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
-
-<h3  id="sbom-generation"><span id="sbom_generation"></span>SBOM Generation<a class="heading-anchor" href="#sbom-generation" title="Link to this section">&para;</a></h3>
-<p>Generate Software Bill of Materials:</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">Generate</span><span class="w"> </span><span class="nv">SBOM</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">project</span>
-
-╭───────────────<span class="w"> </span><span class="nv">SBOM</span><span class="w"> </span><span class="nv">Generated</span><span class="w"> </span>────────────────────────────╮
-│<span class="w">                                                            </span>│
-│<span class="w">  </span><span class="nv">Format</span>:<span class="w"> </span><span class="nv">CycloneDX</span><span class="w"> </span><span class="mi">1</span>.<span class="mi">4</span><span class="w">                                     </span>│
-│<span class="w">  </span><span class="nv">Output</span>:<span class="w"> </span><span class="nv">sbom</span>.<span class="nv">json</span><span class="w">                                         </span>│
-│<span class="w">                                                            </span>│
-│<span class="w">  </span><span class="nv">Components</span>:<span class="w"> </span><span class="mi">127</span><span class="w">                                           </span>│
-│<span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Libraries</span>:<span class="w"> </span><span class="mi">125</span><span class="w">                                          </span>│
-│<span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Frameworks</span>:<span class="w"> </span><span class="mi">2</span><span class="w">                                           </span>│
-│<span class="w">                                                            </span>│
-│<span class="w">  </span><span class="nv">Metadata</span>:<span class="w">                                                 </span>│
-│<span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Generated</span>:<span class="w"> </span><span class="mi">2024</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">09</span><span class="nv">T14</span>:<span class="mi">35</span>:<span class="mi">21</span><span class="nv">Z</span><span class="w">                         </span>│
-│<span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Tool</span>:<span class="w"> </span><span class="nv">CodeGraph</span><span class="w"> </span><span class="nv">v1</span>.<span class="mi">0</span><span class="w">                                    </span>│
-│<span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Project</span>:<span class="w"> </span><span class="nv">codegraph</span><span class="w">                                      </span>│
-│<span class="w">                                                            </span>│
-╰────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="cli-commands"><span id="cli_commands"></span>CLI Commands<a class="heading-anchor" href="#cli-commands" title="Link to this section">&para;</a></h2>
-<h3  id="scanning-dependencies"><span id="scanning_dependencies"></span>Scanning Dependencies<a class="heading-anchor" href="#scanning-dependencies" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Scan current project</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>scan
-
-<span class="c1"># Scan specific path</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>scan<span class="w"> </span>--project<span class="w"> </span>/path/to/project
-
-<span class="c1"># Include dev dependencies</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>scan<span class="w"> </span>--include-dev
-
-<span class="c1"># Output as JSON</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>scan<span class="w"> </span>--output<span class="w"> </span>deps.json
-</code></pre></div>
-
-<h3  id="vulnerability-auditing"><span id="vulnerability_auditing"></span>Vulnerability Auditing<a class="heading-anchor" href="#vulnerability-auditing" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Check for vulnerabilities</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit
-
-<span class="c1"># Check specific severity</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span>--severity<span class="w"> </span>critical,high
-
-<span class="c1"># Exit with error on vulnerabilities (for CI)</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span>--fail-on<span class="w"> </span>high
-
-<span class="c1"># Output detailed report</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span>--report<span class="w"> </span>vuln-report.json
-</code></pre></div>
-
-<h3  id="outdated-packages"><span id="outdated_packages"></span>Outdated Packages<a class="heading-anchor" href="#outdated-packages" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Check for outdated packages</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>outdated
-
-<span class="c1"># Show only direct dependencies</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>outdated<span class="w"> </span>--direct-only
-
-<span class="c1"># Show available updates</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>outdated<span class="w"> </span>--show-updates
-</code></pre></div>
-
-<h3  id="license-checking"><span id="license_checking"></span>License Checking<a class="heading-anchor" href="#license-checking" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Check licenses</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>licenses
-
-<span class="c1"># Check against allowed list</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>licenses<span class="w"> </span>--allowed<span class="w"> </span>MIT,Apache-2.0,BSD-3-Clause
-
-<span class="c1"># Fail on disallowed licenses</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>licenses<span class="w"> </span>--fail-on<span class="w"> </span>GPL-3.0
-</code></pre></div>
-
-<h3  id="sbom-generation_1"><span id="sbom_generation_1"></span>SBOM Generation<a class="heading-anchor" href="#sbom-generation_1" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Generate CycloneDX SBOM</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span>--format<span class="w"> </span>cyclonedx<span class="w"> </span>--output<span class="w"> </span>sbom.json
-
-<span class="c1"># Generate SPDX SBOM</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span>--format<span class="w"> </span>spdx<span class="w"> </span>--output<span class="w"> </span>sbom.spdx
-
-<span class="c1"># Include vulnerabilities in SBOM</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span>--include-vulnerabilities
-</code></pre></div>
-
-<h3  id="dependency-graph"><span id="dependency_graph"></span>Dependency Graph<a class="heading-anchor" href="#dependency-graph" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Show dependency tree</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>tree
-
-<span class="c1"># Show why a package is installed</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>why<span class="w"> </span>requests
-
-<span class="c1"># Export graph as DOT format</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>graph<span class="w"> </span>--format<span class="w"> </span>dot<span class="w"> </span>--output<span class="w"> </span>deps.dot
-</code></pre></div>
-
-<h2  id="tui-commands"><span id="tui_commands"></span>TUI Commands<a class="heading-anchor" href="#tui-commands" title="Link to this section">&para;</a></h2>
+<h2  id="dependency-analysis"><span id="dependency_analysis"></span>Dependency Analysis<a class="heading-anchor" href="#dependency-analysis" title="Link to this section">&para;</a></h2>
+<p><code>DependencyAnalyzer</code> provides 6 analysis methods:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Command</th>
+<th>Method</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>/dependencies scan</code></td>
-<td>Scan for dependencies</td>
+<td><code>find_outdated(graph, check_latest)</code></td>
+<td>Find packages with newer versions available</td>
 </tr>
 <tr>
-<td><code>/dependencies audit</code></td>
-<td>Check vulnerabilities</td>
+<td><code>find_unused(graph)</code></td>
+<td>Detect potentially unused dependencies</td>
 </tr>
 <tr>
-<td><code>/dependencies outdated</code></td>
-<td>Find outdated packages</td>
+<td><code>find_duplicates(graph)</code></td>
+<td>Find duplicate packages across files</td>
 </tr>
 <tr>
-<td><code>/dependencies licenses</code></td>
-<td>Check license compliance</td>
+<td><code>suggest_updates(graph, conservative)</code></td>
+<td>Suggest safe updates (conservative: minor/patch only)</td>
 </tr>
 <tr>
-<td><code>/dependencies sbom</code></td>
-<td>Generate SBOM</td>
+<td><code>get_health_score(graph)</code></td>
+<td>Calculate 0–100 health score with A–F rating</td>
 </tr>
 <tr>
-<td><code>/dependencies tree</code></td>
-<td>Show dependency tree</td>
-</tr>
-<tr>
-<td><code>/dependencies why &lt;pkg&gt;</code></td>
-<td>Show why package is installed</td>
+<td><code>_score_to_rating(score)</code></td>
+<td>Convert numeric score to letter grade</td>
 </tr>
 </tbody>
 </table></div>
-<h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
+<h2  id="license-checking"><span id="license_checking"></span>License Checking<a class="heading-anchor" href="#license-checking" title="Link to this section">&para;</a></h2>
+<p><code>LicenseChecker</code> handles license compliance with:</p>
 <ul>
-<li>&ldquo;Scan project for dependencies&rdquo;</li>
-<li>&ldquo;Check for vulnerable packages&rdquo;</li>
-<li>&ldquo;Are there any outdated dependencies?&rdquo;</li>
-<li>&ldquo;Show me the dependency tree&rdquo;</li>
-<li>&ldquo;Why is requests installed?&rdquo;</li>
-<li>&ldquo;Generate SBOM for the project&rdquo;</li>
-<li>&ldquo;Check if all licenses are MIT compatible&rdquo;</li>
-<li>&ldquo;Find packages with critical vulnerabilities&rdquo;</li>
+<li><strong>SPDX normalization</strong> — 17 license aliases mapped to standard SPDX identifiers</li>
+<li><strong>License classification</strong> — 10 permissive, 16 copyleft, 4 weak copyleft licenses</li>
+<li><strong>OSI approval</strong> tracking</li>
 </ul>
+<p>Key methods:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>check_license(dep)</code></td>
+<td>Check a single dependency&rsquo;s license</td>
+</tr>
+<tr>
+<td><code>check_graph(graph)</code></td>
+<td>Check all dependencies in the graph</td>
+</tr>
+<tr>
+<td><code>find_issues(graph)</code></td>
+<td>Find license compatibility issues</td>
+</tr>
+<tr>
+<td><code>find_missing_licenses(graph)</code></td>
+<td>Find dependencies without license info</td>
+</tr>
+<tr>
+<td><code>check_compatibility(licenses)</code></td>
+<td>Check inter-license compatibility</td>
+</tr>
+<tr>
+<td><code>export_sbom(graph, format)</code></td>
+<td>Export SBOM in SPDX 2.3 or CycloneDX 1.4 format</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="health-score"><span id="health_score"></span>Health Score<a class="heading-anchor" href="#health-score" title="Link to this section">&para;</a></h2>
+<p><code>get_health_score()</code> returns a 0–100 score with breakdown:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Max Penalty</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vulnerabilities</td>
+<td>50 points</td>
+<td>Based on count and severity</td>
+</tr>
+<tr>
+<td>Outdated packages</td>
+<td>30 points</td>
+<td>Based on number of outdated deps</td>
+</tr>
+<tr>
+<td>Duplicates</td>
+<td>10 points</td>
+<td>Based on duplicate count</td>
+</tr>
+</tbody>
+</table></div>
+<p>Rating scale:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Score</th>
+<th>Rating</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>90–100</td>
+<td>A</td>
+</tr>
+<tr>
+<td>80–89</td>
+<td>B</td>
+</tr>
+<tr>
+<td>70–79</td>
+<td>C</td>
+</tr>
+<tr>
+<td>60–69</td>
+<td>D</td>
+</tr>
+<tr>
+<td>0–59</td>
+<td>F</td>
+</tr>
+</tbody>
+</table></div>
 <h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
-<p>Configure dependency analysis in <code>config.yaml</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">scenarios</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dependencies</span><span class="p">:</span>
-<span class="w">    </span><span class="c1"># Vulnerability checking</span>
-<span class="w">    </span><span class="nt">vulnerability_sources</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osv</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github_advisory</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvd</span>
-<span class="w">    </span><span class="nt">severity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span><span class="w">  </span><span class="c1"># low, medium, high, critical</span>
+<p><code>DependencyConfig</code> dataclass (13 parameters):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">dependencies</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">auto_scan_on_import</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">include_dev</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 
-<span class="w">    </span><span class="c1"># License compliance</span>
-<span class="w">    </span><span class="nt">allowed_licenses</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MIT</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Apache-2.0</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BSD-3-Clause</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ISC</span>
-<span class="w">    </span><span class="nt">disallowed_licenses</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPL-3.0</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AGPL-3.0</span>
+<span class="w">  </span><span class="c1"># Vulnerability checking</span>
+<span class="w">  </span><span class="nt">vulnerability_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">vulnerability_sources</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osv</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github_advisory</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvd</span>
+<span class="w">  </span><span class="nt">check_interval_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24</span>
+<span class="w">  </span><span class="nt">severity_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span><span class="w">    </span><span class="c1"># critical, high, medium, low</span>
 
-<span class="w">    </span><span class="c1"># SBOM settings</span>
-<span class="w">    </span><span class="nt">sbom_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cyclonedx</span><span class="w">  </span><span class="c1"># cyclonedx, spdx</span>
-
-<span class="w">    </span><span class="c1"># Scanning options</span>
-<span class="w">    </span><span class="nt">include_dev</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<span class="w">    </span><span class="nt">cache_ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3600</span><span class="w">  </span><span class="c1"># seconds</span>
+<span class="w">  </span><span class="c1"># License checking</span>
+<span class="w">  </span><span class="nt">license_check_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">allowed_licenses</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MIT</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Apache-2.0</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BSD-3-Clause</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BSD-2-Clause</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ISC</span>
+<span class="w">  </span><span class="nt">flagged_licenses</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPL-3.0</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AGPL-3.0</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPL-2.0</span>
 </code></pre></div>
 
-<h2  id="cicd-integration"><span id="cicd_integration"></span>CI/CD Integration<a class="heading-anchor" href="#cicd-integration" title="Link to this section">&para;</a></h2>
-<h3  id="github-actions"><span id="github_actions"></span>GitHub Actions<a class="heading-anchor" href="#github-actions" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># .github/workflows/security.yml</span>
-<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Dependency Security</span>
-<span class="nt">on</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">push</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Scan for dependencies</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>scan<span class="w"> </span><span class="o">[</span>path<span class="o">]</span><span class="w"> </span>--include-dev<span class="w"> </span>--max-depth<span class="w"> </span><span class="m">10</span>
 
-<span class="nt">jobs</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
-<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v3</span>
+<span class="c1"># List dependencies (with filters)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>list<span class="w"> </span>--outdated<span class="w"> </span>--dev<span class="w"> </span>--direct<span class="w"> </span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="p">|</span>tree
 
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install CodeGraph</span>
-<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip install codegraph</span>
+<span class="c1"># Check for vulnerabilities</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>check-vulns<span class="w"> </span>--severity<span class="w"> </span>medium<span class="w"> </span>--fail-on<span class="w"> </span>high<span class="w"> </span>-o<span class="w"> </span>report.json
 
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Check Vulnerabilities</span>
-<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph deps audit --fail-on high</span>
+<span class="c1"># Show dependency graph</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>graph<span class="w"> </span>--format<span class="w"> </span>text<span class="p">|</span>dot<span class="p">|</span>json<span class="p">|</span>mermaid<span class="w"> </span>--depth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-o<span class="w"> </span>graph.dot
 
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Check Licenses</span>
-<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph deps licenses --allowed MIT,Apache-2.0</span>
+<span class="c1"># Check licenses</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>licenses<span class="w"> </span>--check-compliance<span class="w"> </span>--allow<span class="w"> </span>MIT<span class="w"> </span>Apache-2.0<span class="w"> </span>--deny<span class="w"> </span>GPL-3.0
 
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Generate SBOM</span>
-<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph deps sbom --output sbom.json</span>
+<span class="c1"># Show health score</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>health
 
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Upload SBOM</span>
-<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/upload-artifact@v3</span>
-<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sbom</span>
-<span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sbom.json</span>
+<span class="c1"># Suggest safe updates</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>update<span class="w"> </span>--conservative
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>deps<span class="w"> </span>update<span class="w"> </span>--all
 </code></pre></div>
 
-<h3  id="gitlab-ci"><span id="gitlab_ci"></span>GitLab CI<a class="heading-anchor" href="#gitlab-ci" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># .gitlab-ci.yml</span>
-<span class="nt">security:audit</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test</span>
-<span class="w">  </span><span class="nt">script</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip install codegraph</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph deps audit --fail-on high</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph deps sbom --output sbom.json</span>
-<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sbom.json</span>
+<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
+<p>8 endpoints in <code>src/api/routers/dependencies.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/dependencies/scan</code></td>
+<td>Scan project for dependencies</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/dependencies/list</code></td>
+<td>List all dependencies</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/dependencies/graph</code></td>
+<td>Get dependency graph</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/dependencies/check-vulnerabilities</code></td>
+<td>Check for vulnerabilities</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/dependencies/outdated</code></td>
+<td>List outdated packages</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/dependencies/licenses</code></td>
+<td>Get license information</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/dependencies/health-score</code></td>
+<td>Get health score</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/dependencies/sbom</code></td>
+<td>Export SBOM</td>
+</tr>
+</tbody>
+</table></div>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Scan for dependencies</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/dependencies/scan<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;project_path&quot;: &quot;.&quot;, &quot;include_dev&quot;: true}&#39;</span>
+
+<span class="c1"># Check vulnerabilities</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/dependencies/check-vulnerabilities<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;severity_threshold&quot;: &quot;medium&quot;}&#39;</span>
+
+<span class="c1"># Get health score</span>
+curl<span class="w"> </span>http://localhost:8000/api/v1/dependencies/health-score
 </code></pre></div>
 
+<h2  id="use-cases"><span id="use_cases"></span>Use Cases<a class="heading-anchor" href="#use-cases" title="Link to this section">&para;</a></h2>
+<h3  id="scanning-dependencies"><span id="scanning_dependencies"></span>Scanning Dependencies<a class="heading-anchor" href="#scanning-dependencies" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Scan project dependencies
+
+## Dependency Scan Results
+
+**Files analyzed:** 3
+**Total dependencies:** 127 (23 direct, 45 dev, 59 transitive)
+
+| Package | Version | Type | License |
+|---------|---------|------|---------|
+| fastapi | 0.104.1 | direct | MIT |
+| pydantic | 2.5.2 | direct | MIT |
+| sqlalchemy | 2.0.23 | direct | MIT |
+| uvicorn | 0.24.0 | direct | BSD-3-Clause |
+| ... | | | |
+</code></pre></div>
+
+<h3  id="checking-vulnerabilities"><span id="checking_vulnerabilities"></span>Checking Vulnerabilities<a class="heading-anchor" href="#checking-vulnerabilities" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Check dependencies for vulnerabilities
+
+## Vulnerability Report
+
+Found 3 vulnerabilities:
+
+| ID | Package | Severity | Fixed In |
+|----|---------|----------|----------|
+| CVE-2024-12345 | requests | CRITICAL | 2.32.0 |
+| CVE-2024-23456 | pillow | HIGH | 10.2.0 |
+| CVE-2024-34567 | cryptography | MEDIUM | 41.0.7 |
+
+Sources: OSV, GitHub Advisory, NVD
+</code></pre></div>
+
+<h3  id="health-score_1"><span id="health_score_1"></span>Health Score<a class="heading-anchor" href="#health-score_1" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Show dependency health
+
+## Dependency Health: 72/100 (C)
+
+Breakdown:
+- Vulnerabilities: 3 found (-25 pts)
+- Outdated: 5 packages (-3 pts)
+- Duplicates: 0 (-0 pts)
+</code></pre></div>
+
+<h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
+<p><strong>Scanning:</strong>
+- &ldquo;Scan project for dependencies&rdquo;
+- &ldquo;What packages does this project use?&rdquo;
+- &ldquo;Show the dependency graph&rdquo;</p>
+<p><strong>Security:</strong>
+- &ldquo;Check for vulnerable packages&rdquo;
+- &ldquo;Find packages with critical vulnerabilities&rdquo;
+- &ldquo;Are there any CVEs in our dependencies?&rdquo;</p>
+<p><strong>Updates:</strong>
+- &ldquo;Are there any outdated dependencies?&rdquo;
+- &ldquo;Suggest safe updates for outdated packages&rdquo;
+- &ldquo;Show dependency health score&rdquo;</p>
+<p><strong>Licenses:</strong>
+- &ldquo;Check if all licenses are MIT compatible&rdquo;
+- &ldquo;Generate SBOM for the project&rdquo;
+- &ldquo;Find dependencies without license information&rdquo;</p>
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="02-security-audit.html">Security Audit</a> - Vulnerability scanning</li>
-<li><a href="08-compliance.html">Compliance</a> - Compliance checking</li>
-<li><a href="18-code-optimization.html">Code Optimization</a> - Optimization suggestions</li>
+<li><a href="02-security-audit.html">Security Audit (S02)</a> — Vulnerability scanning</li>
+<li><a href="08-compliance.html">Compliance (S08)</a> — Compliance checking</li>
+<li><a href="18-code-optimization.html">Code Optimization (S18)</a> — Optimization suggestions</li>
 </ul>
       </article>
 
@@ -655,13 +1135,13 @@ codegraph<span class="w"> </span>deps<span class="w"> </span>graph<span class="w
 
       <a href="21-pattern-search.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Next</span>
-        <span class="doc-page-nav-title">Scenario 21: Structural Pattern Search</span>
+        <span class="doc-page-nav-title">Structural Pattern Search</span>
       </a>
     </nav>
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/20-dependencies.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -673,27 +1153,28 @@ codegraph<span class="w"> </span>deps<span class="w"> </span>graph<span class="w
         <li><a href="#scenario-20-dependency-analysis" class="level-1">Scenario 20: Dependency Analysis</a></li>
 <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#overview" class="level-2">Overview</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#architecture" class="level-3">Architecture</a></li>
+<li><a href="#intent-detection" class="level-3">Intent Detection</a></li>
 <li><a href="#supported-package-managers" class="level-2">Supported Package Managers</a></li>
-<li><a href="#analysis-features" class="level-2">Analysis Features</a></li>
-<li><a href="#dependency-graph-building" class="level-3">Dependency Graph Building</a></li>
-<li><a href="#vulnerability-checking" class="level-3">Vulnerability Checking</a></li>
-<li><a href="#outdated-package-detection" class="level-3">Outdated Package Detection</a></li>
-<li><a href="#license-compliance" class="level-3">License Compliance</a></li>
-<li><a href="#sbom-generation" class="level-3">SBOM Generation</a></li>
-<li><a href="#cli-commands" class="level-2">CLI Commands</a></li>
-<li><a href="#scanning-dependencies" class="level-3">Scanning Dependencies</a></li>
-<li><a href="#vulnerability-auditing" class="level-3">Vulnerability Auditing</a></li>
-<li><a href="#outdated-packages" class="level-3">Outdated Packages</a></li>
-<li><a href="#license-checking" class="level-3">License Checking</a></li>
-<li><a href="#sbom-generation" class="level-3">SBOM Generation</a></li>
-<li><a href="#dependency-graph" class="level-3">Dependency Graph</a></li>
-<li><a href="#tui-commands" class="level-2">TUI Commands</a></li>
-<li><a href="#example-questions" class="level-2">Example Questions</a></li>
+<li><a href="#data-models" class="level-2">Data Models</a></li>
+<li><a href="#dependency-14-fields" class="level-3">Dependency (14 fields)</a></li>
+<li><a href="#dependencygraph-3-collections-5-methods" class="level-3">DependencyGraph (3 collections + 5 methods)</a></li>
+<li><a href="#vulnerability-15-fields" class="level-3">Vulnerability (15 fields)</a></li>
+<li><a href="#licenseinfo-7-fields" class="level-3">LicenseInfo (7 fields)</a></li>
+<li><a href="#dependencyconfig-13-fields" class="level-3">DependencyConfig (13 fields)</a></li>
+<li><a href="#vulnerability-checking" class="level-2">Vulnerability Checking</a></li>
+<li><a href="#dependency-analysis" class="level-2">Dependency Analysis</a></li>
+<li><a href="#license-checking" class="level-2">License Checking</a></li>
+<li><a href="#health-score" class="level-2">Health Score</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
-<li><a href="#cicd-integration" class="level-2">CI/CD Integration</a></li>
-<li><a href="#github-actions" class="level-3">GitHub Actions</a></li>
-<li><a href="#gitlab-ci" class="level-3">GitLab CI</a></li>
+<li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
+<li><a href="#rest-api" class="level-2">REST API</a></li>
+<li><a href="#use-cases" class="level-2">Use Cases</a></li>
+<li><a href="#scanning-dependencies" class="level-3">Scanning Dependencies</a></li>
+<li><a href="#checking-vulnerabilities" class="level-3">Checking Vulnerabilities</a></li>
+<li><a href="#health-score" class="level-3">Health Score</a></li>
+<li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>
     </aside>

@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html" class="active">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,117 +181,276 @@
       <article class="doc-content">
         <h1  id="scenario-09-code-review"><span id="scenario_09_code_review"></span>Scenario 09: Code Review<a class="heading-anchor" href="#scenario-09-code-review" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Automated code review for pull requests, patches, and local changes.</p>
+<p>Automated code review for pull requests, patches, and local changes using CPG-powered analysis with handler-based fast path and LLM fallback.</p>
 </blockquote>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#two-phase-architecture">Two-Phase Architecture</a></li>
+<li><a href="#intent-detection">Intent Detection</a></li>
+<li><a href="#handler-phase">Handler Phase</a></li>
+<li><a href="#4-handlers">4 Handlers</a></li>
+<li><a href="#reviewreportformatter">ReviewReportFormatter</a></li>
+<li><a href="#llm-phase">LLM Phase</a></li>
+<li><a href="#3-agents">3 Agents</a></li>
+<li><a href="#callgraphanalyzer-graph-insights">CallGraphAnalyzer &amp; Graph Insights</a></li>
+<li><a href="#reviewpipeline-standalone">ReviewPipeline (Standalone)</a></li>
+<li><a href="#pipeline-architecture">Pipeline Architecture</a></li>
+<li><a href="#scope-aware-filtering">Scope-Aware Filtering</a></li>
+<li><a href="#sarif-output">SARIF Output</a></li>
+<li><a href="#data-models">Data Models</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
+<li><a href="#change-risk-assessment">Change Risk Assessment</a></li>
+<li><a href="#interface-impact-detection">Interface Impact Detection</a></li>
+<li><a href="#example-questions">Example Questions</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Select Code Review Scenario</span>
 /select<span class="w"> </span><span class="m">09</span>
 </code></pre></div>
 
-<h2  id="review-sources"><span id="review_sources"></span>Review Sources<a class="heading-anchor" href="#review-sources" title="Link to this section">&para;</a></h2>
-<h3  id="github-pull-request"><span id="github_pull_request"></span>GitHub Pull Request<a class="heading-anchor" href="#github-pull-request" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>/review<span class="w"> </span>github<span class="w"> </span><span class="m">123</span>
+<p>Or via CLI:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Review changes against a base ref</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~3
+
+<span class="c1"># Review staged changes</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--staged
+
+<span class="c1"># Review with SARIF output</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>main<span class="w"> </span>--format<span class="w"> </span>sarif<span class="w"> </span>--sarif-file<span class="w"> </span>results.sarif
 </code></pre></div>
 
-<h3  id="gitlab-merge-request"><span id="gitlab_merge_request"></span>GitLab Merge Request<a class="heading-anchor" href="#gitlab-merge-request" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>/review<span class="w"> </span>gitlab<span class="w"> </span><span class="m">456</span>
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3  id="two-phase-architecture"><span id="two_phase_architecture"></span>Two-Phase Architecture<a class="heading-anchor" href="#two-phase-architecture" title="Link to this section">&para;</a></h3>
+<p>S09 uses the standard two-phase architecture: Phase 1 handler-based (no LLM) and Phase 2 LLM fallback:</p>
+<div class="highlight"><pre><span></span><code>Query -&gt; CodeReviewIntentDetector.detect()
+  |
+  Phase 1: integrate_handlers(state)
+    -&gt; HandlerRegistry(&quot;code_review&quot;) -&gt; match handler by intent
+    -&gt; handler.handle() -&gt; ReviewReportFormatter -&gt; response
+    |
+    handled=True  -&gt; return formatted result (no LLM)
+    handled=False -&gt; Phase 2
+  |
+  Phase 2: code_review_workflow() [LLM fallback]
+    -&gt; 3 agents (PRAnalyzer, ContextAggregator, ReviewReporter)
+    -&gt; CallGraphAnalyzer (blast radius)
+    -&gt; PromptRegistry -&gt; LLMInterface.generate() -&gt; response
 </code></pre></div>
 
-<h3  id="local-git-changes"><span id="local_git_changes"></span>Local Git Changes<a class="heading-anchor" href="#local-git-changes" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>/review<span class="w"> </span>git
-</code></pre></div>
-
-<h3  id="patch-file"><span id="patch_file"></span>Patch File<a class="heading-anchor" href="#patch-file" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>/review<span class="w"> </span>file<span class="w"> </span>path/to/changes.patch
-</code></pre></div>
-
-<h2  id="understanding-review-output"><span id="understanding_review_output"></span>Understanding Review Output<a class="heading-anchor" href="#understanding-review-output" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>╭─────────────── Review Results ────────────────────────────╮
-│                                                           │
-│  Score: 72/100         Recommendation: REQUEST_CHANGES    │
-│                                                           │
-│  Findings:                                                │
-│                                                           │
-│  🔴 CRITICAL  SQL Injection Risk                          │
-│     Location: src/api/user_query.c:45                     │
-│     Pattern: User input concatenated in query             │
-│     Fix: Use parameterized queries                        │
-│                                                           │
-│  🟡 MEDIUM    Cyclomatic Complexity                       │
-│     Location: src/parser/gram.y:1234                      │
-│     Value: 47 (threshold: 10)                             │
-│     Fix: Extract helper functions                         │
-│                                                           │
-│  🟢 LOW       Missing NULL check                          │
-│     Location: src/utils/string.c:89                       │
-│     Fix: Add NULL pointer validation                      │
-│                                                           │
-╰───────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="review-with-inline-comments"><span id="review_with_inline_comments"></span>Review with Inline Comments<a class="heading-anchor" href="#review-with-inline-comments" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>/review<span class="w"> </span>git<span class="w"> </span>--format<span class="w"> </span>md<span class="w"> </span>--inline
-
-╭───────────────<span class="w"> </span>Inline<span class="w"> </span>Comments<span class="w"> </span>───────────────────────────╮
-│<span class="w">                                                           </span>│
-│<span class="w">  </span>src/api/user_query.c<span class="w">                                     </span>│
-│<span class="w">                                                           </span>│
-│<span class="w">  </span>Line<span class="w"> </span><span class="m">45</span>:<span class="w">                                                 </span>│
-│<span class="w">    </span>sprintf<span class="o">(</span>query,<span class="w"> </span><span class="s2">&quot;SELECT * FROM users WHERE id=%s&quot;</span>,<span class="w"> </span>id<span class="o">)</span><span class="p">;</span><span class="w"> </span>│
-│<span class="w">    </span>^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^│
-│<span class="w">    </span>🔴<span class="w"> </span>SQL<span class="w"> </span>Injection:<span class="w"> </span>Use<span class="w"> </span>snprintf<span class="w"> </span>with<span class="w"> </span>proper<span class="w"> </span>escaping<span class="w">    </span>│
-│<span class="w">                                                           </span>│
-│<span class="w">  </span>Line<span class="w"> </span><span class="m">67</span>:<span class="w">                                                 </span>│
-│<span class="w">    </span>char<span class="w"> </span>*result<span class="w"> </span><span class="o">=</span><span class="w"> </span>malloc<span class="o">(</span>len<span class="o">)</span><span class="p">;</span><span class="w">                            </span>│
-│<span class="w">    </span>^^^^^^^^^^^^^^^^^^^^^^^^^^^<span class="w">                            </span>│
-│<span class="w">    </span>🟡<span class="w"> </span>Memory:<span class="w"> </span>Check<span class="w"> </span>malloc<span class="w"> </span><span class="k">return</span><span class="w"> </span>value<span class="w"> </span><span class="k">for</span><span class="w"> </span>NULL<span class="w">          </span>│
-│<span class="w">                                                           </span>│
-╰───────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="output-formats"><span id="output_formats"></span>Output Formats<a class="heading-anchor" href="#output-formats" title="Link to this section">&para;</a></h2>
+<p><code>code_review_workflow()</code> in <code>src/workflow/scenarios/code_review.py</code> first calls <code>integrate_handlers(state)</code>. If a handler matches (<code>handled=True</code>), the result is returned without LLM. Otherwise the full LLM workflow executes with 3 agents and graph analysis.</p>
+<p>Additionally, CodeGraph provides a standalone <code>ReviewPipeline</code> (<code>src/review/pipeline.py</code>) for CLI-based review via <code>python -m src.cli review</code>, independent of the LangGraph orchestrator.</p>
+<h3  id="intent-detection"><span id="intent_detection"></span>Intent Detection<a class="heading-anchor" href="#intent-detection" title="Link to this section">&para;</a></h3>
+<p><code>CodeReviewIntentDetector(IntentDetector)</code> in <code>code_review_handlers/intent_detector.py</code> defines 4 intents sorted by priority:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Format</th>
-<th>Description</th>
-<th>Use Case</th>
+<th>Intent</th>
+<th>Priority</th>
+<th>Keywords (EN + RU)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>--format md</code></td>
-<td>Markdown</td>
-<td>Documentation, GitHub</td>
+<td><code>pr_impact</code></td>
+<td>10</td>
+<td>PR, pull request, merge request, запрос на слияние</td>
 </tr>
 <tr>
-<td><code>--format json</code></td>
-<td>JSON</td>
-<td>CI/CD integration</td>
+<td><code>change_risk</code></td>
+<td>20</td>
+<td>risk, danger, regression, risk assessment, риск, регрессия</td>
 </tr>
 <tr>
-<td><code>--format yaml</code></td>
-<td>YAML</td>
-<td>Configuration</td>
+<td><code>review_priority</code></td>
+<td>30</td>
+<td>priority, critical, urgent, приоритет, критичный</td>
+</tr>
+<tr>
+<td><code>dependency_impact</code></td>
+<td>40</td>
+<td>dependency, import, coupling, зависимость, связанность</td>
 </tr>
 </tbody>
 </table></div>
-<h2  id="review-options"><span id="review_options"></span>Review Options<a class="heading-anchor" href="#review-options" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Basic review</span>
-/review<span class="w"> </span>git
-
-<span class="c1"># With format</span>
-/review<span class="w"> </span>git<span class="w"> </span>--format<span class="w"> </span>json
-
-<span class="c1"># With inline comments</span>
-/review<span class="w"> </span>git<span class="w"> </span>--inline
-
-<span class="c1"># Combined</span>
-/review<span class="w"> </span>github<span class="w"> </span><span class="m">123</span><span class="w"> </span>--format<span class="w"> </span>md<span class="w"> </span>--inline
+<p>Fallback: <code>general_review</code> (confidence=0.5) when no pattern matches.</p>
+<p>Keyword matching uses <code>keyword_match_morphological()</code> for Russian morphology support.</p>
+<h2  id="handler-phase"><span id="handler_phase"></span>Handler Phase<a class="heading-anchor" href="#handler-phase" title="Link to this section">&para;</a></h2>
+<h3  id="4-handlers"><span id="4_handlers"></span>4 Handlers<a class="heading-anchor" href="#4-handlers" title="Link to this section">&para;</a></h3>
+<p><code>code_review_handlers/workflow.py</code> registers 4 handlers in <code>HandlerRegistry("code_review")</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Priority</th>
+<th>Intent</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CallerAnalysisHandler</code></td>
+<td>3</td>
+<td>caller/callee queries</td>
+<td>2-hop transitive caller analysis, finds callers-of-callers for full blast radius</td>
+</tr>
+<tr>
+<td><code>SignatureImpactHandler</code></td>
+<td>5</td>
+<td>signature change</td>
+<td>Analyzes impact of method signature changes on callers and dependents</td>
+</tr>
+<tr>
+<td><code>PRImpactHandler</code></td>
+<td>10</td>
+<td>pr_impact</td>
+<td>Git diff analysis via <code>git diff --name-only</code>, maps changed files to CPG methods</td>
+</tr>
+<tr>
+<td><code>ChangeRiskHandler</code></td>
+<td>20</td>
+<td>change_risk</td>
+<td>Computes risk score (0.0–1.0) per method based on caller count, complexity, module location</td>
+</tr>
+</tbody>
+</table></div>
+<p>All handlers inherit <code>CodeReviewHandler(BaseHandler)</code>.</p>
+<p><code>CallerAnalysisHandler</code> detects caller/callee queries via bilingual keywords (EN: caller, callee, who calls, called by; RU: вызывающие, кто вызывает). Performs 2-hop transitive search to assess full blast radius.</p>
+<p><code>PRImpactHandler</code> extracts changed files via <code>git diff --name-only {base_ref} HEAD</code>. Supported extensions: <code>.py</code>, <code>.go</code>, <code>.ts</code>, <code>.js</code>, <code>.c</code>, <code>.h</code>, <code>.java</code>, <code>.kt</code>, <code>.cs</code>, <code>.php</code>.</p>
+<h3 id="reviewreportformatter">ReviewReportFormatter<a class="heading-anchor" href="#reviewreportformatter" title="Link to this section">&para;</a></h3>
+<p><code>ReviewReportFormatter</code> in <code>code_review_handlers/formatters/</code> formats handler results with:
+- Change risk badges (critical/high/medium/low)
+- Interface impact indicators
+- Caller chain visualization
+- Localization support (EN/RU)</p>
+<h2  id="llm-phase"><span id="llm_phase"></span>LLM Phase<a class="heading-anchor" href="#llm-phase" title="Link to this section">&para;</a></h2>
+<h3  id="3-agents"><span id="3_agents"></span>3 Agents<a class="heading-anchor" href="#3-agents" title="Link to this section">&para;</a></h3>
+<p>When no handler matches, <code>code_review_workflow()</code> executes the full LLM pipeline with 3 agents from <code>src/code_review/review_agents.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Role</th>
+<th>Key Methods</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PRAnalyzer</code></td>
+<td>PR analysis, file diffing, dependency detection</td>
+<td><code>analyze_pr(files)</code>, <code>detect_dependencies(changes)</code></td>
+</tr>
+<tr>
+<td><code>ContextAggregator</code></td>
+<td>CPG context collection, method metadata</td>
+<td><code>aggregate_context(methods)</code>, <code>get_method_details(name)</code></td>
+</tr>
+<tr>
+<td><code>ReviewReporter</code></td>
+<td>Review report generation, finding prioritization</td>
+<td><code>generate_report(findings)</code>, <code>prioritize_findings(items)</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Pipeline:
+1. <code>PRAnalyzer</code> analyzes changed files and detects dependencies
+2. <code>ContextAggregator</code> collects CPG context for changed methods
+3. <code>ReviewReporter</code> generates the final review report
+4. Evidence list built from findings and risk assessments
+5. <code>PromptRegistry.get_agent_prompt("code_review", ...)</code> builds the prompt
+6. <code>LLMInterface().generate()</code> produces the final response</p>
+<h3  id="callgraphanalyzer-graph-insights"><span id="callgraphanalyzer-amp-graph-insights"></span><span id="callgraphanalyzer_amp_graph_insights"></span><span id="callgraphanalyzer_graph_insights"></span>CallGraphAnalyzer &amp; Graph Insights<a class="heading-anchor" href="#callgraphanalyzer-graph-insights" title="Link to this section">&para;</a></h3>
+<p>After the 3 agents complete, <code>CallGraphAnalyzer(cpg)</code> from <code>src/analysis</code> performs graph-based blast radius analysis:</p>
+<ul>
+<li><strong>Change impact:</strong> For each changed method, calls <code>find_all_callers()</code> and <code>analyze_impact()</code> to determine how many other methods are affected</li>
+<li><strong>Affected methods:</strong> Builds a transitive closure of callers up to 2 hops — methods that could break if the change is incorrect</li>
+<li><strong>Risk assessment:</strong> Combines caller count, callee count, and interface layer presence into a risk score</li>
+</ul>
+<p>Graph insights are stored in <code>state["metadata"]["graph_insights"]</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>change_impact</code></td>
+<td>Methods with highest impact score, sorted by blast radius</td>
+</tr>
+<tr>
+<td><code>affected_methods</code></td>
+<td>Full list of transitively affected methods with hop distance</td>
+</tr>
+<tr>
+<td><code>risk_assessment</code></td>
+<td>Per-method risk (critical/high/medium/low) with contributing factors</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="reviewpipeline-standalone"><span id="reviewpipeline_standalone"></span>ReviewPipeline (Standalone)<a class="heading-anchor" href="#reviewpipeline-standalone" title="Link to this section">&para;</a></h2>
+<h3  id="pipeline-architecture"><span id="pipeline_architecture"></span>Pipeline Architecture<a class="heading-anchor" href="#pipeline-architecture" title="Link to this section">&para;</a></h3>
+<p><code>ReviewPipeline</code> in <code>src/review/pipeline.py</code> is a standalone pipeline (separate from the LangGraph scenario) that orchestrates the full CLI review cycle:</p>
+<div class="highlight"><pre><span></span><code>detect_project -&gt; check_cpg_status -&gt; load_scope -&gt; get_changed_files
+     -&gt; quality_analysis -&gt; security_analysis -&gt; aggregate -&gt; format_output
 </code></pre></div>
 
-<h2  id="cli-review-command"><span id="cli_review_command"></span>CLI Review Command<a class="heading-anchor" href="#cli-review-command" title="Link to this section">&para;</a></h2>
-<p>CodeGraph also provides a standalone review command that runs quality and security analysis through the CPG pipeline:</p>
+<p>Key components:
+- <code>ReviewAggregator</code> (<code>src/review/aggregator.py</code>): combines quality and security findings, applies scope-aware filtering
+- <code>ReviewReport</code> (<code>src/review/models.py</code>): generates markdown, JSON, and SARIF 2.1.0 output
+- <code>SecurityPRReview</code>: optional security analysis for changed files (disabled with <code>--no-security</code>)</p>
+<h3  id="scope-aware-filtering"><span id="scope_aware_filtering"></span>Scope-Aware Filtering<a class="heading-anchor" href="#scope-aware-filtering" title="Link to this section">&para;</a></h3>
+<p>When the CPG is built with excluded directories (partial scope), <code>ReviewAggregator</code> applies scope-aware filtering:</p>
+<ul>
+<li><strong>Dead code demotion</strong>: dead code findings demoted to <code>info</code> severity, marked <code>scope_limited</code> (callers may exist in excluded modules)</li>
+<li><strong>Blast radius demotion</strong>: blast radius findings demoted to <code>info</code> severity, marked <code>scope_limited</code></li>
+<li><strong>Test suppression</strong>: test-related findings suppressed entirely when <code>include_tests=false</code></li>
+<li><strong>Complexity/Security</strong>: not affected (per-method metrics and real vulnerability detection)</li>
+</ul>
+<p>A scope disclaimer (<code>ParseScope.scope_disclaimer</code>) is added to reports when filtering is active.</p>
+<h3  id="sarif-output"><span id="sarif_output"></span>SARIF Output<a class="heading-anchor" href="#sarif-output" title="Link to this section">&para;</a></h3>
+<p>ReviewPipeline supports SARIF 2.1.0 output for integration with GitHub/GitLab security tabs and IDE plugins:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>main<span class="w"> </span>--format<span class="w"> </span>sarif<span class="w"> </span>--sarif-file<span class="w"> </span>results.sarif
+</code></pre></div>
+
+<p>Exit codes: <code>0</code> = clean or medium/low only, <code>1</code> = critical or high findings detected.</p>
+<h2  id="data-models"><span id="data_models"></span>Data Models<a class="heading-anchor" href="#data-models" title="Link to this section">&para;</a></h2>
+<p>Key models from <code>src/review/models.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Key Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ParseScope</code></td>
+<td>is_partial, tests_in_scope, scope_disclaimer, excluded_dirs</td>
+</tr>
+<tr>
+<td><code>ReviewFinding</code></td>
+<td>title, severity (ReviewSeverity), file_path, line, description, category, scope_limited</td>
+</tr>
+<tr>
+<td><code>ReviewReport</code></td>
+<td>findings, summary, scope, format_output (markdown/json/sarif)</td>
+</tr>
+<tr>
+<td><code>ReviewSeverity</code></td>
+<td>Enum: critical, high, medium, low, info</td>
+</tr>
+<tr>
+<td><code>CPGStatus</code></td>
+<td>freshness, parse_scope, language, method_count</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<p>Full CLI reference for <code>python -m src.cli review</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Review changes against a base ref</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~3
 
@@ -302,40 +462,57 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <span class="c1"># Skip security analysis</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--no-security
+
+<span class="c1"># Output as JSON</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>main<span class="w"> </span>--format<span class="w"> </span>json
+
+<span class="c1"># Output as SARIF</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>main<span class="w"> </span>--format<span class="w"> </span>sarif<span class="w"> </span>--sarif-file<span class="w"> </span>results.sarif
+
+<span class="c1"># Write output to file</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~5<span class="w"> </span>--output-file<span class="w"> </span>review.md
 </code></pre></div>
 
-<h3  id="output-formats_1"><span id="output_formats_1"></span>Output Formats<a class="heading-anchor" href="#output-formats_1" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Format</th>
 <th>Flag</th>
-<th>Use Case</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Markdown</td>
-<td><code>--format markdown</code> (default)</td>
-<td>Terminal, documentation</td>
+<td><code>--base-ref</code></td>
+<td>Git ref to diff against (e.g., <code>HEAD~3</code>, <code>main</code>, commit SHA)</td>
 </tr>
 <tr>
-<td>JSON</td>
-<td><code>--format json</code></td>
-<td>CI/CD integration, automation</td>
+<td><code>--staged</code></td>
+<td>Review only staged (git add) changes</td>
 </tr>
 <tr>
-<td>SARIF 2.1.0</td>
-<td><code>--format sarif</code> or <code>--sarif-file out.sarif</code></td>
-<td>GitHub/GitLab security tab, IDE integration</td>
+<td><code>--files</code></td>
+<td>Review specific files (space-separated paths)</td>
+</tr>
+<tr>
+<td><code>--no-security</code></td>
+<td>Skip security analysis pass</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td>Output format: <code>markdown</code> (default), <code>json</code>, <code>sarif</code></td>
+</tr>
+<tr>
+<td><code>--sarif-file</code></td>
+<td>Write SARIF output to specified file</td>
+</tr>
+<tr>
+<td><code>--output-file</code></td>
+<td>Write formatted output to file</td>
 </tr>
 </tbody>
 </table></div>
-<p>Exit codes: <code>0</code> = clean or medium/low only, <code>1</code> = critical or high findings detected.</p>
-<h2  id="cpg-powered-code-review"><span id="cpg_powered_code_review"></span>CPG-Powered Code Review<a class="heading-anchor" href="#cpg-powered-code-review" title="Link to this section">&para;</a></h2>
-<p>The code review scenario leverages the CPG (Code Property Graph) for automated analysis:</p>
-<h3  id="change-risk-assessment"><span id="change_risk_assessment"></span>Change Risk Assessment<a class="heading-anchor" href="#change-risk-assessment" title="Link to this section">&para;</a></h3>
-<p>Each changed method receives a risk score (0.0&ndash;1.0) based on 4 factors:</p>
+<h2  id="change-risk-assessment"><span id="change_risk_assessment"></span>Change Risk Assessment<a class="heading-anchor" href="#change-risk-assessment" title="Link to this section">&para;</a></h2>
+<p>Each changed method receives a risk score (0.0–1.0) based on 4 factors:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -363,46 +540,33 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </tbody>
 </table></div>
 <p>Levels: <code>critical</code> (≥0.8), <code>high</code> (≥0.6), <code>medium</code> (≥0.4), <code>low</code> (&lt;0.4).</p>
-<h3  id="interface-impact-detection"><span id="interface_impact_detection"></span>Interface Impact Detection<a class="heading-anchor" href="#interface-impact-detection" title="Link to this section">&para;</a></h3>
+<h2  id="interface-impact-detection"><span id="interface_impact_detection"></span>Interface Impact Detection<a class="heading-anchor" href="#interface-impact-detection" title="Link to this section">&para;</a></h2>
 <p>When files in interface layers are changed, the code review identifies which interfaces are affected:</p>
-<div class="highlight"><pre><span></span><code><span class="n">Interface</span><span class="w"> </span><span class="n">Layers</span><span class="p">:</span>
-<span class="w">  </span><span class="n">CLI</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">cli</span><span class="o">/</span>
-<span class="w">  </span><span class="n">REST</span><span class="w"> </span><span class="n">API</span><span class="w">   </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">routers</span><span class="o">/</span>
-<span class="w">  </span><span class="n">TUI</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">tui</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span>
-<span class="w">  </span><span class="n">MCP</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">mcp</span><span class="o">/</span><span class="n">tools</span><span class="o">/</span><span class="p">,</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">mcp</span><span class="o">/</span>
-<span class="w">  </span><span class="n">ACP</span><span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">acp</span><span class="o">/</span><span class="n">server</span><span class="o">/</span><span class="p">,</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">acp</span><span class="o">/</span>
+<div class="highlight"><pre><span></span><code>Interface Layers:
+  CLI        -&gt; src/cli/
+  REST API   -&gt; src/api/routers/
+  TUI        -&gt; src/tui/commands/
+  MCP        -&gt; src/mcp/tools/, src/mcp/
+  ACP        -&gt; src/acp/server/, src/acp/
 </code></pre></div>
 
-<h3  id="real-git-diff-analysis"><span id="real_git_diff_analysis"></span>Real Git Diff Analysis<a class="heading-anchor" href="#real-git-diff-analysis" title="Link to this section">&para;</a></h3>
-<p>The <code>PRImpactHandler</code> extracts changed files via <code>git diff --name-only {base_ref} HEAD</code> for accurate blast radius analysis. Supported extensions: <code>.py</code>, <code>.go</code>, <code>.ts</code>, <code>.js</code>, <code>.c</code>, <code>.h</code>, <code>.java</code>, <code>.kt</code>, <code>.cs</code>, <code>.php</code>.</p>
-<h3  id="transitive-caller-analysis"><span id="transitive_caller_analysis"></span>Transitive Caller Analysis<a class="heading-anchor" href="#transitive-caller-analysis" title="Link to this section">&para;</a></h3>
-<p><code>CallerAnalysis</code> performs 2-hop transitive search: finds not only direct callers of changed methods, but callers of callers &ndash; to assess the full blast radius.</p>
-<h3  id="scope-aware-filtering"><span id="scope_aware_filtering"></span>Scope-Aware Filtering<a class="heading-anchor" href="#scope-aware-filtering" title="Link to this section">&para;</a></h3>
-<p>When the CPG is built with excluded directories (partial scope), findings are filtered:</p>
-<ul>
-<li><strong>Dead code</strong>: demoted to <code>info</code> severity, marked <code>scope_limited</code> (callers may exist in excluded modules)</li>
-<li><strong>Blast radius</strong>: demoted to <code>info</code> severity, marked <code>scope_limited</code></li>
-<li><strong>Missing tests</strong>: suppressed entirely when <code>include_tests=false</code></li>
-<li><strong>Complexity/Security</strong>: not affected (per-method and real vulnerability metrics)</li>
-</ul>
-<p>A scope disclaimer is added to reports when filtering is active.</p>
-<h3  id="review-pipeline-architecture"><span id="review_pipeline_architecture"></span>Review Pipeline Architecture<a class="heading-anchor" href="#review-pipeline-architecture" title="Link to this section">&para;</a></h3>
-<p>The <code>ReviewPipeline</code> (<code>src/review/pipeline.py</code>) orchestrates the full review cycle:</p>
-<div class="highlight"><pre><span></span><code><span class="n">detect_project</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">check_cpg_status</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">load_scope</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">get_changed_files</span>
-<span class="w">     </span><span class="err">→</span><span class="w"> </span><span class="n">quality_analysis</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">security_analysis</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">aggregate</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">format_output</span>
+<h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>What is the blast radius of this change?
+Review my last 3 commits
+Assess the risk of changes in src/api/
+Who calls this method and what would break?
+Show the impact of changing function signature
+Prioritize review findings by severity
+What dependencies are affected by this PR?
 </code></pre></div>
 
-<p>Key components:
-- <code>ReviewAggregator</code> (<code>src/review/aggregator.py</code>): combines quality and security findings, applies scope-aware filtering
-- <code>ReviewReport</code> (<code>src/review/models.py</code>): generates markdown, JSON, and SARIF 2.1.0 output
-- <code>SecurityPRReview</code>: optional security analysis for changed files</p>
-<h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
+<h2 id="related">Related<a class="heading-anchor" href="#related" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="02-security-audit.html">Security Audit</a> - Deeper security analysis</li>
-<li><a href="07-test-coverage.html">Test Coverage</a> - Coverage analysis</li>
-<li><a href="05-refactoring.html">Refactoring</a> - Code quality</li>
-<li><a href="./composite-workflows.html">Composite Workflows</a> - Scenario orchestration</li>
-<li><a href="../../../integrations/CLAUDE_CODE_GIT.html">Claude Code &amp; Git Integration</a> - Code review hooks</li>
+<li><a href="02-security-audit.html">Security Audit</a> — Deeper security analysis (ReviewPipeline includes security pass)</li>
+<li><a href="07-test-coverage.html">Test Coverage</a> — Coverage analysis</li>
+<li><a href="05-refactoring.html">Refactoring</a> — Code quality and dead code</li>
+<li><a href="./composite-workflows.html">Composite Workflows</a> — Scenario orchestration</li>
+<li><a href="../../../integrations/CLAUDE_CODE_GIT.html">Claude Code &amp; Git Integration</a> — Code review hooks</li>
 </ul>
       </article>
 
@@ -422,7 +586,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/09-code-review.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -432,26 +596,27 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#scenario-09-code-review" class="level-1">Scenario 09: Code Review</a></li>
+<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#review-sources" class="level-2">Review Sources</a></li>
-<li><a href="#github-pull-request" class="level-3">GitHub Pull Request</a></li>
-<li><a href="#gitlab-merge-request" class="level-3">GitLab Merge Request</a></li>
-<li><a href="#local-git-changes" class="level-3">Local Git Changes</a></li>
-<li><a href="#patch-file" class="level-3">Patch File</a></li>
-<li><a href="#understanding-review-output" class="level-2">Understanding Review Output</a></li>
-<li><a href="#review-with-inline-comments" class="level-2">Review with Inline Comments</a></li>
-<li><a href="#output-formats" class="level-2">Output Formats</a></li>
-<li><a href="#review-options" class="level-2">Review Options</a></li>
-<li><a href="#cli-review-command" class="level-2">CLI Review Command</a></li>
-<li><a href="#output-formats" class="level-3">Output Formats</a></li>
-<li><a href="#cpg-powered-code-review" class="level-2">CPG-Powered Code Review</a></li>
-<li><a href="#change-risk-assessment" class="level-3">Change Risk Assessment</a></li>
-<li><a href="#interface-impact-detection" class="level-3">Interface Impact Detection</a></li>
-<li><a href="#real-git-diff-analysis" class="level-3">Real Git Diff Analysis</a></li>
-<li><a href="#transitive-caller-analysis" class="level-3">Transitive Caller Analysis</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#two-phase-architecture" class="level-3">Two-Phase Architecture</a></li>
+<li><a href="#intent-detection" class="level-3">Intent Detection</a></li>
+<li><a href="#handler-phase" class="level-2">Handler Phase</a></li>
+<li><a href="#4-handlers" class="level-3">4 Handlers</a></li>
+<li><a href="#reviewreportformatter" class="level-3">ReviewReportFormatter</a></li>
+<li><a href="#llm-phase" class="level-2">LLM Phase</a></li>
+<li><a href="#3-agents" class="level-3">3 Agents</a></li>
+<li><a href="#callgraphanalyzer-graph-insights" class="level-3">CallGraphAnalyzer & Graph Insights</a></li>
+<li><a href="#reviewpipeline-standalone" class="level-2">ReviewPipeline (Standalone)</a></li>
+<li><a href="#pipeline-architecture" class="level-3">Pipeline Architecture</a></li>
 <li><a href="#scope-aware-filtering" class="level-3">Scope-Aware Filtering</a></li>
-<li><a href="#review-pipeline-architecture" class="level-3">Review Pipeline Architecture</a></li>
-<li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
+<li><a href="#sarif-output" class="level-3">SARIF Output</a></li>
+<li><a href="#data-models" class="level-2">Data Models</a></li>
+<li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
+<li><a href="#change-risk-assessment" class="level-2">Change Risk Assessment</a></li>
+<li><a href="#interface-impact-detection" class="level-2">Interface Impact Detection</a></li>
+<li><a href="#example-questions" class="level-2">Example Questions</a></li>
+<li><a href="#related" class="level-2">Related</a></li>
       </ul>
     </aside>
   </div>

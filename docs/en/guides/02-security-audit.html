@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,11 +181,15 @@
       <article class="doc-content">
         <h1  id="scenario-02-security-audit"><span id="scenario_02_security_audit"></span>Scenario 02: Security Audit<a class="heading-anchor" href="#scenario-02-security-audit" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Security engineer performing vulnerability assessment and code hardening checks.</p>
+<p>Security engineer performing vulnerability assessment, taint analysis, and code hardening checks using CPG-powered analysis.</p>
 </blockquote>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#intent-classification">Intent Classification</a></li>
+<li><a href="#handler-architecture">Handler Architecture</a></li>
+<li><a href="#security-analysis-classes">Security Analysis Classes</a></li>
 <li><a href="#vulnerability-scanning">Vulnerability Scanning</a></li>
 <li><a href="#sql-injection-detection">SQL Injection Detection</a></li>
 <li><a href="#buffer-overflow-detection">Buffer Overflow Detection</a></li>
@@ -192,17 +197,20 @@
 <li><a href="#identify-entry-points">Identify Entry Points</a></li>
 <li><a href="#trace-data-flow">Trace Data Flow</a></li>
 <li><a href="#d3fend-source-code-hardening">D3FEND Source Code Hardening</a></li>
+<li><a href="#11-d3fend-techniques">11 D3FEND Techniques</a></li>
 <li><a href="#full-hardening-audit">Full Hardening Audit</a></li>
 <li><a href="#check-unsafe-functions-d3-tl">Check Unsafe Functions (D3-TL)</a></li>
 <li><a href="#check-null-pointer-safety-d3-npc">Check Null Pointer Safety (D3-NPC)</a></li>
 <li><a href="#language-specific-security-patterns">Language-Specific Security Patterns</a></li>
-<li><a href="#supported-languages-and-vulnerability-patterns">Supported Languages and Vulnerability Patterns</a></li>
-<li><a href="#cwe-database-coverage-30-cwes">CWE Database Coverage (30+ CWEs)</a></li>
-<li><a href="#capec-attack-patterns-15-patterns">CAPEC Attack Patterns (15+ patterns)</a></li>
-<li><a href="#pythondjango-example">Python/Django Example</a></li>
-<li><a href="#javascripttypescript-example">JavaScript/TypeScript Example</a></li>
-<li><a href="#go-example">Go Example</a></li>
-<li><a href="#cli-security-reports">CLI Security Reports</a></li>
+<li><a href="#supported-languages-11">Supported Languages (11)</a></li>
+<li><a href="#cwe-coverage-69-cwes">CWE Coverage (69 CWEs)</a></li>
+<li><a href="#capec-attack-pattern-coverage">CAPEC Attack Pattern Coverage</a></li>
+<li><a href="#language-examples">Language Examples</a></li>
+<li><a href="#owasp-top-10-compliance">OWASP Top 10 Compliance</a></li>
+<li><a href="#taint-path-visualization">Taint Path Visualization</a></li>
+<li><a href="#autofix-integration">Autofix Integration</a></li>
+<li><a href="#cli-mcp-usage">CLI &amp; MCP Usage</a></li>
+<li><a href="#example-questions">Example Questions</a></li>
 <li><a href="#related-scenarios">Related Scenarios</a></li>
 </ul>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
@@ -210,81 +218,224 @@
 /select<span class="w"> </span><span class="m">02</span>
 </code></pre></div>
 
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3  id="intent-classification"><span id="intent_classification"></span>Intent Classification<a class="heading-anchor" href="#intent-classification" title="Link to this section">&para;</a></h3>
+<p>When you ask a security question, the <code>SecurityIntentDetector</code> classifies it into one of 12 specific intents using keyword matching (supports both English and Russian queries):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Intent</th>
+<th>Keywords (EN)</th>
+<th>Keywords (RU)</th>
+<th>Handler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hardcoded_credentials</code></td>
+<td>hardcoded, credentials, secret</td>
+<td>захардкоженный, жестко закодированный</td>
+<td><code>VulnerabilityScanHandler</code></td>
+</tr>
+<tr>
+<td><code>entry_points</code></td>
+<td>entry point, attack surface</td>
+<td>точка входа, поверхность атаки</td>
+<td><code>EntryPointsHandler</code></td>
+</tr>
+<tr>
+<td><code>taint_analysis</code></td>
+<td>taint, data flow, trace</td>
+<td>поток данных, распространение</td>
+<td><code>TaintAnalysisHandler</code></td>
+</tr>
+<tr>
+<td><code>info_disclosure</code></td>
+<td>information disclosure, leak</td>
+<td>раскрытие информации, утечка</td>
+<td><code>InfoDisclosureHandler</code></td>
+</tr>
+<tr>
+<td><code>null_check</code></td>
+<td>null, dereference</td>
+<td>нулевой указатель, разыменование</td>
+<td><code>NullCheckHandler</code></td>
+</tr>
+<tr>
+<td><code>memory_lifetime</code></td>
+<td>use after free, double free</td>
+<td>использование после освобождения</td>
+<td><code>MemoryLifetimeHandler</code></td>
+</tr>
+<tr>
+<td><code>race_condition</code></td>
+<td>race condition, TOCTOU</td>
+<td>гонка, состояние гонки</td>
+<td><code>RaceConditionHandler</code></td>
+</tr>
+<tr>
+<td><code>weak_crypto</code></td>
+<td>weak random, PRNG, entropy</td>
+<td>слабое случайное число</td>
+<td><code>WeakCryptoHandler</code></td>
+</tr>
+<tr>
+<td><code>denial_of_service</code></td>
+<td>DoS, resource exhaustion</td>
+<td>отказ в обслуживании</td>
+<td><code>DoSHandler</code></td>
+</tr>
+<tr>
+<td><code>vulnerability_scan</code></td>
+<td>vulnerability, CWE, injection</td>
+<td>уязвимость, инъекция</td>
+<td><code>VulnerabilityScanHandler</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="handler-architecture"><span id="handler_architecture"></span>Handler Architecture<a class="heading-anchor" href="#handler-architecture" title="Link to this section">&para;</a></h3>
+<p>The security audit scenario uses a handler-based architecture with 11 parallel handlers, each registered with a priority:</p>
+<div class="highlight"><pre><span></span><code>User Query
+    |
+    v
+SecurityIntentDetector → classify intent (12 types)
+    |
+    v
+security_registry → route to handler by priority
+    |
+    +-- [4]  EntryPointsHandler      → attack surface discovery
+    +-- [5]  TaintSourcesHandler     → source/sink reference
+    +-- [10] VulnerabilityScanHandler → pattern-based scanning
+    +-- [20] TaintAnalysisHandler    → deep dataflow tracing
+    +-- [25] NullCheckHandler        → null pointer dereferences
+    +-- [26] InfoDisclosureHandler   → information leaks
+    +-- [27] MemoryLifetimeHandler   → use-after-free, double-free
+    +-- [28] RaceConditionHandler    → concurrency issues
+    +-- [29] WeakCryptoHandler       → weak PRNG/entropy
+    +-- [30] DoSHandler              → resource exhaustion
+    +-- [--] AutofixHandler          → fix generation (separate)
+</code></pre></div>
+
+<p>Lower priority number = higher precedence. Each handler has a paired formatter for structured output.</p>
+<h3  id="security-analysis-classes"><span id="security_analysis_classes"></span>Security Analysis Classes<a class="heading-anchor" href="#security-analysis-classes" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Module</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SecurityScanner</code></td>
+<td><code>src/security/</code></td>
+<td>CPG pattern execution, returns <code>SecurityFinding</code> list</td>
+</tr>
+<tr>
+<td><code>HardeningScanner</code></td>
+<td><code>src/security/hardening/</code></td>
+<td>D3FEND compliance checks (11 techniques)</td>
+</tr>
+<tr>
+<td><code>TaintPropagator</code></td>
+<td><code>src/analysis/dataflow/taint/</code></td>
+<td>Field-sensitive taint analysis with symbolic execution</td>
+</tr>
+<tr>
+<td><code>TaintVerifiedScanner</code></td>
+<td><code>src/security/</code></td>
+<td>High-confidence taint findings with sanitization tracking</td>
+</tr>
+<tr>
+<td><code>AutofixEngine</code></td>
+<td><code>src/analysis/autofix/</code></td>
+<td>Three-strategy fix generation (SSR → template → LLM)</td>
+</tr>
+<tr>
+<td><code>SARIFExporter</code></td>
+<td><code>src/security/</code></td>
+<td>SARIF 2.1.0 export with codeFlows and OWASP tags</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="vulnerability-scanning"><span id="vulnerability_scanning"></span>Vulnerability Scanning<a class="heading-anchor" href="#vulnerability-scanning" title="Link to this section">&para;</a></h2>
 <h3  id="sql-injection-detection"><span id="sql_injection_detection"></span>SQL Injection Detection<a class="heading-anchor" href="#sql-injection-detection" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nt">Find</span><span class="w"> </span><span class="nt">SQL</span><span class="w"> </span><span class="nt">injection</span><span class="w"> </span><span class="nt">vulnerabilities</span>
+<div class="highlight"><pre><span></span><code>&gt; Find SQL injection vulnerabilities
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nt">Security</span><span class="w"> </span><span class="nt">Findings</span><span class="w"> </span><span class="err">─────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">🔴</span><span class="w"> </span><span class="nt">CRITICAL</span><span class="o">:</span><span class="w"> </span><span class="nt">SQL</span><span class="w"> </span><span class="nt">Injection</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="nt">Location</span><span class="o">:</span><span class="w"> </span><span class="nt">src</span><span class="o">/</span><span class="nt">pl</span><span class="o">/</span><span class="nt">plpgsql</span><span class="o">/</span><span class="nt">src</span><span class="o">/</span><span class="nt">pl_exec</span><span class="p">.</span><span class="nc">c</span><span class="p">:</span><span class="nd">4567</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="nt">Pattern</span><span class="o">:</span><span class="w"> </span><span class="nt">Dynamic</span><span class="w"> </span><span class="nt">query</span><span class="w"> </span><span class="nt">with</span><span class="w"> </span><span class="nt">string</span><span class="w"> </span><span class="nt">concatenation</span><span class="w">      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="nt">Code</span><span class="o">:</span><span class="w">                                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">       </span><span class="nt">snprintf</span><span class="o">(</span><span class="nt">query</span><span class="o">,</span><span class="w"> </span><span class="s2">&quot;SELECT * FROM %s&quot;</span><span class="o">,</span><span class="w"> </span><span class="nt">table_name</span><span class="o">);</span><span class="w">    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="nt">Risk</span><span class="o">:</span><span class="w"> </span><span class="nt">User-controlled</span><span class="w"> </span><span class="nt">table_name</span><span class="w"> </span><span class="nt">can</span><span class="w"> </span><span class="nt">inject</span><span class="w"> </span><span class="nt">SQL</span><span class="w">       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="nt">Fix</span><span class="o">:</span><span class="w"> </span><span class="nt">Use</span><span class="w"> </span><span class="nt">quote_identifier</span><span class="o">()</span><span class="w"> </span><span class="nt">for</span><span class="w"> </span><span class="nt">table</span><span class="w"> </span><span class="nt">names</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="nt">CWE</span><span class="o">:</span><span class="w"> </span><span class="nt">CWE-89</span><span class="w">                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nt">Total</span><span class="w"> </span><span class="nt">findings</span><span class="o">:</span><span class="w"> </span><span class="nt">7</span><span class="w"> </span><span class="nt">critical</span><span class="o">,</span><span class="w"> </span><span class="nt">12</span><span class="w"> </span><span class="nt">high</span><span class="o">,</span><span class="w"> </span><span class="nt">34</span><span class="w"> </span><span class="nt">medium</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">╰───────────────────────────────────────────────────────────╯</span>
+╭─────────────── Security Findings ─────────────────────────╮
+│                                                           │
+│  CRITICAL: SQL Injection                                  │
+│                                                           │
+│     Location: src/pl/plpgsql/src/pl_exec.c:4567           │
+│     Pattern: Dynamic query with string concatenation      │
+│     Code:                                                 │
+│       snprintf(query, &quot;SELECT * FROM %s&quot;, table_name);    │
+│                                                           │
+│     Risk: User-controlled table_name can inject SQL       │
+│     Fix: Use quote_identifier() for table names           │
+│     CWE: CWE-89                                           │
+│                                                           │
+│  Total findings: 7 critical, 12 high, 34 medium           │
+│                                                           │
+╰───────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h3  id="buffer-overflow-detection"><span id="buffer_overflow_detection"></span>Buffer Overflow Detection<a class="heading-anchor" href="#buffer-overflow-detection" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">Find</span><span class="w"> </span><span class="nv">buffer</span><span class="w"> </span><span class="nv">overflow</span><span class="w"> </span><span class="nv">risks</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">string</span><span class="w"> </span><span class="nv">functions</span>
-<span class="o">&gt;</span><span class="w"> </span><span class="k">Show</span><span class="w"> </span><span class="nv">functions</span><span class="w"> </span><span class="nv">using</span><span class="w"> </span><span class="k">sprintf</span><span class="w"> </span><span class="nv">without</span><span class="w"> </span><span class="nv">bounds</span>
+<div class="highlight"><pre><span></span><code>&gt; Find buffer overflow risks in string functions
+&gt; Show functions using sprintf without bounds
 </code></pre></div>
 
 <h2  id="taint-flow-analysis"><span id="taint_flow_analysis"></span>Taint Flow Analysis<a class="heading-anchor" href="#taint-flow-analysis" title="Link to this section">&para;</a></h2>
 <h3  id="identify-entry-points"><span id="identify_entry_points"></span>Identify Entry Points<a class="heading-anchor" href="#identify-entry-points" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Find</span><span class="w"> </span><span class="nx">all</span><span class="w"> </span><span class="kd">external</span><span class="w"> </span><span class="nx">entry</span><span class="w"> </span><span class="nx">points</span>
+<div class="highlight"><pre><span></span><code>&gt; Find all external entry points
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Entry</span><span class="w"> </span><span class="nx">Points</span><span class="w"> </span><span class="err">──────────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Network</span><span class="w"> </span><span class="nx">Entry</span><span class="w"> </span><span class="nx">Points</span><span class="p">:</span><span class="w">                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">pq_getmsgstring</span><span class="p">()</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="nx">Read</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">client</span><span class="w">      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">pq_getmsgint</span><span class="p">()</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="nx">Read</span><span class="w"> </span><span class="nx">int</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">client</span><span class="w">         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">ProcessClientRead</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Raw</span><span class="w"> </span><span class="nx">socket</span><span class="w"> </span><span class="nx">read</span><span class="w">              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">SQL</span><span class="w"> </span><span class="nx">Entry</span><span class="w"> </span><span class="nx">Points</span><span class="p">:</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">exec_simple_query</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Direct</span><span class="w"> </span><span class="nx">SQL</span><span class="w"> </span><span class="nx">execution</span><span class="w">         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">exec_parse_message</span><span class="p">()</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Prepared</span><span class="w"> </span><span class="nx">statement</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">exec_bind_message</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Parameter</span><span class="w"> </span><span class="nx">binding</span><span class="w">            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">File</span><span class="w"> </span><span class="nx">Entry</span><span class="w"> </span><span class="nx">Points</span><span class="p">:</span><span class="w">                                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">pg_read_file</span><span class="p">()</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="nx">Read</span><span class="w"> </span><span class="nx">arbitrary</span><span class="w"> </span><span class="nx">file</span><span class="w">          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">pg_ls_dir</span><span class="p">()</span><span class="w">           </span><span class="o">-</span><span class="w"> </span><span class="nx">List</span><span class="w"> </span><span class="nx">directory</span><span class="w">               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Total</span><span class="p">:</span><span class="w"> </span><span class="mi">47</span><span class="w"> </span><span class="nx">entry</span><span class="w"> </span><span class="nx">points</span><span class="w"> </span><span class="nx">identified</span><span class="w">                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">╰───────────────────────────────────────────────────────────╯</span>
+╭─────────────── Entry Points ──────────────────────────────╮
+│                                                           │
+│  Network Entry Points:                                    │
+│    - pq_getmsgstring()     - Read string from client      │
+│    - pq_getmsgint()        - Read int from client         │
+│    - ProcessClientRead()   - Raw socket read              │
+│                                                           │
+│  SQL Entry Points:                                        │
+│    - exec_simple_query()   - Direct SQL execution         │
+│    - exec_parse_message()  - Prepared statement           │
+│    - exec_bind_message()   - Parameter binding            │
+│                                                           │
+│  File Entry Points:                                       │
+│    - pg_read_file()        - Read arbitrary file          │
+│    - pg_ls_dir()           - List directory               │
+│                                                           │
+│  Total: 47 entry points identified                        │
+│                                                           │
+╰───────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h3  id="trace-data-flow"><span id="trace_data_flow"></span>Trace Data Flow<a class="heading-anchor" href="#trace-data-flow" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Trace</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="n">flow</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">PQgetvalue</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">SQL</span><span class="w"> </span><span class="n">execution</span>
+<p>The <code>TaintPropagator</code> traces data from untrusted sources to dangerous sinks with field-sensitive tracking and symbolic execution for path feasibility:</p>
+<div class="highlight"><pre><span></span><code>&gt; Trace data flow from PQgetvalue to SQL execution
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="n">Taint</span><span class="w"> </span><span class="n">Flow</span><span class="w"> </span><span class="err">────────────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">SOURCE</span><span class="o">:</span><span class="w"> </span><span class="n">PQgetvalue</span><span class="p">()</span><span class="w"> </span><span class="p">[</span><span class="n">Client</span><span class="w"> </span><span class="n">Input</span><span class="p">]</span><span class="w">                      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="err">↓</span><span class="w">                                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">pq_getmsgstring</span><span class="p">()</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="err">↓</span><span class="w">                                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">exec_simple_query</span><span class="p">()</span><span class="w">                                      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="err">↓</span><span class="w">                                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">pg_parse_query</span><span class="p">()</span><span class="w">                                         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="err">↓</span><span class="w">                                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">SINK</span><span class="o">:</span><span class="w"> </span><span class="n">SPI_execute</span><span class="p">()</span><span class="w"> </span><span class="p">[</span><span class="n">SQL</span><span class="w"> </span><span class="n">Execution</span><span class="p">]</span><span class="w">                      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Risk</span><span class="w"> </span><span class="n">Level</span><span class="o">:</span><span class="w"> </span><span class="n">HIGH</span><span class="w">                                         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Recommendation</span><span class="o">:</span><span class="w"> </span><span class="n">Add</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="n">validation</span><span class="w"> </span><span class="n">at</span><span class="w"> </span><span class="n">entry</span><span class="w"> </span><span class="n">point</span><span class="w">      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                           </span><span class="err">│</span>
-<span class="err">╰───────────────────────────────────────────────────────────╯</span>
+╭─────────────── Taint Flow ────────────────────────────────╮
+│                                                           │
+│  SOURCE: PQgetvalue() [Client Input]                      │
+│      ↓                                                    │
+│  pq_getmsgstring()                                        │
+│      ↓                                                    │
+│  exec_simple_query()                                      │
+│      ↓                                                    │
+│  pg_parse_query()                                         │
+│      ↓                                                    │
+│  SINK: SPI_execute() [SQL Execution]                      │
+│                                                           │
+│  Risk Level: HIGH                                         │
+│  Recommendation: Add input validation at entry point      │
+│                                                           │
+╰───────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h2  id="d3fend-source-code-hardening"><span id="d3fend_source_code_hardening"></span>D3FEND Source Code Hardening<a class="heading-anchor" href="#d3fend-source-code-hardening" title="Link to this section">&para;</a></h2>
-<p>The D3FEND module analyzes code for 11 MITRE D3FEND Source Code Hardening techniques:</p>
+<h3  id="11-d3fend-techniques"><span id="11_d3fend_techniques"></span>11 D3FEND Techniques<a class="heading-anchor" href="#11-d3fend-techniques" title="Link to this section">&para;</a></h3>
+<p>The <code>HardeningScanner</code> analyzes code for 11 MITRE D3FEND Source Code Hardening techniques:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -332,79 +483,103 @@
 <td>CWE-676</td>
 </tr>
 <tr>
+<td>D3-VTV</td>
+<td>Variable Type Validation</td>
+<td>Type confusion vulnerabilities</td>
+<td>CWE-843</td>
+</tr>
+<tr>
+<td>D3-MBSV</td>
+<td>Memory Block Start Validation</td>
+<td>Out-of-bounds access</td>
+<td>CWE-787</td>
+</tr>
+<tr>
 <td>D3-NPC</td>
 <td>Null Pointer Checking</td>
 <td>Missing NULL checks</td>
 <td>CWE-476</td>
 </tr>
+<tr>
+<td>D3-DLV</td>
+<td>Domain Logic Validation</td>
+<td>Business logic flaws</td>
+<td>CWE-20</td>
+</tr>
+<tr>
+<td>D3-OLV</td>
+<td>Operational Logic Validation</td>
+<td>Operational invariant violations</td>
+<td>CWE-670</td>
+</tr>
 </tbody>
 </table></div>
 <h3  id="full-hardening-audit"><span id="full_hardening_audit"></span>Full Hardening Audit<a class="heading-anchor" href="#full-hardening-audit" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span> <span class="n">Run</span> <span class="n">D3FEND</span> <span class="n">hardening</span> <span class="n">compliance</span> <span class="n">check</span>
+<div class="highlight"><pre><span></span><code>&gt; Run D3FEND hardening compliance check
 
-<span class="err">╭───────────────</span> <span class="n">D3FEND</span> <span class="n">Compliance</span> <span class="n">Report</span> <span class="err">─────────────────────╮</span>
-<span class="err">│</span>                                                               <span class="err">│</span>
-<span class="err">│</span>  <span class="n">Overall</span> <span class="n">Compliance</span> <span class="n">Score</span><span class="p">:</span> <span class="mf">72.5</span><span class="err">%</span>                              <span class="err">│</span>
-<span class="err">│</span>                                                               <span class="err">│</span>
-<span class="err">│</span>  <span class="n">Findings</span> <span class="n">by</span> <span class="n">Technique</span><span class="p">:</span>                                       <span class="err">│</span>
-<span class="err">│</span>                                                               <span class="err">│</span>
-<span class="err">│</span>  <span class="n">D3</span><span class="o">-</span><span class="n">VI</span> <span class="p">(</span><span class="n">Variable</span> <span class="n">Initialization</span><span class="p">):</span> <span class="mi">23</span> <span class="n">issues</span>                   <span class="err">│</span>
-<span class="err">│</span>  <span class="n">D3</span><span class="o">-</span><span class="n">TL</span> <span class="p">(</span><span class="n">Trusted</span> <span class="n">Library</span><span class="p">):</span> <span class="mi">12</span> <span class="n">issues</span>                           <span class="err">│</span>
-<span class="err">│</span>  <span class="n">D3</span><span class="o">-</span><span class="n">NPC</span> <span class="p">(</span><span class="n">Null</span> <span class="n">Pointer</span> <span class="n">Checking</span><span class="p">):</span> <span class="mi">8</span> <span class="n">issues</span>                     <span class="err">│</span>
-<span class="err">│</span>  <span class="n">D3</span><span class="o">-</span><span class="n">RN</span> <span class="p">(</span><span class="n">Reference</span> <span class="n">Nullification</span><span class="p">):</span> <span class="mi">6</span> <span class="n">issues</span>                    <span class="err">│</span>
-<span class="err">│</span>                                                               <span class="err">│</span>
-<span class="err">│</span>  <span class="n">Category</span> <span class="n">Scores</span><span class="p">:</span>                                             <span class="err">│</span>
-<span class="err">│</span>    <span class="n">Initialization</span><span class="p">:</span> <span class="mi">65</span><span class="err">%</span>                                        <span class="err">│</span>
-<span class="err">│</span>    <span class="n">Memory</span> <span class="n">Safety</span><span class="p">:</span> <span class="mi">78</span><span class="err">%</span>                                         <span class="err">│</span>
-<span class="err">│</span>    <span class="n">Pointer</span> <span class="n">Safety</span><span class="p">:</span> <span class="mi">82</span><span class="err">%</span>                                        <span class="err">│</span>
-<span class="err">│</span>    <span class="n">Library</span> <span class="n">Safety</span><span class="p">:</span> <span class="mi">58</span><span class="err">%</span>                                        <span class="err">│</span>
-<span class="err">│</span>                                                               <span class="err">│</span>
-<span class="err">╰───────────────────────────────────────────────────────────────╯</span>
+╭─────────────── D3FEND Compliance Report ─────────────────────╮
+│                                                               │
+│  Overall Compliance Score: 72.5%                              │
+│                                                               │
+│  Findings by Technique:                                       │
+│                                                               │
+│  D3-VI (Variable Initialization): 23 issues                   │
+│  D3-TL (Trusted Library): 12 issues                           │
+│  D3-NPC (Null Pointer Checking): 8 issues                     │
+│  D3-RN (Reference Nullification): 6 issues                    │
+│                                                               │
+│  Category Scores:                                             │
+│    Initialization: 65%                                        │
+│    Memory Safety: 78%                                         │
+│    Pointer Safety: 82%                                        │
+│    Library Safety: 58%                                        │
+│                                                               │
+╰───────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h3  id="check-unsafe-functions-d3-tl"><span id="check_unsafe_functions_d3_tl"></span>Check Unsafe Functions (D3-TL)<a class="heading-anchor" href="#check-unsafe-functions-d3-tl" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Check</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">unsafe</span><span class="w"> </span><span class="n">function</span><span class="w"> </span><span class="n">usage</span><span class="w"> </span><span class="p">(</span><span class="n">D3</span><span class="o">-</span><span class="n">TL</span><span class="w"> </span><span class="n">Trusted</span><span class="w"> </span><span class="n">Library</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code>&gt; Check for unsafe function usage (D3-TL Trusted Library)
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="n">D3</span><span class="o">-</span><span class="n">TL</span><span class="p">:</span><span class="w"> </span><span class="n">Trusted</span><span class="w"> </span><span class="n">Library</span><span class="w"> </span><span class="err">───────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">🔴</span><span class="w"> </span><span class="n">CRITICAL</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">strcpy</span><span class="w"> </span><span class="p">(</span><span class="n">buffer</span><span class="w"> </span><span class="n">overflow</span><span class="w"> </span><span class="n">risk</span><span class="p">):</span><span class="w">                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">src</span><span class="o">/</span><span class="n">backend</span><span class="o">/</span><span class="n">utils</span><span class="o">/</span><span class="n">adt</span><span class="o">/</span><span class="n">varlena</span><span class="o">.</span><span class="n">c</span><span class="p">:</span><span class="mi">234</span><span class="w">                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">src</span><span class="o">/</span><span class="n">backend</span><span class="o">/</span><span class="n">libpq</span><span class="o">/</span><span class="n">pqformat</span><span class="o">.</span><span class="n">c</span><span class="p">:</span><span class="mi">567</span><span class="w">                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">🔴</span><span class="w"> </span><span class="n">CRITICAL</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">sprintf</span><span class="w"> </span><span class="p">(</span><span class="n">format</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">risk</span><span class="p">):</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">src</span><span class="o">/</span><span class="n">backend</span><span class="o">/</span><span class="n">libpq</span><span class="o">/</span><span class="n">auth</span><span class="o">.</span><span class="n">c</span><span class="p">:</span><span class="mi">567</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Remediation</span><span class="p">:</span><span class="w">                                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">strcpy</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">strncpy</span><span class="o">/</span><span class="n">strlcpy</span><span class="w">                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">sprintf</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">snprintf</span><span class="w">                                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">╰───────────────────────────────────────────────────────────────╯</span>
+╭─────────────── D3-TL: Trusted Library ───────────────────────╮
+│                                                               │
+│  CRITICAL - strcpy (buffer overflow risk):                    │
+│    src/backend/utils/adt/varlena.c:234                        │
+│    src/backend/libpq/pqformat.c:567                           │
+│                                                               │
+│  CRITICAL - sprintf (format string risk):                     │
+│    src/backend/libpq/auth.c:567                               │
+│                                                               │
+│  Remediation:                                                 │
+│    - strcpy → strncpy/strlcpy                                 │
+│    - sprintf → snprintf                                       │
+│                                                               │
+╰───────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h3  id="check-null-pointer-safety-d3-npc"><span id="check_null_pointer_safety_d3_npc"></span>Check Null Pointer Safety (D3-NPC)<a class="heading-anchor" href="#check-null-pointer-safety-d3-npc" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nt">Find</span><span class="w"> </span><span class="nt">null</span><span class="w"> </span><span class="nt">pointer</span><span class="w"> </span><span class="nt">vulnerabilities</span><span class="w"> </span><span class="o">(</span><span class="nt">D3-NPC</span><span class="o">)</span>
+<div class="highlight"><pre><span></span><code>&gt; Find null pointer vulnerabilities (D3-NPC)
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nt">D3-NPC</span><span class="o">:</span><span class="w"> </span><span class="nt">Null</span><span class="w"> </span><span class="nt">Pointer</span><span class="w"> </span><span class="nt">Checking</span><span class="w"> </span><span class="err">────────────────╮</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nt">Missing</span><span class="w"> </span><span class="nt">NULL</span><span class="w"> </span><span class="nt">Checks</span><span class="w"> </span><span class="nt">After</span><span class="w"> </span><span class="nt">Allocation</span><span class="o">:</span><span class="w"> </span><span class="nt">23</span><span class="w">                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nt">malloc</span><span class="w"> </span><span class="nt">without</span><span class="w"> </span><span class="nt">check</span><span class="o">:</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nt">src</span><span class="o">/</span><span class="nt">backend</span><span class="o">/</span><span class="nt">utils</span><span class="o">/</span><span class="nt">mmgr</span><span class="o">/</span><span class="nt">aset</span><span class="p">.</span><span class="nc">c</span><span class="p">:</span><span class="nd">345</span><span class="w">                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="nt">char</span><span class="w"> </span><span class="o">*</span><span class="nt">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nt">malloc</span><span class="o">(</span><span class="nt">size</span><span class="o">);</span><span class="w">                                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">      </span><span class="nt">use</span><span class="o">(</span><span class="nt">buf</span><span class="o">);</span><span class="w">  </span><span class="o">//</span><span class="w"> </span><span class="err">←</span><span class="w"> </span><span class="nt">No</span><span class="w"> </span><span class="nt">NULL</span><span class="w"> </span><span class="nt">check</span><span class="o">!</span><span class="w">                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nt">Example</span><span class="w"> </span><span class="nt">Fix</span><span class="o">:</span><span class="w">                                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nt">char</span><span class="w"> </span><span class="o">*</span><span class="nt">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nt">malloc</span><span class="o">(</span><span class="nt">size</span><span class="o">);</span><span class="w">                                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nt">if</span><span class="w"> </span><span class="o">(</span><span class="nt">buf</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nt">NULL</span><span class="o">)</span><span class="w"> </span><span class="p">{</span><span class="w">                                         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">        </span><span class="err">ereport(ERROR,</span><span class="w"> </span><span class="err">(errcode(ERRCODE_OUT_OF_MEMORY)))</span><span class="p">;</span><span class="w">      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="p">}</span><span class="w">                                                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                               </span><span class="err">│</span>
-<span class="err">╰───────────────────────────────────────────────────────────────╯</span>
+╭─────────────── D3-NPC: Null Pointer Checking ────────────────╮
+│                                                               │
+│  Missing NULL Checks After Allocation: 23                     │
+│                                                               │
+│  malloc without check:                                        │
+│    src/backend/utils/mmgr/aset.c:345                          │
+│      char *buf = malloc(size);                                │
+│      use(buf);  // ← No NULL check!                           │
+│                                                               │
+│  Example Fix:                                                 │
+│    char *buf = malloc(size);                                  │
+│    if (buf == NULL) {                                         │
+│        ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY)));      │
+│    }                                                          │
+│                                                               │
+╰───────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h2  id="language-specific-security-patterns"><span id="language_specific_security_patterns"></span>Language-Specific Security Patterns<a class="heading-anchor" href="#language-specific-security-patterns" title="Link to this section">&para;</a></h2>
-<p>CodeGraph supports security analysis for multiple programming languages with CWE/CAPEC mappings.</p>
-<h3  id="supported-languages-and-vulnerability-patterns"><span id="supported_languages_and_vulnerability_patterns"></span>Supported Languages and Vulnerability Patterns<a class="heading-anchor" href="#supported-languages-and-vulnerability-patterns" title="Link to this section">&para;</a></h3>
+<h3  id="supported-languages-11"><span id="supported_languages_11"></span>Supported Languages (11)<a class="heading-anchor" href="#supported-languages-11" title="Link to this section">&para;</a></h3>
+<p>CodeGraph supports security analysis for 11 programming languages with CWE mappings, plus framework-specific hypothesis providers:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -464,9 +639,16 @@
 <td>SQL injection, XSS, command injection, path traversal</td>
 <td>CWE-89, CWE-79, CWE-78, CWE-22</td>
 </tr>
+<tr>
+<td><strong>1C (OneC)</strong></td>
+<td>SQL injection, command injection, path traversal</td>
+<td>CWE-89, CWE-78, CWE-22</td>
+</tr>
 </tbody>
 </table></div>
-<h3  id="cwe-database-coverage-30-cwes"><span id="cwe_database_coverage_30_cwes"></span>CWE Database Coverage (30+ CWEs)<a class="heading-anchor" href="#cwe-database-coverage-30-cwes" title="Link to this section">&para;</a></h3>
+<p>Framework-specific providers (via <a href="../../enterprise/HYPOTHESIS_SYSTEM.html">Hypothesis System</a>): Django, Express.js, Next.js, Spring, Gin, PostgreSQL.</p>
+<h3  id="cwe-coverage-69-cwes"><span id="cwe_coverage_69_cwes"></span>CWE Coverage (69 CWEs)<a class="heading-anchor" href="#cwe-coverage-69-cwes" title="Link to this section">&para;</a></h3>
+<p>The security pattern database covers 69 unique CWE identifiers across all languages:</p>
 <p><strong>Injection Vulnerabilities:</strong>
 - CWE-78: OS Command Injection
 - CWE-89: SQL Injection
@@ -483,22 +665,64 @@
 - CWE-120: Buffer Overflow
 - CWE-416: Use After Free
 - CWE-476: NULL Pointer Dereference
-- CWE-190: Integer Overflow</p>
+- CWE-190: Integer Overflow
+- CWE-787: Out-of-bounds Write</p>
 <p><strong>Authentication/Authorization:</strong>
 - CWE-798: Hardcoded Credentials
 - CWE-284: Improper Access Control
 - CWE-862: Missing Authorization</p>
-<h3  id="capec-attack-patterns-15-patterns"><span id="capec_attack_patterns_15_patterns"></span>CAPEC Attack Patterns (15+ patterns)<a class="heading-anchor" href="#capec-attack-patterns-15-patterns" title="Link to this section">&para;</a></h3>
-<ul>
-<li>CAPEC-66: SQL Injection</li>
-<li>CAPEC-86: XSS Through HTTP Headers</li>
-<li>CAPEC-88: OS Command Injection</li>
-<li>CAPEC-100: Buffer Overflow</li>
-<li>CAPEC-126: Path Traversal</li>
-<li>CAPEC-586: Object Injection (Deserialization)</li>
-<li>CAPEC-664: Server-Side Request Forgery</li>
-</ul>
-<h3  id="pythondjango-example"><span id="pythondjango_example"></span>Python/Django Example<a class="heading-anchor" href="#pythondjango-example" title="Link to this section">&para;</a></h3>
+<p>Full list includes 69 CWEs spanning injection, memory safety, web, crypto, concurrency, and access control categories.</p>
+<h3  id="capec-attack-pattern-coverage"><span id="capec_attack_pattern_coverage"></span>CAPEC Attack Pattern Coverage<a class="heading-anchor" href="#capec-attack-pattern-coverage" title="Link to this section">&para;</a></h3>
+<p>CodeGraph&rsquo;s security patterns are defined through CWE identifiers. Each CWE maps to corresponding CAPEC attack patterns via the standard MITRE CWE→CAPEC mapping:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>CWE</th>
+<th>CAPEC</th>
+<th>Attack Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CWE-89</td>
+<td>CAPEC-66</td>
+<td>SQL Injection</td>
+</tr>
+<tr>
+<td>CWE-79</td>
+<td>CAPEC-86</td>
+<td>XSS Through HTTP Headers</td>
+</tr>
+<tr>
+<td>CWE-78</td>
+<td>CAPEC-88</td>
+<td>OS Command Injection</td>
+</tr>
+<tr>
+<td>CWE-120</td>
+<td>CAPEC-100</td>
+<td>Buffer Overflow</td>
+</tr>
+<tr>
+<td>CWE-22</td>
+<td>CAPEC-126</td>
+<td>Path Traversal</td>
+</tr>
+<tr>
+<td>CWE-502</td>
+<td>CAPEC-586</td>
+<td>Object Injection (Deserialization)</td>
+</tr>
+<tr>
+<td>CWE-918</td>
+<td>CAPEC-664</td>
+<td>Server-Side Request Forgery</td>
+</tr>
+</tbody>
+</table></div>
+<p>The <a href="../../enterprise/HYPOTHESIS_SYSTEM.html">Hypothesis System</a> generates security hypotheses for these attack scenarios with framework-specific providers, enabling targeted vulnerability detection beyond static pattern matching.</p>
+<h3  id="language-examples"><span id="language_examples"></span>Language Examples<a class="heading-anchor" href="#language-examples" title="Link to this section">&para;</a></h3>
+<p><strong>Python/Django:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Switch to Django project</span>
 /project<span class="w"> </span>switch<span class="w"> </span>my_django_app
 
@@ -508,53 +732,34 @@
 &gt;<span class="w"> </span>Find<span class="w"> </span>endpoints<span class="w"> </span>without<span class="w"> </span>CSRF<span class="w"> </span>protection
 </code></pre></div>
 
-<h3  id="javascripttypescript-example"><span id="javascripttypescript_example"></span>JavaScript/TypeScript Example<a class="heading-anchor" href="#javascripttypescript-example" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Find</span><span class="w"> </span><span class="nx">prototype</span><span class="w"> </span><span class="nx">pollution</span><span class="w"> </span><span class="nx">vulnerabilities</span>
-<span class="p">&gt;</span><span class="w"> </span><span class="nx">Check</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">XSS</span><span class="w"> </span><span class="nx">via</span><span class="w"> </span><span class="nx">innerHTML</span>
-<span class="p">&gt;</span><span class="w"> </span><span class="nx">Find</span><span class="w"> </span><span class="nx">eval</span><span class="p">()</span><span class="w"> </span><span class="nx">usage</span><span class="w"> </span><span class="nx">with</span><span class="w"> </span><span class="nx">user</span><span class="w"> </span><span class="nx">input</span>
+<p><strong>JavaScript/TypeScript:</strong></p>
+<div class="highlight"><pre><span></span><code>&gt; Find prototype pollution vulnerabilities
+&gt; Check for XSS via innerHTML
+&gt; Find eval() usage with user input
 </code></pre></div>
 
-<h3  id="go-example"><span id="go_example"></span>Go Example<a class="heading-anchor" href="#go-example" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">Find</span><span class="w"> </span><span class="nv">race</span><span class="w"> </span><span class="nv">conditions</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">goroutines</span>
-<span class="o">&gt;</span><span class="w"> </span><span class="nv">Check</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">SQL</span><span class="w"> </span><span class="nv">injection</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">database</span><span class="w"> </span><span class="nv">queries</span>
-<span class="o">&gt;</span><span class="w"> </span><span class="nv">Find</span><span class="w"> </span><span class="nv">insecure</span><span class="w"> </span><span class="nv">TLS</span><span class="w"> </span><span class="nv">configurations</span>
+<p><strong>Go:</strong></p>
+<div class="highlight"><pre><span></span><code>&gt; Find race conditions in goroutines
+&gt; Check for SQL injection in database queries
+&gt; Find insecure TLS configurations
 </code></pre></div>
 
-<h2  id="cli-security-reports"><span id="cli_security_reports"></span>CLI Security Reports<a class="heading-anchor" href="#cli-security-reports" title="Link to this section">&para;</a></h2>
-<p>Generate comprehensive security reports:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Auto-detect language</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--path<span class="w"> </span>/path/to/project<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>./security_reports
-
-<span class="c1"># Specify language explicitly</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--path<span class="w"> </span>/path/to/project<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--language<span class="w"> </span>python<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>./security_reports
-
-<span class="c1"># Available languages: auto, c, cpp, python, javascript, typescript,</span>
-<span class="c1">#                      go, csharp, kotlin, java, php, onec</span>
-</code></pre></div>
-
-<p>Generates:
-- <code>security_report.md</code> - Human-readable report
-- <code>security_report.json</code> - Machine-readable for CI/CD
-- <code>security_report.sarif</code> - GitHub Security Alerts format</p>
 <h2  id="owasp-top-10-compliance"><span id="owasp_top_10_compliance"></span>OWASP Top 10 Compliance<a class="heading-anchor" href="#owasp-top-10-compliance" title="Link to this section">&para;</a></h2>
-<p>Security audit results are automatically enriched with OWASP Top 10 2021 mapping:</p>
+<p>Security audit results are automatically enriched with OWASP Top 10 2021 mapping via <code>owasp_mapping.py</code> (69 CWEs mapped to A01–A10):</p>
 <ul>
 <li>Each finding receives an <code>OWASP-Axx</code> tag (e.g., <code>OWASP-A03</code> for Injection)</li>
 <li>A compliance table summarizes pass/fail status per OWASP category</li>
 <li>SARIF export includes OWASP tags on <code>reportingDescriptor</code> rules</li>
 </ul>
 <p>Example compliance output:</p>
-<div class="highlight"><pre><span></span><code>| OWASP Category | Status | Findings |
-|----------------|--------|----------|
-| A01 Broken Access Control | PASS | 0 |
-| A02 Cryptographic Failures | FAIL | 2 |
-| A03 Injection | FAIL | 5 |
-| ... | ... | ... |
+<div class="highlight"><pre><span></span><code>| OWASP Category                | Status | Findings |
+|-------------------------------|--------|----------|
+| A01 Broken Access Control     | PASS   | 0        |
+| A02 Cryptographic Failures    | FAIL   | 2        |
+| A03 Injection                 | FAIL   | 5        |
+| A04 Insecure Design           | PASS   | 0        |
+| A05 Security Misconfiguration | WARN   | 1        |
+| ...                           | ...    | ...      |
 </code></pre></div>
 
 <h2  id="taint-path-visualization"><span id="taint_path_visualization"></span>Taint Path Visualization<a class="heading-anchor" href="#taint-path-visualization" title="Link to this section">&para;</a></h2>
@@ -572,12 +777,77 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<s
 <li><strong>Red</strong> nodes: taint sinks (dangerous operations)</li>
 <li><strong>Green</strong> nodes: sanitizers (validation/escaping functions)</li>
 </ul>
-<p>The MCP tool <code>codegraph_taint_analysis</code> returns structured <code>taint_paths</code> array with source, sink, and intermediate nodes. SARIF export includes <code>codeFlows</code> per SARIF 2.1.0 §3.36.</p>
+<p>The MCP tool <code>codegraph_taint_analysis</code> returns structured <code>taint_paths</code> array with source, sink, and intermediate nodes. <code>SARIFExporter</code> includes <code>codeFlows</code> per SARIF 2.1.0 §3.36.</p>
+<h2  id="autofix-integration"><span id="autofix_integration"></span>Autofix Integration<a class="heading-anchor" href="#autofix-integration" title="Link to this section">&para;</a></h2>
+<p>The <code>AutofixEngine</code> generates concrete code patches for detected vulnerabilities using three strategies (SSR → template → LLM). See the dedicated <a href="02-security-audit-autofix.html">Autofix Guide</a> for:</p>
+<ul>
+<li>Three-strategy pipeline (SSR, template, LLM)</li>
+<li>Supported vulnerability types and fix templates</li>
+<li>Confidence scoring and approval flow</li>
+<li>Configuration and domain extension</li>
+</ul>
+<p>Quick usage:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># CLI: audit with autofix suggestions</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb<span class="w"> </span>--autofix
+
+<span class="c1"># MCP: generate fix for a specific method</span>
+codegraph_autofix<span class="o">(</span><span class="nv">method_name</span><span class="o">=</span><span class="s2">&quot;process_query&quot;</span>,<span class="w"> </span><span class="nv">cwe</span><span class="o">=</span><span class="s2">&quot;CWE-89&quot;</span><span class="o">)</span>
+</code></pre></div>
+
+<h2  id="cli-mcp-usage"><span id="cli-amp-mcp-usage"></span><span id="cli_amp_mcp_usage"></span><span id="cli_mcp_usage"></span>CLI &amp; MCP Usage<a class="heading-anchor" href="#cli-mcp-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full security report (auto-detect language)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--path<span class="w"> </span>/path/to/project<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>./security_reports
+
+<span class="c1"># Specify language explicitly</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--path<span class="w"> </span>/path/to/project<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--language<span class="w"> </span>python<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>./security_reports
+
+<span class="c1"># Available languages: auto, c, cpp, python, javascript, typescript,</span>
+<span class="c1">#                      go, csharp, kotlin, java, php, onec</span>
+
+<span class="c1"># Query-based security analysis</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find SQL injection vulnerabilities&quot;</span>
+
+<span class="c1"># Security incident tracing</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>security<span class="w"> </span>incident<span class="w"> </span><span class="s2">&quot;compromised function&quot;</span><span class="w"> </span>--db<span class="w"> </span>PATH
+</code></pre></div>
+
+<p>Output formats:
+- <code>security_report.md</code> — Human-readable report
+- <code>security_report.json</code> — Machine-readable for CI/CD
+- <code>security_report.sarif</code> — GitHub Security Alerts format (SARIF 2.1.0)</p>
+<p>MCP tools:
+- <code>codegraph_taint_analysis(method_name, source_category, sink_category)</code> — trace data flows
+- <code>codegraph_autofix(method_name, cwe="")</code> — generate fix suggestions</p>
+<h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
+<p><strong>Vulnerability Scanning:</strong>
+- &ldquo;Find SQL injection vulnerabilities&rdquo;
+- &ldquo;Find buffer overflow risks in string functions&rdquo;
+- &ldquo;Check for hardcoded credentials&rdquo;
+- &ldquo;Find information disclosure risks&rdquo;</p>
+<p><strong>Taint Analysis:</strong>
+- &ldquo;Trace data flow from user input to SQL execution&rdquo;
+- &ldquo;Find all external entry points&rdquo;
+- &ldquo;Show taint paths for process_query&rdquo;</p>
+<p><strong>D3FEND Hardening:</strong>
+- &ldquo;Run D3FEND hardening compliance check&rdquo;
+- &ldquo;Check for unsafe function usage (D3-TL)&rdquo;
+- &ldquo;Find null pointer vulnerabilities&rdquo;</p>
+<p><strong>Memory &amp; Concurrency:</strong>
+- &ldquo;Find use-after-free vulnerabilities&rdquo;
+- &ldquo;Find race conditions in goroutines&rdquo;
+- &ldquo;Check for weak random number generation&rdquo;
+- &ldquo;Find resource exhaustion risks&rdquo;</p>
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="08-compliance.html">Compliance</a> - Regulatory compliance checks</li>
-<li><a href="14-incident-response.html">Incident Response</a> - Post-breach investigation</li>
-<li><a href="16-entry-points.html">Entry Points</a> - Attack surface mapping</li>
+<li><a href="02-security-audit-autofix.html">Autofix</a> — Automated fix generation for detected vulnerabilities</li>
+<li><a href="08-compliance.html">Compliance (S08)</a> — Regulatory compliance checks</li>
+<li><a href="14-incident-response.html">Incident Response (S14)</a> — Post-breach investigation</li>
+<li><a href="16-entry-points.html">Entry Points (S16)</a> — Attack surface mapping</li>
 </ul>
       </article>
 
@@ -597,7 +867,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<s
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/02-security-audit.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -609,6 +879,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<s
         <li><a href="#scenario-02-security-audit" class="level-1">Scenario 02: Security Audit</a></li>
 <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#intent-classification" class="level-3">Intent Classification</a></li>
+<li><a href="#handler-architecture" class="level-3">Handler Architecture</a></li>
+<li><a href="#security-analysis-classes" class="level-3">Security Analysis Classes</a></li>
 <li><a href="#vulnerability-scanning" class="level-2">Vulnerability Scanning</a></li>
 <li><a href="#sql-injection-detection" class="level-3">SQL Injection Detection</a></li>
 <li><a href="#buffer-overflow-detection" class="level-3">Buffer Overflow Detection</a></li>
@@ -616,19 +890,20 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.security_audit<s
 <li><a href="#identify-entry-points" class="level-3">Identify Entry Points</a></li>
 <li><a href="#trace-data-flow" class="level-3">Trace Data Flow</a></li>
 <li><a href="#d3fend-source-code-hardening" class="level-2">D3FEND Source Code Hardening</a></li>
+<li><a href="#11-d3fend-techniques" class="level-3">11 D3FEND Techniques</a></li>
 <li><a href="#full-hardening-audit" class="level-3">Full Hardening Audit</a></li>
 <li><a href="#check-unsafe-functions-d3-tl" class="level-3">Check Unsafe Functions (D3-TL)</a></li>
 <li><a href="#check-null-pointer-safety-d3-npc" class="level-3">Check Null Pointer Safety (D3-NPC)</a></li>
 <li><a href="#language-specific-security-patterns" class="level-2">Language-Specific Security Patterns</a></li>
-<li><a href="#supported-languages-and-vulnerability-patterns" class="level-3">Supported Languages and Vulnerability Patterns</a></li>
-<li><a href="#cwe-database-coverage-30-cwes" class="level-3">CWE Database Coverage (30+ CWEs)</a></li>
-<li><a href="#capec-attack-patterns-15-patterns" class="level-3">CAPEC Attack Patterns (15+ patterns)</a></li>
-<li><a href="#pythondjango-example" class="level-3">Python/Django Example</a></li>
-<li><a href="#javascripttypescript-example" class="level-3">JavaScript/TypeScript Example</a></li>
-<li><a href="#go-example" class="level-3">Go Example</a></li>
-<li><a href="#cli-security-reports" class="level-2">CLI Security Reports</a></li>
+<li><a href="#supported-languages-11" class="level-3">Supported Languages (11)</a></li>
+<li><a href="#cwe-coverage-69-cwes" class="level-3">CWE Coverage (69 CWEs)</a></li>
+<li><a href="#capec-attack-pattern-coverage" class="level-3">CAPEC Attack Pattern Coverage</a></li>
+<li><a href="#language-examples" class="level-3">Language Examples</a></li>
 <li><a href="#owasp-top-10-compliance" class="level-2">OWASP Top 10 Compliance</a></li>
 <li><a href="#taint-path-visualization" class="level-2">Taint Path Visualization</a></li>
+<li><a href="#autofix-integration" class="level-2">Autofix Integration</a></li>
+<li><a href="#cli-mcp-usage" class="level-2">CLI & MCP Usage</a></li>
+<li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>
     </aside>

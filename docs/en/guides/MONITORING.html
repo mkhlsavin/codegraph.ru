@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html" class="active">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -185,27 +186,35 @@
 <li><a href="#overview">Overview</a></li>
 <li><a href="#quick-start">Quick Start</a></li>
 <li><a href="#enable-metrics">Enable Metrics</a></li>
-<li><a href="#health-check-server">Health Check Server</a></li>
+<li><a href="#health-check-application">Health Check Application</a></li>
 <li><a href="#prometheus-metrics">Prometheus Metrics</a></li>
 <li><a href="#available-metrics">Available Metrics</a></li>
 <li><a href="#histogram-buckets">Histogram Buckets</a></li>
 <li><a href="#recording-metrics">Recording Metrics</a></li>
+<li><a href="#recording-functions">Recording Functions</a></li>
 <li><a href="#decorators">Decorators</a></li>
-<li><a href="#track-execution">@track_execution</a></li>
-<li><a href="#track-agent">@track_agent</a></li>
-<li><a href="#track-scenario">@track_scenario</a></li>
+<li><a href="#monitor-scenario">@monitor_scenario</a></li>
+<li><a href="#monitor-agent">@monitor_agent</a></li>
+<li><a href="#monitor-cache">@monitor_cache</a></li>
+<li><a href="#metrics-collector">MetricsCollector</a></li>
+<li><a href="#metrics-summary">MetricsSummary</a></li>
 <li><a href="#health-checks">Health Checks</a></li>
 <li><a href="#health-status">Health Status</a></li>
 <li><a href="#component-health">Component Health</a></li>
 <li><a href="#custom-health-checks">Custom Health Checks</a></li>
-<li><a href="#health-endpoints">Health Endpoints</a></li>
+<li><a href="#health-endpoints-standalone">Health Endpoints — Standalone App</a></li>
+<li><a href="#health-endpoints-api-router">Health Endpoints — API Router</a></li>
+<li><a href="#standalone-functions">Standalone Functions</a></li>
 <li><a href="#structured-logging">Structured Logging</a></li>
-<li><a href="#setup">Setup</a></li>
+<li><a href="#structured-logger">StructuredLogger</a></li>
 <li><a href="#log-format">Log Format</a></li>
-<li><a href="#context-logging">Context Logging</a></li>
+<li><a href="#timed-operations">Timed Operations</a></li>
+<li><a href="#metrics-middleware">MetricsMiddleware</a></li>
 <li><a href="#grafana-dashboards">Grafana Dashboards</a></li>
 <li><a href="#recommended-panels">Recommended Panels</a></li>
 <li><a href="#alert-rules">Alert Rules</a></li>
+<li><a href="#alertmanager">Alertmanager</a></li>
+<li><a href="#yandex-cloud-dashboard">Yandex Cloud Dashboard</a></li>
 <li><a href="#kubernetes-integration">Kubernetes Integration</a></li>
 <li><a href="#deployment-configuration">Deployment Configuration</a></li>
 <li><a href="#servicemonitor-for-prometheus">ServiceMonitor for Prometheus</a></li>
@@ -213,47 +222,52 @@
 <li><a href="#see-also">See Also</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>The monitoring module provides:
-- <strong>Prometheus metrics</strong> for observability
-- <strong>Structured JSON logging</strong> for analysis
-- <strong>Health check endpoints</strong> for orchestration
-- <strong>Monitoring decorators</strong> for instrumentation</p>
+<p>The monitoring module (<code>src/monitoring/</code>) provides:
+- <strong>Prometheus metrics</strong> — 20 metrics for observability
+- <strong>Structured JSON logging</strong> — <code>StructuredLogger</code> with <code>timed_operation()</code> context manager
+- <strong>Health check endpoints</strong> — standalone FastAPI app and API router
+- <strong>Monitoring decorators</strong> — <code>monitor_scenario</code>, <code>monitor_agent</code>, <code>monitor_cache</code>
+- <strong>Recording functions</strong> — <code>record_llm_call</code>, <code>record_cpg_query</code>, <code>record_retrieval</code>
+- <strong>MetricsCollector</strong> — singleton for in-memory metric aggregation
+- <strong>MetricsMiddleware</strong> — automatic HTTP request instrumentation</p>
 <hr />
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <h3  id="enable-metrics"><span id="enable_metrics"></span>Enable Metrics<a class="heading-anchor" href="#enable-metrics" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">MetricsCollector</span><span class="p">,</span>
-    <span class="n">track_execution</span><span class="p">,</span>
-    <span class="n">track_agent</span><span class="p">,</span>
-    <span class="n">setup_structured_logging</span>
+    <span class="n">StructuredLogger</span><span class="p">,</span>
+    <span class="n">monitor_scenario</span><span class="p">,</span>
+    <span class="n">monitor_agent</span><span class="p">,</span>
+    <span class="n">monitor_cache</span><span class="p">,</span>
+    <span class="n">record_llm_call</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1"># Setup structured logging</span>
-<span class="n">setup_structured_logging</span><span class="p">(</span><span class="n">log_level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
+<span class="c1"># Create structured logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">StructuredLogger</span><span class="p">(</span><span class="s2">&quot;my_component&quot;</span><span class="p">)</span>
 
-<span class="c1"># Get metrics collector</span>
+<span class="c1"># Get metrics collector (singleton)</span>
 <span class="n">metrics</span> <span class="o">=</span> <span class="n">MetricsCollector</span><span class="p">()</span>
 
 <span class="c1"># Use decorators for automatic tracking</span>
-<span class="nd">@track_execution</span><span class="p">(</span><span class="s2">&quot;my_operation&quot;</span><span class="p">)</span>
+<span class="nd">@monitor_scenario</span><span class="p">(</span><span class="s2">&quot;my_scenario&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">process_query</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-    <span class="c1"># Your code here</span>
+    <span class="c1"># Automatically records SCENARIO_DURATION, SCENARIO_SUCCESS/FAILURE,</span>
+    <span class="c1"># ACTIVE_REQUESTS, TOTAL_REQUESTS</span>
     <span class="k">return</span> <span class="n">result</span>
 </code></pre></div>
 
-<h3  id="health-check-server"><span id="health_check_server"></span>Health Check Server<a class="heading-anchor" href="#health-check-server" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring.health</span><span class="w"> </span><span class="kn">import</span> <span class="n">HealthCheckServer</span>
+<h3  id="health-check-application"><span id="health_check_application"></span>Health Check Application<a class="heading-anchor" href="#health-check-application" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring.health</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_health_app</span>
 
-<span class="c1"># Start health check server (runs alongside main app)</span>
-<span class="n">health_server</span> <span class="o">=</span> <span class="n">HealthCheckServer</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8081</span><span class="p">)</span>
-<span class="n">health_server</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="c1"># Create standalone health check FastAPI app</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">create_health_app</span><span class="p">()</span>
 
 <span class="c1"># Endpoints available:</span>
-<span class="c1"># GET /health    - Overall health status</span>
-<span class="c1"># GET /ready     - Readiness probe</span>
-<span class="c1"># GET /live      - Liveness probe</span>
-<span class="c1"># GET /metrics   - Prometheus metrics</span>
-<span class="c1"># GET /stats     - System statistics</span>
+<span class="c1"># GET /health       - Overall health status</span>
+<span class="c1"># GET /health/live  - Liveness probe</span>
+<span class="c1"># GET /health/ready - Readiness probe</span>
+<span class="c1"># GET /metrics      - Prometheus metrics</span>
+<span class="c1"># GET /stats        - System statistics</span>
 </code></pre></div>
 
 <hr />
@@ -272,92 +286,135 @@
 <tr>
 <td><code>rag_scenario_duration_seconds</code></td>
 <td>Histogram</td>
-<td>scenario_name</td>
+<td><code>scenario_name</code></td>
 <td>Scenario execution time</td>
 </tr>
 <tr>
 <td><code>rag_scenario_success_total</code></td>
 <td>Counter</td>
-<td>scenario_name</td>
+<td><code>scenario_name</code></td>
 <td>Successful executions</td>
 </tr>
 <tr>
 <td><code>rag_scenario_failure_total</code></td>
 <td>Counter</td>
-<td>scenario_name, error_type</td>
+<td><code>scenario_name</code>, <code>error_type</code></td>
 <td>Failed executions</td>
 </tr>
 <tr>
 <td><code>rag_agent_duration_seconds</code></td>
 <td>Histogram</td>
-<td>agent_name, scenario</td>
+<td><code>agent_name</code>, <code>scenario</code></td>
 <td>Agent execution time</td>
 </tr>
 <tr>
 <td><code>rag_agent_success_total</code></td>
 <td>Counter</td>
-<td>agent_name, scenario</td>
+<td><code>agent_name</code>, <code>scenario</code></td>
 <td>Agent successes</td>
 </tr>
 <tr>
 <td><code>rag_agent_failure_total</code></td>
 <td>Counter</td>
-<td>agent_name, scenario, error_type</td>
+<td><code>agent_name</code>, <code>scenario</code>, <code>error_type</code></td>
 <td>Agent failures</td>
 </tr>
 <tr>
 <td><code>rag_cache_hits_total</code></td>
 <td>Counter</td>
-<td>cache_name</td>
+<td><code>cache_type</code></td>
 <td>Cache hits</td>
 </tr>
 <tr>
 <td><code>rag_cache_misses_total</code></td>
 <td>Counter</td>
-<td>cache_name</td>
+<td><code>cache_type</code></td>
 <td>Cache misses</td>
 </tr>
 <tr>
-<td><code>rag_llm_requests_total</code></td>
-<td>Counter</td>
-<td>model, status</td>
-<td>LLM API requests</td>
+<td><code>rag_cache_size</code></td>
+<td>Gauge</td>
+<td><code>cache_type</code></td>
+<td>Current cache size</td>
 </tr>
 <tr>
-<td><code>rag_llm_duration_seconds</code></td>
+<td><code>rag_active_requests</code></td>
+<td>Gauge</td>
+<td>—</td>
+<td>Active requests being processed</td>
+</tr>
+<tr>
+<td><code>rag_total_requests</code></td>
+<td>Counter</td>
+<td>—</td>
+<td>Total requests processed</td>
+</tr>
+<tr>
+<td><code>rag_llm_latency_seconds</code></td>
 <td>Histogram</td>
-<td>model</td>
-<td>LLM latency</td>
+<td><code>model</code>, <code>operation</code></td>
+<td>LLM API call latency</td>
 </tr>
 <tr>
 <td><code>rag_llm_tokens_total</code></td>
 <td>Counter</td>
-<td>model, type</td>
-<td>Tokens used</td>
+<td><code>model</code>, <code>token_type</code></td>
+<td>LLM tokens used</td>
 </tr>
 <tr>
-<td><code>rag_query_duration_seconds</code></td>
+<td><code>rag_llm_errors_total</code></td>
+<td>Counter</td>
+<td><code>model</code>, <code>error_type</code></td>
+<td>LLM API errors</td>
+</tr>
+<tr>
+<td><code>rag_cpg_query_latency_seconds</code></td>
 <td>Histogram</td>
-<td>query_type</td>
-<td>Database query time</td>
+<td><code>query_type</code></td>
+<td>CPG query latency</td>
 </tr>
 <tr>
-<td><code>rag_active_connections</code></td>
-<td>Gauge</td>
-<td>-</td>
-<td>Active connections</td>
+<td><code>rag_cpg_query_results</code></td>
+<td>Histogram</td>
+<td><code>query_type</code></td>
+<td>CPG query result count</td>
+</tr>
+<tr>
+<td><code>rag_retrieval_latency_seconds</code></td>
+<td>Histogram</td>
+<td><code>retrieval_type</code></td>
+<td>Retrieval operation latency</td>
+</tr>
+<tr>
+<td><code>rag_retrieval_results_count</code></td>
+<td>Histogram</td>
+<td><code>retrieval_type</code></td>
+<td>Retrieval result count</td>
 </tr>
 </tbody>
 </table></div>
+<p>Total: 18 metrics (all defined in <code>src/monitoring/metrics.py</code>). <code>ACTIVE_REQUESTS</code> and <code>TOTAL_REQUESTS</code> have no labels.</p>
 <h3  id="histogram-buckets"><span id="histogram_buckets"></span>Histogram Buckets<a class="heading-anchor" href="#histogram-buckets" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Scenario duration buckets (seconds)</span>
-<span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># SCENARIO_DURATION buckets (seconds)</span>
+<span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">,</span> <span class="mf">120.0</span><span class="p">)</span>
 
-<span class="c1"># Agent duration buckets (seconds)</span>
-<span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">]</span>
+<span class="c1"># AGENT_DURATION buckets (seconds)</span>
+<span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
 
-<span class="c1"># Query duration buckets (milliseconds)</span>
-<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">1000</span><span class="p">]</span>
+<span class="c1"># LLM_LATENCY buckets (seconds)</span>
+<span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+
+<span class="c1"># CPG_QUERY_LATENCY buckets (seconds)</span>
+<span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+
+<span class="c1"># CPG_QUERY_RESULTS buckets (count)</span>
+<span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># RETRIEVAL_LATENCY buckets (seconds)</span>
+<span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+
+<span class="c1"># RETRIEVAL_RESULTS buckets (count)</span>
+<span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
 </code></pre></div>
 
 <h3  id="recording-metrics"><span id="recording_metrics"></span>Recording Metrics<a class="heading-anchor" href="#recording-metrics" title="Link to this section">&para;</a></h3>
@@ -365,9 +422,11 @@
     <span class="n">SCENARIO_DURATION</span><span class="p">,</span>
     <span class="n">SCENARIO_SUCCESS</span><span class="p">,</span>
     <span class="n">SCENARIO_FAILURE</span><span class="p">,</span>
-    <span class="n">LLM_REQUESTS</span><span class="p">,</span>
-    <span class="n">LLM_DURATION</span><span class="p">,</span>
-    <span class="n">LLM_TOKENS</span>
+    <span class="n">LLM_LATENCY</span><span class="p">,</span>
+    <span class="n">LLM_TOKENS</span><span class="p">,</span>
+    <span class="n">LLM_ERRORS</span><span class="p">,</span>
+    <span class="n">CACHE_HITS</span><span class="p">,</span>
+    <span class="n">CACHE_MISSES</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># Record scenario execution</span>
@@ -377,94 +436,254 @@
 <span class="n">SCENARIO_SUCCESS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">scenario_name</span><span class="o">=</span><span class="s2">&quot;security_audit&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
 
 <span class="c1"># Record LLM usage</span>
-<span class="n">LLM_REQUESTS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;GigaChat-2-Pro&quot;</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;success&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
-<span class="n">LLM_DURATION</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;GigaChat-2-Pro&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="mf">2.5</span><span class="p">)</span>
-<span class="n">LLM_TOKENS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;GigaChat-2-Pro&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;completion&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">(</span><span class="mi">150</span><span class="p">)</span>
+<span class="n">LLM_LATENCY</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;GigaChat-2-Pro&quot;</span><span class="p">,</span> <span class="n">operation</span><span class="o">=</span><span class="s2">&quot;generate&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="mf">2.5</span><span class="p">)</span>
+<span class="n">LLM_TOKENS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;GigaChat-2-Pro&quot;</span><span class="p">,</span> <span class="n">token_type</span><span class="o">=</span><span class="s2">&quot;output&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">(</span><span class="mi">150</span><span class="p">)</span>
+<span class="n">LLM_ERRORS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;GigaChat-2-Pro&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="s2">&quot;timeout&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+
+<span class="c1"># Record cache access</span>
+<span class="n">CACHE_HITS</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">cache_type</span><span class="o">=</span><span class="s2">&quot;query_plan&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+<span class="n">CACHE_MISSES</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">cache_type</span><span class="o">=</span><span class="s2">&quot;embedding&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+</code></pre></div>
+
+<h3  id="recording-functions"><span id="recording_functions"></span>Recording Functions<a class="heading-anchor" href="#recording-functions" title="Link to this section">&para;</a></h3>
+<p>Helper functions for recording metrics with multiple counters at once:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">record_llm_call</span><span class="p">,</span> <span class="n">record_cpg_query</span><span class="p">,</span> <span class="n">record_retrieval</span>
+
+<span class="c1"># Record LLM call (updates LLM_LATENCY, LLM_TOKENS, LLM_ERRORS)</span>
+<span class="n">record_llm_call</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;GigaChat-2-Pro&quot;</span><span class="p">,</span>
+    <span class="n">operation</span><span class="o">=</span><span class="s2">&quot;generate&quot;</span><span class="p">,</span>
+    <span class="n">duration</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span>
+    <span class="n">input_tokens</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">output_tokens</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
+    <span class="n">error</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># or error type string on failure</span>
+<span class="p">)</span>
+
+<span class="c1"># Record CPG query (updates CPG_QUERY_LATENCY, CPG_QUERY_RESULTS)</span>
+<span class="n">record_cpg_query</span><span class="p">(</span>
+    <span class="n">query_type</span><span class="o">=</span><span class="s2">&quot;method_lookup&quot;</span><span class="p">,</span>
+    <span class="n">duration</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">result_count</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Record retrieval operation (updates RETRIEVAL_LATENCY, RETRIEVAL_RESULTS)</span>
+<span class="n">record_retrieval</span><span class="p">(</span>
+    <span class="n">retrieval_type</span><span class="o">=</span><span class="s2">&quot;hybrid&quot;</span><span class="p">,</span>
+    <span class="n">duration</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span>
+    <span class="n">result_count</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
 </code></pre></div>
 
 <hr />
 <h2 id="decorators">Decorators<a class="heading-anchor" href="#decorators" title="Link to this section">&para;</a></h2>
-<h3  id="track-execution"><span id="track_execution"></span>@track_execution<a class="heading-anchor" href="#track-execution" title="Link to this section">&para;</a></h3>
-<p>Automatically tracks function execution time and success/failure.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">track_execution</span>
+<h3  id="monitor-scenario"><span id="monitor_scenario"></span>@monitor_scenario<a class="heading-anchor" href="#monitor-scenario" title="Link to this section">&para;</a></h3>
+<p>Automatically tracks scenario execution: duration, success/failure, active requests.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">monitor_scenario</span>
 
-<span class="nd">@track_execution</span><span class="p">(</span><span class="s2">&quot;data_processing&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">process_data</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-    <span class="c1"># Automatically records:</span>
-    <span class="c1"># - Duration to rag_operation_duration_seconds</span>
-    <span class="c1"># - Success/failure to rag_operation_total</span>
-    <span class="k">return</span> <span class="n">processed_data</span>
-
-<span class="nd">@track_execution</span><span class="p">(</span><span class="s2">&quot;api_call&quot;</span><span class="p">,</span> <span class="n">log_args</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">call_api</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-    <span class="c1"># Also logs function arguments</span>
-    <span class="k">return</span> <span class="n">response</span>
-</code></pre></div>
-
-<h3  id="track-agent"><span id="track_agent"></span>@track_agent<a class="heading-anchor" href="#track-agent" title="Link to this section">&para;</a></h3>
-<p>Track agent execution with scenario context.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">track_agent</span>
-
-<span class="nd">@track_agent</span><span class="p">(</span><span class="s2">&quot;analyzer&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">run_analyzer</span><span class="p">(</span><span class="n">question</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">scenario</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-    <span class="c1"># Records to rag_agent_* metrics</span>
-    <span class="k">return</span> <span class="n">analysis</span>
-</code></pre></div>
-
-<h3  id="track-scenario"><span id="track_scenario"></span>@track_scenario<a class="heading-anchor" href="#track-scenario" title="Link to this section">&para;</a></h3>
-<p>Track complete scenario execution.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">track_scenario</span>
-
-<span class="nd">@track_scenario</span><span class="p">(</span><span class="s2">&quot;security_audit&quot;</span><span class="p">)</span>
+<span class="nd">@monitor_scenario</span><span class="p">(</span><span class="s2">&quot;security_audit&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_security_audit</span><span class="p">(</span><span class="n">codebase</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-    <span class="c1"># Records to rag_scenario_* metrics</span>
+    <span class="c1"># Records:</span>
+    <span class="c1"># - SCENARIO_DURATION.labels(scenario_name=&quot;security_audit&quot;)</span>
+    <span class="c1"># - SCENARIO_SUCCESS / SCENARIO_FAILURE</span>
+    <span class="c1"># - ACTIVE_REQUESTS inc/dec</span>
+    <span class="c1"># - TOTAL_REQUESTS inc</span>
     <span class="k">return</span> <span class="n">findings</span>
+</code></pre></div>
+
+<p><strong>Parameters:</strong> <code>scenario_name: str</code> — name of the scenario.</p>
+<h3  id="monitor-agent"><span id="monitor_agent"></span>@monitor_agent<a class="heading-anchor" href="#monitor-agent" title="Link to this section">&para;</a></h3>
+<p>Tracks agent execution with scenario context.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">monitor_agent</span>
+
+<span class="nd">@monitor_agent</span><span class="p">(</span><span class="s2">&quot;retriever_agent&quot;</span><span class="p">,</span> <span class="n">scenario</span><span class="o">=</span><span class="s2">&quot;security&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">retrieve_context</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+    <span class="c1"># Records:</span>
+    <span class="c1"># - AGENT_DURATION.labels(agent_name=&quot;retriever_agent&quot;, scenario=&quot;security&quot;)</span>
+    <span class="c1"># - AGENT_SUCCESS / AGENT_FAILURE</span>
+    <span class="k">return</span> <span class="n">results</span>
+</code></pre></div>
+
+<p><strong>Parameters:</strong> <code>agent_name: str</code>, <code>scenario: str = "unknown"</code>.</p>
+<h3  id="monitor-cache"><span id="monitor_cache"></span>@monitor_cache<a class="heading-anchor" href="#monitor-cache" title="Link to this section">&para;</a></h3>
+<p>Tracks cache hit/miss based on return value (None = miss, otherwise = hit).</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">monitor_cache</span>
+
+<span class="nd">@monitor_cache</span><span class="p">(</span><span class="s2">&quot;query_plan&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_cached_query</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Records:</span>
+    <span class="c1"># - CACHE_HITS.labels(cache_type=&quot;query_plan&quot;) on non-None return</span>
+    <span class="c1"># - CACHE_MISSES.labels(cache_type=&quot;query_plan&quot;) on None return</span>
+    <span class="k">return</span> <span class="n">cached_result</span>
+</code></pre></div>
+
+<p><strong>Parameters:</strong> <code>cache_type: str = "query_plan"</code>.</p>
+<hr />
+<h2  id="metrics-collector"><span id="metrics_collector"></span><span id="metricscollector"></span>MetricsCollector<a class="heading-anchor" href="#metrics-collector" title="Link to this section">&para;</a></h2>
+<p>Singleton for in-memory metric aggregation. Useful when Prometheus server is not available.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetricsCollector</span><span class="p">,</span> <span class="n">get_metrics_collector</span>
+
+<span class="c1"># Both return the same singleton instance</span>
+<span class="n">collector</span> <span class="o">=</span> <span class="n">MetricsCollector</span><span class="p">()</span>
+<span class="n">collector</span> <span class="o">=</span> <span class="n">get_metrics_collector</span><span class="p">()</span>
+
+<span class="c1"># Record metrics</span>
+<span class="n">collector</span><span class="o">.</span><span class="n">record_latency</span><span class="p">(</span><span class="s2">&quot;query_generation&quot;</span><span class="p">,</span> <span class="mf">0.245</span><span class="p">)</span>
+<span class="n">collector</span><span class="o">.</span><span class="n">record_scenario</span><span class="p">(</span><span class="s2">&quot;security_audit&quot;</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">latency</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">collector</span><span class="o">.</span><span class="n">record_cache_access</span><span class="p">(</span><span class="s2">&quot;query_plan&quot;</span><span class="p">,</span> <span class="n">hit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">collector</span><span class="o">.</span><span class="n">increment_counter</span><span class="p">(</span><span class="s2">&quot;total_queries&quot;</span><span class="p">,</span> <span class="n">amount</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">collector</span><span class="o">.</span><span class="n">set_gauge</span><span class="p">(</span><span class="s2">&quot;active_requests&quot;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+
+<span class="c1"># Get summary</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">get_summary</span><span class="p">()</span>  <span class="c1"># Returns MetricsSummary</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">get_scenario_stats</span><span class="p">()</span>  <span class="c1"># Per-scenario dict</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">get_cache_stats</span><span class="p">()</span>  <span class="c1"># Per-cache-type dict</span>
+<span class="n">uptime</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">get_uptime_seconds</span><span class="p">()</span>
+
+<span class="c1"># Reset all collected metrics</span>
+<span class="n">collector</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+</code></pre></div>
+
+<h3  id="metrics-summary"><span id="metrics_summary"></span><span id="metricssummary"></span>MetricsSummary<a class="heading-anchor" href="#metrics-summary" title="Link to this section">&para;</a></h3>
+<p>Dataclass returned by <code>MetricsCollector.get_summary()</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>total_requests</code></td>
+<td><code>int</code></td>
+<td>Total scenario executions</td>
+</tr>
+<tr>
+<td><code>successful_requests</code></td>
+<td><code>int</code></td>
+<td>Successful executions</td>
+</tr>
+<tr>
+<td><code>failed_requests</code></td>
+<td><code>int</code></td>
+<td>Failed executions</td>
+</tr>
+<tr>
+<td><code>success_rate</code></td>
+<td><code>float</code></td>
+<td>Success ratio (0.0–1.0)</td>
+</tr>
+<tr>
+<td><code>avg_latency_ms</code></td>
+<td><code>float</code></td>
+<td>Average latency in ms</td>
+</tr>
+<tr>
+<td><code>p50_latency_ms</code></td>
+<td><code>float</code></td>
+<td>50th percentile latency</td>
+</tr>
+<tr>
+<td><code>p95_latency_ms</code></td>
+<td><code>float</code></td>
+<td>95th percentile latency</td>
+</tr>
+<tr>
+<td><code>p99_latency_ms</code></td>
+<td><code>float</code></td>
+<td>99th percentile latency</td>
+</tr>
+<tr>
+<td><code>cache_hit_rate</code></td>
+<td><code>float</code></td>
+<td>Cache hit ratio (0.0–1.0)</td>
+</tr>
+<tr>
+<td><code>active_requests</code></td>
+<td><code>int</code></td>
+<td>Currently active requests</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="n">summary</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">get_summary</span><span class="p">()</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">summary</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>  <span class="c1"># Convert to dict for JSON serialization</span>
 </code></pre></div>
 
 <hr />
 <h2  id="health-checks"><span id="health_checks"></span>Health Checks<a class="heading-anchor" href="#health-checks" title="Link to this section">&para;</a></h2>
 <h3  id="health-status"><span id="health_status"></span>Health Status<a class="heading-anchor" href="#health-status" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">HealthStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring.health</span><span class="w"> </span><span class="kn">import</span> <span class="n">HealthStatus</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HealthStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
     <span class="n">HEALTHY</span> <span class="o">=</span> <span class="s2">&quot;healthy&quot;</span>
     <span class="n">DEGRADED</span> <span class="o">=</span> <span class="s2">&quot;degraded&quot;</span>
     <span class="n">UNHEALTHY</span> <span class="o">=</span> <span class="s2">&quot;unhealthy&quot;</span>
 </code></pre></div>
 
 <h3  id="component-health"><span id="component_health"></span>Component Health<a class="heading-anchor" href="#component-health" title="Link to this section">&para;</a></h3>
-<p>The system checks these components:</p>
+<p>The system checks these components by default:</p>
+<p><strong>HealthChecker (standalone):</strong> registered via <code>_register_default_checks()</code>:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Component</th>
-<th>Check</th>
-<th>Threshold</th>
+<th>Check Method</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Database</td>
-<td>Query latency</td>
-<td>&lt; 100ms</td>
+<td><code>database</code></td>
+<td><code>_check_database</code></td>
+<td>DuckDB CPG database connectivity</td>
 </tr>
 <tr>
-<td>LLM Provider</td>
-<td>API response</td>
-<td>&lt; 5s</td>
+<td><code>llm</code></td>
+<td><code>_check_llm</code></td>
+<td>LLM provider response</td>
 </tr>
 <tr>
-<td>Vector Store</td>
-<td>Query latency</td>
-<td>&lt; 200ms</td>
+<td><code>llm_providers</code></td>
+<td><code>_check_llm_providers</code></td>
+<td>Available LLM provider modules</td>
 </tr>
 <tr>
-<td>Cache</td>
-<td>Read/write</td>
-<td>&lt; 50ms</td>
+<td><code>quality</code></td>
+<td><code>_check_quality</code></td>
+<td>RAG response quality feedback loop</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>API Router (<code>src/api/routers/health.py</code>):</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Check Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>database</code></td>
+<td><code>DatabaseHealthCheck.check()</code></td>
+<td>PostgreSQL database</td>
 </tr>
 <tr>
-<td>GoCPG</td>
-<td>Binary check</td>
-<td>&lt; 1s</td>
+<td><code>llm</code></td>
+<td><code>check_llm_health()</code></td>
+<td>LLM provider config</td>
+</tr>
+<tr>
+<td><code>chromadb</code></td>
+<td><code>check_chromadb_health()</code></td>
+<td>ChromaDB vector store</td>
+</tr>
+<tr>
+<td><code>cpg</code></td>
+<td><code>check_cpg_health()</code></td>
+<td>DuckDB CPG database</td>
 </tr>
 </tbody>
 </table></div>
@@ -473,7 +692,6 @@
 
 <span class="n">checker</span> <span class="o">=</span> <span class="n">HealthChecker</span><span class="p">()</span>
 
-<span class="c1"># Add custom component check</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">check_custom_service</span><span class="p">():</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">response_time</span> <span class="o">=</span> <span class="n">ping_service</span><span class="p">()</span>
@@ -497,95 +715,204 @@
             <span class="n">message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
         <span class="p">)</span>
 
-<span class="n">checker</span><span class="o">.</span><span class="n">add_check</span><span class="p">(</span><span class="s2">&quot;custom_service&quot;</span><span class="p">,</span> <span class="n">check_custom_service</span><span class="p">)</span>
+<span class="n">checker</span><span class="o">.</span><span class="n">register_check</span><span class="p">(</span><span class="s2">&quot;custom_service&quot;</span><span class="p">,</span> <span class="n">check_custom_service</span><span class="p">)</span>
 </code></pre></div>
 
-<h3  id="health-endpoints"><span id="health_endpoints"></span>Health Endpoints<a class="heading-anchor" href="#health-endpoints" title="Link to this section">&para;</a></h3>
-<p><strong>GET /health</strong></p>
+<h3  id="health-endpoints-standalone"><span id="health-endpoints-standalone-app"></span><span id="health_endpoints_standalone"></span><span id="health_endpoints_standalone_app"></span>Health Endpoints — Standalone App<a class="heading-anchor" href="#health-endpoints-standalone" title="Link to this section">&para;</a></h3>
+<p>Created by <code>create_health_app()</code> from <code>src/monitoring/health</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /health</code></td>
+<td>Overall health status</td>
+</tr>
+<tr>
+<td><code>GET /health/live</code></td>
+<td>Liveness probe</td>
+</tr>
+<tr>
+<td><code>GET /health/ready</code></td>
+<td>Readiness probe</td>
+</tr>
+<tr>
+<td><code>GET /metrics</code></td>
+<td>Prometheus metrics</td>
+</tr>
+<tr>
+<td><code>GET /stats</code></td>
+<td>System statistics</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>GET /health</strong> response:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1702580000.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;uptime_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3600.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.0.0&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;components&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;database&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;latency_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.5</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Connected, 1500 methods&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;llm_provider&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;llm&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
 <span class="w">      </span><span class="nt">&quot;latency_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">450.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;LLM responding normally&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;provider&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yandex&quot;</span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1702580000.0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;uptime_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3600.0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.0.0&quot;</span>
+<span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p><strong>GET /ready</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;ready&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;checks_passed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;checks_total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span>
-<span class="p">}</span>
+<p><strong>GET /health/live</strong> response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;alive&quot;</span><span class="p">}</span>
 </code></pre></div>
 
-<p><strong>GET /live</strong></p>
+<p><strong>GET /health/ready</strong> response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p><strong>GET /stats</strong> response:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;alive&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;total_requests&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;success_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.95</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;...&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;scenarios&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;security_audit&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;total_requests&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;success_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.98</span><span class="p">}},</span>
+<span class="w">  </span><span class="nt">&quot;cache&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;query_plan&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;hits&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">80</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;misses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;hit_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.8</span><span class="p">}},</span>
 <span class="w">  </span><span class="nt">&quot;uptime_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3600.0</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<hr />
-<h2  id="structured-logging"><span id="structured_logging"></span>Structured Logging<a class="heading-anchor" href="#structured-logging" title="Link to this section">&para;</a></h2>
-<h3 id="setup">Setup<a class="heading-anchor" href="#setup" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_structured_logging</span>
-
-<span class="c1"># Configure structured logging</span>
-<span class="n">setup_structured_logging</span><span class="p">(</span>
-    <span class="n">log_level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-    <span class="n">json_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">include_timestamp</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">include_caller</span><span class="o">=</span><span class="kc">True</span>
-<span class="p">)</span>
-</code></pre></div>
-
-<h3  id="log-format"><span id="log_format"></span>Log Format<a class="heading-anchor" href="#log-format" title="Link to this section">&para;</a></h3>
+<h3  id="health-endpoints-api-router"><span id="health_endpoints_api_router"></span>Health Endpoints — API Router<a class="heading-anchor" href="#health-endpoints-api-router" title="Link to this section">&para;</a></h3>
+<p>Mounted at <code>/api/v1/health</code> in the main FastAPI application:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/v1/health</code></td>
+<td>Full health check (all components as dict)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/health/live</code></td>
+<td>Liveness probe</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/health/ready</code></td>
+<td>Readiness probe (checks DB)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/health/version</code></td>
+<td>API version</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/metrics</code></td>
+<td>Prometheus metrics (separate router)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>GET /api/v1/health</strong> response:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-12-14T10:30:00.000Z&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;logger&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;src.agents.analyzer&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Query processed&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;scenario&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;security_audit&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;query_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">245</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;caller&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;analyzer.py&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;line&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;function&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;process_query&quot;</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.0.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;uptime_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3600.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-07T10:30:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;components&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;database&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;llm&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;provider&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yandex&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;chromadb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;collections&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;cpg&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data/project.duckdb&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;methods&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1500</span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<h3  id="context-logging"><span id="context_logging"></span>Context Logging<a class="heading-anchor" href="#context-logging" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_context</span><span class="p">,</span> <span class="n">get_logger</span>
+<p>Note: In the API router, <code>components</code> is a <strong>dict</strong> (keyed by component name), not an array.</p>
+<h3  id="standalone-functions"><span id="standalone_functions"></span>Standalone Functions<a class="heading-anchor" href="#standalone-functions" title="Link to this section">&para;</a></h3>
+<p>Quick-check functions for use outside the health check framework:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring.health</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">check_database_connection</span><span class="p">,</span>
+    <span class="n">check_llm_availability</span><span class="p">,</span>
+    <span class="n">check_vector_store</span><span class="p">,</span>
+    <span class="n">run_health_check_cli</span><span class="p">,</span>
+<span class="p">)</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="c1"># Quick boolean checks</span>
+<span class="n">db_ok</span> <span class="o">=</span> <span class="n">check_database_connection</span><span class="p">()</span>    <span class="c1"># True if DuckDB responds to SELECT 1</span>
+<span class="n">llm_ok</span> <span class="o">=</span> <span class="n">check_llm_availability</span><span class="p">()</span>      <span class="c1"># True if LLM is_available()</span>
+<span class="n">vs_ok</span> <span class="o">=</span> <span class="n">check_vector_store</span><span class="p">()</span>           <span class="c1"># True if ChromaDB heartbeat succeeds</span>
 
-<span class="c1"># Add context to all logs in scope</span>
-<span class="k">with</span> <span class="n">log_context</span><span class="p">(</span><span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="s2">&quot;user1&quot;</span><span class="p">):</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing request&quot;</span><span class="p">)</span>  <span class="c1"># Includes request_id and user_id</span>
-
-    <span class="n">result</span> <span class="o">=</span> <span class="n">process</span><span class="p">()</span>
-
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Request completed&quot;</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;result_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)})</span>
+<span class="c1"># CLI health check (prints report, exits with code 0/1/2)</span>
+<span class="n">run_health_check_cli</span><span class="p">()</span>
 </code></pre></div>
 
+<hr />
+<h2  id="structured-logging"><span id="structured_logging"></span>Structured Logging<a class="heading-anchor" href="#structured-logging" title="Link to this section">&para;</a></h2>
+<h3  id="structured-logger"><span id="structured_logger"></span><span id="structuredlogger"></span>StructuredLogger<a class="heading-anchor" href="#structured-logger" title="Link to this section">&para;</a></h3>
+<p>JSON-formatted logger for production environments. Outputs structured data suitable for Elasticsearch, Splunk, or CloudWatch.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">StructuredLogger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">StructuredLogger</span><span class="p">(</span><span class="s2">&quot;my_component&quot;</span><span class="p">)</span>
+
+<span class="c1"># Log with structured data</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing request&quot;</span><span class="p">,</span> <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Slow query&quot;</span><span class="p">,</span> <span class="n">duration_ms</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to connect&quot;</span><span class="p">,</span> <span class="n">service</span><span class="o">=</span><span class="s2">&quot;database&quot;</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;timeout&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Methods: <code>debug()</code>, <code>info()</code>, <code>warning()</code>, <code>error()</code>, <code>critical()</code> — all accept <code>message: str</code> and arbitrary <code>**kwargs</code>.</p>
+<h3  id="log-format"><span id="log_format"></span>Log Format<a class="heading-anchor" href="#log-format" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-07T10:30:00.000Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;logger&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my_component&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Processing request&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;request_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;user&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;test&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="timed-operations"><span id="timed_operations"></span>Timed Operations<a class="heading-anchor" href="#timed-operations" title="Link to this section">&para;</a></h3>
+<p>Context manager for timing operations with automatic success/error logging:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">StructuredLogger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">StructuredLogger</span><span class="p">(</span><span class="s2">&quot;query_engine&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">logger</span><span class="o">.</span><span class="n">timed_operation</span><span class="p">(</span><span class="s2">&quot;query_generation&quot;</span><span class="p">,</span> <span class="n">scenario</span><span class="o">=</span><span class="s2">&quot;security&quot;</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">generate_query</span><span class="p">()</span>
+    <span class="c1"># On success, logs:</span>
+    <span class="c1"># {&quot;message&quot;: &quot;Operation completed: query_generation&quot;,</span>
+    <span class="c1">#  &quot;operation&quot;: &quot;query_generation&quot;, &quot;duration_ms&quot;: 245.0,</span>
+    <span class="c1">#  &quot;status&quot;: &quot;success&quot;, &quot;scenario&quot;: &quot;security&quot;}</span>
+
+    <span class="c1"># On exception, logs error with status=&quot;error&quot;, error_type, error_message</span>
+    <span class="c1"># then re-raises the exception</span>
+</code></pre></div>
+
+<hr />
+<h2  id="metrics-middleware"><span id="metrics_middleware"></span><span id="metricsmiddleware"></span>MetricsMiddleware<a class="heading-anchor" href="#metrics-middleware" title="Link to this section">&para;</a></h2>
+<p>HTTP middleware that automatically records Prometheus metrics for every request. Defined in <code>src/api/middleware/metrics.py</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.middleware.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetricsMiddleware</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">MetricsMiddleware</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Metrics recorded per request:
+- <code>ACTIVE_REQUESTS</code> — incremented on entry, decremented on exit (gauge)
+- <code>TOTAL_REQUESTS</code> — incremented on entry (counter)
+- <code>SCENARIO_DURATION</code> — records request duration with <code>scenario_name=f"http:{path}"</code> label</p>
 <hr />
 <h2  id="grafana-dashboards"><span id="grafana_dashboards"></span>Grafana Dashboards<a class="heading-anchor" href="#grafana-dashboards" title="Link to this section">&para;</a></h2>
 <h3  id="recommended-panels"><span id="recommended_panels"></span>Recommended Panels<a class="heading-anchor" href="#recommended-panels" title="Link to this section">&para;</a></h3>
@@ -609,39 +936,95 @@
 <div class="highlight"><pre><span></span><code><span class="kr">rate</span><span class="o">(</span><span class="nv">rag_cache_hits_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="o">(</span><span class="kr">rate</span><span class="o">(</span><span class="nv">rag_cache_hits_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="kr">rate</span><span class="o">(</span><span class="nv">rag_cache_misses_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">))</span>
 </code></pre></div>
 
+<p><strong>LLM Error Rate:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">sum</span><span class="o">(</span><span class="kr">rate</span><span class="o">(</span><span class="nv">rag_llm_errors_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">))</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">model</span><span class="p">,</span><span class="w"> </span><span class="nv">error_type</span><span class="o">)</span>
+</code></pre></div>
+
+<p><strong>Active Requests:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nv">rag_active_requests</span>
+</code></pre></div>
+
 <h3  id="alert-rules"><span id="alert_rules"></span>Alert Rules<a class="heading-anchor" href="#alert-rules" title="Link to this section">&para;</a></h3>
+<p>Real alert rules from <code>monitoring/rules/alerts.yml</code> (4 groups, 7 rules):</p>
 <div class="highlight"><pre><span></span><code><span class="nt">groups</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_availability</span>
 <span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HighErrorRate</span>
-<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">          </span><span class="no">sum(rate(rag_scenario_failure_total[5m]))</span>
-<span class="w">          </span><span class="no">/ sum(rate(rag_scenario_success_total[5m]) + rate(rag_scenario_failure_total[5m]))</span>
-<span class="w">          </span><span class="no">&gt; 0.1</span>
-<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
-<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
-<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;High</span><span class="nv"> </span><span class="s">error</span><span class="nv"> </span><span class="s">rate</span><span class="nv"> </span><span class="s">detected&quot;</span>
-
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HighLatency</span>
-<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">          </span><span class="no">histogram_quantile(0.95, rate(rag_scenario_duration_seconds_bucket[5m])) &gt; 30</span>
-<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
-<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
-<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;P95</span><span class="nv"> </span><span class="s">latency</span><span class="nv"> </span><span class="s">above</span><span class="nv"> </span><span class="s">30s&quot;</span>
-
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ComponentUnhealthy</span>
-<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_component_health == 0</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphAPIDown</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">up{job=&quot;codegraph-api&quot;} == 0</span>
 <span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
 <span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
 <span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Component</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.component</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">unhealthy&quot;</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CodeGraph</span><span class="nv"> </span><span class="s">API</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">down&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphHighErrorRate</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">(</span>
+<span class="w">            </span><span class="no">sum(rate(rag_scenario_failure_total[5m]))</span>
+<span class="w">            </span><span class="no">/ (sum(rate(rag_scenario_success_total[5m])) + sum(rate(rag_scenario_failure_total[5m])))</span>
+<span class="w">          </span><span class="no">) &gt; 0.25</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;High</span><span class="nv"> </span><span class="s">scenario</span><span class="nv"> </span><span class="s">error</span><span class="nv"> </span><span class="s">rate</span><span class="nv"> </span><span class="s">(&gt;25%)&quot;</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_latency</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphHighLatency</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">histogram_quantile(0.95, sum(rate(rag_scenario_duration_seconds_bucket[5m])) by (le)) &gt; 30</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;High</span><span class="nv"> </span><span class="s">scenario</span><span class="nv"> </span><span class="s">latency</span><span class="nv"> </span><span class="s">(p95</span><span class="nv"> </span><span class="s">&gt;</span><span class="nv"> </span><span class="s">30s)&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphLLMSlowResponses</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">histogram_quantile(0.95, sum(rate(rag_llm_latency_seconds_bucket[5m])) by (le)) &gt; 10</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;LLM</span><span class="nv"> </span><span class="s">response</span><span class="nv"> </span><span class="s">latency</span><span class="nv"> </span><span class="s">high</span><span class="nv"> </span><span class="s">(p95</span><span class="nv"> </span><span class="s">&gt;</span><span class="nv"> </span><span class="s">10s)&quot;</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_resources</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphHighActiveRequests</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_active_requests &gt; 50</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;High</span><span class="nv"> </span><span class="s">number</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">active</span><span class="nv"> </span><span class="s">requests</span><span class="nv"> </span><span class="s">(&gt;50)&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphLLMErrors</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum(rate(rag_llm_errors_total[5m])) &gt; 0.1</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;LLM</span><span class="nv"> </span><span class="s">errors</span><span class="nv"> </span><span class="s">detected&quot;</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_infrastructure</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PrometheusTargetDown</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">up == 0</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Prometheus</span><span class="nv"> </span><span class="s">target</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.job</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">down&quot;</span>
 </code></pre></div>
 
+<h3 id="alertmanager">Alertmanager<a class="heading-anchor" href="#alertmanager" title="Link to this section">&para;</a></h3>
+<p>Alertmanager configuration in <code>monitoring/alertmanager.yml</code>:</p>
+<ul>
+<li><strong>Routing:</strong> groups alerts by <code>alertname</code> and <code>severity</code>. Critical alerts repeat every 1 hour, others every 4 hours.</li>
+<li><strong>Receiver:</strong> default webhook via <code>${ALERTMANAGER_WEBHOOK_URL}</code> with <code>send_resolved: true</code>. Supports Slack, email (commented out by default).</li>
+<li><strong>Inhibit rules:</strong> critical alerts suppress warning alerts with the same <code>alertname</code>.</li>
+</ul>
+<h3  id="yandex-cloud-dashboard"><span id="yandex_cloud_dashboard"></span>Yandex Cloud Dashboard<a class="heading-anchor" href="#yandex-cloud-dashboard" title="Link to this section">&para;</a></h3>
+<p><code>monitoring/yandex/dashboard.json</code> provides a pre-built dashboard for Yandex Monitoring with CodeGraph metrics.</p>
 <hr />
 <h2  id="kubernetes-integration"><span id="kubernetes_integration"></span>Kubernetes Integration<a class="heading-anchor" href="#kubernetes-integration" title="Link to this section">&para;</a></h2>
 <h3  id="deployment-configuration"><span id="deployment_configuration"></span>Deployment Configuration<a class="heading-anchor" href="#deployment-configuration" title="Link to this section">&para;</a></h3>
@@ -657,18 +1040,16 @@
 <span class="w">          </span><span class="nt">ports</span><span class="p">:</span>
 <span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
 <span class="w">              </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
-<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8081</span>
-<span class="w">              </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">health</span>
 <span class="w">          </span><span class="nt">livenessProbe</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
-<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/live</span>
-<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">health</span>
+<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/health/live</span>
+<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
 <span class="w">            </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
 <span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 <span class="w">          </span><span class="nt">readinessProbe</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
-<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/ready</span>
-<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">health</span>
+<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/health/ready</span>
+<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
 <span class="w">            </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 <span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
 </code></pre></div>
@@ -683,26 +1064,26 @@
 <span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph</span>
 <span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">health</span>
-<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/metrics</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/metrics</span>
 <span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
 </code></pre></div>
 
 <hr />
 <h2  id="best-practices"><span id="best_practices"></span>Best Practices<a class="heading-anchor" href="#best-practices" title="Link to this section">&para;</a></h2>
 <ol>
-<li><strong>Use decorators</strong> for automatic instrumentation</li>
-<li><strong>Add context</strong> to logs for traceability</li>
-<li><strong>Set appropriate thresholds</strong> for alerts</li>
-<li><strong>Monitor token usage</strong> to control costs</li>
+<li><strong>Use decorators</strong> (<code>monitor_scenario</code>, <code>monitor_agent</code>, <code>monitor_cache</code>) for automatic instrumentation</li>
+<li><strong>Use <code>StructuredLogger.timed_operation()</code></strong> to measure and log operation duration</li>
+<li><strong>Use recording functions</strong> (<code>record_llm_call</code>, <code>record_cpg_query</code>, <code>record_retrieval</code>) instead of directly incrementing counters</li>
+<li><strong>Monitor token usage</strong> with <code>LLM_TOKENS</code> to control costs</li>
 <li><strong>Check P95/P99 latencies</strong> not just averages</li>
-<li><strong>Export metrics</strong> to Prometheus for persistence</li>
-<li><strong>Use structured logging</strong> for log aggregation</li>
+<li><strong>Set alert thresholds</strong> matching your SLOs (current: error rate &gt;25%, latency p95 &gt;30s)</li>
+<li><strong>Use <code>MetricsCollector</code></strong> for in-memory aggregation when Prometheus is not deployed</li>
 </ol>
 <hr />
 <h2  id="see-also"><span id="see_also"></span>See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="../../api/REST_API.html">REST API Reference</a> - API endpoints</li>
+<li><a href="../../api/REST_API.html">REST API Reference</a> — API endpoints including health and metrics</li>
 <li><a href="https://prometheus.io/docs/">Prometheus Documentation</a></li>
 <li><a href="https://grafana.com/docs/">Grafana Documentation</a></li>
 </ul>
@@ -724,7 +1105,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/MONITORING.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -738,27 +1119,35 @@
 <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
 <li><a href="#enable-metrics" class="level-3">Enable Metrics</a></li>
-<li><a href="#health-check-server" class="level-3">Health Check Server</a></li>
+<li><a href="#health-check-application" class="level-3">Health Check Application</a></li>
 <li><a href="#prometheus-metrics" class="level-2">Prometheus Metrics</a></li>
 <li><a href="#available-metrics" class="level-3">Available Metrics</a></li>
 <li><a href="#histogram-buckets" class="level-3">Histogram Buckets</a></li>
 <li><a href="#recording-metrics" class="level-3">Recording Metrics</a></li>
+<li><a href="#recording-functions" class="level-3">Recording Functions</a></li>
 <li><a href="#decorators" class="level-2">Decorators</a></li>
-<li><a href="#track-execution" class="level-3">@track_execution</a></li>
-<li><a href="#track-agent" class="level-3">@track_agent</a></li>
-<li><a href="#track-scenario" class="level-3">@track_scenario</a></li>
+<li><a href="#monitor-scenario" class="level-3">@monitor_scenario</a></li>
+<li><a href="#monitor-agent" class="level-3">@monitor_agent</a></li>
+<li><a href="#monitor-cache" class="level-3">@monitor_cache</a></li>
+<li><a href="#metrics-collector" class="level-2">MetricsCollector</a></li>
+<li><a href="#metrics-summary" class="level-3">MetricsSummary</a></li>
 <li><a href="#health-checks" class="level-2">Health Checks</a></li>
 <li><a href="#health-status" class="level-3">Health Status</a></li>
 <li><a href="#component-health" class="level-3">Component Health</a></li>
 <li><a href="#custom-health-checks" class="level-3">Custom Health Checks</a></li>
-<li><a href="#health-endpoints" class="level-3">Health Endpoints</a></li>
+<li><a href="#health-endpoints-standalone" class="level-3">Health Endpoints — Standalone App</a></li>
+<li><a href="#health-endpoints-api-router" class="level-3">Health Endpoints — API Router</a></li>
+<li><a href="#standalone-functions" class="level-3">Standalone Functions</a></li>
 <li><a href="#structured-logging" class="level-2">Structured Logging</a></li>
-<li><a href="#setup" class="level-3">Setup</a></li>
+<li><a href="#structured-logger" class="level-3">StructuredLogger</a></li>
 <li><a href="#log-format" class="level-3">Log Format</a></li>
-<li><a href="#context-logging" class="level-3">Context Logging</a></li>
+<li><a href="#timed-operations" class="level-3">Timed Operations</a></li>
+<li><a href="#metrics-middleware" class="level-2">MetricsMiddleware</a></li>
 <li><a href="#grafana-dashboards" class="level-2">Grafana Dashboards</a></li>
 <li><a href="#recommended-panels" class="level-3">Recommended Panels</a></li>
 <li><a href="#alert-rules" class="level-3">Alert Rules</a></li>
+<li><a href="#alertmanager" class="level-3">Alertmanager</a></li>
+<li><a href="#yandex-cloud-dashboard" class="level-3">Yandex Cloud Dashboard</a></li>
 <li><a href="#kubernetes-integration" class="level-2">Kubernetes Integration</a></li>
 <li><a href="#deployment-configuration" class="level-3">Deployment Configuration</a></li>
 <li><a href="#servicemonitor-for-prometheus" class="level-3">ServiceMonitor for Prometheus</a></li>

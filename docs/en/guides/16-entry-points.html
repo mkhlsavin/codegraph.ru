@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -179,57 +180,125 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="scenario-16-entry-points-attack-surface"><span id="scenario-16-entry-points-amp-attack-surface"></span><span id="scenario_16_entry_points_amp_attack_surface"></span><span id="scenario_16_entry_points_attack_surface"></span>Scenario 16: Entry Points &amp; Attack Surface<a class="heading-anchor" href="#scenario-16-entry-points-attack-surface" title="Link to this section">&para;</a></h1>
-<blockquote class="callout">
-<p>Security engineer mapping attack surface and API boundaries.</p>
-</blockquote>
-<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
-<ul>
-<li><a href="#quick-start">Quick Start</a></li>
-<li><a href="#attack-surface-mapping">Attack Surface Mapping</a></li>
-<li><a href="#network-entry-points">Network Entry Points</a></li>
-<li><a href="#file-system-entry-points">File System Entry Points</a></li>
-<li><a href="#api-boundary-analysis">API Boundary Analysis</a></li>
-<li><a href="#public-api-functions">Public API Functions</a></li>
-<li><a href="#internal-api-boundaries">Internal API Boundaries</a></li>
-<li><a href="#trust-boundary-analysis">Trust Boundary Analysis</a></li>
-<li><a href="#privilege-escalation-paths">Privilege Escalation Paths</a></li>
-<li><a href="#untrusted-input-handlers">Untrusted Input Handlers</a></li>
-<li><a href="#example-questions">Example Questions</a></li>
-<li><a href="#cli-commands">CLI Commands</a></li>
-<li><a href="#related-scenarios">Related Scenarios</a></li>
-</ul>
+<p>Automated attack surface mapping and API boundary analysis using CPG queries and domain plugin integration.</p>
+<h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
+<p>The entry points handler (<code>EntryPointsHandler</code>) discovers and categorizes all entry points in a codebase — network listeners, file access functions, authentication checks, trust boundaries, and more. It is <strong>domain-agnostic</strong> — all function names and patterns are loaded dynamically from the active domain plugin via <code>DomainRegistry.get_security_entry_points()</code> and <code>get_security_entry_point_patterns()</code>.</p>
+<p>Detection method:</p>
+<ol>
+<li><strong>CPG Queries</strong> — SQL LIKE patterns against the Code Property Graph database</li>
+<li><strong>Domain Plugin</strong> — category-specific function lists from <code>security_entry_points</code> YAML config</li>
+<li><strong>Question-Type Detection</strong> — 40+ question types (EN + RU) via <code>_detect_entry_point_question_type()</code>, routing to relevant categories</li>
+<li><strong>Relevance Ranking</strong> — <code>_rank_by_query_relevance()</code> scores and sorts results by similarity to the query</li>
+</ol>
+<p>Entry point categories (15 total):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>network</code></td>
+<td>Socket/protocol listeners, connection handlers</td>
+</tr>
+<tr>
+<td><code>query</code></td>
+<td>Query processing entry points</td>
+</tr>
+<tr>
+<td><code>auth</code></td>
+<td>Authentication and authorization checks</td>
+</tr>
+<tr>
+<td><code>file_access</code></td>
+<td>File I/O functions (read, write, list)</td>
+</tr>
+<tr>
+<td><code>trust_boundary</code></td>
+<td>Privilege transitions, role switching</td>
+</tr>
+<tr>
+<td><code>connection</code></td>
+<td>Connection establishment handlers</td>
+</tr>
+<tr>
+<td><code>protocol</code></td>
+<td>Wire protocol message handlers</td>
+</tr>
+<tr>
+<td><code>replication</code></td>
+<td>WAL/replication entry points</td>
+</tr>
+<tr>
+<td><code>copy</code></td>
+<td>Data import/export (COPY-like commands)</td>
+</tr>
+<tr>
+<td><code>spi</code></td>
+<td>Internal extension API</td>
+</tr>
+<tr>
+<td><code>extension</code></td>
+<td>Extension/plugin loading</td>
+</tr>
+<tr>
+<td><code>external</code></td>
+<td>External function call interface</td>
+</tr>
+<tr>
+<td><code>socket</code></td>
+<td>Low-level socket handlers</td>
+</tr>
+<tr>
+<td><code>exec</code></td>
+<td>Code execution entry points</td>
+</tr>
+<tr>
+<td><code>bgworker</code></td>
+<td>Background worker entry points</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Select Entry Points Scenario</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Select Entry Points Scenario in TUI</span>
 /select<span class="w"> </span><span class="m">16</span>
+</code></pre></div>
+
+<h3  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;query&quot;: &quot;Find all network entry points&quot;, &quot;scenario_id&quot;: &quot;16&quot;}&#39;</span>
 </code></pre></div>
 
 <h2  id="attack-surface-mapping"><span id="attack_surface_mapping"></span>Attack Surface Mapping<a class="heading-anchor" href="#attack-surface-mapping" title="Link to this section">&para;</a></h2>
 <h3  id="network-entry-points"><span id="network_entry_points"></span>Network Entry Points<a class="heading-anchor" href="#network-entry-points" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Find</span><span class="w"> </span><span class="nx">all</span><span class="w"> </span><span class="nx">network</span><span class="o">-</span><span class="nx">accessible</span><span class="w"> </span><span class="nx">entry</span><span class="w"> </span><span class="nx">points</span>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find all network-accessible entry points</span>
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Network</span><span class="w"> </span><span class="nx">Entry</span><span class="w"> </span><span class="nx">Points</span><span class="w"> </span><span class="err">────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Network</span><span class="o">-</span><span class="nx">Accessible</span><span class="w"> </span><span class="nx">Entry</span><span class="w"> </span><span class="nx">Points</span><span class="p">:</span><span class="w">                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Protocol</span><span class="w"> </span><span class="nx">Layer</span><span class="p">:</span><span class="w">                                             </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">ProcessStartupPacket</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Connection</span><span class="w"> </span><span class="nx">handshake</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">ProcessClientRead</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="nx">Main</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="nx">receive</span><span class="w">              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">pq_getmsgstring</span><span class="p">()</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="nx">Read</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">client</span><span class="w">        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">pq_getmsgint</span><span class="p">()</span><span class="w">           </span><span class="o">-</span><span class="w"> </span><span class="nx">Read</span><span class="w"> </span><span class="nx">integer</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">client</span><span class="w">       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Query</span><span class="w"> </span><span class="nx">Processing</span><span class="p">:</span><span class="w">                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">exec_simple_query</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="nx">Direct</span><span class="w"> </span><span class="nx">SQL</span><span class="w"> </span><span class="nx">execution</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">exec_parse_message</span><span class="p">()</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="nx">Prepared</span><span class="w"> </span><span class="nx">statement</span><span class="w">             </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">exec_bind_message</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="nx">Parameter</span><span class="w"> </span><span class="nx">binding</span><span class="w">              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">exec_execute_message</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Execute</span><span class="w"> </span><span class="nx">prepared</span><span class="w">               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Replication</span><span class="p">:</span><span class="w">                                                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">WalSndWaitForWal</span><span class="p">()</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="nx">WAL</span><span class="w"> </span><span class="nx">streaming</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">ProcessWalRcvInterrupts</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">WAL</span><span class="w"> </span><span class="nx">receiver</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Total</span><span class="w"> </span><span class="nx">network</span><span class="w"> </span><span class="nx">entry</span><span class="w"> </span><span class="nx">points</span><span class="p">:</span><span class="w"> </span><span class="mi">23</span><span class="w">                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">╰──────────────────────────────────────────────────────────────╯</span>
+╭─────────────── Network Entry Points ────────────────────────╮
+│                                                              │
+│  Network-Accessible Entry Points:                            │
+│                                                              │
+│  Protocol Layer:                                             │
+│    accept_connection()     - Connection handshake            │
+│    handle_client_read()    - Main data receive               │
+│    read_message_string()   - Read string from client         │
+│    read_message_int()      - Read integer from client        │
+│                                                              │
+│  Request Processing:                                         │
+│    handle_query()          - Direct query execution          │
+│    handle_parse_message()  - Prepared statement              │
+│    handle_bind_message()   - Parameter binding               │
+│    handle_execute()        - Execute prepared statement      │
+│                                                              │
+│  Replication:                                                │
+│    replication_sender()    - Data streaming                  │
+│    replication_receiver()  - Data receive                    │
+│                                                              │
+│  Total network entry points: 23                              │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h3  id="file-system-entry-points"><span id="file_system_entry_points"></span>File System Entry Points<a class="heading-anchor" href="#file-system-entry-points" title="Link to this section">&para;</a></h3>
@@ -240,21 +309,21 @@
 <span class="err">│</span><span class="w">  </span><span class="n">File</span><span class="w"> </span><span class="n">System</span><span class="w"> </span><span class="n">Access</span><span class="w"> </span><span class="n">Points</span><span class="p">:</span><span class="w">                                  </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="n">SQL</span><span class="o">-</span><span class="n">Callable</span><span class="w"> </span><span class="n">Functions</span><span class="p">:</span><span class="w">                                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_read_file</span><span class="p">()</span><span class="w">           </span><span class="o">-</span><span class="w"> </span><span class="n">Read</span><span class="w"> </span><span class="n">arbitrary</span><span class="w"> </span><span class="n">file</span><span class="w">            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_read_binary_file</span><span class="p">()</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Read</span><span class="w"> </span><span class="n">binary</span><span class="w"> </span><span class="n">file</span><span class="w">               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_ls_dir</span><span class="p">()</span><span class="w">              </span><span class="o">-</span><span class="w"> </span><span class="n">List</span><span class="w"> </span><span class="n">directory</span><span class="w">                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_stat_file</span><span class="p">()</span><span class="w">           </span><span class="o">-</span><span class="w"> </span><span class="n">Get</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="n">stats</span><span class="w">                 </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">read_file</span><span class="p">()</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Read</span><span class="w"> </span><span class="n">arbitrary</span><span class="w"> </span><span class="n">file</span><span class="w">             </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">read_binary_file</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="n">Read</span><span class="w"> </span><span class="n">binary</span><span class="w"> </span><span class="n">file</span><span class="w">                </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">list_directory</span><span class="p">()</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="n">List</span><span class="w"> </span><span class="n">directory</span><span class="w"> </span><span class="n">contents</span><span class="w">          </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">stat_file</span><span class="p">()</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Get</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="n">stats</span><span class="w">                  </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">COPY</span><span class="w"> </span><span class="n">Command</span><span class="p">:</span><span class="w">                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">DoCopy</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">CopyFrom</span><span class="p">()</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Read</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">file</span><span class="w">                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">DoCopy</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">CopyTo</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="n">Write</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">file</span><span class="w">                  </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Data</span><span class="w"> </span><span class="n">Import</span><span class="o">/</span><span class="n">Export</span><span class="p">:</span><span class="w">                                         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">do_copy</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">copy_from</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Read</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">file</span><span class="w">                  </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">do_copy</span><span class="p">()</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">copy_to</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">Write</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">file</span><span class="w">                   </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="n">Extension</span><span class="w"> </span><span class="n">Loading</span><span class="p">:</span><span class="w">                                          </span><span class="err">│</span>
 <span class="err">│</span><span class="w">    </span><span class="n">load_external_function</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Load</span><span class="w"> </span><span class="n">shared</span><span class="w"> </span><span class="n">library</span><span class="w">            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_dlopen</span><span class="p">()</span><span class="w">              </span><span class="o">-</span><span class="w"> </span><span class="n">Dynamic</span><span class="w"> </span><span class="n">library</span><span class="w"> </span><span class="n">loading</span><span class="w">        </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">dynamic_load</span><span class="p">()</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">Dynamic</span><span class="w"> </span><span class="n">library</span><span class="w"> </span><span class="n">loading</span><span class="w">         </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="n">Risk</span><span class="w"> </span><span class="n">Level</span><span class="p">:</span><span class="w"> </span><span class="n">HIGH</span><span class="w">                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Requires</span><span class="p">:</span><span class="w"> </span><span class="n">Superuser</span><span class="w"> </span><span class="n">privilege</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">most</span><span class="w">                      </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Requires</span><span class="p">:</span><span class="w"> </span><span class="n">Elevated</span><span class="w"> </span><span class="n">privilege</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">most</span><span class="w"> </span><span class="n">operations</span><span class="w">            </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">╰──────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
@@ -265,9 +334,7 @@
 
 <span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Public</span><span class="w"> </span><span class="nx">API</span><span class="w"> </span><span class="err">──────────────────────────────────╮</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">PostgreSQL</span><span class="w"> </span><span class="nx">Extension</span><span class="w"> </span><span class="nx">API</span><span class="p">:</span><span class="w">                                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">PG_FUNCTION_INFO_V1</span><span class="w"> </span><span class="nx">Exported</span><span class="w"> </span><span class="nx">Functions</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="mi">234</span><span class="w">               </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="nx">Exported</span><span class="w"> </span><span class="nx">Extension</span><span class="w"> </span><span class="nx">Functions</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="mi">234</span><span class="w">                         </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="nx">Categories</span><span class="p">:</span><span class="w">                                                 </span><span class="err">│</span>
 <span class="err">│</span><span class="w">    </span><span class="nx">Data</span><span class="w"> </span><span class="nx">types</span><span class="p">:</span><span class="w">        </span><span class="mi">234</span><span class="w"> </span><span class="nx">functions</span><span class="w">                          </span><span class="err">│</span>
@@ -276,16 +343,16 @@
 <span class="err">│</span><span class="w">    </span><span class="nx">Window</span><span class="p">:</span><span class="w">            </span><span class="mi">23</span><span class="w"> </span><span class="nx">functions</span><span class="w">                           </span><span class="err">│</span>
 <span class="err">│</span><span class="w">    </span><span class="nx">Procedural</span><span class="p">:</span><span class="w">        </span><span class="mi">45</span><span class="w"> </span><span class="nx">functions</span><span class="w">                           </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">SPI</span><span class="w"> </span><span class="nx">Interface</span><span class="w"> </span><span class="p">(</span><span class="nx">Internal</span><span class="w"> </span><span class="nx">Extension</span><span class="w"> </span><span class="nx">API</span><span class="p">):</span><span class="w">                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">SPI_connect</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="nx">Connect</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">SPI</span><span class="w">                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">SPI_execute</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="nx">Execute</span><span class="w"> </span><span class="nx">SQL</span><span class="w">                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">SPI_prepare</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="nx">Prepare</span><span class="w"> </span><span class="nx">statement</span><span class="w">                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">SPI_finish</span><span class="p">()</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="nx">Disconnect</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">SPI</span><span class="w">                  </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="nx">Internal</span><span class="w"> </span><span class="nx">Extension</span><span class="w"> </span><span class="nx">API</span><span class="p">:</span><span class="w">                                     </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="nx">spi_connect</span><span class="p">()</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="nx">Connect</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">internal</span><span class="w"> </span><span class="nx">API</span><span class="w">             </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="nx">spi_execute</span><span class="p">()</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="nx">Execute</span><span class="w"> </span><span class="nx">query</span><span class="w">                       </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="nx">spi_prepare</span><span class="p">()</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="nx">Prepare</span><span class="w"> </span><span class="nx">statement</span><span class="w">                   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="nx">spi_finish</span><span class="p">()</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="nx">Disconnect</span><span class="w">                          </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Hook</span><span class="w"> </span><span class="nx">Points</span><span class="p">:</span><span class="w">                                                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">ProcessUtility_hook</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">Utility</span><span class="w"> </span><span class="nx">command</span><span class="w"> </span><span class="nx">processing</span><span class="w">       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">ExecutorRun_hook</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="nx">Query</span><span class="w"> </span><span class="nx">execution</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nx">planner_hook</span><span class="w">           </span><span class="o">-</span><span class="w"> </span><span class="nx">Query</span><span class="w"> </span><span class="nx">planning</span><span class="w">                   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="nx">Hook</span><span class="w"> </span><span class="nx">Points</span><span class="w"> </span><span class="p">(</span><span class="nx">interceptable</span><span class="p">):</span><span class="w">                                </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="nx">utility_hook</span><span class="w">         </span><span class="o">-</span><span class="w"> </span><span class="nx">Utility</span><span class="w"> </span><span class="nx">command</span><span class="w"> </span><span class="nx">processing</span><span class="w">         </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="nx">executor_hook</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="nx">Query</span><span class="w"> </span><span class="nx">execution</span><span class="w">                    </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="nx">planner_hook</span><span class="w">         </span><span class="o">-</span><span class="w"> </span><span class="nx">Query</span><span class="w"> </span><span class="nx">planning</span><span class="w">                     </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">╰──────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
@@ -298,19 +365,19 @@
 │  Internal API Boundaries:                                    │
 │                                                              │
 │  Executor → Storage:                                         │
-│    heap_insert()          - Insert tuple                     │
-│    heap_update()          - Update tuple                     │
-│    heap_delete()          - Delete tuple                     │
-│    index_insert()         - Index maintenance                │
+│    table_insert()        - Insert record                     │
+│    table_update()        - Update record                     │
+│    table_delete()        - Delete record                     │
+│    index_insert()        - Index maintenance                 │
 │                                                              │
 │  Parser → Catalog:                                           │
-│    SearchSysCache()       - Cache lookup                     │
-│    ScanPgRelation()       - Relation scan                    │
-│    GetRelationIds()       - OID resolution                   │
+│    cache_lookup()        - System cache lookup                │
+│    scan_relation()       - Relation scan                     │
+│    resolve_oid()         - OID resolution                    │
 │                                                              │
 │  Planner → Statistics:                                       │
-│    get_relation_stats()   - Table statistics                 │
-│    estimate_num_groups()  - Cardinality estimation           │
+│    get_relation_stats()  - Table statistics                  │
+│    estimate_groups()     - Cardinality estimation            │
 │                                                              │
 │  Total internal APIs: 456 functions                          │
 │                                                              │
@@ -329,21 +396,44 @@
 <span class="err">│</span><span class="w">    </span><span class="n">Total</span><span class="p">:</span><span class="w"> </span><span class="mi">23</span><span class="w"> </span><span class="n">functions</span><span class="w">                                       </span><span class="err">│</span>
 <span class="err">│</span><span class="w">    </span><span class="n">Risk</span><span class="p">:</span><span class="w"> </span><span class="n">Execute</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">owner</span><span class="w"> </span><span class="n">privileges</span><span class="w">                       </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Superuser</span><span class="o">-</span><span class="n">Only</span><span class="w"> </span><span class="n">Functions</span><span class="w"> </span><span class="n">Called</span><span class="w"> </span><span class="n">by</span><span class="w"> </span><span class="n">Non</span><span class="o">-</span><span class="n">Superusers</span><span class="p">:</span><span class="w">          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_reload_conf</span><span class="p">()</span><span class="w">       </span><span class="n">via</span><span class="w"> </span><span class="n">reload_conf</span><span class="w"> </span><span class="n">wrapper</span><span class="w">            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_terminate_backend</span><span class="p">()</span><span class="w"> </span><span class="n">via</span><span class="w"> </span><span class="n">admin</span><span class="w"> </span><span class="n">wrapper</span><span class="w">                  </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Elevated</span><span class="o">-</span><span class="n">Privilege</span><span class="w"> </span><span class="n">Functions</span><span class="w"> </span><span class="n">Called</span><span class="w"> </span><span class="n">by</span><span class="w"> </span><span class="n">Regular</span><span class="w"> </span><span class="n">Users</span><span class="p">:</span><span class="w">        </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">reload_config</span><span class="p">()</span><span class="w">        </span><span class="n">via</span><span class="w"> </span><span class="n">admin</span><span class="w"> </span><span class="n">wrapper</span><span class="w">                  </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">terminate_backend</span><span class="p">()</span><span class="w">    </span><span class="n">via</span><span class="w"> </span><span class="n">admin</span><span class="w"> </span><span class="n">wrapper</span><span class="w">                  </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">SET</span><span class="w"> </span><span class="n">ROLE</span><span class="w"> </span><span class="n">Transitions</span><span class="p">:</span><span class="w">                                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">SetRole</span><span class="p">()</span><span class="w">              </span><span class="o">-</span><span class="w"> </span><span class="n">Role</span><span class="w"> </span><span class="n">switching</span><span class="w">                   </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Role</span><span class="w"> </span><span class="n">Transitions</span><span class="p">:</span><span class="w">                                           </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">set_role</span><span class="p">()</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Role</span><span class="w"> </span><span class="n">switching</span><span class="w">                   </span><span class="err">│</span>
 <span class="err">│</span><span class="w">    </span><span class="n">check_role_grantor</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">Permission</span><span class="w"> </span><span class="n">check</span><span class="w">                 </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="n">Row</span><span class="o">-</span><span class="n">Level</span><span class="w"> </span><span class="n">Security</span><span class="w"> </span><span class="n">Bypass</span><span class="p">:</span><span class="w">                                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">check_enable_rls</span><span class="p">()</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="n">RLS</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="n">point</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">ExecCheckRTPerms</span><span class="p">()</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="n">Permission</span><span class="w"> </span><span class="n">validation</span><span class="w">            </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">check_rls_enabled</span><span class="p">()</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">RLS</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="n">point</span><span class="w">                  </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">check_permissions</span><span class="p">()</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Permission</span><span class="w"> </span><span class="n">validation</span><span class="w">            </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="n">Audit</span><span class="w"> </span><span class="n">Points</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="w"> </span><span class="n">locations</span><span class="w">                                  </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">╰──────────────────────────────────────────────────────────────╯</span>
+</code></pre></div>
+
+<h3  id="authentication-entry-points"><span id="authentication_entry_points"></span>Authentication Entry Points<a class="heading-anchor" href="#authentication-entry-points" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Find authentication and authorization check points</span>
+
+╭─────────────── Auth Entry Points ───────────────────────────╮
+│                                                              │
+│  Authentication Checks:                                      │
+│                                                              │
+│    check_password()       - Password verification            │
+│    verify_client_cert()   - TLS client certificate           │
+│    auth_handler()         - Main auth dispatcher             │
+│                                                              │
+│  Authorization Checks:                                       │
+│    acl_check()            - General ACL validation           │
+│    check_table_privilege() - Table-level access              │
+│    check_object_ownership() - Object ownership               │
+│                                                              │
+│  Session Management:                                         │
+│    create_session()       - Session initialization           │
+│    validate_token()       - Token verification               │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
 <h3  id="untrusted-input-handlers"><span id="untrusted_input_handlers"></span>Untrusted Input Handlers<a class="heading-anchor" href="#untrusted-input-handlers" title="Link to this section">&para;</a></h3>
@@ -354,23 +444,18 @@
 <span class="err">│</span><span class="w">  </span><span class="n">Direct</span><span class="w"> </span><span class="n">Client</span><span class="w"> </span><span class="n">Input</span><span class="w"> </span><span class="n">Handling</span><span class="p">:</span><span class="w">                               </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="nb nb-Type">String</span><span class="w"> </span><span class="n">Input</span><span class="p">:</span><span class="w">                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pq_getmsgstring</span><span class="p">()</span><span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="n">Raw</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">client</span><span class="w">           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pq_getmsgtext</span><span class="p">()</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="n">Text</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">encoding</span><span class="w">               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_client_to_server</span><span class="p">()</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Encoding</span><span class="w"> </span><span class="n">conversion</span><span class="w">              </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">read_message_string</span><span class="p">()</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Raw</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">client</span><span class="w">           </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">read_message_text</span><span class="p">()</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Text</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">encoding</span><span class="w">               </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">convert_encoding</span><span class="p">()</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="n">Encoding</span><span class="w"> </span><span class="n">conversion</span><span class="w">              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">│</span><span class="w">  </span><span class="n">Binary</span><span class="w"> </span><span class="n">Input</span><span class="p">:</span><span class="w">                                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pq_getmsgbyte</span><span class="p">()</span><span class="w">        </span><span class="o">-</span><span class="w"> </span><span class="n">Single</span><span class="w"> </span><span class="n">byte</span><span class="w">                      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pq_getmsgint</span><span class="p">()</span><span class="w">         </span><span class="o">-</span><span class="w"> </span><span class="n">Integer</span><span class="w"> </span><span class="p">(</span><span class="n">various</span><span class="w"> </span><span class="n">sizes</span><span class="p">)</span><span class="w">          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pq_getmsgbytes</span><span class="p">()</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="n">Raw</span><span class="w"> </span><span class="n">bytes</span><span class="w">                        </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">read_message_byte</span><span class="p">()</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Single</span><span class="w"> </span><span class="n">byte</span><span class="w">                      </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">read_message_int</span><span class="p">()</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="n">Integer</span><span class="w"> </span><span class="p">(</span><span class="n">various</span><span class="w"> </span><span class="n">sizes</span><span class="p">)</span><span class="w">          </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">read_message_bytes</span><span class="p">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">Raw</span><span class="w"> </span><span class="n">bytes</span><span class="w">                        </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">SQL</span><span class="w"> </span><span class="n">Input</span><span class="p">:</span><span class="w">                                                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_parse_query</span><span class="p">()</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="n">SQL</span><span class="w"> </span><span class="n">parsing</span><span class="w">                      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">eval_const_expressions</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Expression</span><span class="w"> </span><span class="n">evaluation</span><span class="w">          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Validation</span><span class="w"> </span><span class="n">Points</span><span class="p">:</span><span class="w">                                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">check_object_ownership</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">ACL</span><span class="w"> </span><span class="n">check</span><span class="w">                      </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">has_table_privilege</span><span class="p">()</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Table</span><span class="w"> </span><span class="n">access</span><span class="w">                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">pg_aclcheck</span><span class="p">()</span><span class="w">            </span><span class="o">-</span><span class="w"> </span><span class="n">General</span><span class="w"> </span><span class="n">ACL</span><span class="w">                    </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Query</span><span class="w"> </span><span class="n">Input</span><span class="p">:</span><span class="w">                                                </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">parse_query</span><span class="p">()</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">SQL</span><span class="w"> </span><span class="n">parsing</span><span class="w">                      </span><span class="err">│</span>
+<span class="err">│</span><span class="w">    </span><span class="n">eval_expressions</span><span class="p">()</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="n">Expression</span><span class="w"> </span><span class="n">evaluation</span><span class="w">            </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">╰──────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
@@ -383,15 +468,11 @@
 <li>&ldquo;Find privilege escalation paths&rdquo;</li>
 <li>&ldquo;Identify untrusted input handlers&rdquo;</li>
 <li>&ldquo;Map trust boundaries&rdquo;</li>
+<li>&ldquo;Find authentication check points&rdquo;</li>
+<li>&ldquo;Show full attack surface&rdquo;</li>
+<li>&ldquo;Find background worker entry points&rdquo;</li>
+<li>&ldquo;List replication entry points&rdquo;</li>
 </ul>
-<h2  id="cli-commands"><span id="cli_commands"></span>CLI Commands<a class="heading-anchor" href="#cli-commands" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Entry point analysis</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.security<span class="w"> </span>entry-points<span class="w"> </span>--type<span class="w"> </span>network
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.security<span class="w"> </span>entry-points<span class="w"> </span>--type<span class="w"> </span>file
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.security<span class="w"> </span>entry-points<span class="w"> </span>--type<span class="w"> </span>api
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.security<span class="w"> </span>trust-boundaries
-</code></pre></div>
-
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="02-security-audit.html">Security Audit</a> - Vulnerability analysis</li>
@@ -416,7 +497,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.security<span cl
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/16-entry-points.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -426,8 +507,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.security<span cl
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#scenario-16-entry-points-attack-surface" class="level-1">Scenario 16: Entry Points & Attack Surface</a></li>
-<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
+<li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
+<li><a href="#rest-api" class="level-3">REST API</a></li>
 <li><a href="#attack-surface-mapping" class="level-2">Attack Surface Mapping</a></li>
 <li><a href="#network-entry-points" class="level-3">Network Entry Points</a></li>
 <li><a href="#file-system-entry-points" class="level-3">File System Entry Points</a></li>
@@ -436,9 +518,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.security<span cl
 <li><a href="#internal-api-boundaries" class="level-3">Internal API Boundaries</a></li>
 <li><a href="#trust-boundary-analysis" class="level-2">Trust Boundary Analysis</a></li>
 <li><a href="#privilege-escalation-paths" class="level-3">Privilege Escalation Paths</a></li>
+<li><a href="#authentication-entry-points" class="level-3">Authentication Entry Points</a></li>
 <li><a href="#untrusted-input-handlers" class="level-3">Untrusted Input Handlers</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
-<li><a href="#cli-commands" class="level-2">CLI Commands</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>
     </aside>

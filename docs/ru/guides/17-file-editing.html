@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Обзор</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Руководство по настройке</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Руководство по установке</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Начало работы</a></li>
       </ul>
     </div>
 
@@ -91,10 +92,10 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
-        <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
@@ -113,10 +114,10 @@
         <li><a href="06-performance.html">Сценарий 06: Анализ производительности</a></li>
         <li><a href="07-test-coverage.html">Сценарий 07: Покрытие тестами</a></li>
         <li><a href="08-compliance.html">Сценарий 08: Проверка соответствия</a></li>
-        <li><a href="09-code-review.html">Сценарий 09: Проверка кода</a></li>
+        <li><a href="09-code-review.html">Сценарий 09: Обзор кода</a></li>
         <li><a href="10-cross-repo.html">Сценарий 10: Межрепозиторный анализ</a></li>
         <li><a href="11-architecture.html">Сценарий 11: Анализ архитектуры</a></li>
-        <li><a href="12-tech-debt.html">Сценарий 12: Оценка технического долга</a></li>
+        <li><a href="12-tech-debt.html">Сценарий 12: Технический долг</a></li>
         <li><a href="13-mass-refactoring.html">Сценарий 13: Массовый рефакторинг</a></li>
         <li><a href="14-incident-response.html">Сценарий 14: Реагирование на инциденты ИБ</a></li>
         <li><a href="15-debugging.html">Сценарий 15: Поддержка отладки</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Сценарий 18: Оптимизация кода</a></li>
         <li><a href="19-standards-check.html">Сценарий 19: Проверка по стандартам</a></li>
         <li><a href="20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
-        <li><a href="21-pattern-search.html">Сценарий 21: Структурный поиск шаблонов</a></li>
+        <li><a href="21-pattern-search.html">Структурный поиск шаблонов</a></li>
         <li><a href="composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
@@ -180,290 +181,741 @@
       <article class="doc-content">
         <h1  id="stsenariy-17-redaktirovanie-faylov"><span id="stsenariy_17_redaktirovanie_faylov"></span>Сценарий 17: Редактирование файлов<a class="heading-anchor" href="#stsenariy-17-redaktirovanie-faylov" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Разработчик, выполняющий точные изменения кода на основе AST с поддержкой предпросмотра и отмены.</p>
+<p>Хирургические модификации кода на основе AST с предпросмотром diff, резервным копированием/отменой и многоинтерфейсным доступом (CLI, REST API, MCP).</p>
 </blockquote>
+<h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#bystryy-start">Быстрый старт</a></li>
+<li><a href="#kak-eto-rabotaet">Как это работает</a></li>
+<li><a href="#arhitektura">Архитектура</a></li>
+<li><a href="#opredelenie-namereniya">Определение намерения</a></li>
+<li><a href="#ast-parsing">AST-парсинг</a></li>
+<li><a href="#poisk-tseley">Поиск целей</a></li>
+<li><a href="#rezhimy-redaktirovaniya-i-tipy-tseley">Режимы редактирования и типы целей</a></li>
+<li><a href="#modeli-dannyh">Модели данных</a></li>
+<li><a href="#formaty-diff">Форматы diff</a></li>
+<li><a href="#integratsiya-s-ssr">Интеграция с SSR</a></li>
+<li><a href="#primery-ispolzovaniya">Примеры использования</a></li>
+<li><a href="#poisk-tseley-koda">Поиск целей кода</a></li>
+<li><a href="#predprosmotr-izmeneniy-s-diff">Предпросмотр изменений с diff</a></li>
+<li><a href="#primenenie-s-rezervnym-kopirovaniem">Применение с резервным копированием</a></li>
+<li><a href="#operatsiya-pereimenovaniya">Операция переименования</a></li>
+<li><a href="#konfiguratsiya">Конфигурация</a></li>
+<li><a href="#ispolzovanie-cli">Использование CLI</a></li>
+<li><a href="#rest-api">REST API</a></li>
+<li><a href="#instrument-mcp">Инструмент MCP</a></li>
+<li><a href="#primery-voprosov">Примеры вопросов</a></li>
+<li><a href="#svyazannye-stsenarii">Связанные сценарии</a></li>
+</ul>
 <h2  id="bystryy-start"><span id="bystryy_start"></span>Быстрый старт<a class="heading-anchor" href="#bystryy-start" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>/select<span class="w"> </span><span class="m">17</span>
 </code></pre></div>
 
-<h2 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h2>
-<p>Сценарий 17 предоставляет возможности хирургического редактирования кода с использованием парсинга AST (Abstract Syntax Tree). В отличие от простой замены текста, редактирование на основе AST понимает структуру кода, сохраняет форматирование и гарантирует синтаксически корректные изменения.</p>
-<h2  id="varianty-ispolzovaniya"><span id="varianty_ispolzovaniya"></span>Варианты использования<a class="heading-anchor" href="#varianty-ispolzovaniya" title="Link to this section">&para;</a></h2>
-<h3  id="poisk-tseley-dlya-redaktirovaniya"><span id="poisk_tseley_dlya_redaktirovaniya"></span>Поиск целей для редактирования<a class="heading-anchor" href="#poisk-tseley-dlya-redaktirovaniya" title="Link to this section">&para;</a></h3>
-<p>Поиск конкретных функций, классов или методов для редактирования:</p>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти функцию heap_insert в src/backend/access/heap/heapam.c</span>
+<h2  id="kak-eto-rabotaet"><span id="kak_eto_rabotaet"></span>Как это работает<a class="heading-anchor" href="#kak-eto-rabotaet" title="Link to this section">&para;</a></h2>
+<h3 id="arhitektura">Архитектура<a class="heading-anchor" href="#arhitektura" title="Link to this section">&para;</a></h3>
+<p>Модуль редактирования (<code>src/editing/</code>) состоит из 5 компонентов, связанных в конвейер:</p>
+<div class="highlight"><pre><span></span><code>Запрос пользователя
+    |
+    v
+ASTParser (tree-sitter + regex-резерв)
+    |
+    v
+TargetFinder (CPG + AST, 7 методов поиска)
+    |
+    v
+CodeModifier (6 режимов, резервное копирование/отмена)
+    |
+    v
+DiffGenerator (4 формата вывода)
+    |
+    v
+Предпросмотр / Применение
 
-╭─────────────── Найдена цель кода ─────────────────────────╮
-│                                                            │
-│  Имя: heap_insert                                          │
-│  Тип: функция                                              │
-│  Файл: src/backend/access/heap/heapam.c                    │
-│  Строки: 2156-2298                                         │
-│                                                            │
-│  ```c                                                      │
-│  void heap_insert(Relation relation,                       │
-│                   HeapTuple tup,                           │
-│                   CommandId cid,                           │
-│                   int options,                             │
-│                   BulkInsertState bistate)                 │
-│  {                                                         │
-│      ...                                                   │
-│  }                                                         │
-│  ```                                                       │
-│                                                            │
-╰────────────────────────────────────────────────────────────╯
+SSRAdapter ──&gt; CodeModifier
+  (мост GoCPG RewriteResult → EditOperation)
 </code></pre></div>
 
-<h3  id="predprosmotr-izmeneniy-s-diff"><span id="predprosmotr_izmeneniy_s_diff"></span>Предпросмотр изменений с Diff<a class="heading-anchor" href="#predprosmotr-izmeneniy-s-diff" title="Link to this section">&para;</a></h3>
-<p>Генерация унифицированного diff-предпросмотра перед применением изменений:</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="err">Редактировать</span><span class="w"> </span><span class="err">функцию</span><span class="w"> </span><span class="n">validate_input</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">добавления</span><span class="w"> </span><span class="err">проверки</span><span class="w"> </span><span class="err">границ</span>
-
-<span class="err">╭───────────────</span><span class="w"> </span><span class="err">Предпросмотр</span><span class="w"> </span><span class="err">редактирования</span><span class="w"> </span><span class="err">──────────────╮</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Цель</span><span class="p">:</span><span class="w"> </span><span class="n">validate_input</span><span class="w"> </span><span class="p">(</span><span class="err">функция</span><span class="p">)</span><span class="w">                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Файл</span><span class="p">:</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">utils</span><span class="o">/</span><span class="n">validation</span><span class="o">.</span><span class="n">c</span><span class="p">:</span><span class="mi">45</span><span class="o">-</span><span class="mi">67</span><span class="w">                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Изменения</span><span class="p">:</span><span class="w">                                                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">```</span><span class="n">diff</span><span class="w">                                                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">@@</span><span class="w"> </span><span class="o">-</span><span class="mi">45</span><span class="p">,</span><span class="mi">6</span><span class="w"> </span><span class="o">+</span><span class="mi">45</span><span class="p">,</span><span class="mi">10</span><span class="w"> </span><span class="err">@@</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">   </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">validate_input</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">input</span><span class="p">,</span><span class="w"> </span><span class="n">size_t</span><span class="w"> </span><span class="n">len</span><span class="p">)</span><span class="w">       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">   </span><span class="p">{</span><span class="w">                                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">+</span><span class="w">    </span><span class="o">/*</span><span class="w"> </span><span class="err">Проверка</span><span class="w"> </span><span class="err">границ</span><span class="w"> </span><span class="o">*/</span><span class="w">                                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">+</span><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">len</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">MAX_INPUT_SIZE</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">+</span><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="bp">false</span><span class="p">;</span><span class="w">                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="o">+</span><span class="w">    </span><span class="p">}</span><span class="w">                                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">       </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">input</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">NULL</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">           </span><span class="k">return</span><span class="w"> </span><span class="bp">false</span><span class="p">;</span><span class="w">                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">       </span><span class="p">}</span><span class="w">                                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">```</span><span class="w">                                                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Используйте</span><span class="w"> </span><span class="err">`</span><span class="o">/</span><span class="n">edit</span><span class="w"> </span><span class="n">apply</span><span class="err">`</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">применения</span><span class="w"> </span><span class="err">изменений</span><span class="o">.</span><span class="w">       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">╰────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
-
-<h3  id="primenenie-redaktirovaniya-s-rezervnym-kopirovaniem"><span id="primenenie_redaktirovaniya_s_rezervnym_kopirovaniem"></span>Применение редактирования с резервным копированием<a class="heading-anchor" href="#primenenie-redaktirovaniya-s-rezervnym-kopirovaniem" title="Link to this section">&para;</a></h3>
-<p>Применение изменений с автоматическим созданием резервной копии:</p>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Применить редактирование</span>
-
-╭─────────────── Редактирование применено ─────────────────╮
-│                                                            │
-│  Статус: УСПЕШНО                                           │
-│  Файл: src/utils/validation.c                              │
-│  Резервная копия: src/utils/validation.c.bak.20241209_143521│
-│                                                            │
-│  Применённые изменения:                                    │
-│    - Добавлена проверка границ (4 строки)                  │
-│                                                            │
-│  Используйте <span class="sb">`/edit undo`</span> для отмены изменений.            │
-│                                                            │
-╰────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="redaktirovanie-na-osnove-ast"><span id="redaktirovanie_na_osnove_ast"></span>Редактирование на основе AST<a class="heading-anchor" href="#redaktirovanie-na-osnove-ast" title="Link to this section">&para;</a></h2>
-<h3  id="podderzhivaemye-tipy-tseley"><span id="podderzhivaemye_tipy_tseley"></span>Поддерживаемые типы целей<a class="heading-anchor" href="#podderzhivaemye-tipy-tseley" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Тип</th>
-<th>Описание</th>
-<th>Пример</th>
+<th>Компонент</th>
+<th>Модуль</th>
+<th>Назначение</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>function</code></td>
-<td>Автономные функции</td>
-<td><code>heap_insert</code>, <code>main</code></td>
+<td><code>ASTParser</code></td>
+<td><code>ast_parser.py</code></td>
+<td>Парсинг через tree-sitter с regex-резервом для 14 расширений файлов</td>
 </tr>
 <tr>
-<td><code>method</code></td>
-<td>Методы класса</td>
-<td><code>MyClass.process</code></td>
+<td><code>TargetFinder</code></td>
+<td><code>target_finder.py</code></td>
+<td>Поиск функций/классов по имени, сигнатуре, расположению или CPG-запросу</td>
 </tr>
 <tr>
-<td><code>class</code></td>
-<td>Определения классов</td>
-<td><code>TransactionManager</code></td>
+<td><code>CodeModifier</code></td>
+<td><code>code_modifier.py</code></td>
+<td>Применение правок с сохранением форматирования, стек отмены (до 50)</td>
 </tr>
 <tr>
-<td><code>struct</code></td>
-<td>Определения структур</td>
-<td><code>HeapTupleData</code></td>
+<td><code>DiffGenerator</code></td>
+<td><code>diff_generator.py</code></td>
+<td>Генерация diff в форматах unified, side-by-side, inline и HTML</td>
+</tr>
+<tr>
+<td><code>SSRAdapter</code></td>
+<td><code>ssr_adapter.py</code></td>
+<td>Конвертация diff-результатов GoCPG <code>RewriteResult</code> в объекты <code>EditOperation</code></td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="rezhimy-redaktirovaniya"><span id="rezhimy_redaktirovaniya"></span>Режимы редактирования<a class="heading-anchor" href="#rezhimy-redaktirovaniya" title="Link to this section">&para;</a></h3>
+<h3  id="opredelenie-namereniya"><span id="opredelenie_namereniya"></span>Определение намерения<a class="heading-anchor" href="#opredelenie-namereniya" title="Link to this section">&para;</a></h3>
+<p>Рабочий процесс (<code>src/workflow/scenarios/file_editing.py</code>) определяет намерение редактирования через <code>is_file_editing_query()</code> с использованием 27 двуязычных ключевых слов:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Язык</th>
+<th>Ключевые слова</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Английский (16)</td>
+<td>edit, modify, change, update, replace, refactor, rename, insert, delete, remove, add code, change code, update function, modify class, edit method</td>
+</tr>
+<tr>
+<td>Русский (11)</td>
+<td>редактировать, изменить, обновить, заменить, рефакторинг, переименовать, вставить, удалить, добавить код, изменить код, обновить функцию</td>
+</tr>
+</tbody>
+</table></div>
+<p>Функция <code>file_editing_workflow()</code> зарегистрирована в LangGraph через <code>graph_builder.py</code> и маршрутизируется через <code>intent_classifier.py</code> → <code>router.py</code>. Опциональное обогащение через <code>EnrichmentAdapter</code> добавляет векторный контекст из документации и комментариев кода.</p>
+<h3  id="ast-parsing"><span id="ast_parsing"></span>AST-парсинг<a class="heading-anchor" href="#ast-parsing" title="Link to this section">&para;</a></h3>
+<p><code>ASTParser</code> поддерживает два режима парсинга:</p>
+<ol>
+<li><strong>tree-sitter</strong> (основной) — точный AST через пакет <code>tree-sitter-languages</code></li>
+<li><strong>Regex-резерв</strong> — парсинг по шаблонам, когда tree-sitter недоступен</li>
+</ol>
+<p>Поддерживаемые расширения файлов (14):</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Язык</th>
+<th>Расширения</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td><code>.py</code></td>
+</tr>
+<tr>
+<td>C</td>
+<td><code>.c</code>, <code>.h</code></td>
+</tr>
+<tr>
+<td>C++</td>
+<td><code>.cpp</code>, <code>.hpp</code>, <code>.cc</code>, <code>.cxx</code></td>
+</tr>
+<tr>
+<td>JavaScript</td>
+<td><code>.js</code>, <code>.jsx</code></td>
+</tr>
+<tr>
+<td>TypeScript</td>
+<td><code>.ts</code>, <code>.tsx</code></td>
+</tr>
+<tr>
+<td>Go</td>
+<td><code>.go</code></td>
+</tr>
+<tr>
+<td>Java</td>
+<td><code>.java</code></td>
+</tr>
+<tr>
+<td>C#</td>
+<td><code>.cs</code></td>
+</tr>
+<tr>
+<td>PHP</td>
+<td><code>.php</code></td>
+</tr>
+<tr>
+<td>Rust</td>
+<td><code>.rs</code></td>
+</tr>
+<tr>
+<td>Kotlin</td>
+<td><code>.kt</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Regex-шаблоны доступны для Python, C, C++, JavaScript и Go — покрывают определения функций, классов, методов, структур, интерфейсов и стрелочных функций.</p>
+<h3  id="poisk-tseley"><span id="poisk_tseley"></span>Поиск целей<a class="heading-anchor" href="#poisk-tseley" title="Link to this section">&para;</a></h3>
+<p><code>TargetFinder</code> предоставляет 7 методов поиска, комбинирующих CPG-запросы и AST-парсинг:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Источник</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>find_by_name()</code></td>
+<td>AST + CPG</td>
+<td>Поиск по имени или шаблону с точным совпадением</td>
+</tr>
+<tr>
+<td><code>find_by_signature()</code></td>
+<td>AST</td>
+<td>Сопоставление сигнатур функций с regex-шаблоном</td>
+</tr>
+<tr>
+<td><code>find_by_location()</code></td>
+<td>AST</td>
+<td>Поиск наименьшей цели, содержащей указанную строку</td>
+</tr>
+<tr>
+<td><code>find_by_cpg_query()</code></td>
+<td>CPG</td>
+<td>Выполнение произвольного SQL к базе CPG</td>
+</tr>
+<tr>
+<td><code>find_callers()</code></td>
+<td>CPG</td>
+<td>Поиск всех вызывающих указанную функцию</td>
+</tr>
+<tr>
+<td><code>find_callees()</code></td>
+<td>CPG</td>
+<td>Поиск всех вызываемых указанной функцией</td>
+</tr>
+<tr>
+<td><code>find_references()</code></td>
+<td>CPG</td>
+<td>Поиск всех ссылок на имя (переменные, функции, типы)</td>
+</tr>
+</tbody>
+</table></div>
+<p>При наличии результатов и CPG, и AST метод <code>_merge_targets()</code> объединяет их — предпочитая AST для точного расположения и добавляя метаданные CPG.</p>
+<h2  id="rezhimy-redaktirovaniya-i-tipy-tseley"><span id="rezhimy_redaktirovaniya_i_tipy_tseley"></span>Режимы редактирования и типы целей<a class="heading-anchor" href="#rezhimy-redaktirovaniya-i-tipy-tseley" title="Link to this section">&para;</a></h2>
+<h3  id="rezhimy-redaktirovaniya-6"><span id="rezhimy_redaktirovaniya_6"></span>Режимы редактирования (6)<a class="heading-anchor" href="#rezhimy-redaktirovaniya-6" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Режим</th>
+<th>Перечисление</th>
 <th>Описание</th>
-<th>Вариант использования</th>
+<th>Применение</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>replace</code></td>
+<td>Замена</td>
+<td><code>REPLACE</code></td>
 <td>Заменить всю цель</td>
 <td>Переписать логику функции</td>
 </tr>
 <tr>
-<td><code>insert_before</code></td>
+<td>Вставка до</td>
+<td><code>INSERT_BEFORE</code></td>
 <td>Вставить код перед целью</td>
 <td>Добавить импорты, объявления</td>
 </tr>
 <tr>
-<td><code>insert_after</code></td>
+<td>Вставка после</td>
+<td><code>INSERT_AFTER</code></td>
 <td>Вставить код после цели</td>
 <td>Добавить новые методы</td>
 </tr>
 <tr>
-<td><code>delete</code></td>
+<td>Удаление</td>
+<td><code>DELETE</code></td>
 <td>Удалить цель</td>
 <td>Удалить устаревший код</td>
 </tr>
 <tr>
-<td><code>rename</code></td>
-<td>Переименовать идентификатор</td>
-<td>Рефакторинг именования</td>
+<td>Обёртка</td>
+<td><code>WRAP</code></td>
+<td>Обернуть цель с префиксом/суффиксом (формат: <code>prefix\|\|\|suffix</code>)</td>
+<td>Добавить обработку ошибок, логирование</td>
+</tr>
+<tr>
+<td>Переименование</td>
+<td><code>RENAME</code></td>
+<td>Переименовать идентификатор с regex по границам слов</td>
+<td>Рефакторинг именования по файлу</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="operatsiya-pereimenovaniya"><span id="operatsiya_pereimenovaniya"></span>Операция переименования<a class="heading-anchor" href="#operatsiya-pereimenovaniya" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="err">Переименовать</span><span class="w"> </span><span class="err">класс</span><span class="w"> </span><span class="n">OldManager</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="n">NewManager</span>
-
-<span class="err">╭───────────────</span><span class="w"> </span><span class="err">Предпросмотр</span><span class="w"> </span><span class="err">переименования</span><span class="w"> </span><span class="err">──────────────╮</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Переименование</span><span class="o">:</span><span class="w"> </span><span class="n">OldManager</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">NewManager</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Затронутые</span><span class="w"> </span><span class="err">файлы</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="o">:</span><span class="w">                                     </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">src</span><span class="o">/</span><span class="n">core</span><span class="o">/</span><span class="n">manager</span><span class="p">.</span><span class="n">py</span><span class="o">:</span><span class="mi">15</span><span class="p">,</span><span class="mi">23</span><span class="p">,</span><span class="mi">45</span><span class="p">,</span><span class="mi">67</span><span class="w">                         </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">src</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">handlers</span><span class="p">.</span><span class="n">py</span><span class="o">:</span><span class="mi">12</span><span class="p">,</span><span class="mi">34</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">tests</span><span class="o">/</span><span class="n">test_manager</span><span class="p">.</span><span class="n">py</span><span class="o">:</span><span class="mi">8</span><span class="p">,</span><span class="mi">19</span><span class="p">,</span><span class="mi">31</span><span class="w">                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Всего</span><span class="w"> </span><span class="err">замен</span><span class="o">:</span><span class="w"> </span><span class="mi">9</span><span class="w">                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Используйте</span><span class="w"> </span><span class="err">`</span><span class="o">/</span><span class="n">edit</span><span class="w"> </span><span class="kr">apply</span><span class="err">`</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="err">применения</span><span class="w"> </span><span class="err">переименования</span><span class="p">.</span><span class="w">  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                            </span><span class="err">│</span>
-<span class="err">╰────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
-
-<h2  id="komandy-cli"><span id="komandy_cli"></span>Команды CLI<a class="heading-anchor" href="#komandy-cli" title="Link to this section">&para;</a></h2>
-<h3  id="poisk-tseley"><span id="poisk_tseley"></span>Поиск целей<a class="heading-anchor" href="#poisk-tseley" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Найти функцию по имени</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>find<span class="w"> </span>--target<span class="w"> </span>heap_insert<span class="w"> </span>--file<span class="w"> </span>src/heap.c
-
-<span class="c1"># Найти все функции по шаблону</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>find<span class="w"> </span>--pattern<span class="w"> </span><span class="s2">&quot;validate_*&quot;</span><span class="w"> </span>--type<span class="w"> </span><span class="k">function</span>
-
-<span class="c1"># Найти определение класса</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>find<span class="w"> </span>--target<span class="w"> </span>MyClass<span class="w"> </span>--type<span class="w"> </span>class
-</code></pre></div>
-
-<h3  id="primenenie-redaktirovaniya"><span id="primenenie_redaktirovaniya"></span>Применение редактирования<a class="heading-anchor" href="#primenenie-redaktirovaniya" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Применить редактирование с предпросмотром</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>apply<span class="w"> </span>--file<span class="w"> </span>src/file.c<span class="w"> </span>--target<span class="w"> </span>func_name<span class="w"> </span>--preview
-
-<span class="c1"># Применить редактирование немедленно</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>apply<span class="w"> </span>--file<span class="w"> </span>src/file.c<span class="w"> </span>--target<span class="w"> </span>func_name<span class="w"> </span>--new-code<span class="w"> </span>@patch.txt
-
-<span class="c1"># Переименовать идентификатор во всех файлах</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>rename<span class="w"> </span>--old<span class="w"> </span>OldName<span class="w"> </span>--new<span class="w"> </span>NewName<span class="w"> </span>--scope<span class="w"> </span>src/
-</code></pre></div>
-
-<h3  id="operatsii-otmeny"><span id="operatsii_otmeny"></span>Операции отмены<a class="heading-anchor" href="#operatsii-otmeny" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Показать историю редактирований</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span><span class="nb">history</span>
-
-<span class="c1"># Отменить последнее редактирование</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>undo
-
-<span class="c1"># Отменить конкретное редактирование по ID</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>undo<span class="w"> </span>--id<span class="w"> </span>edit_abc123
-</code></pre></div>
-
-<h2  id="komandy-tui"><span id="komandy_tui"></span>Команды TUI<a class="heading-anchor" href="#komandy-tui" title="Link to this section">&para;</a></h2>
+<h3  id="tipy-tseley-7"><span id="tipy_tseley_7"></span>Типы целей (7)<a class="heading-anchor" href="#tipy-tseley-7" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Команда</th>
+<th>Тип</th>
+<th>Перечисление</th>
 <th>Описание</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>/edit find &lt;цель&gt;</code></td>
-<td>Найти цель кода</td>
+<td>Функция</td>
+<td><code>FUNCTION</code></td>
+<td>Автономные функции</td>
 </tr>
 <tr>
-<td><code>/edit preview</code></td>
-<td>Показать ожидающие изменения</td>
+<td>Класс</td>
+<td><code>CLASS</code></td>
+<td>Определения классов, структур, интерфейсов</td>
 </tr>
 <tr>
-<td><code>/edit apply</code></td>
-<td>Применить ожидающие изменения</td>
+<td>Метод</td>
+<td><code>METHOD</code></td>
+<td>Методы классов</td>
 </tr>
 <tr>
-<td><code>/edit undo</code></td>
-<td>Отменить последнее редактирование</td>
+<td>Переменная</td>
+<td><code>VARIABLE</code></td>
+<td>Объявления и ссылки на переменные</td>
 </tr>
 <tr>
-<td><code>/edit history</code></td>
-<td>Показать историю редактирований</td>
+<td>Импорт</td>
+<td><code>IMPORT</code></td>
+<td>Инструкции импорта</td>
+</tr>
+<tr>
+<td>Блок</td>
+<td><code>BLOCK</code></td>
+<td>Произвольные блоки кода</td>
+</tr>
+<tr>
+<td>Диапазон строк</td>
+<td><code>LINE_RANGE</code></td>
+<td>Явный диапазон строк (используется SSR-адаптером)</td>
 </tr>
 </tbody>
 </table></div>
+<h2  id="modeli-dannyh"><span id="modeli_dannyh"></span>Модели данных<a class="heading-anchor" href="#modeli-dannyh" title="Link to this section">&para;</a></h2>
+<h3  id="codetarget-13-poley"><span id="codetarget_13_poley"></span>CodeTarget (13 полей)<a class="heading-anchor" href="#codetarget-13-poley" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>file_path</code></td>
+<td>str</td>
+<td>Путь к файлу исходного кода</td>
+</tr>
+<tr>
+<td><code>target_type</code></td>
+<td>TargetType</td>
+<td>Один из 7 типов целей</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>str</td>
+<td>Имя цели</td>
+</tr>
+<tr>
+<td><code>start_line</code></td>
+<td>int</td>
+<td>Начальная строка</td>
+</tr>
+<tr>
+<td><code>end_line</code></td>
+<td>int</td>
+<td>Конечная строка</td>
+</tr>
+<tr>
+<td><code>start_column</code></td>
+<td>int</td>
+<td>Начальная колонка (по умолчанию 0)</td>
+</tr>
+<tr>
+<td><code>end_column</code></td>
+<td>int</td>
+<td>Конечная колонка (по умолчанию 0)</td>
+</tr>
+<tr>
+<td><code>signature</code></td>
+<td>str?</td>
+<td>Сигнатура функции/класса</td>
+</tr>
+<tr>
+<td><code>docstring</code></td>
+<td>str?</td>
+<td>Связанная строка документации</td>
+</tr>
+<tr>
+<td><code>parent_name</code></td>
+<td>str?</td>
+<td>Для методов: имя вмещающего класса</td>
+</tr>
+<tr>
+<td><code>ast_node_type</code></td>
+<td>str?</td>
+<td>Тип узла tree-sitter</td>
+</tr>
+<tr>
+<td><code>source_code</code></td>
+<td>str?</td>
+<td>Полный текст исходного кода</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>dict</td>
+<td>Дополнительные метаданные (напр., <code>{"source": "cpg"}</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="editoperation-8-poley"><span id="editoperation_8_poley"></span>EditOperation (8 полей)<a class="heading-anchor" href="#editoperation-8-poley" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>target</code></td>
+<td>CodeTarget</td>
+<td>Цель редактирования</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td>EditMode</td>
+<td>Один из 6 режимов</td>
+</tr>
+<tr>
+<td><code>new_code</code></td>
+<td>str</td>
+<td>Код замены</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>str?</td>
+<td>Описание для человека</td>
+</tr>
+<tr>
+<td><code>preserve_indentation</code></td>
+<td>bool</td>
+<td>Сохранить исходные отступы (по умолчанию: True)</td>
+</tr>
+<tr>
+<td><code>preserve_comments</code></td>
+<td>bool</td>
+<td>Сохранить окружающие комментарии (по умолчанию: True)</td>
+</tr>
+<tr>
+<td><code>auto_format</code></td>
+<td>bool</td>
+<td>Автоформатирование результата (по умолчанию: True)</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>dict</td>
+<td>Дополнительные метаданные</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="editresult-10-poley"><span id="editresult_10_poley"></span>EditResult (10 полей)<a class="heading-anchor" href="#editresult-10-poley" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>success</code></td>
+<td>bool</td>
+<td>Успешность операции</td>
+</tr>
+<tr>
+<td><code>file_path</code></td>
+<td>str</td>
+<td>Путь к отредактированному файлу</td>
+</tr>
+<tr>
+<td><code>operation</code></td>
+<td>EditOperation</td>
+<td>Применённая операция</td>
+</tr>
+<tr>
+<td><code>original_content</code></td>
+<td>str</td>
+<td>Содержимое до правки</td>
+</tr>
+<tr>
+<td><code>new_content</code></td>
+<td>str</td>
+<td>Содержимое после правки</td>
+</tr>
+<tr>
+<td><code>diff</code></td>
+<td>str</td>
+<td>Сгенерированный diff</td>
+</tr>
+<tr>
+<td><code>backup_path</code></td>
+<td>str?</td>
+<td>Путь к файлу резервной копии</td>
+</tr>
+<tr>
+<td><code>applied_at</code></td>
+<td>datetime?</td>
+<td>Метка времени (None для пробного запуска)</td>
+</tr>
+<tr>
+<td><code>error_message</code></td>
+<td>str?</td>
+<td>Подробности ошибки при неудаче</td>
+</tr>
+<tr>
+<td><code>warnings</code></td>
+<td>list[str]</td>
+<td>Некритичные предупреждения</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="formaty-diff"><span id="formaty_diff"></span>Форматы diff<a class="heading-anchor" href="#formaty-diff" title="Link to this section">&para;</a></h2>
+<p><code>DiffGenerator</code> поддерживает 4 формата вывода через перечисление <code>DiffFormat</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Формат</th>
+<th>Перечисление</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Унифицированный</td>
+<td><code>UNIFIED</code></td>
+<td>Стандартный unified diff с маркерами <code>+</code>/<code>-</code> (по умолчанию)</td>
+</tr>
+<tr>
+<td>Бок о бок</td>
+<td><code>SIDE_BY_SIDE</code></td>
+<td>Двухколоночное сравнение</td>
+</tr>
+<tr>
+<td>Встроенный</td>
+<td><code>INLINE</code></td>
+<td>Двойная нумерация строк с маркерами изменений</td>
+</tr>
+<tr>
+<td>HTML</td>
+<td><code>HTML</code></td>
+<td>Полная HTML-страница через <code>difflib.HtmlDiff</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Дополнительные методы:
+- <code>summarize_changes()</code> — текстовая сводка (напр., &ldquo;+4 строки добавлено, -2 удалено (+2 итого)&rdquo;)
+- <code>get_colored_diff()</code> — цветной вывод в терминал через ANSI (красный/зелёный/голубой)
+- <code>get_changed_lines()</code> — кортеж (добавленные, удалённые, изменённые) номера строк</p>
+<h2  id="integratsiya-s-ssr"><span id="integratsiya_s_ssr"></span>Интеграция с SSR<a class="heading-anchor" href="#integratsiya-s-ssr" title="Link to this section">&para;</a></h2>
+<p><code>SSRAdapter</code> (<code>ssr_adapter.py</code>) связывает результаты структурного поиска-и-замены GoCPG с модулем редактирования:</p>
+<div class="highlight"><pre><span></span><code>GoCPG scan --fix --dry-run
+    |
+    v
+Diff-результаты RewriteResult (unified diff + метаданные)
+    |
+    v
+rewrite_results_to_edit_operations()  ──&gt; List[EditOperation]
+    |
+    v
+CodeModifier.apply_multiple()  ──&gt; List[EditResult]
+</code></pre></div>
+
+<p>Две функции-адаптера:
+- <code>rewrite_results_to_edit_operations(diffs)</code> — разбор diff-фрагментов или явных <code>line_start</code>/<code>fix_preview</code> в объекты <code>EditOperation</code> с <code>EditMode.REPLACE</code>
+- <code>edit_operations_from_findings(findings)</code> — обёртка, фильтрующая находки с исправлениями из <code>GoCPGScanResult</code></p>
+<h2  id="primery-ispolzovaniya"><span id="primery_ispolzovaniya"></span>Примеры использования<a class="heading-anchor" href="#primery-ispolzovaniya" title="Link to this section">&para;</a></h2>
+<h3  id="poisk-tseley-koda"><span id="poisk_tseley_koda"></span>Поиск целей кода<a class="heading-anchor" href="#poisk-tseley-koda" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Найти функцию heap_insert в src/backend/access/heap/heapam.c
+
+## Найден код
+
+**Имя:** heap_insert
+**Тип:** функция
+**Файл:** src/backend/access/heap/heapam.c
+**Строки:** 2156-2298
+
+  void heap_insert(Relation relation,
+                   HeapTuple tup,
+                   CommandId cid,
+                   int options,
+                   BulkInsertState bistate)
+  { ... }
+</code></pre></div>
+
+<h3  id="predprosmotr-izmeneniy-s-diff"><span id="predprosmotr_izmeneniy_s_diff"></span>Предпросмотр изменений с diff<a class="heading-anchor" href="#predprosmotr-izmeneniy-s-diff" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>&gt; Редактировать функцию validate_input для добавления проверки границ
+
+## Предпросмотр изменений
+
+**Цель:** validate_input (функция)
+**Файл:** src/utils/validation.c:45-67
+
+### Изменения:
+  @@ -45,6 +45,10 @@
+   bool validate_input(const char *input, size_t len)
+   {
+  +    /* Проверка границ */
+  +    if (len &gt; MAX_INPUT_SIZE) {
+  +        return false;
+  +    }
+       if (input == NULL) {
+           return false;
+       }
+
+Используйте `/edit apply` для применения изменений.
+</code></pre></div>
+
+<h3  id="primenenie-s-rezervnym-kopirovaniem"><span id="primenenie_s_rezervnym_kopirovaniem"></span>Применение с резервным копированием<a class="heading-anchor" href="#primenenie-s-rezervnym-kopirovaniem" title="Link to this section">&para;</a></h3>
+<p><code>CodeModifier</code> автоматически создаёт резервные копии (формат: <code>name.YYYYMMDD_HHMMSS.hash.bak</code>) и поддерживает стек отмены (до 50 записей). Операции с одним файлом сортируются по номеру строки в обратном порядке для предотвращения сдвигов строк.</p>
+<h3  id="operatsiya-pereimenovaniya"><span id="operatsiya_pereimenovaniya"></span>Операция переименования<a class="heading-anchor" href="#operatsiya-pereimenovaniya" title="Link to this section">&para;</a></h3>
+<p>Режим <code>RENAME</code> использует regex по границам слов (<code>\bOldName\b</code>) для замены всех вхождений в файле без затрагивания частичных совпадений.</p>
+<h2 id="konfiguratsiya">Конфигурация<a class="heading-anchor" href="#konfiguratsiya" title="Link to this section">&para;</a></h2>
+<p>Класс данных <code>EditingConfig</code> (9 параметров):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">editing</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ast_parser</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tree-sitter&quot;</span><span class="w">         </span><span class="c1"># Основной парсер</span>
+<span class="w">  </span><span class="nt">fallback_parser</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;regex&quot;</span><span class="w">           </span><span class="c1"># Резерв при недоступности tree-sitter</span>
+<span class="w">  </span><span class="nt">preserve_formatting</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">          </span><span class="c1"># Сохранять исходное форматирование</span>
+<span class="w">  </span><span class="nt">preserve_comments</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">            </span><span class="c1"># Сохранять комментарии вокруг целей</span>
+<span class="w">  </span><span class="nt">diff_context_lines</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span><span class="w">              </span><span class="c1"># Строки контекста в diff-выводе</span>
+<span class="w">  </span><span class="nt">backup_before_edit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">           </span><span class="c1"># Создавать копии перед правками</span>
+<span class="w">  </span><span class="nt">backup_dir</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;./backups/edits&quot;</span><span class="w">      </span><span class="c1"># Директория резервных копий</span>
+<span class="w">  </span><span class="nt">max_file_size_mb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w">               </span><span class="c1"># Максимальный размер файла для редактирования</span>
+<span class="w">  </span><span class="nt">supported_extensions</span><span class="p">:</span><span class="w">              </span><span class="c1"># Обрабатываемые типы файлов</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.py</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.c</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.h</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.cpp</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.js</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.ts</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.go</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.rb</span>
+</code></pre></div>
+
+<h2  id="ispolzovanie-cli"><span id="ispolzovanie_cli"></span>Использование CLI<a class="heading-anchor" href="#ispolzovanie-cli" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Поиск целей по имени</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span>find<span class="w"> </span><span class="s2">&quot;heap_insert&quot;</span><span class="w"> </span>--file<span class="w"> </span>src/heap.c<span class="w"> </span>--exact
+
+<span class="c1"># Поиск всех функций по шаблону в директории</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span>find<span class="w"> </span><span class="s2">&quot;validate_*&quot;</span><span class="w"> </span>--file<span class="w"> </span>src/<span class="w"> </span>--type<span class="w"> </span><span class="k">function</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">20</span>
+
+<span class="c1"># Предпросмотр правки (формат цели: file.py::name или file.py:line)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span>preview<span class="w"> </span>src/utils/validation.c::validate_input<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--new-code<span class="w"> </span><span class="s2">&quot;bool validate_input(...) { ... }&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--format<span class="w"> </span>unified<span class="w"> </span>--context<span class="w"> </span><span class="m">5</span>
+
+<span class="c1"># Предпросмотр с кодом из файла</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span>preview<span class="w"> </span>src/file.c::func_name<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--new-code-file<span class="w"> </span>patch.txt
+
+<span class="c1"># Применить правку</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span>apply<span class="w"> </span>--backup
+
+<span class="c1"># Отмена последней правки (восстановление из копии)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span>undo<span class="w"> </span>--steps<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># Показать историю правок</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span><span class="nb">history</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span><span class="w"> </span>--file<span class="w"> </span>src/utils/
+</code></pre></div>
+
+<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
+<p>5 эндпоинтов в <code>src/api/routers/editing.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Эндпоинт</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/edit/find-target</code></td>
+<td>Поиск целей кода по имени/шаблону</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/edit/preview</code></td>
+<td>Генерация предпросмотра diff (пробный запуск)</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/edit/apply</code></td>
+<td>Применение правки с опциональной резервной копией</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/edit/undo</code></td>
+<td>Отмена последней правки</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/edit/history</code></td>
+<td>Получение истории правок (лимит, по умолчанию 10)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Пример:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Поиск целей</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/edit/find-target<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;file_path&quot;: &quot;src/utils/validation.c&quot;, &quot;name_pattern&quot;: &quot;validate_input&quot;, &quot;target_type&quot;: &quot;function&quot;}&#39;</span>
+
+<span class="c1"># Предпросмотр правки</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/edit/preview<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;file_path&quot;: &quot;src/file.c&quot;, &quot;target_name&quot;: &quot;func&quot;, &quot;new_code&quot;: &quot;...&quot;, &quot;diff_format&quot;: &quot;unified&quot;}&#39;</span>
+</code></pre></div>
+
+<h2  id="instrument-mcp"><span id="instrument_mcp"></span>Инструмент MCP<a class="heading-anchor" href="#instrument-mcp" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>codegraph_edit_preview(file_path, target_name, target_type=&quot;function&quot;)
+</code></pre></div>
+
+<p>Находит цель в CPG и возвращает тип, расположение и предпросмотр кода — полезно для безопасного рефакторинга из ИИ-ассистента. Использует <code>TargetFinder</code> с CPG-сервисом для семантического понимания.</p>
 <h2  id="primery-voprosov"><span id="primery_voprosov"></span>Примеры вопросов<a class="heading-anchor" href="#primery-voprosov" title="Link to this section">&para;</a></h2>
-<ul>
-<li>&ldquo;Найти функцию heap_insert в src/heap.c&rdquo;</li>
-<li>&ldquo;Редактировать функцию validate_input для добавления проверки null&rdquo;</li>
-<li>&ldquo;Переименовать класс TransactionHandler в TxHandler&rdquo;</li>
-<li>&ldquo;Удалить неиспользуемую функцию old_helper&rdquo;</li>
-<li>&ldquo;Вставить логирование перед функцией process_request&rdquo;</li>
-<li>&ldquo;Показать текущий предпросмотр редактирования&rdquo;</li>
-</ul>
-<h2  id="integratsiya-s-drugimi-stsenariyami"><span id="integratsiya_s_drugimi_stsenariyami"></span>Интеграция с другими сценариями<a class="heading-anchor" href="#integratsiya-s-drugimi-stsenariyami" title="Link to this section">&para;</a></h2>
-<p>Сценарий 17 интегрируется с:</p>
-<ul>
-<li><strong>S18 (Оптимизация кода)</strong>: Применение предложений по оптимизации</li>
-<li><strong>S19 (Проверка стандартов)</strong>: Исправление нарушений стандартов</li>
-<li><strong>S05 (Рефакторинг)</strong>: Выполнение планов рефакторинга</li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">/select 18</span>
-<span class="k">&gt; </span><span class="ge">Оптимизировать src/core/</span>
-
-<span class="gh">#</span> После просмотра предложений...
-<span class="k">&gt; </span><span class="ge">Применить предложение opt_001</span>
-
-<span class="gh">#</span> Это вызывает S17 для фактического редактирования
-</code></pre></div>
-
-<h2  id="primer-rabochego-protsessa"><span id="primer_rabochego_protsessa"></span>Пример рабочего процесса<a class="heading-anchor" href="#primer-rabochego-protsessa" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="gh">#</span> 1. Найти цель
-<span class="k">&gt; </span><span class="ge">Найти функцию process_data в src/processor.py</span>
-
-<span class="gh">#</span> 2. Просмотреть код
-<span class="k">&gt; </span><span class="ge">Показать полную реализацию</span>
-
-<span class="gh">#</span> 3. Запросить редактирование
-<span class="k">&gt; </span><span class="ge">Добавить обработку ошибок для пустого ввода</span>
-
-<span class="gh">#</span> 4. Предпросмотр изменений
-<span class="k">&gt; </span><span class="ge">/edit preview</span>
-
-<span class="gh">#</span> 5. Применить изменения
-<span class="k">&gt; </span><span class="ge">/edit apply</span>
-
-<span class="gh">#</span> 6. Проверить
-<span class="k">&gt; </span><span class="ge">Показать обновлённую функцию</span>
-</code></pre></div>
-
+<p><strong>Поиск целей:</strong>
+- «Найти функцию heap_insert в src/heap.c»
+- «Найти все классы в src/backend/executor/»
+- «Какие функции вызывают heap_insert?»</p>
+<p><strong>Редактирование:</strong>
+- «Редактировать функцию validate_input — добавить проверку null»
+- «Вставить логирование перед функцией process_request»
+- «Удалить неиспользуемую функцию old_helper»
+- «Обернуть функцию обработкой ошибок»
+- «Переименовать класс TransactionHandler в TxHandler»</p>
+<p><strong>Предпросмотр и история:</strong>
+- «Показать текущий предпросмотр редактирования»
+- «Показать историю правок»
+- «Отменить последнюю правку»</p>
 <h2  id="svyazannye-stsenarii"><span id="svyazannye_stsenarii"></span>Связанные сценарии<a class="heading-anchor" href="#svyazannye-stsenarii" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="05-refactoring.html">Рефакторинг</a> - Очистка и рефакторинг кода</li>
-<li><a href="18-code-optimization.html">Оптимизация кода</a> - Оптимизация с помощью ИИ</li>
-<li><a href="13-mass-refactoring.html">Массовый рефакторинг</a> - Масштабные изменения</li>
+<li><a href="05-refactoring.html">Рефакторинг (S05)</a> — Очистка и рефакторинг кода</li>
+<li><a href="18-code-optimization.html">Оптимизация кода (S18)</a> — Оптимизация с помощью ИИ (использует S17 для правок)</li>
+<li><a href="19-standards-check.html">Проверка стандартов (S19)</a> — Исправление нарушений стандартов (вызывает S17)</li>
+<li><a href="13-mass-refactoring.html">Массовый рефакторинг (S13)</a> — Масштабные изменения</li>
 </ul>
       </article>
 
@@ -483,7 +935,7 @@ codegraph<span class="w"> </span>edit<span class="w"> </span>undo<span class="w"
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-07</span>
+        <span>Обновлено: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/17-file-editing.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -493,24 +945,32 @@ codegraph<span class="w"> </span>edit<span class="w"> </span>undo<span class="w"
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#stsenariy-17-redaktirovanie-faylov" class="level-1">Сценарий 17: Редактирование файлов</a></li>
+<li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#bystryy-start" class="level-2">Быстрый старт</a></li>
-<li><a href="#obzor" class="level-2">Обзор</a></li>
-<li><a href="#varianty-ispolzovaniya" class="level-2">Варианты использования</a></li>
-<li><a href="#poisk-tseley-dlya-redaktirovaniya" class="level-3">Поиск целей для редактирования</a></li>
-<li><a href="#predprosmotr-izmeneniy-s-diff" class="level-3">Предпросмотр изменений с Diff</a></li>
-<li><a href="#primenenie-redaktirovaniya-s-rezervnym-kopirovaniem" class="level-3">Применение редактирования с резервным копированием</a></li>
-<li><a href="#redaktirovanie-na-osnove-ast" class="level-2">Редактирование на основе AST</a></li>
-<li><a href="#podderzhivaemye-tipy-tseley" class="level-3">Поддерживаемые типы целей</a></li>
-<li><a href="#rezhimy-redaktirovaniya" class="level-3">Режимы редактирования</a></li>
-<li><a href="#operatsiya-pereimenovaniya" class="level-3">Операция переименования</a></li>
-<li><a href="#komandy-cli" class="level-2">Команды CLI</a></li>
+<li><a href="#kak-eto-rabotaet" class="level-2">Как это работает</a></li>
+<li><a href="#arhitektura" class="level-3">Архитектура</a></li>
+<li><a href="#opredelenie-namereniya" class="level-3">Определение намерения</a></li>
+<li><a href="#ast-parsing" class="level-3">AST-парсинг</a></li>
 <li><a href="#poisk-tseley" class="level-3">Поиск целей</a></li>
-<li><a href="#primenenie-redaktirovaniya" class="level-3">Применение редактирования</a></li>
-<li><a href="#operatsii-otmeny" class="level-3">Операции отмены</a></li>
-<li><a href="#komandy-tui" class="level-2">Команды TUI</a></li>
+<li><a href="#rezhimy-redaktirovaniya-i-tipy-tseley" class="level-2">Режимы редактирования и типы целей</a></li>
+<li><a href="#rezhimy-redaktirovaniya-6" class="level-3">Режимы редактирования (6)</a></li>
+<li><a href="#tipy-tseley-7" class="level-3">Типы целей (7)</a></li>
+<li><a href="#modeli-dannyh" class="level-2">Модели данных</a></li>
+<li><a href="#codetarget-13-poley" class="level-3">CodeTarget (13 полей)</a></li>
+<li><a href="#editoperation-8-poley" class="level-3">EditOperation (8 полей)</a></li>
+<li><a href="#editresult-10-poley" class="level-3">EditResult (10 полей)</a></li>
+<li><a href="#formaty-diff" class="level-2">Форматы diff</a></li>
+<li><a href="#integratsiya-s-ssr" class="level-2">Интеграция с SSR</a></li>
+<li><a href="#primery-ispolzovaniya" class="level-2">Примеры использования</a></li>
+<li><a href="#poisk-tseley-koda" class="level-3">Поиск целей кода</a></li>
+<li><a href="#predprosmotr-izmeneniy-s-diff" class="level-3">Предпросмотр изменений с diff</a></li>
+<li><a href="#primenenie-s-rezervnym-kopirovaniem" class="level-3">Применение с резервным копированием</a></li>
+<li><a href="#operatsiya-pereimenovaniya" class="level-3">Операция переименования</a></li>
+<li><a href="#konfiguratsiya" class="level-2">Конфигурация</a></li>
+<li><a href="#ispolzovanie-cli" class="level-2">Использование CLI</a></li>
+<li><a href="#rest-api" class="level-2">REST API</a></li>
+<li><a href="#instrument-mcp" class="level-2">Инструмент MCP</a></li>
 <li><a href="#primery-voprosov" class="level-2">Примеры вопросов</a></li>
-<li><a href="#integratsiya-s-drugimi-stsenariyami" class="level-2">Интеграция с другими сценариями</a></li>
-<li><a href="#primer-rabochego-protsessa" class="level-2">Пример рабочего процесса</a></li>
 <li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>
       </ul>
     </aside>

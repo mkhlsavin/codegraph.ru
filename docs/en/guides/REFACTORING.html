@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -188,11 +189,19 @@
 <li><a href="#supported-pattern-categories">Supported Pattern Categories</a></li>
 <li><a href="#severity-levels">Severity Levels</a></li>
 <li><a href="#detection-methods">Detection Methods</a></li>
+<li><a href="#debt-metrics">Debt Metrics</a></li>
 <li><a href="#code-smell-finding-structure">Code Smell Finding Structure</a></li>
+<li><a href="#dead-code-detection">Dead Code Detection</a></li>
+<li><a href="#detection-patterns">Detection Patterns</a></li>
+<li><a href="#dead-code-detection-methods">Detection Methods</a></li>
+<li><a href="#wcc-orphan-analysis">WCC Orphan Analysis</a></li>
+<li><a href="#dead-code-finding-structure">Dead Code Finding Structure</a></li>
 <li><a href="#impact-analysis">Impact Analysis</a></li>
 <li><a href="#analyzing-method-changes">Analyzing Method Changes</a></li>
+<li><a href="#bulk-impact-analysis">Bulk Impact Analysis</a></li>
 <li><a href="#impact-analysis-structure">Impact Analysis Structure</a></li>
 <li><a href="#dependency-analysis">Dependency Analysis</a></li>
+<li><a href="#dependencyinfo-structure">DependencyInfo Structure</a></li>
 <li><a href="#refactoring-planning">Refactoring Planning</a></li>
 <li><a href="#creating-a-refactoring-plan">Creating a Refactoring Plan</a></li>
 <li><a href="#task-prioritization">Task Prioritization</a></li>
@@ -201,151 +210,209 @@
 <li><a href="#generating-a-full-report">Generating a Full Report</a></li>
 <li><a href="#report-structure">Report Structure</a></li>
 <li><a href="#supported-patterns">Supported Patterns</a></li>
-<li><a href="#bloater-patterns">Bloater Patterns</a></li>
+<li><a href="#bloaters-patterns">Bloaters Patterns</a></li>
 <li><a href="#complexity-patterns">Complexity Patterns</a></li>
-<li><a href="#duplicate-patterns">Duplicate Patterns</a></li>
-<li><a href="#dead-code-patterns">Dead Code Patterns</a></li>
+<li><a href="#dispensables-patterns">Dispensables Patterns</a></li>
+<li><a href="#oo-abusers-patterns">OO Abusers Patterns</a></li>
+<li><a href="#change-preventers-patterns">Change Preventers Patterns</a></li>
+<li><a href="#couplers-patterns">Couplers Patterns</a></li>
+<li><a href="#documentation-patterns">Documentation Patterns</a></li>
 <li><a href="#sql-queries-for-detection">SQL Queries for Detection</a></li>
 <li><a href="#see-also">See Also</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>The refactoring module provides three specialized agents:</p>
+<p>The refactoring module (<code>src/refactoring/</code>) provides four specialized agents:</p>
 <ol>
-<li><strong>TechnicalDebtDetector</strong> - Detects code smells using pattern library</li>
-<li><strong>ImpactAnalyzer</strong> - Analyzes change impact and dependencies</li>
-<li><strong>RefactoringPlanner</strong> - Creates prioritized refactoring plans</li>
+<li><strong>TechnicalDebtDetector</strong> &ndash; Detects code smells using a pattern library</li>
+<li><strong>DeadCodeDetector</strong> &ndash; Specialized agent for dead code detection (13 patterns + WCC)</li>
+<li><strong>ImpactAnalyzer</strong> &ndash; Analyzes change impact and dependencies</li>
+<li><strong>RefactoringPlanner</strong> &ndash; Creates prioritized refactoring plans and reports</li>
 </ol>
+<p>All agents except <code>RefactoringPlanner</code> accept an optional <code>CPGQueryService</code> and support the context manager protocol for automatic resource management.</p>
 <hr />
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.refactoring</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">TechnicalDebtDetector</span><span class="p">,</span>
+    <span class="n">DeadCodeDetector</span><span class="p">,</span>
     <span class="n">ImpactAnalyzer</span><span class="p">,</span>
-    <span class="n">RefactoringPlanner</span>
+    <span class="n">RefactoringPlanner</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.services.cpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGQueryService</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
 
-<span class="c1"># Connect to CPG</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectManager</span>
-<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
-<span class="n">query_service</span> <span class="o">=</span> <span class="n">CPGQueryService</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+<span class="c1"># Step 1: Detect code smells (context manager auto-creates CPGQueryService)</span>
+<span class="k">with</span> <span class="n">TechnicalDebtDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_all_smells</span><span class="p">(</span><span class="n">limit_per_pattern</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
 
-<span class="c1"># Initialize agents</span>
-<span class="n">detector</span> <span class="o">=</span> <span class="n">TechnicalDebtDetector</span><span class="p">(</span><span class="n">query_service</span><span class="p">)</span>
-<span class="n">analyzer</span> <span class="o">=</span> <span class="n">ImpactAnalyzer</span><span class="p">(</span><span class="n">query_service</span><span class="p">)</span>
-<span class="n">planner</span> <span class="o">=</span> <span class="n">RefactoringPlanner</span><span class="p">(</span><span class="n">query_service</span><span class="p">)</span>
+<span class="c1"># Step 2: Analyze impact for all findings</span>
+<span class="k">with</span> <span class="n">ImpactAnalyzer</span><span class="p">()</span> <span class="k">as</span> <span class="n">analyzer</span><span class="p">:</span>
+    <span class="n">impact_analyses</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_bulk_impact</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
-<span class="c1"># Detect code smells</span>
-<span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_all</span><span class="p">()</span>
+<span class="c1"># Step 3: Create prioritized refactoring plan</span>
+<span class="n">planner</span> <span class="o">=</span> <span class="n">RefactoringPlanner</span><span class="p">()</span>
+<span class="n">tasks</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">create_refactoring_plan</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">impact_analyses</span><span class="p">)</span>
 
-<span class="c1"># Analyze impact for a method</span>
-<span class="n">impact</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="s2">&quot;heap_insert&quot;</span><span class="p">,</span> <span class="s2">&quot;backend/access/heap/heapam.c&quot;</span><span class="p">)</span>
+<span class="c1"># Step 4: Generate report</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">generate_report</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">impact_analyses</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total smells: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">total_smells</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Effort: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">total_effort_hours</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">recommendations</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">rec</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
 
-<span class="c1"># Create refactoring plan</span>
-<span class="n">plan</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">create_plan</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">max_tasks</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<p>You can also pass an existing <code>CPGQueryService</code> to agents that accept it:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.cpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGQueryService</span>
+
+<span class="n">cpg_service</span> <span class="o">=</span> <span class="n">CPGQueryService</span><span class="p">()</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">TechnicalDebtDetector</span><span class="p">(</span><span class="n">cpg_service</span><span class="p">)</span>
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">ImpactAnalyzer</span><span class="p">(</span><span class="n">cpg_service</span><span class="p">)</span>
 </code></pre></div>
 
 <hr />
 <h2  id="code-smell-detection"><span id="code_smell_detection"></span>Code Smell Detection<a class="heading-anchor" href="#code-smell-detection" title="Link to this section">&para;</a></h2>
 <h3  id="supported-pattern-categories"><span id="supported_pattern_categories"></span>Supported Pattern Categories<a class="heading-anchor" href="#supported-pattern-categories" title="Link to this section">&para;</a></h3>
+<p>Categories are defined in the <code>CodeSmellCategory</code> enum (<code>src/refactoring/_base.py</code>):</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Category</th>
+<th>Enum Value</th>
 <th>Description</th>
 <th>Examples</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>bloater</code></td>
+<td>Bloaters</td>
+<td><code>CodeSmellCategory.BLOATERS</code></td>
 <td>Large methods, long parameter lists</td>
 <td>God Method, Long Parameter List</td>
 </tr>
 <tr>
-<td><code>complexity</code></td>
+<td>OO Abusers</td>
+<td><code>CodeSmellCategory.OO_ABUSERS</code></td>
+<td>Misuse of OO features</td>
+<td>Switch Statements, Refused Bequest</td>
+</tr>
+<tr>
+<td>Change Preventers</td>
+<td><code>CodeSmellCategory.CHANGE_PREVENTERS</code></td>
+<td>Patterns that hinder changes</td>
+<td>Divergent Change, Shotgun Surgery</td>
+</tr>
+<tr>
+<td>Dispensables</td>
+<td><code>CodeSmellCategory.DISPENSABLES</code></td>
+<td>Dead code, speculative generality</td>
+<td>Dead Code, Speculative Generality</td>
+</tr>
+<tr>
+<td>Couplers</td>
+<td><code>CodeSmellCategory.COUPLERS</code></td>
+<td>Excessive coupling</td>
+<td>Feature Envy, Inappropriate Intimacy</td>
+</tr>
+<tr>
+<td>Complexity</td>
+<td><code>CodeSmellCategory.COMPLEXITY</code></td>
 <td>High cyclomatic complexity</td>
-<td>Complex Conditionals, Deep Nesting</td>
+<td>Deep Nesting, Complex Conditionals</td>
 </tr>
 <tr>
-<td><code>duplicate</code></td>
-<td>Code duplication patterns</td>
-<td>Duplicate Code, Similar Functions</td>
-</tr>
-<tr>
-<td><code>dead_code</code></td>
-<td>Unused or unreachable code</td>
-<td>Dead Code, Unused Variables</td>
-</tr>
-<tr>
-<td><code>documentation</code></td>
+<td>Documentation</td>
+<td><code>CodeSmellCategory.DOCUMENTATION</code></td>
 <td>Missing or outdated docs</td>
 <td>Missing Comments, Stale Docs</td>
 </tr>
 </tbody>
 </table></div>
 <h3  id="severity-levels"><span id="severity_levels"></span>Severity Levels<a class="heading-anchor" href="#severity-levels" title="Link to this section">&para;</a></h3>
+<p>Defined in the <code>CodeSmellSeverity</code> enum:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Severity</th>
+<th>Enum Value</th>
 <th>Description</th>
 <th>Action</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>CRITICAL</code></td>
-<td>Severe issue requiring immediate fix</td>
+<td>Critical</td>
+<td><code>CodeSmellSeverity.CRITICAL</code></td>
+<td>Severely impacts maintainability</td>
 <td>Fix immediately</td>
 </tr>
 <tr>
-<td><code>HIGH</code></td>
-<td>Significant issue</td>
+<td>High</td>
+<td><code>CodeSmellSeverity.HIGH</code></td>
+<td>Major maintainability issues</td>
 <td>Fix in current sprint</td>
 </tr>
 <tr>
-<td><code>MEDIUM</code></td>
-<td>Moderate issue</td>
+<td>Medium</td>
+<td><code>CodeSmellSeverity.MEDIUM</code></td>
+<td>Moderate technical debt</td>
 <td>Plan for next sprint</td>
 </tr>
 <tr>
-<td><code>LOW</code></td>
+<td>Low</td>
+<td><code>CodeSmellSeverity.LOW</code></td>
 <td>Minor issue</td>
 <td>Address when convenient</td>
 </tr>
 <tr>
-<td><code>INFO</code></td>
-<td>Informational</td>
+<td>Info</td>
+<td><code>CodeSmellSeverity.INFO</code></td>
+<td>Informational only</td>
 <td>Consider for improvement</td>
 </tr>
 </tbody>
 </table></div>
 <h3  id="detection-methods"><span id="detection_methods"></span>Detection Methods<a class="heading-anchor" href="#detection-methods" title="Link to this section">&para;</a></h3>
-<p><strong>Detect All Patterns:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_all</span><span class="p">(</span>
-    <span class="n">file_filter</span><span class="o">=</span><span class="s2">&quot;backend/parser/*.c&quot;</span><span class="p">,</span>  <span class="c1"># Optional: filter by path</span>
-    <span class="n">severity_filter</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;CRITICAL&quot;</span><span class="p">,</span> <span class="s2">&quot;HIGH&quot;</span><span class="p">]</span>  <span class="c1"># Optional: filter by severity</span>
-<span class="p">)</span>
+<p><strong>Detect all patterns:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">TechnicalDebtDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_all_smells</span><span class="p">(</span><span class="n">limit_per_pattern</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
 
-<span class="k">for</span> <span class="n">finding</span> <span class="ow">in</span> <span class="n">findings</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">severity</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">pattern_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Location: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">line_number</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Fix: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">refactoring_technique</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">finding</span> <span class="ow">in</span> <span class="n">findings</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">severity</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">pattern_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Location: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">line_number</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Fix: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">refactoring_technique</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p><strong>Detect by Category:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find all bloater patterns</span>
-<span class="n">bloaters</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_by_category</span><span class="p">(</span><span class="s2">&quot;bloater&quot;</span><span class="p">)</span>
+<p><code>detect_all_smells()</code> iterates over all patterns in <code>REFACTORING_PATTERNS</code>, executes each pattern&rsquo;s CPGQL query, and returns findings sorted by severity (critical first).</p>
+<p><strong>Detect a single pattern:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.refactoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">REFACTORING_PATTERNS</span>
 
-<span class="c1"># Find complexity issues</span>
-<span class="n">complexity</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_by_category</span><span class="p">(</span><span class="s2">&quot;complexity&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">TechnicalDebtDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="n">REFACTORING_PATTERNS</span><span class="p">[</span><span class="s2">&quot;GOD_METHOD&quot;</span><span class="p">]</span>
+    <span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_pattern</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
 </code></pre></div>
 
-<p><strong>Detect Critical Only:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">critical</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_critical</span><span class="p">()</span>
+<p><strong>Detect by category:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.refactoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">CodeSmellCategory</span>
+
+<span class="k">with</span> <span class="n">TechnicalDebtDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">bloaters</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_by_category</span><span class="p">(</span><span class="n">CodeSmellCategory</span><span class="o">.</span><span class="n">BLOATERS</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+    <span class="n">complexity</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_by_category</span><span class="p">(</span><span class="n">CodeSmellCategory</span><span class="o">.</span><span class="n">COMPLEXITY</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
 </code></pre></div>
 
+<p>Note: <code>detect_by_category()</code> requires a <code>CodeSmellCategory</code> enum value, not a string.</p>
+<h3  id="debt-metrics"><span id="debt_metrics"></span>Debt Metrics<a class="heading-anchor" href="#debt-metrics" title="Link to this section">&para;</a></h3>
+<p><code>calculate_debt_metrics()</code> computes aggregate statistics from findings:</p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">TechnicalDebtDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_all_smells</span><span class="p">()</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">calculate_debt_metrics</span><span class="p">(</span><span class="n">findings</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total smells: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;total_smells&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total effort: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;total_effort_hours&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Debt ratio: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;debt_ratio&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;By severity: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;by_severity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;By category: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;by_category&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Avg effort/smell: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;avg_effort_per_smell&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Returns a dict with keys: <code>total_smells</code>, <code>total_effort_hours</code>, <code>by_severity</code>, <code>by_category</code>, <code>debt_ratio</code>, <code>avg_effort_per_smell</code>.</p>
 <h3  id="code-smell-finding-structure"><span id="code_smell_finding_structure"></span>Code Smell Finding Structure<a class="heading-anchor" href="#code-smell-finding-structure" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">CodeSmellFinding</span><span class="p">:</span>
@@ -363,23 +430,192 @@
     <span class="n">symptoms</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">refactoring_technique</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">effort_hours</span><span class="p">:</span> <span class="nb">float</span>
-    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h2  id="dead-code-detection"><span id="dead_code_detection"></span>Dead Code Detection<a class="heading-anchor" href="#dead-code-detection" title="Link to this section">&para;</a></h2>
+<p><code>DeadCodeDetector</code> is a specialized agent for dead code detection. It runs 13 detection patterns plus Weakly Connected Components (WCC) analysis to find orphan components.</p>
+<h3  id="detection-patterns"><span id="detection_patterns"></span>Detection Patterns<a class="heading-anchor" href="#detection-patterns" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Pattern ID</th>
+<th>Name</th>
+<th>Detection Type</th>
+<th>Confidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DEAD_CODE</td>
+<td>Uncalled Functions</td>
+<td><code>uncalled</code></td>
+<td>0.70</td>
+</tr>
+<tr>
+<td>DEPRECATED_MARKER</td>
+<td>Deprecated Markers</td>
+<td><code>deprecated</code></td>
+<td>0.95</td>
+</tr>
+<tr>
+<td>DISABLED_CODE_BLOCK</td>
+<td>Disabled Code (#if 0)</td>
+<td><code>disabled</code></td>
+<td>0.99</td>
+</tr>
+<tr>
+<td>UNUSED_VARIABLE</td>
+<td>Unused Variables</td>
+<td><code>unknown</code></td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>EMPTY_STUB</td>
+<td>Empty Stubs</td>
+<td><code>stub</code></td>
+<td>0.60</td>
+</tr>
+<tr>
+<td>ERROR_ONLY_FUNCTION</td>
+<td>Error-Only Functions</td>
+<td><code>error_only</code></td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>UNREACHABLE_AFTER_RETURN</td>
+<td>Unreachable After Return</td>
+<td><code>unreachable</code></td>
+<td>0.90</td>
+</tr>
+<tr>
+<td>DEAD_ASSIGNMENT</td>
+<td>Dead Assignments</td>
+<td><code>unknown</code></td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>INVARIANT_DEAD_CODE</td>
+<td>Invariant Dead Code</td>
+<td><code>unknown</code></td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>DEAD_CALLBACK</td>
+<td>Dead Callbacks</td>
+<td><code>unknown</code></td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>SINGLE_CALLER_FUNCTION</td>
+<td>Single-Caller Functions</td>
+<td><code>unknown</code></td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>TEST_ONLY_FUNCTION</td>
+<td>Test-Only Functions</td>
+<td><code>unknown</code></td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>ORPHAN_COMPONENT</td>
+<td>Orphan Components (WCC)</td>
+<td><code>orphan</code></td>
+<td>0.80</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="dead-code-detection-methods"><span id="dead_code_detection_methods"></span>Dead Code Detection Methods<a class="heading-anchor" href="#dead-code-detection-methods" title="Link to this section">&para;</a></h3>
+<p><strong>Detect all dead code:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">DeadCodeDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_all</span><span class="p">(</span><span class="n">limit_per_pattern</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">finding</span> <span class="ow">in</span> <span class="n">findings</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">severity</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">method_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Type: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">detection_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Confidence: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">confidence</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Reason: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  File: </span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">finding</span><span class="o">.</span><span class="n">line_number</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Detect specific patterns:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">DeadCodeDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_patterns</span><span class="p">(</span>
+        <span class="n">pattern_names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DEAD_CODE&quot;</span><span class="p">,</span> <span class="s2">&quot;DEPRECATED_MARKER&quot;</span><span class="p">,</span> <span class="s2">&quot;EMPTY_STUB&quot;</span><span class="p">],</span>
+        <span class="n">limit_per_pattern</span><span class="o">=</span><span class="mi">30</span>
+    <span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Detect by type:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">DeadCodeDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="c1"># Supported types: uncalled, deprecated, disabled, stub, error_only, unreachable, orphan</span>
+    <span class="n">uncalled</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_by_type</span><span class="p">(</span><span class="s2">&quot;uncalled&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Get summary statistics:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">DeadCodeDetector</span><span class="p">()</span> <span class="k">as</span> <span class="n">detector</span><span class="p">:</span>
+    <span class="n">findings</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_all</span><span class="p">()</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">get_summary</span><span class="p">(</span><span class="n">findings</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total findings: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;total_findings&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total dead lines: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;total_lines&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Avg confidence: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;avg_confidence&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;By type: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;by_type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;By severity: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;by_severity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;By file: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;by_file&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3  id="wcc-orphan-analysis"><span id="wcc_orphan_analysis"></span>WCC Orphan Analysis<a class="heading-anchor" href="#wcc-orphan-analysis" title="Link to this section">&para;</a></h3>
+<p>The <code>detect_all()</code> method automatically runs WCC (Weakly Connected Components) analysis in addition to pattern-based detection. WCC analysis uses a recursive CTE on the <code>call_containment</code> table to identify methods not reachable from any entry point (e.g., <code>main</code>, <code>*_handler</code>, <code>*_hook</code>, <code>*_init</code>).</p>
+<p>Orphan findings have <code>detection_type="orphan"</code>, <code>pattern_id="DEAD_CODE_WCC"</code>, and <code>confidence=0.8</code>.</p>
+<h3  id="dead-code-finding-structure"><span id="dead_code_finding_structure"></span>Dead Code Finding Structure<a class="heading-anchor" href="#dead-code-finding-structure" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DeadCodeFinding</span><span class="p">:</span>
+    <span class="n">finding_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">pattern_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">pattern_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">detection_type</span><span class="p">:</span> <span class="nb">str</span>   <span class="c1"># &#39;uncalled&#39;, &#39;deprecated&#39;, &#39;disabled&#39;, &#39;orphan&#39;, etc.</span>
+    <span class="n">severity</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">method_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">method_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">line_number</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">line_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">code_snippet</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>     <span class="c1"># 0.0 to 1.0</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
 </code></pre></div>
 
 <hr />
 <h2  id="impact-analysis"><span id="impact_analysis"></span>Impact Analysis<a class="heading-anchor" href="#impact-analysis" title="Link to this section">&para;</a></h2>
 <h3  id="analyzing-method-changes"><span id="analyzing_method_changes"></span>Analyzing Method Changes<a class="heading-anchor" href="#analyzing-method-changes" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">impact</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span>
-    <span class="n">method_name</span><span class="o">=</span><span class="s2">&quot;heap_insert&quot;</span><span class="p">,</span>
-    <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;backend/access/heap/heapam.c&quot;</span>
-<span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">ImpactAnalyzer</span><span class="p">()</span> <span class="k">as</span> <span class="n">analyzer</span><span class="p">:</span>
+    <span class="n">impact</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_method_impact</span><span class="p">(</span>
+        <span class="n">method_name</span><span class="o">=</span><span class="s2">&quot;heap_insert&quot;</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;backend/access/heap/heapam.c&quot;</span>
+    <span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Risk Level: </span><span class="si">{</span><span class="n">impact</span><span class="o">.</span><span class="n">risk_level</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Impact Score: </span><span class="si">{</span><span class="n">impact</span><span class="o">.</span><span class="n">impact_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Directly Affected: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">impact</span><span class="o">.</span><span class="n">direct_dependents</span><span class="p">)</span><span class="si">}</span><span class="s2"> methods&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Indirectly Affected: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">impact</span><span class="o">.</span><span class="n">indirect_dependents</span><span class="p">)</span><span class="si">}</span><span class="s2"> methods&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Files to Test: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">impact</span><span class="o">.</span><span class="n">affected_files</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated Test Effort: </span><span class="si">{</span><span class="n">impact</span><span class="o">.</span><span class="n">estimated_test_effort</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Risk Level: </span><span class="si">{</span><span class="n">impact</span><span class="o">.</span><span class="n">risk_level</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Impact Score: </span><span class="si">{</span><span class="n">impact</span><span class="o">.</span><span class="n">impact_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Directly Affected: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">impact</span><span class="o">.</span><span class="n">direct_dependents</span><span class="p">)</span><span class="si">}</span><span class="s2"> methods&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Indirectly Affected: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">impact</span><span class="o">.</span><span class="n">indirect_dependents</span><span class="p">)</span><span class="si">}</span><span class="s2"> methods&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Files to Test: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">impact</span><span class="o">.</span><span class="n">affected_files</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated Test Effort: </span><span class="si">{</span><span class="n">impact</span><span class="o">.</span><span class="n">estimated_test_effort</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Impact scoring:
+- <code>impact_score</code> = <code>min(direct_count * 0.1 + indirect_count * 0.05, 1.0)</code>
+- Risk levels: <code>high</code> (score &gt; 0.7 or &gt; 20 direct), <code>medium</code> (score &gt; 0.4 or &gt; 10 direct), <code>low</code> (otherwise)</p>
+<h3  id="bulk-impact-analysis"><span id="bulk_impact_analysis"></span>Bulk Impact Analysis<a class="heading-anchor" href="#bulk-impact-analysis" title="Link to this section">&para;</a></h3>
+<p><code>analyze_bulk_impact()</code> runs <code>analyze_method_impact()</code> for each finding:</p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">ImpactAnalyzer</span><span class="p">()</span> <span class="k">as</span> <span class="n">analyzer</span><span class="p">:</span>
+    <span class="n">impact_analyses</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_bulk_impact</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">ia</span> <span class="ow">in</span> <span class="n">impact_analyses</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ia</span><span class="o">.</span><span class="n">target_method</span><span class="si">}</span><span class="s2">: risk=</span><span class="si">{</span><span class="n">ia</span><span class="o">.</span><span class="n">risk_level</span><span class="si">}</span><span class="s2">, score=</span><span class="si">{</span><span class="n">ia</span><span class="o">.</span><span class="n">impact_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <h3  id="impact-analysis-structure"><span id="impact_analysis_structure"></span>Impact Analysis Structure<a class="heading-anchor" href="#impact-analysis-structure" title="Link to this section">&para;</a></h3>
@@ -391,50 +627,61 @@
     <span class="n">direct_dependents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>    <span class="c1"># Methods that call target</span>
     <span class="n">indirect_dependents</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># Transitive callers</span>
     <span class="n">affected_files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>       <span class="c1"># Files needing review</span>
-    <span class="n">impact_score</span><span class="p">:</span> <span class="nb">float</span>             <span class="c1"># 0.0-1.0</span>
+    <span class="n">impact_score</span><span class="p">:</span> <span class="nb">float</span>             <span class="c1"># 0.0 to 1.0</span>
     <span class="n">risk_level</span><span class="p">:</span> <span class="nb">str</span>                 <span class="c1"># &quot;low&quot;, &quot;medium&quot;, &quot;high&quot;</span>
     <span class="n">estimated_test_effort</span><span class="p">:</span> <span class="nb">float</span>    <span class="c1"># Hours</span>
 </code></pre></div>
 
 <h3  id="dependency-analysis"><span id="dependency_analysis"></span>Dependency Analysis<a class="heading-anchor" href="#dependency-analysis" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Get all dependencies for a method</span>
-<span class="n">deps</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">get_dependencies</span><span class="p">(</span><span class="s2">&quot;heap_insert&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="n">ImpactAnalyzer</span><span class="p">()</span> <span class="k">as</span> <span class="n">analyzer</span><span class="p">:</span>
+    <span class="n">deps</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">find_dependencies</span><span class="p">(</span><span class="s2">&quot;heap_insert&quot;</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
-<span class="k">for</span> <span class="n">dep</span> <span class="ow">in</span> <span class="n">deps</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">from_method</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">to_method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Type: </span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">dependency_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Strength: </span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">strength</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">dep</span> <span class="ow">in</span> <span class="n">deps</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">from_method</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">to_method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Type: </span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">dependency_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Strength: </span><span class="si">{</span><span class="n">dep</span><span class="o">.</span><span class="n">strength</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><code>find_dependencies()</code> queries the <code>call_containment</code> table to find both callers and callees of the given method.</p>
+<h3  id="dependencyinfo-structure"><span id="dependencyinfo_structure"></span>DependencyInfo Structure<a class="heading-anchor" href="#dependencyinfo-structure" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DependencyInfo</span><span class="p">:</span>
+    <span class="n">dependency_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">from_method</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">from_file</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">to_method</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">to_file</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">dependency_type</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;calls&quot;, &quot;includes&quot;, &quot;data&quot;</span>
+    <span class="n">strength</span><span class="p">:</span> <span class="nb">str</span>         <span class="c1"># &quot;strong&quot;, &quot;medium&quot;, &quot;weak&quot;</span>
 </code></pre></div>
 
 <hr />
 <h2  id="refactoring-planning"><span id="refactoring_planning"></span>Refactoring Planning<a class="heading-anchor" href="#refactoring-planning" title="Link to this section">&para;</a></h2>
+<p><code>RefactoringPlanner</code> takes no constructor arguments. It operates on findings and impact analyses produced by the other agents.</p>
 <h3  id="creating-a-refactoring-plan"><span id="creating_a_refactoring_plan"></span>Creating a Refactoring Plan<a class="heading-anchor" href="#creating-a-refactoring-plan" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">plan</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">create_plan</span><span class="p">(</span>
-    <span class="n">findings</span><span class="o">=</span><span class="n">findings</span><span class="p">,</span>
-    <span class="n">max_tasks</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
-    <span class="n">priority_threshold</span><span class="o">=</span><span class="mi">5</span>  <span class="c1"># Only include priority &gt;= 5</span>
-<span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">planner</span> <span class="o">=</span> <span class="n">RefactoringPlanner</span><span class="p">()</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total Tasks: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">plan</span><span class="o">.</span><span class="n">tasks</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total Effort: </span><span class="si">{</span><span class="n">plan</span><span class="o">.</span><span class="n">total_effort_hours</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated Duration: </span><span class="si">{</span><span class="n">plan</span><span class="o">.</span><span class="n">estimated_weeks</span><span class="si">}</span><span class="s2"> weeks&quot;</span><span class="p">)</span>
+<span class="c1"># create_refactoring_plan() returns List[RefactoringTask] directly</span>
+<span class="n">tasks</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">create_refactoring_plan</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">impact_analyses</span><span class="p">)</span>
 
-<span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">plan</span><span class="o">.</span><span class="n">tasks</span><span class="p">:</span>
+<span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Task </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">pattern_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Target: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">target_file</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">target_method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Priority: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">priority</span><span class="si">}</span><span class="s2">/10&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Effort: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">effort_hours</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Value: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">estimated_value</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Impact: </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">impact_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Steps:&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">refactoring_steps</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    - </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <h3  id="task-prioritization"><span id="task_prioritization"></span>Task Prioritization<a class="heading-anchor" href="#task-prioritization" title="Link to this section">&para;</a></h3>
-<p>Tasks are prioritized based on:</p>
+<p>Tasks are sorted by priority (highest first), then by ROI (value / effort). Priority is calculated based on:</p>
 <ol>
-<li><strong>Severity Weight</strong> (40%) - Higher severity = higher priority</li>
-<li><strong>Impact Score</strong> (30%) - Higher impact = higher priority</li>
-<li><strong>Effort Efficiency</strong> (30%) - Value / effort ratio</li>
+<li><strong>Severity</strong> &ndash; Base score from severity level (critical=10, high=7, medium=4, low=2, info=1)</li>
+<li><strong>Impact risk</strong> &ndash; Low risk adjusts priority +1, high risk adjusts -1</li>
+<li><strong>Category bonus</strong> &ndash; Bloaters get +2 priority (they affect many other smells)</li>
 </ol>
 <h3  id="refactoring-task-structure"><span id="refactoring_task_structure"></span>Refactoring Task Structure<a class="heading-anchor" href="#refactoring-task-structure" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
@@ -444,48 +691,52 @@
     <span class="n">pattern_name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">target_method</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">target_file</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span>              <span class="c1"># 1-10</span>
+    <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span>              <span class="c1"># 1-10, higher = more urgent</span>
     <span class="n">effort_hours</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">impact_score</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">refactoring_steps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">dependencies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>    <span class="c1"># Tasks to do first</span>
-    <span class="n">estimated_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">dependencies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>    <span class="c1"># Other tasks that should be done first</span>
+    <span class="n">estimated_value</span><span class="p">:</span> <span class="nb">float</span>     <span class="c1"># Benefit of completing this task</span>
 </code></pre></div>
 
 <hr />
 <h2  id="refactoring-report"><span id="refactoring_report"></span>Refactoring Report<a class="heading-anchor" href="#refactoring-report" title="Link to this section">&para;</a></h2>
 <h3  id="generating-a-full-report"><span id="generating_a_full_report"></span>Generating a Full Report<a class="heading-anchor" href="#generating-a-full-report" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">report</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">generate_report</span><span class="p">(</span>
-    <span class="n">findings</span><span class="o">=</span><span class="n">findings</span><span class="p">,</span>
-    <span class="n">include_impact</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;markdown&quot;</span>
-<span class="p">)</span>
+<p><code>generate_report()</code> requires three positional arguments: findings, impact analyses, and tasks.</p>
+<div class="highlight"><pre><span></span><code><span class="n">planner</span> <span class="o">=</span> <span class="n">RefactoringPlanner</span><span class="p">()</span>
+<span class="n">tasks</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">create_refactoring_plan</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">impact_analyses</span><span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">planner</span><span class="o">.</span><span class="n">generate_report</span><span class="p">(</span><span class="n">findings</span><span class="p">,</span> <span class="n">impact_analyses</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)</span>
 
-<span class="c1"># Save report</span>
-<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;refactoring_report.md&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">to_markdown</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">summary</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total smells: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">total_smells</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;By severity: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">by_severity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;By category: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">by_category</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Effort: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">total_effort_hours</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">h&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated value: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">estimated_value</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">recommendations</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">rec</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <h3  id="report-structure"><span id="report_structure"></span>Report Structure<a class="heading-anchor" href="#report-structure" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RefactoringReport</span><span class="p">:</span>
     <span class="n">report_id</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">generated_at</span><span class="p">:</span> <span class="n">datetime</span>
-    <span class="n">total_findings</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">critical_count</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">high_count</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">medium_count</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">low_count</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">findings_by_category</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span>                          <span class="c1"># ISO format string</span>
+    <span class="n">total_smells</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">by_severity</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>             <span class="c1"># e.g. {&quot;critical&quot;: 2, &quot;high&quot;: 5}</span>
+    <span class="n">by_category</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>             <span class="c1"># e.g. {&quot;bloaters&quot;: 3, &quot;complexity&quot;: 4}</span>
+    <span class="n">findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CodeSmellFinding</span><span class="p">]</span>
+    <span class="n">impact_analyses</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ImpactAnalysis</span><span class="p">]</span>
     <span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">RefactoringTask</span><span class="p">]</span>
     <span class="n">total_effort_hours</span><span class="p">:</span> <span class="nb">float</span>
-    <span class="n">estimated_weeks</span><span class="p">:</span> <span class="nb">float</span>
-    <span class="n">recommendations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">estimated_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span>                            <span class="c1"># Executive summary text</span>
+    <span class="n">recommendations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>              <span class="c1"># Prioritized recommendations</span>
 </code></pre></div>
 
 <hr />
 <h2  id="supported-patterns"><span id="supported_patterns"></span>Supported Patterns<a class="heading-anchor" href="#supported-patterns" title="Link to this section">&para;</a></h2>
-<h3  id="bloater-patterns"><span id="bloater_patterns"></span>Bloater Patterns<a class="heading-anchor" href="#bloater-patterns" title="Link to this section">&para;</a></h3>
+<h3  id="bloaters-patterns"><span id="bloaters_patterns"></span>Bloaters Patterns<a class="heading-anchor" href="#bloaters-patterns" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -533,18 +784,13 @@
 <td>Decompose Conditional</td>
 </tr>
 <tr>
-<td>Switch Statements</td>
-<td>Switch size &gt; 5 cases</td>
-<td>Replace with Polymorphism</td>
-</tr>
-<tr>
-<td>Feature Envy</td>
-<td>High coupling</td>
-<td>Move Method</td>
+<td>Deep Nesting</td>
+<td>Nesting depth &gt; 5</td>
+<td>Extract Method, Guard Clauses</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="duplicate-patterns"><span id="duplicate_patterns"></span>Duplicate Patterns<a class="heading-anchor" href="#duplicate-patterns" title="Link to this section">&para;</a></h3>
+<h3  id="dispensables-patterns"><span id="dispensables_patterns"></span>Dispensables Patterns<a class="heading-anchor" href="#dispensables-patterns" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -555,36 +801,9 @@
 </thead>
 <tbody>
 <tr>
-<td>Duplicate Code</td>
-<td>Similar code blocks</td>
-<td>Extract Method</td>
-</tr>
-<tr>
-<td>Similar Functions</td>
-<td>Similar signatures</td>
-<td>Extract Superclass</td>
-</tr>
-</tbody>
-</table></div>
-<h3  id="dead-code-patterns"><span id="dead_code_patterns"></span>Dead Code Patterns<a class="heading-anchor" href="#dead-code-patterns" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Pattern</th>
-<th>Detection</th>
-<th>Technique</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Unused Methods</td>
-<td>No callers</td>
+<td>Dead Code</td>
+<td>Uncalled methods</td>
 <td>Remove Method</td>
-</tr>
-<tr>
-<td>Unused Parameters</td>
-<td>Unused in body</td>
-<td>Remove Parameter</td>
 </tr>
 <tr>
 <td>Speculative Generality</td>
@@ -593,20 +812,108 @@
 </tr>
 </tbody>
 </table></div>
+<h3  id="oo-abusers-patterns"><span id="oo_abusers_patterns"></span>OO Abusers Patterns<a class="heading-anchor" href="#oo-abusers-patterns" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Detection</th>
+<th>Technique</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Switch Statements</td>
+<td>Switch size &gt; 5 cases</td>
+<td>Replace with Polymorphism</td>
+</tr>
+<tr>
+<td>Refused Bequest</td>
+<td>Unused inherited methods</td>
+<td>Replace Inheritance with Delegation</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="change-preventers-patterns"><span id="change_preventers_patterns"></span>Change Preventers Patterns<a class="heading-anchor" href="#change-preventers-patterns" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Detection</th>
+<th>Technique</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Divergent Change</td>
+<td>Many reasons to change one class</td>
+<td>Extract Class</td>
+</tr>
+<tr>
+<td>Shotgun Surgery</td>
+<td>One change affects many files</td>
+<td>Move Method, Inline Class</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="couplers-patterns"><span id="couplers_patterns"></span>Couplers Patterns<a class="heading-anchor" href="#couplers-patterns" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Detection</th>
+<th>Technique</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Feature Envy</td>
+<td>High coupling to other classes</td>
+<td>Move Method</td>
+</tr>
+<tr>
+<td>Inappropriate Intimacy</td>
+<td>Excessive access to other class internals</td>
+<td>Move Method, Hide Delegate</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="documentation-patterns"><span id="documentation_patterns"></span>Documentation Patterns<a class="heading-anchor" href="#documentation-patterns" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Detection</th>
+<th>Technique</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Missing Comments</td>
+<td>Public methods without docstrings</td>
+<td>Add Documentation</td>
+</tr>
+<tr>
+<td>Stale Docs</td>
+<td>Outdated comments</td>
+<td>Update or Remove</td>
+</tr>
+</tbody>
+</table></div>
 <hr />
 <h2  id="sql-queries-for-detection"><span id="sql_queries_for_detection"></span>SQL Queries for Detection<a class="heading-anchor" href="#sql-queries-for-detection" title="Link to this section">&para;</a></h2>
-<p>The module uses SQL queries against the CPG to detect patterns:</p>
-<p><strong>Long Methods:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">line_number</span><span class="p">,</span>
-<span class="w">       </span><span class="p">(</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">lines</span>
-<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
-<span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">200</span>
-<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">is_external</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span>
+<p>The module uses SQL queries against the CPG (Code Property Graph) to detect patterns. Each <code>RefactoringPattern</code> has a <code>cpgql_query</code> field containing the detection SQL.</p>
+<p><strong>Long Methods (Bloaters):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">,</span>
+<span class="w">       </span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">lines</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">200</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">is_external</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span>
 <span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">lines</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
 </code></pre></div>
 
 <p><strong>High Complexity:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="n">cs</span><span class="p">.</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">complexity</span>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="n">cs</span><span class="p">.</span><span class="n">id</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">complexity</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">edges_ast</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">src</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">nodes_control_structure</span><span class="w"> </span><span class="n">cs</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="n">dst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cs</span><span class="p">.</span><span class="n">id</span>
@@ -616,7 +923,7 @@
 <span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">complexity</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
 </code></pre></div>
 
-<p><strong>Unused Methods:</strong></p>
+<p><strong>Uncalled Methods (Dead Code):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">is_external</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span>
@@ -627,11 +934,43 @@
 <span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;main&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;init&#39;</span><span class="p">);</span>
 </code></pre></div>
 
+<p><strong>WCC Orphan Detection (uses <code>call_containment</code> with recursive CTE):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">WITH</span><span class="w"> </span><span class="k">RECURSIVE</span><span class="w"> </span><span class="n">reachable</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">line_number</span><span class="p">,</span><span class="w"> </span><span class="n">line_count</span><span class="p">,</span><span class="w"> </span><span class="n">depth</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">,</span>
+<span class="w">           </span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">line_count</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">depth</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;main&#39;</span>
+<span class="w">       </span><span class="k">OR</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%_handler&#39;</span>
+<span class="w">       </span><span class="k">OR</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%_hook&#39;</span>
+<span class="w">       </span><span class="k">OR</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%_init&#39;</span>
+<span class="w">    </span><span class="k">LIMIT</span><span class="w"> </span><span class="mi">100</span>
+
+<span class="w">    </span><span class="k">UNION</span>
+
+<span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">,</span>
+<span class="w">           </span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">line_count</span><span class="p">,</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">depth</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">depth</span>
+<span class="w">    </span><span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="w">    </span><span class="k">JOIN</span><span class="w"> </span><span class="n">call_containment</span><span class="w"> </span><span class="k">c</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">callee_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span>
+<span class="w">    </span><span class="k">JOIN</span><span class="w"> </span><span class="n">reachable</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">containing_method_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">name</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;test_%&#39;</span>
+<span class="w">      </span><span class="k">AND</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">depth</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span>
+<span class="w">    </span><span class="k">LIMIT</span><span class="w"> </span><span class="mi">500</span>
+<span class="p">)</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">method_name</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">,</span>
+<span class="w">       </span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">line_count</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span><span class="w"> </span><span class="n">m</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="k">SELECT</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">reachable</span><span class="p">)</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;test_%&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">5</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="p">(</span><span class="n">m</span><span class="p">.</span><span class="n">line_number_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">line_number</span><span class="p">)</span><span class="w"> </span><span class="k">DESC</span>
+<span class="k">LIMIT</span><span class="w"> </span><span class="mi">50</span><span class="p">;</span>
+</code></pre></div>
+
 <hr />
 <h2  id="see-also"><span id="see_also"></span>See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="../../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook</a> - More detection queries</li>
-<li><a href="../../reference/SCHEMA.html">Schema Reference</a> - Database schema reference</li>
+<li><a href="../../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook</a> &ndash; More detection queries</li>
+<li><a href="../../reference/SCHEMA.html">Schema Reference</a> &ndash; CPG database schema reference</li>
 </ul>
       </article>
 
@@ -651,7 +990,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/REFACTORING.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -668,11 +1007,19 @@
 <li><a href="#supported-pattern-categories" class="level-3">Supported Pattern Categories</a></li>
 <li><a href="#severity-levels" class="level-3">Severity Levels</a></li>
 <li><a href="#detection-methods" class="level-3">Detection Methods</a></li>
+<li><a href="#debt-metrics" class="level-3">Debt Metrics</a></li>
 <li><a href="#code-smell-finding-structure" class="level-3">Code Smell Finding Structure</a></li>
+<li><a href="#dead-code-detection" class="level-2">Dead Code Detection</a></li>
+<li><a href="#detection-patterns" class="level-3">Detection Patterns</a></li>
+<li><a href="#dead-code-detection-methods" class="level-3">Dead Code Detection Methods</a></li>
+<li><a href="#wcc-orphan-analysis" class="level-3">WCC Orphan Analysis</a></li>
+<li><a href="#dead-code-finding-structure" class="level-3">Dead Code Finding Structure</a></li>
 <li><a href="#impact-analysis" class="level-2">Impact Analysis</a></li>
 <li><a href="#analyzing-method-changes" class="level-3">Analyzing Method Changes</a></li>
+<li><a href="#bulk-impact-analysis" class="level-3">Bulk Impact Analysis</a></li>
 <li><a href="#impact-analysis-structure" class="level-3">Impact Analysis Structure</a></li>
 <li><a href="#dependency-analysis" class="level-3">Dependency Analysis</a></li>
+<li><a href="#dependencyinfo-structure" class="level-3">DependencyInfo Structure</a></li>
 <li><a href="#refactoring-planning" class="level-2">Refactoring Planning</a></li>
 <li><a href="#creating-a-refactoring-plan" class="level-3">Creating a Refactoring Plan</a></li>
 <li><a href="#task-prioritization" class="level-3">Task Prioritization</a></li>
@@ -681,10 +1028,13 @@
 <li><a href="#generating-a-full-report" class="level-3">Generating a Full Report</a></li>
 <li><a href="#report-structure" class="level-3">Report Structure</a></li>
 <li><a href="#supported-patterns" class="level-2">Supported Patterns</a></li>
-<li><a href="#bloater-patterns" class="level-3">Bloater Patterns</a></li>
+<li><a href="#bloaters-patterns" class="level-3">Bloaters Patterns</a></li>
 <li><a href="#complexity-patterns" class="level-3">Complexity Patterns</a></li>
-<li><a href="#duplicate-patterns" class="level-3">Duplicate Patterns</a></li>
-<li><a href="#dead-code-patterns" class="level-3">Dead Code Patterns</a></li>
+<li><a href="#dispensables-patterns" class="level-3">Dispensables Patterns</a></li>
+<li><a href="#oo-abusers-patterns" class="level-3">OO Abusers Patterns</a></li>
+<li><a href="#change-preventers-patterns" class="level-3">Change Preventers Patterns</a></li>
+<li><a href="#couplers-patterns" class="level-3">Couplers Patterns</a></li>
+<li><a href="#documentation-patterns" class="level-3">Documentation Patterns</a></li>
 <li><a href="#sql-queries-for-detection" class="level-2">SQL Queries for Detection</a></li>
 <li><a href="#see-also" class="level-2">See Also</a></li>
       </ul>

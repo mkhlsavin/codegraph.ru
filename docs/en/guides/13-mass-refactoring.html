@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html" class="active">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,20 +181,27 @@
       <article class="doc-content">
         <h1  id="scenario-13-mass-refactoring"><span id="scenario_13_mass_refactoring"></span>Scenario 13: Mass Refactoring<a class="heading-anchor" href="#scenario-13-mass-refactoring" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Tech lead planning and coordinating large-scale code changes.</p>
+<p>Tech lead planning and coordinating large-scale symbol/API migrations across the codebase.</p>
 </blockquote>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#quick-start">Quick Start</a></li>
-<li><a href="#scope-analysis">Scope Analysis</a></li>
-<li><a href="#identify-refactoring-scope">Identify Refactoring Scope</a></li>
-<li><a href="#dependency-analysis">Dependency Analysis</a></li>
-<li><a href="#change-planning">Change Planning</a></li>
-<li><a href="#generate-refactoring-plan">Generate Refactoring Plan</a></li>
-<li><a href="#generate-change-script">Generate Change Script</a></li>
-<li><a href="#risk-management">Risk Management</a></li>
-<li><a href="#impact-assessment">Impact Assessment</a></li>
-<li><a href="#rollback-planning">Rollback Planning</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#architecture-s13-and-s05">Architecture (S13 and S05)</a></li>
+<li><a href="#symbol-extraction">Symbol Extraction</a></li>
+<li><a href="#migration-categories">Migration Categories</a></li>
+<li><a href="#priority-queries">Priority Queries</a></li>
+<li><a href="#complexity-categorization">Complexity Categorization</a></li>
+<li><a href="#refactoring-agents">Refactoring Agents</a></li>
+<li><a href="#technicaldebtdetector">TechnicalDebtDetector</a></li>
+<li><a href="#deadcodedetector">DeadCodeDetector</a></li>
+<li><a href="#impactanalyzer">ImpactAnalyzer</a></li>
+<li><a href="#refactoringplanner">RefactoringPlanner</a></li>
+<li><a href="#domain-agnostic-architecture">Domain-Agnostic Architecture</a></li>
+<li><a href="#risk-analysis">Risk Analysis</a></li>
+<li><a href="#callgraphanalyzer-and-blast-radius">CallGraphAnalyzer and Blast Radius</a></li>
+<li><a href="#betweenness-centrality-risk">Betweenness Centrality Risk</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
 <li><a href="#example-questions">Example Questions</a></li>
 <li><a href="#related-scenarios">Related Scenarios</a></li>
 </ul>
@@ -202,192 +210,349 @@
 /select<span class="w"> </span><span class="m">13</span>
 </code></pre></div>
 
-<h2  id="scope-analysis"><span id="scope_analysis"></span>Scope Analysis<a class="heading-anchor" href="#scope-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="identify-refactoring-scope"><span id="identify_refactoring_scope"></span>Identify Refactoring Scope<a class="heading-anchor" href="#identify-refactoring-scope" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Plan mass refactoring of memory allocation functions
-
-╭─────────────── Scope Analysis ──────────────────────────────╮
-│                                                              │
-│  Refactoring Target: Memory Allocation API                   │
-│                                                              │
-│  Affected Functions:                                         │
-│    palloc()          89 usages across 45 files               │
-│    palloc0()         67 usages across 38 files               │
-│    repalloc()        34 usages across 22 files               │
-│    pfree()           112 usages across 52 files              │
-│                                                              │
-│  Total Impact:                                               │
-│    Files affected: 78                                        │
-│    Lines to modify: ~450                                     │
-│    Subsystems: 12                                            │
-│                                                              │
-│  Risk Assessment: HIGH                                       │
-│    - Core functionality                                      │
-│    - Wide usage                                              │
-│    - Performance critical                                    │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3  id="architecture-s13-and-s05"><span id="architecture_s13_and_s05"></span>Architecture (S13 and S05)<a class="heading-anchor" href="#architecture-s13-and-s05" title="Link to this section">&para;</a></h3>
+<p>S13 (<code>mass_refactoring_workflow</code>) is an <strong>alias</strong> for <code>refactoring_workflow(state, mode="mass_migration")</code> defined in <code>src/workflow/scenarios/refactoring/workflow.py</code>. It shares the refactoring package with S05:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Workflow</th>
+<th>Mode</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>refactoring_workflow</code> (S05)</td>
+<td><code>code_smells</code> (default)</td>
+<td>Code smell detection, dead code</td>
+</tr>
+<tr>
+<td><code>large_scale_refactoring_workflow</code></td>
+<td><code>large_scale</code></td>
+<td>Bulk refactoring with ROI analysis</td>
+</tr>
+<tr>
+<td><code>mass_refactoring_workflow</code> (S13)</td>
+<td><code>mass_migration</code></td>
+<td>Symbol/API migrations and renames</td>
+</tr>
+</tbody>
+</table></div>
+<p>When <code>mode="mass_migration"</code>, the workflow dispatches directly to <code>mass_migration_workflow()</code> in <code>mass_migration.py</code> (921 lines), bypassing the handler-based Phase 1 used by S05.</p>
+<p>S13 uses a two-stage approach internally:</p>
+<div class="highlight"><pre><span></span><code>Query -&gt; Symbol Extraction (5 regex patterns)
+  |
+  Stage 1: Priority CPG queries (4 levels) + Category queries (9 types)
+  |         -&gt; Collect target functions from CPG (no LLM)
+  |
+  Stage 2: LLM generates refactoring plan based on found symbols
+  |         -&gt; Fallback: _build_fallback_answer() if LLM unavailable
 </code></pre></div>
 
-<h3  id="dependency-analysis"><span id="dependency_analysis"></span>Dependency Analysis<a class="heading-anchor" href="#dependency-analysis" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Show dependencies for mass refactoring</span>
+<h3  id="symbol-extraction"><span id="symbol_extraction"></span>Symbol Extraction<a class="heading-anchor" href="#symbol-extraction" title="Link to this section">&para;</a></h3>
+<p>The workflow extracts target symbols from the user query using 5 regex patterns, checked in order:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Pattern</th>
+<th>Example Match</th>
+<th>Regex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>&ldquo;rename X to Y&rdquo;</td>
+<td><code>rename heap_open to table_open</code></td>
+<td><code>\brename\s+(\w+)\s+to\s+(\w+)</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>snake_case names</td>
+<td><code>heap_open</code>, <code>table_close</code></td>
+<td><code>\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>CamelCase names</td>
+<td><code>ExecProcNode</code>, <code>FunctionCall</code></td>
+<td><code>\b([A-Z][a-zA-Z0-9]+)\b</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>&ldquo;keyword to X&rdquo;</td>
+<td><code>references to palloc</code></td>
+<td><code>(?:references?\s+to\|usages?\s+of)\s*(\w+)</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>&ldquo;X calls&rdquo;</td>
+<td><code>heap_open calls</code></td>
+<td><code>([a-z_]+)\s+(?:calls?\|usages?)</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Common words (<code>find</code>, <code>all</code>, <code>update</code>, <code>rename</code>, etc.) are excluded from matching via <code>COMMON_WORDS</code> set.</p>
+<h3  id="migration-categories"><span id="migration_categories"></span>Migration Categories<a class="heading-anchor" href="#migration-categories" title="Link to this section">&para;</a></h3>
+<p>After symbol extraction, the workflow queries CPG for functions in 9 migration categories:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Category</th>
+<th>Keywords</th>
+<th>Plugin Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Executor</td>
+<td>exec, node, rename</td>
+<td><code>sql_patterns["query_execution"]</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Memory</td>
+<td>memory, alloc</td>
+<td><code>get_memory_functions_from_plugin()</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Table/Heap</td>
+<td>table, open</td>
+<td><code>sql_patterns["file_operations"]</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Error</td>
+<td>error</td>
+<td><code>compliance_patterns["error_functions"]</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Lock</td>
+<td>lock, tranche</td>
+<td><code>get_lock_functions_from_plugin()</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Cache</td>
+<td>cache, deprecated</td>
+<td><code>sql_patterns["catalog_cache"]</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td>Assert</td>
+<td>assert, macro</td>
+<td><code>compliance_patterns["assert_macros"]</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>Slot/Tuple</td>
+<td>slot, tuple, attr</td>
+<td><code>refactoring_targets["slot"]</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>FunctionCall</td>
+<td>functioncall, call</td>
+<td><code>refactoring_targets["functioncall"]</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Each category builds a SQL query against <code>nodes_method</code> joined with <code>edges_call</code> to find functions ranked by caller count.</p>
+<h3  id="priority-queries"><span id="priority_queries"></span>Priority Queries<a class="heading-anchor" href="#priority-queries" title="Link to this section">&para;</a></h3>
+<p>Before category queries, 4 priority-level queries run first to ensure the most relevant functions appear at the top of results:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Category</th>
+<th>Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Slot/Tuple</td>
+<td><code>get_tuple_slot_functions_from_plugin()</code>, CASE-based ordering</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Assert macros</td>
+<td><code>m.name LIKE 'Assert%'</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>FunctionCall</td>
+<td><code>refactoring_targets</code> from plugin</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Signature update</td>
+<td><code>get_memory_functions_from_plugin()</code>, EN+RU morphological matching</td>
+</tr>
+</tbody>
+</table></div>
+<p>Priority 4 supports Russian keywords (<code>сигнатура</code>, <code>параметр</code>) via <code>keyword_match_morphological()</code>.</p>
+<h3  id="complexity-categorization"><span id="complexity_categorization"></span>Complexity Categorization<a class="heading-anchor" href="#complexity-categorization" title="Link to this section">&para;</a></h3>
+<p>Found symbols are categorized by refactoring complexity based on caller count:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Caller Count</th>
+<th>Risk Level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simple renames</td>
+<td><code>&lt;= min_callers</code> threshold</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Signature modifications</td>
+<td><code>min_callers &lt; count &lt;= high_complexity</code></td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Complex refactors</td>
+<td><code>&gt; high_complexity</code> threshold</td>
+<td>High</td>
+</tr>
+</tbody>
+</table></div>
+<p>Thresholds are configured via <code>get_unified_config().thresholds</code>.</p>
+<h2  id="refactoring-agents"><span id="refactoring_agents"></span>Refactoring Agents<a class="heading-anchor" href="#refactoring-agents" title="Link to this section">&para;</a></h2>
+<p>S13 shares four refactoring agents with S05, located in <code>src/refactoring/agents/</code>:</p>
+<h3 id="technicaldebtdetector">TechnicalDebtDetector<a class="heading-anchor" href="#technicaldebtdetector" title="Link to this section">&para;</a></h3>
+<p><code>TechnicalDebtDetector(cpg_service=None)</code> — detects code smells using the pattern library.</p>
+<ul>
+<li><code>detect_all_smells(limit_per_pattern)</code> — run all patterns, return sorted by severity</li>
+<li><code>calculate_debt_metrics(findings)</code> — compute debt ratio and effort metrics</li>
+<li><code>detect_pattern(pattern, limit)</code> — run a single pattern</li>
+</ul>
+<h3 id="deadcodedetector">DeadCodeDetector<a class="heading-anchor" href="#deadcodedetector" title="Link to this section">&para;</a></h3>
+<p><code>DeadCodeDetector(cpg_service=None)</code> — specialized detector with 13 dead code patterns:</p>
+<p><code>DEAD_CODE</code>, <code>DEPRECATED_MARKER</code>, <code>DISABLED_CODE_BLOCK</code>, <code>EMPTY_STUB</code>, <code>ERROR_ONLY_FUNCTION</code>, <code>UNREACHABLE_AFTER_RETURN</code>, <code>ORPHAN_COMPONENT</code>, <code>UNUSED_VARIABLE</code>, <code>DEAD_ASSIGNMENT</code>, <code>INVARIANT_DEAD_CODE</code>, <code>DEAD_CALLBACK</code>, <code>SINGLE_CALLER_FUNCTION</code>, <code>TEST_ONLY_FUNCTION</code>.</p>
+<ul>
+<li><code>detect_all(limit_per_pattern)</code> — run all 13 patterns</li>
+<li><code>detect_patterns(patterns, limit_per_pattern)</code> — run specific patterns</li>
+<li><code>get_summary(findings)</code> — summary statistics</li>
+</ul>
+<h3 id="impactanalyzer">ImpactAnalyzer<a class="heading-anchor" href="#impactanalyzer" title="Link to this section">&para;</a></h3>
+<p><code>ImpactAnalyzer(cpg_service=None)</code> — analyzes change impact on dependencies.</p>
+<ul>
+<li><code>analyze_method_impact(method_name, filename)</code> — callers, callees, impact score</li>
+<li><code>analyze_bulk_impact(findings, limit)</code> — batch analysis of multiple findings</li>
+</ul>
+<h3 id="refactoringplanner">RefactoringPlanner<a class="heading-anchor" href="#refactoringplanner" title="Link to this section">&para;</a></h3>
+<p><code>RefactoringPlanner()</code> — creates prioritized refactoring plans with ROI estimation.</p>
+<ul>
+<li><code>create_refactoring_plan(findings, impact_analyses)</code> — priority 1-10 tasks</li>
+<li><code>generate_report(findings, impact_analyses, tasks)</code> — <code>RefactoringReport</code></li>
+</ul>
+<p>Key data models (<code>src/refactoring/agents/models.py</code>):
+- <code>CodeSmellFinding</code> — detected smell (severity, category, method_name, effort_hours)
+- <code>DeadCodeFinding</code> — dead code instance (detection_type, confidence, line_count)
+- <code>ImpactAnalysis</code> — change impact (impact_score, risk_level, direct_dependents)
+- <code>RefactoringTask</code> — prioritized task (priority 1-10, effort_hours, refactoring_steps)
+- <code>RefactoringReport</code> — full report (total_smells, by_severity, total_effort_hours)</p>
+<h2  id="domain-agnostic-architecture"><span id="domain_agnostic_architecture"></span>Domain-Agnostic Architecture<a class="heading-anchor" href="#domain-agnostic-architecture" title="Link to this section">&para;</a></h2>
+<p>S13 loads all migration data from domain plugins, never hardcoding domain-specific symbols. Six helper functions from <code>src/workflow/_plugin_helpers.py</code> provide the data:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_refactoring_patterns_from_plugin()</code></td>
+<td>Target refactoring patterns</td>
+</tr>
+<tr>
+<td><code>get_sql_query_patterns_from_plugin()</code></td>
+<td>SQL patterns (executor, table, cache)</td>
+</tr>
+<tr>
+<td><code>get_memory_functions_from_plugin()</code></td>
+<td>Memory allocation functions</td>
+</tr>
+<tr>
+<td><code>get_lock_functions_from_plugin()</code></td>
+<td>Lock/synchronization functions</td>
+</tr>
+<tr>
+<td><code>get_compliance_patterns_from_plugin()</code></td>
+<td>Error and assert patterns</td>
+</tr>
+<tr>
+<td><code>get_tuple_slot_functions_from_plugin()</code></td>
+<td>Slot/tuple access functions</td>
+</tr>
+</tbody>
+</table></div>
+<p>Additionally, <code>DomainPluginV3</code> provides <code>get_migration_keywords()</code> (category-to-keyword mapping) and <code>get_migration_descriptions()</code> (category-to-description mapping) used by the fallback answer generator.</p>
+<p>When LLM is unavailable, <code>_build_fallback_answer()</code> generates a structured report using these plugin-provided descriptions organized by matched migration categories.</p>
+<h2  id="risk-analysis"><span id="risk_analysis"></span>Risk Analysis<a class="heading-anchor" href="#risk-analysis" title="Link to this section">&para;</a></h2>
+<h3  id="callgraphanalyzer-and-blast-radius"><span id="callgraphanalyzer_and_blast_radius"></span>CallGraphAnalyzer and Blast Radius<a class="heading-anchor" href="#callgraphanalyzer-and-blast-radius" title="Link to this section">&para;</a></h3>
+<p>The refactoring workflow (shared by S05/S13) uses <code>CallGraphAnalyzer(cpg)</code> from <code>src/analysis/</code> to assess refactoring risk:</p>
+<ul>
+<li><code>find_all_callers(method_name, max_depth)</code> — transitive caller chain</li>
+<li><code>find_all_callees(method_name, max_depth)</code> — transitive callee chain</li>
+<li><code>analyze_impact(method_name)</code> — impact score</li>
+</ul>
+<p><strong>Blast radius</strong> = total callers + total callees. Methods are classified as:
+- Safe to refactor: blast radius &lt; <code>blast_radius_medium</code> threshold
+- Low risk: &lt; <code>caller_count_medium</code>
+- Medium risk: &lt; <code>caller_count_high</code>
+- High risk: &gt;= <code>caller_count_high</code></p>
+<h3  id="betweenness-centrality-risk"><span id="betweenness_centrality_risk"></span>Betweenness Centrality Risk<a class="heading-anchor" href="#betweenness-centrality-risk" title="Link to this section">&para;</a></h3>
+<p><code>DependencyAnalyzer(cpg).identify_architectural_chokepoints()</code> calculates betweenness centrality for each method. Methods above the <code>compliance_score_high</code> percentile threshold are flagged as <strong>critical architectural chokepoints</strong> — refactoring these requires extra care because many code paths depend on them.</p>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Mass refactoring of a symbol</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Rename all instances of heap_open to table_open&quot;</span>
 
-╭─────────────── Dependency Graph ────────────────────────────╮
-│                                                              │
-│  Refactoring Order (by dependency):                          │
-│                                                              │
-│  Phase 1: Core (no dependencies)                             │
-│    └── mcxt.c (memory context core)                          │
-│                                                              │
-│  Phase 2: Low-level (depends on Phase 1)                     │
-│    ├── aset.c (allocation set)                               │
-│    ├── generation.c (generation context)                     │
-│    └── slab.c (slab allocator)                               │
-│                                                              │
-│  Phase 3: Utilities (depends on Phase 2)                     │
-│    ├── stringinfo.c                                          │
-│    ├── psprintf.c                                            │
-│    └── palloc_extended.c                                     │
-│                                                              │
-│  Phase 4: Consumers (depends on all above)                   │
-│    └── [78 consumer files]                                   │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
+<span class="c1"># Find migration targets</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find all ExecProcNode references for rename&quot;</span>
 
-<h2  id="change-planning"><span id="change_planning"></span>Change Planning<a class="heading-anchor" href="#change-planning" title="Link to this section">&para;</a></h2>
-<h3  id="generate-refactoring-plan"><span id="generate_refactoring_plan"></span>Generate Refactoring Plan<a class="heading-anchor" href="#generate-refactoring-plan" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">Create</span><span class="w"> </span><span class="nv">refactoring</span><span class="w"> </span><span class="nv">plan</span><span class="w"> </span><span class="nv">with</span><span class="w"> </span><span class="nv">tasks</span>
+<span class="c1"># Memory API migration</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Plan mass refactoring of memory allocation functions&quot;</span>
 
-╭───────────────<span class="w"> </span><span class="nv">Refactoring</span><span class="w"> </span><span class="nv">Plan</span><span class="w"> </span>────────────────────────────╮
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Mass</span><span class="w"> </span><span class="nv">Refactoring</span>:<span class="w"> </span><span class="nv">Memory</span><span class="w"> </span><span class="nv">API</span><span class="w"> </span><span class="nv">Modernization</span><span class="w">                  </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Task</span><span class="w"> </span><span class="mi">1</span>:<span class="w"> </span><span class="nv">Update</span><span class="w"> </span><span class="nv">Core</span><span class="w"> </span><span class="nv">Interface</span><span class="w">                               </span>│
-│<span class="w">    </span><span class="nv">Files</span>:<span class="w"> </span><span class="nv">src</span><span class="o">/</span><span class="nv">backend</span><span class="o">/</span><span class="nv">utils</span><span class="o">/</span><span class="nv">mmgr</span><span class="o">/</span><span class="nv">mcxt</span>.<span class="nv">c</span><span class="w">                      </span>│
-│<span class="w">    </span><span class="nv">Changes</span>:<span class="w"> </span><span class="nv">Add</span><span class="w"> </span><span class="nv">new</span><span class="w"> </span><span class="nv">API</span><span class="w"> </span><span class="nv">functions</span><span class="w">                            </span>│
-│<span class="w">    </span><span class="nv">Tests</span>:<span class="w"> </span><span class="nv">Unit</span><span class="w"> </span><span class="nv">tests</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">new</span><span class="w"> </span><span class="nv">functions</span><span class="w">                       </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Task</span><span class="w"> </span><span class="mi">2</span>:<span class="w"> </span><span class="nv">Create</span><span class="w"> </span><span class="nv">Compatibility</span><span class="w"> </span><span class="nv">Layer</span><span class="w">                          </span>│
-│<span class="w">    </span><span class="nv">Files</span>:<span class="w"> </span><span class="nv">src</span><span class="o">/</span><span class="k">include</span><span class="o">/</span><span class="nv">utils</span><span class="o">/</span><span class="nv">palloc</span>.<span class="nv">h</span><span class="w">                         </span>│
-│<span class="w">    </span><span class="nv">Changes</span>:<span class="w"> </span><span class="nv">Macro</span><span class="w"> </span><span class="nv">wrappers</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">old</span><span class="w"> </span><span class="nv">API</span><span class="w">                       </span>│
-│<span class="w">    </span><span class="nv">Tests</span>:<span class="w"> </span><span class="nv">Verify</span><span class="w"> </span><span class="nv">backward</span><span class="w"> </span><span class="nv">compatibility</span><span class="w">                      </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Task</span><span class="w"> </span><span class="mi">3</span>:<span class="w"> </span><span class="nv">Update</span><span class="w"> </span><span class="nv">Executor</span><span class="w"> </span><span class="nv">Module</span><span class="w">                              </span>│
-│<span class="w">    </span><span class="nv">Files</span>:<span class="w"> </span><span class="mi">12</span><span class="w"> </span><span class="nv">files</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">executor</span><span class="o">/</span><span class="w">                              </span>│
-│<span class="w">    </span><span class="nv">Changes</span>:<span class="w"> </span><span class="nv">Switch</span><span class="w"> </span><span class="nv">to</span><span class="w"> </span><span class="nv">new</span><span class="w"> </span><span class="nv">API</span><span class="w">                                </span>│
-│<span class="w">    </span><span class="nv">Tests</span>:<span class="w"> </span><span class="nv">Regression</span><span class="w"> </span><span class="nv">tests</span><span class="w">                                   </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Task</span><span class="w"> </span><span class="mi">4</span>:<span class="w"> </span><span class="nv">Update</span><span class="w"> </span><span class="nv">Storage</span><span class="w"> </span><span class="nv">Module</span><span class="w">                               </span>│
-│<span class="w">    </span><span class="nv">Files</span>:<span class="w"> </span><span class="mi">8</span><span class="w"> </span><span class="nv">files</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">storage</span><span class="o">/</span><span class="w">                                </span>│
-│<span class="w">    </span><span class="nv">Changes</span>:<span class="w"> </span><span class="nv">Switch</span><span class="w"> </span><span class="nv">to</span><span class="w"> </span><span class="nv">new</span><span class="w"> </span><span class="nv">API</span><span class="w">                                </span>│
-│<span class="w">    </span><span class="nv">Tests</span>:<span class="w"> </span><span class="nv">Regression</span><span class="w"> </span><span class="nv">tests</span><span class="w">                                   </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span>[...<span class="w"> </span><span class="mi">6</span><span class="w"> </span><span class="nv">more</span><span class="w"> </span><span class="nv">phases</span><span class="w"> </span>...]<span class="w">                                     </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Total</span><span class="w"> </span><span class="nv">Tasks</span>:<span class="w"> </span><span class="mi">10</span><span class="w">                                             </span>│
-│<span class="w">  </span><span class="nv">Parallel</span><span class="w"> </span><span class="nv">Tracks</span>:<span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="ss">(</span><span class="nv">after</span><span class="w"> </span><span class="nv">Phase</span><span class="w"> </span><span class="mi">2</span><span class="ss">)</span><span class="w">                          </span>│
-│<span class="w">                                                              </span>│
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
+<span class="c1"># Signature changes</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find functions with signature changes needed&quot;</span>
 
-<h3  id="generate-change-script"><span id="generate_change_script"></span>Generate Change Script<a class="heading-anchor" href="#generate-change-script" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Generate</span><span class="w"> </span><span class="nx">sed</span><span class="w"> </span><span class="nx">commands</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">API</span><span class="w"> </span><span class="nx">migration</span>
-
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Change</span><span class="w"> </span><span class="nx">Script</span><span class="w"> </span><span class="err">───────────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Automated</span><span class="w"> </span><span class="nx">Refactoring</span><span class="w"> </span><span class="nx">Commands</span><span class="p">:</span><span class="w">                             </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="nx">Step</span><span class="w"> </span><span class="mi">1</span><span class="p">:</span><span class="w"> </span><span class="nx">Simple</span><span class="w"> </span><span class="nx">replacements</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">find</span><span class="w"> </span><span class="p">.</span><span class="w"> </span><span class="o">-</span><span class="nx">name</span><span class="w"> </span><span class="s">&quot;*.c&quot;</span><span class="w"> </span><span class="o">-</span><span class="nx">exec</span><span class="w"> </span><span class="nx">sed</span><span class="w"> </span><span class="o">-</span><span class="nx">i</span><span class="w"> </span><span class="err">\</span><span class="w">                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="err">&#39;</span><span class="nx">s</span><span class="o">/</span><span class="nx">palloc</span><span class="p">(</span><span class="err">\</span><span class="p">([</span><span class="o">^</span><span class="p">)]</span><span class="o">*</span><span class="err">\</span><span class="p">))</span><span class="o">/</span><span class="nx">palloc_new</span><span class="p">(</span><span class="err">\</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="nx">g</span><span class="err">&#39;</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="err">\</span><span class="p">;</span><span class="w">              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="nx">Step</span><span class="w"> </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="nx">Pattern</span><span class="w"> </span><span class="nx">with</span><span class="w"> </span><span class="nx">error</span><span class="w"> </span><span class="nx">handling</span><span class="w">                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="nx">Requires</span><span class="w"> </span><span class="nx">manual</span><span class="w"> </span><span class="nx">review</span><span class="w">                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">grep</span><span class="w"> </span><span class="o">-</span><span class="nx">rn</span><span class="w"> </span><span class="s">&quot;palloc.*;&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">grep</span><span class="w"> </span><span class="o">-</span><span class="nx">v</span><span class="w"> </span><span class="s">&quot;if.*palloc&quot;</span><span class="w">                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="nx">Step</span><span class="w"> </span><span class="mi">3</span><span class="p">:</span><span class="w"> </span><span class="nx">Verify</span><span class="w"> </span><span class="nx">changes</span><span class="w">                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">git</span><span class="w"> </span><span class="nx">diff</span><span class="w"> </span><span class="o">--</span><span class="nx">stat</span><span class="w">                                             </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Warning</span><span class="p">:</span><span class="w"> </span><span class="nx">Some</span><span class="w"> </span><span class="nx">patterns</span><span class="w"> </span><span class="nx">require</span><span class="w"> </span><span class="nx">manual</span><span class="w"> </span><span class="nx">review</span><span class="p">:</span><span class="w">               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">Conditional</span><span class="w"> </span><span class="nx">allocations</span><span class="w">                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">Macro</span><span class="w"> </span><span class="nx">expansions</span><span class="w">                                        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nx">Error</span><span class="w"> </span><span class="nx">handling</span><span class="w"> </span><span class="nx">patterns</span><span class="w">                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">╰──────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
-
-<h2  id="risk-management"><span id="risk_management"></span>Risk Management<a class="heading-anchor" href="#risk-management" title="Link to this section">&para;</a></h2>
-<h3  id="impact-assessment"><span id="impact_assessment"></span>Impact Assessment<a class="heading-anchor" href="#impact-assessment" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">Assess</span><span class="w"> </span><span class="nv">risk</span><span class="w"> </span><span class="nv">of</span><span class="w"> </span><span class="nv">mass</span><span class="w"> </span><span class="nv">refactoring</span>
-
-╭───────────────<span class="w"> </span><span class="nv">Risk</span><span class="w"> </span><span class="nv">Assessment</span><span class="w"> </span>─────────────────────────────╮
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Risk</span><span class="w"> </span><span class="nv">Matrix</span>:<span class="w">                                                </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span>🔴<span class="w"> </span><span class="nv">High</span><span class="w"> </span><span class="nv">Risk</span><span class="w"> </span><span class="nv">Areas</span>:<span class="w">                                         </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Transaction</span><span class="w"> </span><span class="nv">commit</span><span class="w"> </span><span class="nv">path</span><span class="w"> </span><span class="ss">(</span><span class="nv">performance</span><span class="w"> </span><span class="nv">critical</span><span class="ss">)</span><span class="w">          </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Buffer</span><span class="w"> </span><span class="nv">management</span><span class="w"> </span><span class="ss">(</span><span class="nv">data</span><span class="w"> </span><span class="nv">integrity</span><span class="ss">)</span><span class="w">                      </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Lock</span><span class="w"> </span><span class="nv">manager</span><span class="w"> </span><span class="ss">(</span><span class="nv">deadlock</span><span class="w"> </span><span class="nv">potential</span><span class="ss">)</span><span class="w">                       </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span>🟡<span class="w"> </span><span class="nv">Medium</span><span class="w"> </span><span class="nv">Risk</span><span class="w"> </span><span class="nv">Areas</span>:<span class="w">                                       </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Executor</span><span class="w"> </span><span class="nv">nodes</span><span class="w"> </span><span class="ss">(</span><span class="nv">covered</span><span class="w"> </span><span class="nv">by</span><span class="w"> </span><span class="nv">tests</span><span class="ss">)</span><span class="w">                       </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Catalog</span><span class="w"> </span><span class="nv">operations</span><span class="w"> </span><span class="ss">(</span><span class="nv">reversible</span><span class="ss">)</span><span class="w">                         </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span>🟢<span class="w"> </span><span class="nv">Low</span><span class="w"> </span><span class="nv">Risk</span><span class="w"> </span><span class="nv">Areas</span>:<span class="w">                                          </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Utility</span><span class="w"> </span><span class="nv">functions</span><span class="w"> </span><span class="ss">(</span><span class="nv">isolated</span><span class="ss">)</span><span class="w">                            </span>│
-│<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Contrib</span><span class="w"> </span><span class="nv">modules</span><span class="w"> </span><span class="ss">(</span><span class="nv">optional</span><span class="ss">)</span><span class="w">                              </span>│
-│<span class="w">                                                              </span>│
-│<span class="w">  </span><span class="nv">Mitigation</span><span class="w"> </span><span class="nv">Strategies</span>:<span class="w">                                      </span>│
-│<span class="w">    </span><span class="mi">1</span>.<span class="w"> </span><span class="nv">Feature</span><span class="w"> </span><span class="nv">flags</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">gradual</span><span class="w"> </span><span class="nv">rollout</span><span class="w">                      </span>│
-│<span class="w">    </span><span class="mi">2</span>.<span class="w"> </span><span class="nv">Comprehensive</span><span class="w"> </span><span class="nv">test</span><span class="w"> </span><span class="nv">coverage</span><span class="w"> </span><span class="nv">before</span><span class="w"> </span><span class="nv">change</span><span class="w">              </span>│
-│<span class="w">    </span><span class="mi">3</span>.<span class="w"> </span><span class="nv">Rollback</span><span class="w"> </span><span class="nv">plan</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">each</span><span class="w"> </span><span class="nv">phase</span><span class="w">                           </span>│
-│<span class="w">                                                              </span>│
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h3  id="rollback-planning"><span id="rollback_planning"></span>Rollback Planning<a class="heading-anchor" href="#rollback-planning" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Generate</span><span class="w"> </span><span class="n">rollback</span><span class="w"> </span><span class="n">plan</span>
-
-<span class="err">╭───────────────</span><span class="w"> </span><span class="n">Rollback</span><span class="w"> </span><span class="n">Plan</span><span class="w"> </span><span class="err">───────────────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Rollback</span><span class="w"> </span><span class="n">Procedures</span><span class="w"> </span><span class="n">by</span><span class="w"> </span><span class="nl">Phase:</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="mh">1</span><span class="w"> </span><span class="nl">Rollback:</span><span class="w">                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">git</span><span class="w"> </span><span class="n">revert</span><span class="w"> </span><span class="o">&lt;</span><span class="n">commit</span><span class="o">-</span><span class="n">hash</span><span class="o">&gt;</span><span class="w">                                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nl">Risk:</span><span class="w"> </span><span class="n">None</span><span class="w"> </span><span class="p">(</span><span class="n">core</span><span class="w"> </span><span class="n">changes</span><span class="w"> </span><span class="n">only</span><span class="p">)</span><span class="w">                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="mh">2</span><span class="w"> </span><span class="nl">Rollback:</span><span class="w">                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">git</span><span class="w"> </span><span class="n">revert</span><span class="w"> </span><span class="o">&lt;</span><span class="n">commit</span><span class="o">-</span><span class="n">range</span><span class="o">&gt;</span><span class="w">                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nl">Additional:</span><span class="w"> </span><span class="n">Rebuild</span><span class="w"> </span><span class="n">compatibility</span><span class="w"> </span><span class="n">layer</span><span class="w">                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Phase</span><span class="w"> </span><span class="mh">3</span><span class="o">+</span><span class="w"> </span><span class="nl">Rollback:</span><span class="w">                                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="n">git</span><span class="w"> </span><span class="n">revert</span><span class="w"> </span><span class="o">&lt;</span><span class="n">commit</span><span class="o">-</span><span class="n">range</span><span class="o">&gt;</span><span class="w">                                 </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nl">Additional:</span><span class="w"> </span><span class="n">Run</span><span class="w"> </span><span class="n">regression</span><span class="w"> </span><span class="n">suite</span><span class="w">                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="nl">Warning:</span><span class="w"> </span><span class="n">May</span><span class="w"> </span><span class="n">require</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="n">migration</span><span class="w">                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="n">Point</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="n">No</span><span class="w"> </span><span class="nl">Return:</span><span class="w"> </span><span class="n">After</span><span class="w"> </span><span class="n">Phase</span><span class="w"> </span><span class="mh">7</span><span class="w">                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="p">(</span><span class="n">Compatibility</span><span class="w"> </span><span class="n">layer</span><span class="w"> </span><span class="n">removed</span><span class="p">)</span><span class="w">                             </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">╰──────────────────────────────────────────────────────────────╯</span>
+<span class="c1"># Assert macro standardization</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find all Assert macro usages for standardization&quot;</span>
 </code></pre></div>
 
 <h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
 <ul>
-<li>&ldquo;Plan mass refactoring of [API/pattern]&rdquo;</li>
-<li>&ldquo;Show dependencies for refactoring&rdquo;</li>
-<li>&ldquo;Generate change script for [pattern]&rdquo;</li>
-<li>&ldquo;Assess risk of mass refactoring&rdquo;</li>
-<li>&ldquo;Create rollback plan&rdquo;</li>
-<li>&ldquo;Split refactoring into phases&rdquo;</li>
+<li>&ldquo;Rename all instances of [old_name] to [new_name]&rdquo;</li>
+<li>&ldquo;Find all references to [function] for mass refactoring&rdquo;</li>
+<li>&ldquo;Plan mass refactoring of memory allocation functions&rdquo;</li>
+<li>&ldquo;Find functions with signature changes needed&rdquo;</li>
+<li>&ldquo;Find all Assert macro usages for standardization&rdquo;</li>
+<li>&ldquo;Show slot/tuple access patterns for refactoring&rdquo;</li>
+<li>&ldquo;Find FunctionCall patterns for modernization&rdquo;</li>
+<li>&ldquo;Plan migration of lock API functions&rdquo;</li>
+<li>&ldquo;Find all cache function usages for deprecation&rdquo;</li>
+<li>&ldquo;Show error handling functions for migration&rdquo;</li>
 </ul>
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="05-refactoring.html">Refactoring</a> - Single-function refactoring</li>
-<li><a href="10-cross-repo.html">Cross-Repo</a> - Multi-repository changes</li>
-<li><a href="12-tech-debt.html">Tech Debt</a> - Debt-driven refactoring</li>
+<li><a href="05-refactoring.html">Refactoring</a> - Code smell detection and dead code (S05)</li>
+<li><a href="12-tech-debt.html">Tech Debt</a> - Technical debt analysis and prioritization (S12)</li>
+<li><a href="11-architecture.html">Architecture</a> - Dependency and coupling analysis</li>
 <li><a href="09-code-review.html">Code Review</a> - Review mass changes</li>
 </ul>
+<p><strong>S13 vs S05 vs S12:</strong> S13 focuses on large-scale symbol/API migrations — renaming functions, updating signatures, and modernizing APIs across the entire codebase. S05 focuses on detecting code smells, dead code, and code clones with actionable refactoring tasks. S12 focuses on measuring and prioritizing technical debt. All three share the refactoring agent infrastructure (<code>TechnicalDebtDetector</code>, <code>DeadCodeDetector</code>, <code>ImpactAnalyzer</code>, <code>RefactoringPlanner</code>) but serve different use cases.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -395,7 +560,7 @@
 
       <a href="12-tech-debt.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Previous</span>
-        <span class="doc-page-nav-title">Scenario 12: Tech Debt Assessment</span>
+        <span class="doc-page-nav-title">Scenario 12: Technical Debt</span>
       </a>
 
       <a href="14-incident-response.html" class="doc-page-nav-next">
@@ -406,7 +571,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/13-mass-refactoring.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -418,15 +583,22 @@
         <li><a href="#scenario-13-mass-refactoring" class="level-1">Scenario 13: Mass Refactoring</a></li>
 <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#scope-analysis" class="level-2">Scope Analysis</a></li>
-<li><a href="#identify-refactoring-scope" class="level-3">Identify Refactoring Scope</a></li>
-<li><a href="#dependency-analysis" class="level-3">Dependency Analysis</a></li>
-<li><a href="#change-planning" class="level-2">Change Planning</a></li>
-<li><a href="#generate-refactoring-plan" class="level-3">Generate Refactoring Plan</a></li>
-<li><a href="#generate-change-script" class="level-3">Generate Change Script</a></li>
-<li><a href="#risk-management" class="level-2">Risk Management</a></li>
-<li><a href="#impact-assessment" class="level-3">Impact Assessment</a></li>
-<li><a href="#rollback-planning" class="level-3">Rollback Planning</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#architecture-s13-and-s05" class="level-3">Architecture (S13 and S05)</a></li>
+<li><a href="#symbol-extraction" class="level-3">Symbol Extraction</a></li>
+<li><a href="#migration-categories" class="level-3">Migration Categories</a></li>
+<li><a href="#priority-queries" class="level-3">Priority Queries</a></li>
+<li><a href="#complexity-categorization" class="level-3">Complexity Categorization</a></li>
+<li><a href="#refactoring-agents" class="level-2">Refactoring Agents</a></li>
+<li><a href="#technicaldebtdetector" class="level-3">TechnicalDebtDetector</a></li>
+<li><a href="#deadcodedetector" class="level-3">DeadCodeDetector</a></li>
+<li><a href="#impactanalyzer" class="level-3">ImpactAnalyzer</a></li>
+<li><a href="#refactoringplanner" class="level-3">RefactoringPlanner</a></li>
+<li><a href="#domain-agnostic-architecture" class="level-2">Domain-Agnostic Architecture</a></li>
+<li><a href="#risk-analysis" class="level-2">Risk Analysis</a></li>
+<li><a href="#callgraphanalyzer-and-blast-radius" class="level-3">CallGraphAnalyzer and Blast Radius</a></li>
+<li><a href="#betweenness-centrality-risk" class="level-3">Betweenness Centrality Risk</a></li>
+<li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>

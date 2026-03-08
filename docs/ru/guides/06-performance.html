@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Обзор</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Руководство по настройке</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Руководство по установке</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Начало работы</a></li>
       </ul>
     </div>
 
@@ -91,10 +92,10 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
-        <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
@@ -113,10 +114,10 @@
         <li><a href="06-performance.html" class="active">Сценарий 06: Анализ производительности</a></li>
         <li><a href="07-test-coverage.html">Сценарий 07: Покрытие тестами</a></li>
         <li><a href="08-compliance.html">Сценарий 08: Проверка соответствия</a></li>
-        <li><a href="09-code-review.html">Сценарий 09: Проверка кода</a></li>
+        <li><a href="09-code-review.html">Сценарий 09: Обзор кода</a></li>
         <li><a href="10-cross-repo.html">Сценарий 10: Межрепозиторный анализ</a></li>
         <li><a href="11-architecture.html">Сценарий 11: Анализ архитектуры</a></li>
-        <li><a href="12-tech-debt.html">Сценарий 12: Оценка технического долга</a></li>
+        <li><a href="12-tech-debt.html">Сценарий 12: Технический долг</a></li>
         <li><a href="13-mass-refactoring.html">Сценарий 13: Массовый рефакторинг</a></li>
         <li><a href="14-incident-response.html">Сценарий 14: Реагирование на инциденты ИБ</a></li>
         <li><a href="15-debugging.html">Сценарий 15: Поддержка отладки</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Сценарий 18: Оптимизация кода</a></li>
         <li><a href="19-standards-check.html">Сценарий 19: Проверка по стандартам</a></li>
         <li><a href="20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
-        <li><a href="21-pattern-search.html">Сценарий 21: Структурный поиск шаблонов</a></li>
+        <li><a href="21-pattern-search.html">Структурный поиск шаблонов</a></li>
         <li><a href="composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
@@ -183,120 +184,172 @@
 <p>Инженер по производительности выявляет узкие места и возможности для оптимизации.</p>
 </blockquote>
 <h2  id="bystryy-start"><span id="bystryy_start"></span>Быстрый старт<a class="heading-anchor" href="#bystryy-start" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code># Выберите сценарий производительности
-/select 06
+<div class="highlight"><pre><span></span><code><span class="c1"># Выберите сценарий производительности</span>
+/select<span class="w"> </span><span class="m">06</span>
 </code></pre></div>
 
+<h2 id="arhitektura">Архитектура<a class="heading-anchor" href="#arhitektura" title="Link to this section">&para;</a></h2>
+<p>Обработчик производительности использует 4 доменно-агностичных компонента:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Компонент</th>
+<th>Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PerformanceProfiler</strong></td>
+<td>Обнаружение узких мест на основе шаблонов</td>
+</tr>
+<tr>
+<td><strong>CallGraphAnalyzer</strong></td>
+<td>Определение горячих точек через in-degree/out-degree графа вызовов</td>
+</tr>
+<tr>
+<td><strong>ResourceAnalyzer</strong></td>
+<td>Анализ использования ресурсов и влияния</td>
+</tr>
+<tr>
+<td><strong>OptimizationAdvisor</strong></td>
+<td>Приоритизированные рекомендации по оптимизации</td>
+</tr>
+</tbody>
+</table></div>
+<p>Специализированные обработчики в <code>performance_handlers/</code> обеспечивают анализ: узких мест, горячих точек, сложности, памяти, параллелизма, кэша, ввода/вывода и инлайн-функций.</p>
+<blockquote class="callout">
+<p><strong>Примечание:</strong> Весь анализ доменно-агностичен. Имена функций, API управления памятью и языковые шаблоны загружаются из активного доменного плагина через <code>DomainRegistry</code>. Примеры ниже используют кодовую базу C для иллюстрации — фактический вывод зависит от анализируемого проекта.</p>
+</blockquote>
 <h2  id="analiz-slozhnosti"><span id="analiz_slozhnosti"></span>Анализ сложности<a class="heading-anchor" href="#analiz-slozhnosti" title="Link to this section">&para;</a></h2>
 <h3  id="poisk-goryachih-funktsiy"><span id="poisk_goryachih_funktsiy"></span>Поиск «горячих» функций<a class="heading-anchor" href="#poisk-goryachih-funktsiy" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">&gt;</span><span class="w"> </span><span class="nx">Найти</span><span class="w"> </span><span class="nx">функции</span><span class="w"> </span><span class="nx">с</span><span class="w"> </span><span class="nx">наибольшей</span><span class="w"> </span><span class="nx">цикломатической</span><span class="w"> </span><span class="nx">сложностью</span>
+<p>Обработчик запрашивает CPG для функций с высокой цикломатической сложностью (формула на основе CFG: <code>M = E - N + 2</code>) и высоким in-degree (наиболее вызываемые функции):</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти функции с наибольшей цикломатической сложностью</span>
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="nx">Отчёт</span><span class="w"> </span><span class="nx">по</span><span class="w"> </span><span class="nx">сложности</span><span class="w"> </span><span class="err">───────────────────────────╮</span>
+╭─────────────── Отчёт по сложности ───────────────────────────╮
+│                                                              │
+│  Самые сложные функции (по цикломатической сложности):       │
+│                                                              │
+│  #  Функция                    Сложность  LOC    Файл        │
+│  ─────────────────────────────────────────────────────────── │
+│  1  process_request              42          287    server.c  │
+│  2  dispatch_command             31          195    cmd.c     │
+│  3  parse_expression             27          163    parser.c  │
+│  4  validate_input               25          312    input.c   │
+│  5  build_index                  22          178    index.c   │
+│                                                              │
+│  Порог: high_complexity = 20                                 │
+│  Функций выше порога: 23                                     │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+</code></pre></div>
+
+<h3  id="obnaruzhenie-glubokoy-vlozhennosti"><span id="obnaruzhenie_glubokoy_vlozhennosti"></span>Обнаружение глубокой вложенности<a class="heading-anchor" href="#obnaruzhenie-glubokoy-vlozhennosti" title="Link to this section">&para;</a></h3>
+<p>Глубина вложенности анализируется через цикломатическую сложность и структуру CFG:</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти функции с глубокой вложенностью</span>
+
+╭─────────────── Анализ вложенности ───────────────────────────╮
+│                                                              │
+│  Функции с высокой вложенностью и сложностью:                │
+│                                                              │
+│  process_request()        сложность: 42                      │
+│     Файл: src/server.c:89                                    │
+│     Шаблон: Вложенные циклы с условными ветвлениями          │
+│                                                              │
+│  dispatch_command()       сложность: 31                      │
+│     Файл: src/cmd.c:234                                      │
+│     Шаблон: Switch с вложенными условиями                    │
+│                                                              │
+│  Рекомендации по оптимизации доступны для 12 функций         │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+</code></pre></div>
+
+<h2  id="analiz-grafa-vyzovov"><span id="analiz_grafa_vyzovov"></span>Анализ графа вызовов<a class="heading-anchor" href="#analiz-grafa-vyzovov" title="Link to this section">&para;</a></h2>
+<h3  id="goryachie-tochki-in-degree"><span id="goryachie_tochki_in_degree"></span>Горячие точки (In-Degree)<a class="heading-anchor" href="#goryachie-tochki-in-degree" title="Link to this section">&para;</a></h3>
+<p>Обработчик определяет горячие функции с помощью <strong>статического анализа графа вызовов</strong> — подсчитывая количество уникальных вызывающих функций (in-degree) из таблицы <code>edges_call</code> CPG. Это структурная метрика, а не динамическое профилирование:</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти наиболее вызываемые функции</span>
+
+╭─────────────── Горячие точки графа вызовов ────────────────╮
+│                                                              │
+│  Топ функций по In-Degree (количество вызывающих):           │
+│                                                              │
+│  Функция                 Вызывающих    Роль                  │
+│  ────────────────────────────────────────────────────────────│
+│  validate_input            87          Утилита                │
+│  log_event                 64          Логирование            │
+│  alloc_buffer              51          Память                 │
+│  format_output             43          Форматирование         │
+│                                                              │
+│  Функции с высоким out-degree (вызывающие многих):           │
+│  process_request           34 вызываемых                     │
+│  dispatch_command          28 вызываемых                     │
+│                                                              │
+│  Метрики графа: PageRank, betweenness centrality            │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
+</code></pre></div>
+
+<h3  id="kriticheskie-puti"><span id="kriticheskie_puti"></span>Критические пути<a class="heading-anchor" href="#kriticheskie-puti" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="err">Показать</span><span class="w"> </span><span class="err">критические</span><span class="w"> </span><span class="err">пути</span><span class="w"> </span><span class="err">выполнения</span>
+
+<span class="err">╭───────────────</span><span class="w"> </span><span class="err">Анализ</span><span class="w"> </span><span class="err">критических</span><span class="w"> </span><span class="err">путей</span><span class="w"> </span><span class="err">──────────────────╮</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Топ</span><span class="o">-</span><span class="mi">10</span><span class="w"> </span><span class="nx">самых</span><span class="w"> </span><span class="nx">сложных</span><span class="w"> </span><span class="nx">функций</span><span class="p">:</span><span class="w">                               </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="n">Betweenness</span><span class="w"> </span><span class="n">centrality</span><span class="w"> </span><span class="err">определяет</span><span class="w"> </span><span class="err">узкие</span><span class="w"> </span><span class="err">функции</span><span class="p">,</span><span class="w">            </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">которые</span><span class="w"> </span><span class="err">лежат</span><span class="w"> </span><span class="err">на</span><span class="w"> </span><span class="err">многих</span><span class="w"> </span><span class="err">кратчайших</span><span class="w"> </span><span class="err">путях</span><span class="w"> </span><span class="err">графа</span><span class="w"> </span><span class="err">вызовов</span><span class="p">:</span><span class="w">    </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">#</span><span class="w">  </span><span class="nx">Функция</span><span class="w">                    </span><span class="nx">Сложность</span><span class="w">  </span><span class="nx">Строки</span><span class="w">  </span><span class="nx">Файл</span><span class="w">        </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">───────────────────────────────────────────────────────────</span><span class="w"> </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">1</span><span class="w">  </span><span class="nx">exec_simple_query</span><span class="w">           </span><span class="mi">47</span><span class="w">          </span><span class="mi">234</span><span class="w">    </span><span class="nx">postgres</span><span class="p">.</span><span class="nx">c</span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">2</span><span class="w">  </span><span class="nx">ExecInitNode</span><span class="w">                </span><span class="mi">32</span><span class="w">          </span><span class="mi">189</span><span class="w">    </span><span class="nx">execProc</span><span class="p">..</span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">3</span><span class="w">  </span><span class="nx">parse_analyze</span><span class="w">               </span><span class="mi">28</span><span class="w">          </span><span class="mi">156</span><span class="w">    </span><span class="nx">analyze</span><span class="p">.</span><span class="nx">c</span><span class="w"> </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">4</span><span class="w">  </span><span class="nx">standard_ProcessUtility</span><span class="w">     </span><span class="mi">26</span><span class="w">          </span><span class="mi">312</span><span class="w">    </span><span class="nx">utility</span><span class="p">.</span><span class="nx">c</span><span class="w"> </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="mi">5</span><span class="w">  </span><span class="nx">heap_insert</span><span class="w">                 </span><span class="mi">24</span><span class="w">          </span><span class="mi">178</span><span class="w">    </span><span class="nx">heapam</span><span class="p">.</span><span class="nx">c</span><span class="w">  </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="mf">1.</span><span class="w"> </span><span class="n">dispatch_command</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">process_request</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">validate_input</span><span class="w">     </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="mf">2.</span><span class="w"> </span><span class="n">main</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">init_server</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">load_config</span><span class="w">                        </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Средняя</span><span class="w"> </span><span class="nx">сложность</span><span class="p">:</span><span class="w"> </span><span class="m m-Double">8.4</span><span class="w">                                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Функций</span><span class="w"> </span><span class="nx">со</span><span class="w"> </span><span class="nx">сложностью</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">20</span><span class="p">:</span><span class="w"> </span><span class="mi">23</span><span class="w">                               </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="nx">Функций</span><span class="w"> </span><span class="nx">со</span><span class="w"> </span><span class="nx">сложностью</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mi">30</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="w">                                </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">Функции</span><span class="w"> </span><span class="err">с</span><span class="w"> </span><span class="err">высоким</span><span class="w"> </span><span class="n">betweenness</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="err">архитектурные</span><span class="w">              </span><span class="err">│</span>
+<span class="err">│</span><span class="w">  </span><span class="err">горячие</span><span class="w"> </span><span class="err">точки</span><span class="p">:</span><span class="w"> </span><span class="err">их</span><span class="w"> </span><span class="err">оптимизация</span><span class="w"> </span><span class="err">даёт</span><span class="w"> </span><span class="err">наибольший</span><span class="w"> </span><span class="err">эффект</span><span class="o">.</span><span class="w">      </span><span class="err">│</span>
 <span class="err">│</span><span class="w">                                                              </span><span class="err">│</span>
 <span class="err">╰──────────────────────────────────────────────────────────────╯</span>
 </code></pre></div>
 
-<h3  id="obnaruzhenie-glubokoy-vlozhennosti"><span id="obnaruzhenie_glubokoy_vlozhennosti"></span>Обнаружение глубокой вложенности<a class="heading-anchor" href="#obnaruzhenie-glubokoy-vlozhennosti" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти функции с глубокой вложенностью циклов</span>
-
-╭─────────────── Анализ вложенности ───────────────────────────╮
-│                                                              │
-│  Функции с глубиной вложенности &gt; 4:                          │
-│                                                              │
-│  🔴 join_search_one_level()     глубина: 6                   │
-│     Расположение: src/backend/optimizer/path/joinrels.c:89   │
-│     Шаблон: Тройная вложенность циклов с условиями            │
-│     Влияние: O(n³) в худшем случае                           │
-│                                                              │
-│  🟡 ExecHashJoinImpl()          глубина: 5                   │
-│     Расположение: src/backend/executor/nodeHashjoin.c:234    │
-│     Шаблон: Вложенный цикл с логикой повтора                 │
-│                                                              │
-│  Рекомендации по оптимизации доступны для 12 функций          │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
 <h2  id="analiz-pamyati"><span id="analiz_pamyati"></span>Анализ памяти<a class="heading-anchor" href="#analiz-pamyati" title="Link to this section">&para;</a></h2>
-<h3  id="shablony-vydeleniya-pamyati"><span id="shablony_vydeleniya_pamyati"></span>Шаблоны выделения памяти<a class="heading-anchor" href="#shablony-vydeleniya-pamyati" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>&gt; Найти функции, выделяющие большой объём памяти
+<p>Анализ памяти использует функции доменного плагина для поиска шаблонов выделения/освобождения. Конкретные API зависят от активного домена (например, <code>malloc</code>/<code>free</code> для C, <code>palloc</code>/<code>pfree</code> для PostgreSQL, <code>new</code>/<code>delete</code> для C++):</p>
+<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти горячие точки выделения памяти</span>
 
 ╭─────────────── Анализ выделения памяти ─────────────────────╮
 │                                                              │
-│  Функции с высоким выделением памяти:                        │
+│  Найдено функций управления памятью: 15                     │
 │                                                              │
-│  Функция                   Выделения  Контекст               │
+│  Функция                   Тип           Файл               │
 │  ────────────────────────────────────────────────────────────│
-│  ExecHashTableCreate        palloc x 15  HashMemoryContext   │
-│  MakeTupleTableSlot         palloc x 8   Per-tuple           │
-│  BuildTupleHashTable        palloc x 12  HashMemoryContext   │
+│  alloc_buffer               выделение    memory.c            │
+│  free_buffer                освобождение memory.c            │
+│  resize_pool                переаллокация pool.c             │
+│  create_context             контекст     context.c           │
 │                                                              │
-│  Горячие точки контекстов памяти:                            │
-│    - HashMemoryContext: 45% выделений                        │
-│    - MessageContext: 23% выделений                           │
-│    - PortalContext: 18% выделений                            │
-│                                                              │
-│  Рекомендация: Проверить использование HashMemoryContext     │
+│  Анализ включает:                                            │
+│    - Функции выделения (специфичные для домена)              │
+│    - Освобождение и очистку                                  │
+│    - Управление контекстами/пулами                           │
+│    - Шаблоны переаллокации                                   │
 │                                                              │
 ╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
-<h2  id="analiz-chastoty-vyzovov"><span id="analiz_chastoty_vyzovov"></span>Анализ частоты вызовов<a class="heading-anchor" href="#analiz-chastoty-vyzovov" title="Link to this section">&para;</a></h2>
-<h3  id="goryachie-puti"><span id="goryachie_puti"></span>Горячие пути<a class="heading-anchor" href="#goryachie-puti" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти часто вызываемые функции при выполнении запроса</span>
-
-╭─────────────── Анализ частоты вызовов ──────────────────────╮
-│                                                              │
-│  Горячие функции (по количеству вызовов на типичный запрос): │
-│                                                              │
-│  Функция                 Вызовов/запрос   Кумулятивно        │
-│  ────────────────────────────────────────────────────────────│
-│  slot_getattr             ~10 000         Внутренний цикл    │
-│  ExecQual                 ~5 000          Фильтрация строк   │
-│  ExecProject              ~2 500          Проекция           │
-│  ExecProcNode             ~1 000          Диспетчеризация узлов│
-│                                                              │
-│  Критический путь:                                           │
-│  ExecutorRun → ExecProcNode → ExecScan → slot_getattr        │
-│                                                              │
-│  Фокус оптимизации: Функции внутреннего цикла                 │
-│                                                              │
-╰──────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="algoritmicheskie-shablony"><span id="algoritmicheskie_shablony"></span>Алгоритмические шаблоны<a class="heading-anchor" href="#algoritmicheskie-shablony" title="Link to this section">&para;</a></h2>
-<h3  id="on²-i-huzhe"><span id="on²_i_huzhe"></span>O(n²) и хуже<a class="heading-anchor" href="#on²-i-huzhe" title="Link to this section">&para;</a></h3>
+<h2  id="zaprosy-algoritmicheskoy-slozhnosti"><span id="zaprosy_algoritmicheskoy_slozhnosti"></span>Запросы алгоритмической сложности<a class="heading-anchor" href="#zaprosy-algoritmicheskoy-slozhnosti" title="Link to this section">&para;</a></h2>
+<p>Когда запрос содержит ключевые слова <code>quadratic</code>, <code>O(n²)</code>, <code>nested</code> или <code>cognitive</code>, обработчик направляет к подобработчику сложности. Он объединяет данные цикломатической сложности с анализом функций памяти из доменного плагина для выявления функций с потенциально плохим масштабированием:</p>
 <div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти потенциальные шаблоны O(n²)</span>
 
-╭─────────────── Алгоритмическая сложность ───────────────────╮
+╭─────────────── Анализ на основе сложности ─────────────────╮
 │                                                              │
-│  Потенциально квадратичные шаблоны:                          │
+│  Функции с высокой сложностью (потенциальные проблемы       │
+│  масштабирования):                                           │
 │                                                              │
-│  🔴 list_member() в цикле                                    │
-│     Расположение: src/backend/catalog/dependency.c:456       │
-│     Шаблон: Линейный поиск в цикле                           │
-│     Решение: Использовать хеш-таблицу для проверки вхождения │
+│  process_request()     сложность: 42                         │
+│     Высокая цикломатическая сложность указывает на           │
+│     вложенные циклы                                          │
 │                                                              │
-│  🟡 bsearch во вложенном цикле                               │
-│     Расположение: src/backend/optimizer/path/costsize.c:789  │
-│     Шаблон: O(n log n) на итерацию                           │
-│     Текущая сложность: O(n² log n)                           │
+│  build_index()         сложность: 22                         │
+│     Обнаружены множественные вложенные итерации              │
 │                                                              │
-│  Найдено шаблонов: 8                                         │
+│  Примечание: Анализ использует цикломатическую сложность    │
+│  и метрики графа вызовов как приближение к алгоритмической  │
+│  сложности. Рекомендуется ручная проверка для подтверждения  │
+│  шаблонов O(n²).                                             │
 │                                                              │
 ╰──────────────────────────────────────────────────────────────╯
 </code></pre></div>
@@ -304,11 +357,12 @@
 <h2  id="primery-zaprosov"><span id="primery_zaprosov"></span>Примеры запросов<a class="heading-anchor" href="#primery-zaprosov" title="Link to this section">&para;</a></h2>
 <ul>
 <li>«Найти функции с высокой сложностью»</li>
-<li>«Показать горячие точки выделения памяти»</li>
-<li>«Найти шаблоны O(n²)»</li>
-<li>«Какие функции вызываются чаще всего?»</li>
+<li>«Показать наиболее вызываемые функции»</li>
+<li>«Найти горячие точки выделения памяти»</li>
+<li>«Какие функции имеют наибольший in-degree?»</li>
 <li>«Найти функции с глубокой вложенностью»</li>
 <li>«Показать критические пути выполнения»</li>
+<li>«Найти потенциальные квадратичные шаблоны»</li>
 </ul>
 <h2  id="spravochnik-metrik"><span id="spravochnik_metrik"></span>Справочник метрик<a class="heading-anchor" href="#spravochnik-metrik" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
@@ -316,29 +370,29 @@
 <tr>
 <th>Метрика</th>
 <th>Порог</th>
-<th>Действие</th>
+<th>Источник</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Цикломатическая сложность</td>
 <td>&gt; 20</td>
-<td>Рассмотреть разделение функции</td>
+<td><code>ThresholdConfig.high_complexity</code></td>
 </tr>
 <tr>
-<td>Глубина вложенности</td>
-<td>&gt; 4</td>
-<td>Рефакторинг циклов</td>
+<td>Размер функции</td>
+<td>&gt; 500 строк</td>
+<td><code>ThresholdConfig.loc_very_large</code></td>
 </tr>
 <tr>
-<td>Длина функции</td>
-<td>&gt; 200 строк</td>
-<td>Выделить подфункции</td>
+<td>In-degree (вызывающих)</td>
+<td>&gt; 3</td>
+<td><code>ThresholdConfig.min_in_degree</code></td>
 </tr>
 <tr>
-<td>Выделений памяти на вызов</td>
-<td>&gt; 10</td>
-<td>Проверить использование памяти</td>
+<td>Показатель влияния</td>
+<td>&gt; 0.7</td>
+<td><code>ThresholdConfig.high_impact</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -366,7 +420,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-07</span>
+        <span>Обновлено: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/06-performance.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -377,15 +431,15 @@
       <ul class="doc-toc-list">
         <li><a href="#stsenariy-06-analiz-proizvoditelnosti" class="level-1">Сценарий 06: Анализ производительности</a></li>
 <li><a href="#bystryy-start" class="level-2">Быстрый старт</a></li>
+<li><a href="#arhitektura" class="level-2">Архитектура</a></li>
 <li><a href="#analiz-slozhnosti" class="level-2">Анализ сложности</a></li>
 <li><a href="#poisk-goryachih-funktsiy" class="level-3">Поиск «горячих» функций</a></li>
 <li><a href="#obnaruzhenie-glubokoy-vlozhennosti" class="level-3">Обнаружение глубокой вложенности</a></li>
+<li><a href="#analiz-grafa-vyzovov" class="level-2">Анализ графа вызовов</a></li>
+<li><a href="#goryachie-tochki-in-degree" class="level-3">Горячие точки (In-Degree)</a></li>
+<li><a href="#kriticheskie-puti" class="level-3">Критические пути</a></li>
 <li><a href="#analiz-pamyati" class="level-2">Анализ памяти</a></li>
-<li><a href="#shablony-vydeleniya-pamyati" class="level-3">Шаблоны выделения памяти</a></li>
-<li><a href="#analiz-chastoty-vyzovov" class="level-2">Анализ частоты вызовов</a></li>
-<li><a href="#goryachie-puti" class="level-3">Горячие пути</a></li>
-<li><a href="#algoritmicheskie-shablony" class="level-2">Алгоритмические шаблоны</a></li>
-<li><a href="#on²-i-huzhe" class="level-3">O(n²) и хуже</a></li>
+<li><a href="#zaprosy-algoritmicheskoy-slozhnosti" class="level-2">Запросы алгоритмической сложности</a></li>
 <li><a href="#primery-zaprosov" class="level-2">Примеры запросов</a></li>
 <li><a href="#spravochnik-metrik" class="level-2">Справочник метрик</a></li>
 <li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>

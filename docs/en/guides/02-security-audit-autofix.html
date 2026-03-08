@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -179,14 +180,29 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="security-audit-autofix"><span id="security_audit_autofix"></span>Security Audit: Autofix<a class="heading-anchor" href="#security-audit-autofix" title="Link to this section">&para;</a></h1>
+<blockquote class="callout">
 <p>Automated fix generation for security vulnerabilities detected by taint analysis.</p>
+</blockquote>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#supported-vulnerability-types">Supported Vulnerability Types</a></li>
+<li><a href="#confidence-scoring">Confidence Scoring</a></li>
+<li><a href="#configuration-reference">Configuration Reference</a></li>
+<li><a href="#approval-flow">Approval Flow</a></li>
+<li><a href="#extending-with-domain-templates">Extending with Domain Templates</a></li>
+<li><a href="#examples">Examples</a></li>
+</ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>CodeGraph&rsquo;s autofix engine takes detected vulnerabilities (taint paths from untrusted sources to dangerous sinks) and generates concrete code patches. Two strategies are used:</p>
+<p>CodeGraph&rsquo;s <code>AutofixEngine</code> takes detected vulnerabilities (taint paths from untrusted sources to dangerous sinks) and generates concrete code patches. Three strategies are used in order of priority:</p>
 <ol>
-<li><strong>Template-based</strong> — pattern-matching fix templates for known vulnerability types (high confidence, &gt;0.8)</li>
-<li><strong>LLM-powered</strong> — fallback to LLM generation when no template matches (lower confidence, &lt;=0.59)</li>
+<li><strong>SSR (Structural Search &amp; Replace)</strong> — AST-aware rules via <code>SSRAutofixBridge</code>, highest confidence</li>
+<li><strong>Template-based</strong> — regex pattern-matching fix templates via <code>AutofixGenerator</code> (high confidence, &gt;0.8)</li>
+<li><strong>LLM-powered</strong> — fallback to LLM generation via <code>PromptBuilder</code> when no template matches (lower confidence, &lt;=0.59)</li>
 </ol>
-<p>All fixes are presented as unified diffs. In read-only / dry-run mode (default), no files are modified.</p>
+<p>All fixes are validated by <code>DiffValidator</code> and presented as unified diffs. In read-only / dry-run mode (default), no files are modified.</p>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <h3 id="cli">CLI<a class="heading-anchor" href="#cli" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run security audit with autofix suggestions</span>
@@ -195,10 +211,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="c1"># Non-interactive CI mode</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Fix all SQL injection findings&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--sandbox<span class="w"> </span>read-only<span class="w"> </span>--output-file<span class="w"> </span>results.json
-</code></pre></div>
-
-<h3 id="tui">TUI<a class="heading-anchor" href="#tui" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>/scenario security &quot;Find SQL injection&quot; --autofix
 </code></pre></div>
 
 <h3  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h3>
@@ -212,38 +224,44 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nx">TaintPath</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="nx">v</span>
-<span class="nx">AutofixEngine</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Parse</span><span class="w"> </span><span class="nx">sink_location</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="p">(</span><span class="nx">file_path</span><span class="p">,</span><span class="w"> </span><span class="nx">line_number</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Read</span><span class="w"> </span><span class="nx">source</span><span class="w"> </span><span class="nx">code</span><span class="w"> </span><span class="nx">window</span><span class="w"> </span><span class="p">(</span><span class="nx">configurable</span><span class="w"> </span><span class="nx">context</span><span class="w"> </span><span class="nx">lines</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Infer</span><span class="w"> </span><span class="nx">vulnerability_type</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">sink_category</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Try</span><span class="w"> </span><span class="nx">template</span><span class="o">-</span><span class="nx">based</span><span class="w"> </span><span class="nx">fix</span><span class="w"> </span><span class="p">(</span><span class="nx">AutofixGenerator</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">|</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Match</span><span class="p">?</span><span class="w"> </span><span class="nx">Return</span><span class="w"> </span><span class="nx">FixSuggestion</span><span class="w"> </span><span class="p">(</span><span class="nx">strategy</span><span class="p">=</span><span class="s">&quot;template&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">|</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">No</span><span class="w"> </span><span class="k">match</span><span class="p">?</span><span class="w"> </span><span class="nx">Fall</span><span class="w"> </span><span class="nx">through</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">LLM</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">LLM</span><span class="w"> </span><span class="nx">fallback</span><span class="w"> </span><span class="p">(</span><span class="nx">PromptBuilder</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">LLM</span><span class="w"> </span><span class="nx">provider</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">|</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Build</span><span class="w"> </span><span class="nx">structured</span><span class="w"> </span><span class="nx">prompt</span><span class="w"> </span><span class="nx">with</span><span class="w"> </span><span class="nx">taint</span><span class="w"> </span><span class="nx">flow</span><span class="w"> </span><span class="nx">context</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Call</span><span class="w"> </span><span class="nx">configured</span><span class="w"> </span><span class="nx">LLM</span><span class="w"> </span><span class="nx">provider</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Parse</span><span class="w"> </span><span class="nx">code</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">response</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Return</span><span class="w"> </span><span class="nx">FixSuggestion</span><span class="w"> </span><span class="p">(</span><span class="nx">strategy</span><span class="p">=</span><span class="s">&quot;llm&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">DiffValidator</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">|</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Verify</span><span class="w"> </span><span class="nx">original</span><span class="w"> </span><span class="nx">code</span><span class="w"> </span><span class="nx">exists</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="nx">file</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Check</span><span class="w"> </span><span class="nx">change</span><span class="w"> </span><span class="nx">ratio</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="nx">minimal</span>
-<span class="w">    </span><span class="o">|</span><span class="w">         </span><span class="o">+---&gt;</span><span class="w"> </span><span class="nx">Generate</span><span class="w"> </span><span class="nx">unified</span><span class="w"> </span><span class="nx">diff</span>
-<span class="w">    </span><span class="o">|</span>
-<span class="w">    </span><span class="nx">v</span>
-<span class="nx">AutofixResult</span><span class="w"> </span><span class="p">(</span><span class="nx">diff</span><span class="p">,</span><span class="w"> </span><span class="nx">confidence</span><span class="p">,</span><span class="w"> </span><span class="nx">strategy</span><span class="p">,</span><span class="w"> </span><span class="nx">validated</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code>TaintPath
+    |
+    v
+AutofixEngine
+    |
+    +---&gt; Parse sink_location -&gt; (file_path, line_number)
+    |
+    +---&gt; Read source code window (configurable context lines)
+    |
+    +---&gt; Infer vulnerability_type from sink_category
+    |
+    +---&gt; Try SSR fix (SSRAutofixBridge — AST-aware rules via gocpg)
+    |         |
+    |         +---&gt; Match? Return FixSuggestion (strategy=&quot;ssr&quot;)
+    |         |
+    |         +---&gt; No match? Fall through to template
+    |
+    +---&gt; Try template-based fix (AutofixGenerator)
+    |         |
+    |         +---&gt; Match? Return FixSuggestion (strategy=&quot;template&quot;)
+    |         |
+    |         +---&gt; No match? Fall through to LLM
+    |
+    +---&gt; LLM fallback (PromptBuilder + LLM provider)
+    |         |
+    |         +---&gt; Build structured prompt with taint flow context
+    |         +---&gt; Call configured LLM provider
+    |         +---&gt; Parse code from response
+    |         +---&gt; Return FixSuggestion (strategy=&quot;llm&quot;)
+    |
+    +---&gt; DiffValidator
+    |         |
+    |         +---&gt; Verify original code exists in file
+    |         +---&gt; Check change ratio is minimal
+    |         +---&gt; Generate unified diff
+    |
+    v
+AutofixResult (diff, confidence, strategy, validated)
 </code></pre></div>
 
 <h2  id="supported-vulnerability-types"><span id="supported_vulnerability_types"></span>Supported Vulnerability Types<a class="heading-anchor" href="#supported-vulnerability-types" title="Link to this section">&para;</a></h2>
@@ -293,8 +311,15 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <td>C</td>
 <td>Sanitize error messages</td>
 </tr>
+<tr>
+<td>Integer Overflow</td>
+<td>CWE-190</td>
+<td>C</td>
+<td>palloc size check (domain-specific, e.g. PostgreSQL <code>mul_size()</code>)</td>
+</tr>
 </tbody>
 </table></div>
+<p>Domain plugins may define additional templates in <code>src/domains/{name}/config/security.yaml</code>.</p>
 <h2  id="confidence-scoring"><span id="confidence_scoring"></span>Confidence Scoring<a class="heading-anchor" href="#confidence-scoring" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
@@ -305,6 +330,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>SSR (AST-aware)</td>
+<td>0.8 - 1.0</td>
+<td>Highest confidence, AST-verified</td>
+</tr>
 <tr>
 <td>Template (simple pattern)</td>
 <td>0.8 - 1.0</td>
@@ -356,13 +386,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <h2  id="approval-flow"><span id="approval_flow"></span>Approval Flow<a class="heading-anchor" href="#approval-flow" title="Link to this section">&para;</a></h2>
 <p>When <code>require_approval: true</code> (default), fixes are never applied silently:</p>
 <ul>
-<li><strong>Interactive mode (TUI/CLI)</strong>: Each fix is presented with its diff for accept/decline</li>
+<li><strong>Interactive mode (CLI)</strong>: Each fix is presented with its diff for accept/decline</li>
 <li><strong>CI mode (<code>exec</code>)</strong>: Fixes are returned as structured JSON without applying</li>
-<li><strong>MCP server</strong>: Always read-only, returns diffs only</li>
+<li><strong>REST API / MCP server</strong>: Always read-only, returns diffs only</li>
 </ul>
 <p>Approval decisions:
 - <code>accept</code> — apply this fix
-- <code>acceptForSession</code> — auto-approve similar fixes (same CWE class)
+- <code>accept_for_session</code> — auto-approve similar fixes (same CWE class)
 - <code>decline</code> — skip this fix
 - <code>cancel</code> — abort entire autofix run</p>
 <h2  id="extending-with-domain-templates"><span id="extending_with_domain_templates"></span>Extending with Domain Templates<a class="heading-anchor" href="#extending-with-domain-templates" title="Link to this section">&para;</a></h2>
@@ -435,7 +465,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/02-security-audit-autofix.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -445,10 +475,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#security-audit-autofix" class="level-1">Security Audit: Autofix</a></li>
+<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
 <li><a href="#cli" class="level-3">CLI</a></li>
-<li><a href="#tui" class="level-3">TUI</a></li>
 <li><a href="#rest-api" class="level-3">REST API</a></li>
 <li><a href="#mcp-ai-assistant" class="level-3">MCP (AI Assistant)</a></li>
 <li><a href="#how-it-works" class="level-2">How It Works</a></li>

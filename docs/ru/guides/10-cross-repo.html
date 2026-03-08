@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Обзор</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Руководство по настройке</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Руководство по установке</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Начало работы</a></li>
       </ul>
     </div>
 
@@ -91,10 +92,10 @@
         <li><a href="index.html">Обзор</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Руководство по тестовой платформе</a></li>
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
-        <li><a href="CODE_REVIEW.html">Автоматический проверка кода</a></li>
+        <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_RU.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="MONITORING.html">Руководство по мониторингу</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
@@ -113,10 +114,10 @@
         <li><a href="06-performance.html">Сценарий 06: Анализ производительности</a></li>
         <li><a href="07-test-coverage.html">Сценарий 07: Покрытие тестами</a></li>
         <li><a href="08-compliance.html">Сценарий 08: Проверка соответствия</a></li>
-        <li><a href="09-code-review.html">Сценарий 09: Проверка кода</a></li>
+        <li><a href="09-code-review.html">Сценарий 09: Обзор кода</a></li>
         <li><a href="10-cross-repo.html" class="active">Сценарий 10: Межрепозиторный анализ</a></li>
         <li><a href="11-architecture.html">Сценарий 11: Анализ архитектуры</a></li>
-        <li><a href="12-tech-debt.html">Сценарий 12: Оценка технического долга</a></li>
+        <li><a href="12-tech-debt.html">Сценарий 12: Технический долг</a></li>
         <li><a href="13-mass-refactoring.html">Сценарий 13: Массовый рефакторинг</a></li>
         <li><a href="14-incident-response.html">Сценарий 14: Реагирование на инциденты ИБ</a></li>
         <li><a href="15-debugging.html">Сценарий 15: Поддержка отладки</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Сценарий 18: Оптимизация кода</a></li>
         <li><a href="19-standards-check.html">Сценарий 19: Проверка по стандартам</a></li>
         <li><a href="20-dependencies.html">Сценарий 20: Анализ зависимостей</a></li>
-        <li><a href="21-pattern-search.html">Сценарий 21: Структурный поиск шаблонов</a></li>
+        <li><a href="21-pattern-search.html">Структурный поиск шаблонов</a></li>
         <li><a href="composite-workflows.html">Композитные рабочие процессы</a></li>
       </ul>
     </div>
@@ -180,166 +181,341 @@
       <article class="doc-content">
         <h1  id="stsenariy-10-mezhrepozitornyy-analiz"><span id="stsenariy_10_mezhrepozitornyy_analiz"></span>Сценарий 10: Межрепозиторный анализ<a class="heading-anchor" href="#stsenariy-10-mezhrepozitornyy-analiz" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>Архитектор анализирует зависимости и влияние между несколькими репозиториями.</p>
+<p>Архитектор анализирует зависимости, дубликаты и возможности консолидации между несколькими репозиториями с помощью CPG-агентов и графовых методов.</p>
 </blockquote>
+<h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#bystryy-start">Быстрый старт</a></li>
+<li><a href="#kak-eto-rabotaet">Как это работает</a></li>
+<li><a href="#dvuhfaznaya-arhitektura">Двухфазная архитектура</a></li>
+<li><a href="#opredelenie-namereniy">Определение намерений</a></li>
+<li><a href="#faza-handlerov">Фаза handler&rsquo;ов</a></li>
+<li><a href="#3-handlera">3 handler&rsquo;а</a></li>
+<li><a href="#bazovye-metody-crossrepohandler">Базовые методы CrossRepoHandler</a></li>
+<li><a href="#formattery-otchyotov">Форматтеры отчётов</a></li>
+<li><a href="#faza-llm">Фаза LLM</a></li>
+<li><a href="#3-agenta">3 агента</a></li>
+<li><a href="#integratsiya-callgraphanalyzer">Интеграция CallGraphAnalyzer</a></li>
+<li><a href="#grafovye-insayty">Графовые инсайты</a></li>
+<li><a href="#modeli-dannyh">Модели данных</a></li>
+<li><a href="#konfiguratsiya">Конфигурация</a></li>
+<li><a href="#ispolzovanie-cli">Использование CLI</a></li>
+<li><a href="#primery-zaprosov">Примеры запросов</a></li>
+<li><a href="#svyazannye-stsenarii">Связанные сценарии</a></li>
+</ul>
 <h2  id="bystryy-start"><span id="bystryy_start"></span>Быстрый старт<a class="heading-anchor" href="#bystryy-start" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code># Выберите сценарий анализа между репозиториями
-/select 10
+<div class="highlight"><pre><span></span><code><span class="c1"># Выберите сценарий межрепозиторного анализа</span>
+/select<span class="w"> </span><span class="m">10</span>
 </code></pre></div>
 
-<h2  id="nastroyka-neskolkih-proektov"><span id="nastroyka_neskolkih_proektov"></span>Настройка нескольких проектов<a class="heading-anchor" href="#nastroyka-neskolkih-proektov" title="Link to this section">&para;</a></h2>
-<h3  id="nastroyka-analiza-mezhdu-repozitoriyami"><span id="nastroyka_analiza_mezhdu_repozitoriyami"></span>Настройка анализа между репозиториями<a class="heading-anchor" href="#nastroyka-analiza-mezhdu-repozitoriyami" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="gh">#</span> Добавить несколько проектов
-/project add postgres data/projects/postgres.duckdb c &quot;Ядро PostgreSQL&quot;
-/project add extension1 data/projects/extension1.duckdb c &quot;Модуль расширения 1&quot;
-/project add extension2 data/projects/extension2.duckdb c &quot;Модуль расширения 2&quot;
-
-<span class="gh">#</span> Включить режим анализа между репозиториями
-/config cross_repo enabled true
+<h2  id="kak-eto-rabotaet"><span id="kak_eto_rabotaet"></span>Как это работает<a class="heading-anchor" href="#kak-eto-rabotaet" title="Link to this section">&para;</a></h2>
+<h3  id="dvuhfaznaya-arhitektura"><span id="dvuhfaznaya_arhitektura"></span>Двухфазная архитектура<a class="heading-anchor" href="#dvuhfaznaya-arhitektura" title="Link to this section">&para;</a></h3>
+<p>S10 использует стандартную двухфазную архитектуру: фаза 1 на основе handler&rsquo;ов и фаза 2 с LLM fallback:</p>
+<div class="highlight"><pre><span></span><code>Запрос -&gt; CrossRepoIntentDetector.detect()
+  |
+  Фаза 1: integrate_handlers(state)
+    -&gt; HandlerRegistry(&quot;cross_repo&quot;) -&gt; подбор handler&#39;а по intent
+    -&gt; handler.handle() -&gt; CrossRepoReportFormatter -&gt; ответ
+    |
+    handled=True  -&gt; возврат форматированного результата (без LLM)
+    handled=False -&gt; Фаза 2
+  |
+  Фаза 2: cross_repo_workflow() [LLM fallback]
+    -&gt; 3 агента (RepositoryIndexer, CrossRepoAnalyzer, DependencyMapper)
+    -&gt; CallGraphAnalyzer (графовые инсайты)
+    -&gt; PromptRegistry -&gt; LLMInterface.generate() -&gt; ответ
 </code></pre></div>
 
-<h2  id="analiz-zavisimostey"><span id="analiz_zavisimostey"></span>Анализ зависимостей<a class="heading-anchor" href="#analiz-zavisimostey" title="Link to this section">&para;</a></h2>
-<h3  id="vyzovy-funktsiy-mezhdu-repozitoriyami"><span id="vyzovy_funktsiy_mezhdu_repozitoriyami"></span>Вызовы функций между репозиториями<a class="heading-anchor" href="#vyzovy-funktsiy-mezhdu-repozitoriyami" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Найти функции в extension1, которые вызывают ядро PostgreSQL</span>
-
-╭─────────────── Зависимости между репозиториями ─────────────────────╮
-│                                                                    │
-│  Зависимости Extension1 → Ядро PostgreSQL:                          │
-│                                                                    │
-│  Вызовы API:                                                       │
-│    palloc()           12 вызовов   Выделение памяти                 │
-│    ereport()          8 вызовов    Отчёт об ошибках                 │
-│    SPI_connect()      5 вызовов    SQL-интерфейс                    │
-│    GetCurrentTransactionId() 3 вызова  Доступ к транзакциям         │
-│                                                                    │
-│  Прямые вызовы функций:                                             │
-│    heap_insert()      4 вызова     Вставка кортежей                 │
-│    index_insert()     2 вызова     Обслуживание индексов            │
-│                                                                    │
-│  Всего зависимостей: 34 вызова функций                              │
-│  Уровень риска: СРЕДНИЙ (используются внутренние API)               │
-│                                                                    │
-╰────────────────────────────────────────────────────────────────────╯
+<p><code>cross_repo_workflow()</code> в <code>cross_repo.py</code> сначала вызывает <code>integrate_handlers(state)</code>. Если handler сработал (<code>handled=True</code>), результат возвращается без LLM. Иначе выполняется полный LLM-workflow с 3 агентами и графовым анализом.</p>
+<h3  id="opredelenie-namereniy"><span id="opredelenie_namereniy"></span>Определение намерений<a class="heading-anchor" href="#opredelenie-namereniy" title="Link to this section">&para;</a></h3>
+<p><code>CrossRepoIntentDetector(IntentDetector)</code> в <code>cross_repo_handlers/intent_detector.py</code> определяет 6 intent&rsquo;ов, отсортированных по приоритету:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Intent</th>
+<th>Приоритет</th>
+<th>Ключевые слова (EN + RU)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hook_usage</code></td>
+<td>5</td>
+<td>hook, extension hook, callback, хук, точка расширения</td>
+</tr>
+<tr>
+<td><code>spi_dependency</code></td>
+<td>8</td>
+<td>spi, server programming interface, серверный интерфейс</td>
+</tr>
+<tr>
+<td><code>code_consolidation</code></td>
+<td>10</td>
+<td>consolidate, merge, combine, unified, консолидация, объединить</td>
+</tr>
+<tr>
+<td><code>duplicate_detection</code></td>
+<td>20</td>
+<td>duplicate, clone, copy, redundant, дубликат, клон</td>
+</tr>
+<tr>
+<td><code>cross_repo_search</code></td>
+<td>30</td>
+<td>across repo, cross repo, all repo, кросс-репозиторий</td>
+</tr>
+<tr>
+<td><code>consistency_check</code></td>
+<td>40</td>
+<td>consistency, standard, naming convention, согласованность</td>
+</tr>
+</tbody>
+</table></div>
+<p>Fallback: <code>general_cross_repo</code> (confidence=0.5), когда ни один паттерн не совпал.</p>
+<p>Сопоставление ключевых слов через <code>keyword_match_morphological()</code> для поддержки русской морфологии. Доменные ключевые слова хуков загружаются динамически через <code>_get_domain_hook_keywords()</code> из активного доменного плагина.</p>
+<h2  id="faza-handlerov"><span id="faza-handlerrsquoov"></span><span id="faza_handlerov"></span><span id="faza_handlerrsquoov"></span>Фаза handler&rsquo;ов<a class="heading-anchor" href="#faza-handlerov" title="Link to this section">&para;</a></h2>
+<h3  id="3-handlera"><span id="3-handlerrsquoa"></span><span id="3_handlera"></span><span id="3_handlerrsquoa"></span>3 handler&rsquo;а<a class="heading-anchor" href="#3-handlera" title="Link to this section">&para;</a></h3>
+<p><code>cross_repo_handlers/workflow.py</code> регистрирует 3 handler&rsquo;а в <code>HandlerRegistry("cross_repo")</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Приоритет</th>
+<th>Intent</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExtensionDependenciesHandler</code></td>
+<td>5</td>
+<td>hook_usage, spi_dependency</td>
+<td>Анализ зависимостей расширений от API</td>
+</tr>
+<tr>
+<td><code>ConsolidationHandler</code></td>
+<td>10</td>
+<td>code_consolidation</td>
+<td>Обнаружение кандидатов на консолидацию</td>
+</tr>
+<tr>
+<td><code>DuplicateDetectionHandler</code></td>
+<td>20</td>
+<td>duplicate_detection</td>
+<td>Обнаружение дубликатов кода между файлами</td>
+</tr>
+</tbody>
+</table></div>
+<p>Все handler&rsquo;ы наследуют <code>CrossRepoHandler(BaseHandler)</code>.</p>
+<h3  id="bazovye-metody-crossrepohandler"><span id="bazovye_metody_crossrepohandler"></span>Базовые методы CrossRepoHandler<a class="heading-anchor" href="#bazovye-metody-crossrepohandler" title="Link to this section">&para;</a></h3>
+<p><code>CrossRepoHandler</code> в <code>cross_repo_handlers/handlers/base.py</code> предоставляет 4 общих метода CPG-запросов:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_find_duplicate_code(min_similarity, limit)</code></td>
+<td>Поиск дубликатов кода по совпадению сигнатур</td>
+</tr>
+<tr>
+<td><code>_search_across_files(pattern, scope, limit)</code></td>
+<td>Поиск методов по паттерну во всех файлах</td>
+</tr>
+<tr>
+<td><code>_check_naming_consistency(pattern_type)</code></td>
+<td>Проверка согласованности именования (snake_case, camelCase, PascalCase)</td>
+</tr>
+<tr>
+<td><code>_analyze_consolidation_candidates(threshold)</code></td>
+<td>Поиск кандидатов на консолидацию по группировке сигнатур</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>ExtensionDependenciesHandler</code> дополнительно использует <code>get_extension_dependency_patterns_from_plugin()</code> и <code>build_sql_like_clause()</code> из <code>_plugin_helpers</code> для загрузки доменных паттернов API расширений (доменно-независимый подход).</p>
+<h3  id="formattery-otchyotov"><span id="formattery_otchyotov"></span>Форматтеры отчётов<a class="heading-anchor" href="#formattery-otchyotov" title="Link to this section">&para;</a></h3>
+<p><code>CrossRepoReportFormatter(CrossRepoFormatter)</code> в <code>cross_repo_handlers/formatters/cross_repo_report.py</code> предоставляет 2 форматтера:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Используется</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format_consolidation_report(report_data, language)</code></td>
+<td>ConsolidationHandler</td>
+</tr>
+<tr>
+<td><code>format_duplicate_report(report_data, language)</code></td>
+<td>DuplicateDetectionHandler</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>CrossRepoFormatter(BaseFormatter)</code> предоставляет вспомогательные методы: <code>format_file_list()</code>, <code>format_consolidation_badge()</code>, <code>format_similarity_badge()</code>. Все форматтеры поддерживают локализацию EN/RU.</p>
+<h2  id="faza-llm"><span id="faza_llm"></span>Фаза LLM<a class="heading-anchor" href="#faza-llm" title="Link to this section">&para;</a></h2>
+<h3  id="3-agenta"><span id="3_agenta"></span>3 агента<a class="heading-anchor" href="#3-agenta" title="Link to this section">&para;</a></h3>
+<p>Когда ни один handler не сработал, <code>cross_repo_workflow()</code> выполняет полный LLM-конвейер с 3 агентами из <code>src/cross_repo/cross_repo_agents.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Агент</th>
+<th>Роль</th>
+<th>Ключевые методы</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RepositoryIndexer</code></td>
+<td>Обнаружение репозиториев, извлечение метаданных, индексация в CPG</td>
+<td><code>discover_repositories(path)</code>, <code>index_repository_cpg(repo)</code></td>
+</tr>
+<tr>
+<td><code>CrossRepoAnalyzer</code></td>
+<td>Обнаружение дубликатов кода и возможностей консолидации</td>
+<td><code>find_code_duplications(repos, min_similarity, min_lines)</code>, <code>find_similar_utilities(repos)</code>, <code>identify_consolidation_opportunities(dups)</code></td>
+</tr>
+<tr>
+<td><code>DependencyMapper</code></td>
+<td>Карта зависимостей, обнаружение циклов, генерация отчёта</td>
+<td><code>map_dependencies(repos)</code>, <code>generate_dependency_graph(deps)</code>, <code>detect_circular_dependencies(graph)</code>, <code>generate_dependency_report(...)</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Конвейер:
+1. <code>RepositoryIndexer</code> обнаруживает и индексирует репозитории из <code>workspace_path</code>
+2. <code>CrossRepoAnalyzer</code> находит дубликаты и возможности консолидации
+3. <code>DependencyMapper</code> картирует зависимости, обнаруживает циклы, генерирует отчёт
+4. Список доказательств строится из дубликатов, возможностей и зависимостей высокого риска
+5. <code>PromptRegistry.get_agent_prompt("cross_repo_analyzer", ...)</code> формирует промпт
+6. <code>LLMInterface().generate()</code> генерирует финальный ответ</p>
+<h3  id="integratsiya-callgraphanalyzer"><span id="integratsiya_callgraphanalyzer"></span>Интеграция CallGraphAnalyzer<a class="heading-anchor" href="#integratsiya-callgraphanalyzer" title="Link to this section">&para;</a></h3>
+<p>После завершения 3 агентов <code>CallGraphAnalyzer(cpg)</code> из <code>src/analysis</code> выполняет графовый анализ:</p>
+<ul>
+<li><strong>Общие методы:</strong> Для каждого дубликата анализирует вызывающие/вызываемые/влияние через <code>find_all_callers()</code>, <code>find_all_callees()</code>, <code>analyze_impact()</code>. Вычисляет <code>consolidation_score = (callers + callees) * instances</code>.</li>
+<li><strong>Межрепозиторные вызовы:</strong> Для зависимостей с <code>source_method</code> находит вызываемые методы для обнаружения tight coupling. Помечает зависимости с высокой связанностью для приоритета декаплинга.</li>
+<li><strong>Паттерны консолидации:</strong> Группирует методы по сигнатуре графа вызовов (набор вызываемых). Методы с идентичными паттернами вызовов — кандидаты на консолидацию.</li>
+</ul>
+<h3  id="grafovye-insayty"><span id="grafovye_insayty"></span>Графовые инсайты<a class="heading-anchor" href="#grafovye-insayty" title="Link to this section">&para;</a></h3>
+<p>Графовый анализ формирует 3 категории инсайтов в <code>state["metadata"]["graph_insights"]</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Категория</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shared_methods</code></td>
+<td>Методы с consolidation_benefit (high/medium/low) и consolidation_score</td>
+</tr>
+<tr>
+<td><code>cross_repo_calls</code></td>
+<td>Зависимости с высокой связанностью и decoupling_priority</td>
+</tr>
+<tr>
+<td><code>consolidation_patterns</code></td>
+<td>Группы методов с одинаковой сигнатурой вызовов — кандидаты на «извлечение в общую библиотеку»</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="modeli-dannyh"><span id="modeli_dannyh"></span>Модели данных<a class="heading-anchor" href="#modeli-dannyh" title="Link to this section">&para;</a></h2>
+<p>Ключевые dataclass&rsquo;ы из <code>src/cross_repo/repo_patterns.py</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Модель</th>
+<th>Ключевые поля</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RepositoryInfo</code></td>
+<td>repo_id, name, language, method_count, file_count</td>
+</tr>
+<tr>
+<td><code>CodeDuplication</code></td>
+<td>pattern_name, similarity_score, severity, instances (List[CodeInstance]), potential_savings</td>
+</tr>
+<tr>
+<td><code>CrossRepoDependency</code></td>
+<td>source_repo, target_repo, dependency_type (DependencyType), coupling_score, risk_level (RiskLevel)</td>
+</tr>
+<tr>
+<td><code>ConsolidationOpportunity</code></td>
+<td>title, priority, estimated_savings, estimated_effort</td>
+</tr>
+<tr>
+<td><code>ConsolidationReport</code></td>
+<td>total_repos, total_methods, risk_summary, estimated_total_savings</td>
+</tr>
+</tbody>
+</table></div>
+<p>Перечисления: <code>DependencyType</code> (import, function_call, type_reference, &hellip;), <code>RiskLevel</code> (critical, high, medium, low).</p>
+<h2 id="konfiguratsiya">Конфигурация<a class="heading-anchor" href="#konfiguratsiya" title="Link to this section">&para;</a></h2>
+<p>S10 является доменно-независимым. Все доменные данные загружаются из плагинов:</p>
+<ul>
+<li><code>_get_api_keywords()</code> — маппинг API-ключевых слов на функции из <code>domain.get_api_keywords()</code></li>
+<li><code>_get_domain_hook_keywords()</code> — ключевые слова хуков из <code>domain.get_intent_keywords("CROSS_REPO")</code></li>
+<li><code>get_extension_dependency_patterns_from_plugin()</code> — паттерны зависимостей расширений</li>
+</ul>
+<p>Конфигурация проектов в <code>config.yaml</code> → <code>projects</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">projects</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">registry</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">postgres</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/projects/postgres.duckdb</span>
+<span class="w">      </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span>
+<span class="w">    </span><span class="nt">extension1</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/projects/extension1.duckdb</span>
+<span class="w">      </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span>
 </code></pre></div>
 
-<h3  id="kartirovanie-granits-api"><span id="kartirovanie_granits_api"></span>Картирование границ API<a class="heading-anchor" href="#kartirovanie-granits-api" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Показать границы API между проектами</span>
+<h2  id="ispolzovanie-cli"><span id="ispolzovanie_cli"></span>Использование CLI<a class="heading-anchor" href="#ispolzovanie-cli" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Анализ межрепозиторных зависимостей</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find cross-repository dependencies&quot;</span>
 
-╭─────────────── Границы API ──────────────────────────────╮
-│                                                          │
-│  Экспортируемые API ядра PostgreSQL:                     │
-│                                                          │
-│  Стабильные API (безопасны в использовании):              │
-│    ├── SPI_* (12 функций)                                │
-│    ├── PG_FUNCTION_* макросы                              │
-│    └── Стандартные хуки расширений                       │
-│                                                          │
-│  Внутренние API (использовать с осторожностью):           │
-│    ├── heap_* (23 функции)                               │
-│    ├── index_* (18 функций)                              │
-│    └── buffer_* (15 функций)                             │
-│                                                          │
-│  Использование в extension1:                              │
-│    Стабильные API: 67%                                    │
-│    Внутренние API: 33%  ⚠️                                │
-│                                                          │
-╰──────────────────────────────────────────────────────────╯
-</code></pre></div>
+<span class="c1"># Обнаружение дубликатов</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find duplicate code across repositories&quot;</span>
 
-<h2  id="analiz-vliyaniya"><span id="analiz_vliyaniya"></span>Анализ влияния<a class="heading-anchor" href="#analiz-vliyaniya" title="Link to this section">&para;</a></h2>
-<h3  id="obnaruzhenie-narushayuschih-izmeneniy"><span id="obnaruzhenie_narushayuschih_izmeneniy"></span>Обнаружение нарушающих изменений<a class="heading-anchor" href="#obnaruzhenie-narushayuschih-izmeneniy" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="err">Какие</span><span class="w"> </span><span class="err">расширения</span><span class="w"> </span><span class="err">перестанут</span><span class="w"> </span><span class="err">работать</span><span class="w"> </span><span class="err">при</span><span class="w"> </span><span class="err">изменении</span><span class="w"> </span><span class="err">сигнатуры</span><span class="w"> </span><span class="n">heap_insert</span><span class="err">?</span>
+<span class="c1"># Анализ консолидации</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Show consolidation opportunities&quot;</span>
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="err">Влияние</span><span class="w"> </span><span class="err">нарушающего</span><span class="w"> </span><span class="err">изменения</span><span class="w"> </span><span class="err">──────────────────────╮</span>
-<span class="err">│</span><span class="w">                                                                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Цель</span><span class="p">:</span><span class="w"> </span><span class="n">heap_insert</span><span class="p">()</span><span class="w">                                              </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Сигнатура</span><span class="p">:</span><span class="w"> </span><span class="nb nb-Type">void</span><span class="w"> </span><span class="n">heap_insert</span><span class="p">(</span><span class="n">Relation</span><span class="p">,</span><span class="w"> </span><span class="n">HeapTuple</span><span class="p">,</span><span class="w"> </span><span class="o">...</span><span class="p">)</span><span class="w">            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Затронутые</span><span class="w"> </span><span class="err">расширения</span><span class="p">:</span><span class="w">                                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">🔴</span><span class="w"> </span><span class="n">extension1</span><span class="w"> </span><span class="p">(</span><span class="mi">4</span><span class="w"> </span><span class="err">прямых</span><span class="w"> </span><span class="err">вызова</span><span class="p">)</span><span class="w">                                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="err">Файлы</span><span class="p">:</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">insert_handler</span><span class="o">.</span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">bulk_loader</span><span class="o">.</span><span class="n">c</span><span class="w">                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="err">Риск</span><span class="p">:</span><span class="w"> </span><span class="err">ВЫСОКИЙ</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="err">критическая</span><span class="w"> </span><span class="err">функциональность</span><span class="w">                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">🔴</span><span class="w"> </span><span class="n">extension2</span><span class="w"> </span><span class="p">(</span><span class="mi">2</span><span class="w"> </span><span class="err">прямых</span><span class="w"> </span><span class="err">вызова</span><span class="p">)</span><span class="w">                                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="err">Файлы</span><span class="p">:</span><span class="w"> </span><span class="n">src</span><span class="o">/</span><span class="n">custom_insert</span><span class="o">.</span><span class="n">c</span><span class="w">                                    </span><span class="err">│</span>
-<span class="err">│</span><span class="w">     </span><span class="err">Риск</span><span class="p">:</span><span class="w"> </span><span class="err">СРЕДНИЙ</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="err">необязательная</span><span class="w"> </span><span class="err">функция</span><span class="w">                           </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w">  </span><span class="err">Рекомендуемые</span><span class="w"> </span><span class="err">действия</span><span class="p">:</span><span class="w">                                          </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="mf">1.</span><span class="w"> </span><span class="err">Предоставить</span><span class="w"> </span><span class="err">функцию</span><span class="o">-</span><span class="err">обёртку</span><span class="w">                                </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="mf">2.</span><span class="w"> </span><span class="err">Период</span><span class="w"> </span><span class="err">устаревания</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="err">основные</span><span class="w"> </span><span class="err">версии</span><span class="w">                       </span><span class="err">│</span>
-<span class="err">│</span><span class="w">    </span><span class="mf">3.</span><span class="w"> </span><span class="err">Обновить</span><span class="w"> </span><span class="err">документацию</span><span class="w"> </span><span class="err">расширений</span><span class="w">                            </span><span class="err">│</span>
-<span class="err">│</span><span class="w">                                                                   </span><span class="err">│</span>
-<span class="err">╰───────────────────────────────────────────────────────────────────╯</span>
-</code></pre></div>
+<span class="c1"># Анализ зависимостей расширений</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Which extensions depend on memory allocation functions?&quot;</span>
 
-<h3  id="matritsa-sovmestimosti-versiy"><span id="matritsa_sovmestimosti_versiy"></span>Матрица совместимости версий<a class="heading-anchor" href="#matritsa-sovmestimosti-versiy" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Показать матрицу совместимости для расширений</span>
+<span class="c1"># Анализ использования хуков</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Find all hook usage patterns&quot;</span>
 
-╭─────────────── Матрица совместимости ───────────────────────╮
-│                                                             │
-│  Совместимость расширений с версиями PostgreSQL:            │
-│                                                             │
-│  Расширение      PG 14    PG 15    PG 16    Проблемы        │
-│  ─────────────────────────────────────────────────────────── │
-│  extension1     ✅       ✅       ⚠️       heap_insert        │
-│  extension2     ✅       ✅       ✅       -                  │
-│  extension3     ❌       ✅       ✅       Удалённый API      │
-│                                                             │
-│  Условные обозначения:                                       │
-│    ✅ Совместимо  ⚠️ Требуется обновление  ❌ Несовместимо   │
-│                                                             │
-╰─────────────────────────────────────────────────────────────╯
-</code></pre></div>
-
-<h2  id="planirovanie-migratsii"><span id="planirovanie_migratsii"></span>Планирование миграции<a class="heading-anchor" href="#planirovanie-migratsii" title="Link to this section">&para;</a></h2>
-<h3  id="analiz-puti-obnovleniya"><span id="analiz_puti_obnovleniya"></span>Анализ пути обновления<a class="heading-anchor" href="#analiz-puti-obnovleniya" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Запланировать миграцию с PG 15 на PG 16 для всех расширений</span>
-
-╭─────────────── План миграции ──────────────────────────────╮
-│                                                            │
-│  Миграция: PostgreSQL 15 → 16                              │
-│                                                            │
-│  Этап 1: Обновление API                                     │
-│    extension1:                                             │
-│      - Обновить вызовы heap_insert() (4 места)             │
-│      - Обновить управление буферами (2 места)               │
-│                                                            │
-│  Этап 2: Замена устаревших API                              │
-│    extension3:                                             │
-│      - Заменить removed_api() на new_api()                 │
-│                                                            │
-│  Этап 3: Тестирование                                       │
-│    - Запустить регрессионные тесты для всех расширений     │
-│    - Проверить взаимодействие между расширениями           │
-│                                                            │
-│  Оценка изменений: 12 файлов, ~150 строк                    │
-│                                                            │
-╰────────────────────────────────────────────────────────────╯
+<span class="c1"># Проверка согласованности</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Check naming consistency across codebase&quot;</span>
 </code></pre></div>
 
 <h2  id="primery-zaprosov"><span id="primery_zaprosov"></span>Примеры запросов<a class="heading-anchor" href="#primery-zaprosov" title="Link to this section">&para;</a></h2>
 <ul>
-<li>“Найти зависимости между репозиториями”</li>
-<li>“Какие расширения используют [function_name]?”</li>
-<li>“Показать границы API между проектами”</li>
-<li>“Что перестанет работать при изменении [function]?”</li>
-<li>“Запланировать миграцию при обновлении версии”</li>
-<li>“Показать матрицу совместимости”</li>
+<li>&ldquo;Find cross-repository dependencies&rdquo;</li>
+<li>&ldquo;Find duplicate code across repositories&rdquo;</li>
+<li>&ldquo;Show consolidation opportunities&rdquo;</li>
+<li>&ldquo;Which extensions use [function_name]?&rdquo;</li>
+<li>&ldquo;Find all hook usage patterns&rdquo;</li>
+<li>&ldquo;Check naming consistency across the codebase&rdquo;</li>
+<li>&ldquo;What would break if [function] changes?&rdquo;</li>
+<li>&ldquo;Show high-risk dependencies&rdquo;</li>
+<li>&ldquo;Find functions used by extensions&rdquo;</li>
 </ul>
-<h2  id="komandy-cli"><span id="komandy_cli"></span>Команды CLI<a class="heading-anchor" href="#komandy-cli" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="gh">#</span> Команды анализа между репозиториями
-python -m src.cli.cross_repo dependencies --from extension1 --to postgres
-python -m src.cli.cross_repo impact --function heap_insert
-python -m src.cli.cross_repo compatibility --versions &quot;14,15,16&quot;
-</code></pre></div>
-
 <h2  id="svyazannye-stsenarii"><span id="svyazannye_stsenarii"></span>Связанные сценарии<a class="heading-anchor" href="#svyazannye-stsenarii" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="11-architecture.html">Архитектура</a> — Анализ архитектуры</li>
-<li><a href="04-feature-development.html">Разработка функций</a> — Понимание зависимостей</li>
-<li><a href="13-mass-refactoring.html">Массовый рефакторинг</a> — Крупномасштабные изменения</li>
+<li><a href="11-architecture.html">Архитектура</a> — Анализ внутренней архитектуры (S11)</li>
+<li><a href="05-refactoring.html">Рефакторинг</a> — Обнаружение запахов кода и мёртвого кода (S05)</li>
+<li><a href="13-mass-refactoring.html">Массовый рефакторинг</a> — Крупномасштабные изменения (S13)</li>
+<li><a href="02-security-audit.html">Аудит безопасности</a> — Сканирование уязвимостей (S02)</li>
 </ul>
+<p><strong>S10 vs S11:</strong> S10 (межрепозиторный анализ) фокусируется на мультирепозиторном анализе — дубликаты между репозиториями, межрепозиторные зависимости, возможности консолидации и анализ графа вызовов между репозиториями. S11 (архитектура) фокусируется на внутренней архитектуре одного проекта — анализ слоёв, метрики связности/сцепления, циклические зависимости внутри одной кодовой базы.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -347,7 +523,7 @@ python -m src.cli.cross_repo compatibility --versions &quot;14,15,16&quot;
 
       <a href="09-code-review.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Назад</span>
-        <span class="doc-page-nav-title">Сценарий 09: Проверка кода</span>
+        <span class="doc-page-nav-title">Сценарий 09: Обзор кода</span>
       </a>
 
       <a href="11-architecture.html" class="doc-page-nav-next">
@@ -358,7 +534,7 @@ python -m src.cli.cross_repo compatibility --versions &quot;14,15,16&quot;
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-07</span>
+        <span>Обновлено: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/10-cross-repo.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -368,19 +544,23 @@ python -m src.cli.cross_repo compatibility --versions &quot;14,15,16&quot;
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#stsenariy-10-mezhrepozitornyy-analiz" class="level-1">Сценарий 10: Межрепозиторный анализ</a></li>
+<li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#bystryy-start" class="level-2">Быстрый старт</a></li>
-<li><a href="#nastroyka-neskolkih-proektov" class="level-2">Настройка нескольких проектов</a></li>
-<li><a href="#nastroyka-analiza-mezhdu-repozitoriyami" class="level-3">Настройка анализа между репозиториями</a></li>
-<li><a href="#analiz-zavisimostey" class="level-2">Анализ зависимостей</a></li>
-<li><a href="#vyzovy-funktsiy-mezhdu-repozitoriyami" class="level-3">Вызовы функций между репозиториями</a></li>
-<li><a href="#kartirovanie-granits-api" class="level-3">Картирование границ API</a></li>
-<li><a href="#analiz-vliyaniya" class="level-2">Анализ влияния</a></li>
-<li><a href="#obnaruzhenie-narushayuschih-izmeneniy" class="level-3">Обнаружение нарушающих изменений</a></li>
-<li><a href="#matritsa-sovmestimosti-versiy" class="level-3">Матрица совместимости версий</a></li>
-<li><a href="#planirovanie-migratsii" class="level-2">Планирование миграции</a></li>
-<li><a href="#analiz-puti-obnovleniya" class="level-3">Анализ пути обновления</a></li>
+<li><a href="#kak-eto-rabotaet" class="level-2">Как это работает</a></li>
+<li><a href="#dvuhfaznaya-arhitektura" class="level-3">Двухфазная архитектура</a></li>
+<li><a href="#opredelenie-namereniy" class="level-3">Определение намерений</a></li>
+<li><a href="#faza-handlerov" class="level-2">Фаза handler'ов</a></li>
+<li><a href="#3-handlera" class="level-3">3 handler'а</a></li>
+<li><a href="#bazovye-metody-crossrepohandler" class="level-3">Базовые методы CrossRepoHandler</a></li>
+<li><a href="#formattery-otchyotov" class="level-3">Форматтеры отчётов</a></li>
+<li><a href="#faza-llm" class="level-2">Фаза LLM</a></li>
+<li><a href="#3-agenta" class="level-3">3 агента</a></li>
+<li><a href="#integratsiya-callgraphanalyzer" class="level-3">Интеграция CallGraphAnalyzer</a></li>
+<li><a href="#grafovye-insayty" class="level-3">Графовые инсайты</a></li>
+<li><a href="#modeli-dannyh" class="level-2">Модели данных</a></li>
+<li><a href="#konfiguratsiya" class="level-2">Конфигурация</a></li>
+<li><a href="#ispolzovanie-cli" class="level-2">Использование CLI</a></li>
 <li><a href="#primery-zaprosov" class="level-2">Примеры запросов</a></li>
-<li><a href="#komandy-cli" class="level-2">Команды CLI</a></li>
 <li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>
       </ul>
     </aside>

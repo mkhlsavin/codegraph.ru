@@ -82,6 +82,7 @@
         <li><a href="../getting-started/index.html">Overview</a></li>
         <li><a href="../getting-started/CONFIGURATION.html">Configuration Guide</a></li>
         <li><a href="../getting-started/INSTALLATION.html">Installation Guide</a></li>
+        <li><a href="../getting-started/QUICK_START.html">Getting Started</a></li>
       </ul>
     </div>
 
@@ -94,7 +95,7 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DATAFLOW_ANALYSIS_GUIDE_EN.html">Dataflow Analysis User Guide</a></li>
+        <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="MONITORING.html">Monitoring Guide</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
@@ -116,7 +117,7 @@
         <li><a href="09-code-review.html">Scenario 09: Code Review</a></li>
         <li><a href="10-cross-repo.html">Scenario 10: Cross-Repository Analysis</a></li>
         <li><a href="11-architecture.html">Scenario 11: Architecture Analysis</a></li>
-        <li><a href="12-tech-debt.html">Scenario 12: Tech Debt Assessment</a></li>
+        <li><a href="12-tech-debt.html">Scenario 12: Technical Debt</a></li>
         <li><a href="13-mass-refactoring.html">Scenario 13: Mass Refactoring</a></li>
         <li><a href="14-incident-response.html">Scenario 14: Security Incident Response</a></li>
         <li><a href="15-debugging.html">Scenario 15: Debugging Support</a></li>
@@ -125,7 +126,7 @@
         <li><a href="18-code-optimization.html">Scenario 18: Code Optimization</a></li>
         <li><a href="19-standards-check.html">Scenario 19: Standards Check</a></li>
         <li><a href="20-dependencies.html">Scenario 20: Dependency Analysis</a></li>
-        <li><a href="21-pattern-search.html">Scenario 21: Structural Pattern Search</a></li>
+        <li><a href="21-pattern-search.html">Structural Pattern Search</a></li>
         <li><a href="composite-workflows.html">Composite Workflows</a></li>
       </ul>
     </div>
@@ -180,40 +181,272 @@
       <article class="doc-content">
         <h1  id="scenario-01-codebase-onboarding"><span id="scenario_01_codebase_onboarding"></span>Scenario 01: Codebase Onboarding<a class="heading-anchor" href="#scenario-01-codebase-onboarding" title="Link to this section">&para;</a></h1>
 <blockquote class="callout">
-<p>New developer joins the team and needs to understand codebase structure quickly.</p>
+<p>New developer joins the team and needs to understand codebase structure quickly using CPG-powered analysis.</p>
 </blockquote>
+<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<ul>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#how-it-works">How It Works</a></li>
+<li><a href="#query-type-detection">Query Type Detection</a></li>
+<li><a href="#handler-architecture">Handler Architecture</a></li>
+<li><a href="#retrieval-strategy">Retrieval Strategy</a></li>
+<li><a href="#enrichment-pipeline">Enrichment Pipeline</a></li>
+<li><a href="#use-cases">Use Cases</a></li>
+<li><a href="#day-1-codebase-overview">Day 1: Codebase Overview</a></li>
+<li><a href="#finding-definitions">Finding Definitions</a></li>
+<li><a href="#understanding-call-graphs">Understanding Call Graphs</a></li>
+<li><a href="#tracing-data-flow">Tracing Data Flow</a></li>
+<li><a href="#external-context">External Context</a></li>
+<li><a href="#handler-categories">Handler Categories</a></li>
+<li><a href="#core-handlers">Core Handlers</a></li>
+<li><a href="#cross-scenario-adapters">Cross-Scenario Adapters</a></li>
+<li><a href="#security-refactoring-handlers">Security &amp; Refactoring Handlers</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
+<li><a href="#example-questions">Example Questions</a></li>
+<li><a href="#related-scenarios">Related Scenarios</a></li>
+</ul>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Select Onboarding Scenario</span>
 /select<span class="w"> </span><span class="m">01</span>
 </code></pre></div>
 
+<h2  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h2>
+<h3  id="query-type-detection"><span id="query_type_detection"></span>Query Type Detection<a class="heading-anchor" href="#query-type-detection" title="Link to this section">&para;</a></h3>
+<p>When you ask a question, <code>OnboardingQueryDetector</code> classifies it using 4 mixin-based detectors in a 5-phase pipeline:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Detector Mixin</th>
+<th>Methods</th>
+<th>Detects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DefinitionDetectorMixin</code></td>
+<td>4</td>
+<td>Function location, signature, file path queries</td>
+</tr>
+<tr>
+<td><code>CallGraphDetectorMixin</code></td>
+<td>11</td>
+<td>Callers, callees, paths, cycles, centrality, SCC/WCC</td>
+</tr>
+<tr>
+<td><code>DataflowDetectorMixin</code></td>
+<td>4</td>
+<td>Data flow, taint propagation, privilege boundaries</td>
+</tr>
+<tr>
+<td><code>SubsystemDetectorMixin</code></td>
+<td>14</td>
+<td>Subsystem overview, debug, business logic, external context</td>
+</tr>
+</tbody>
+</table></div>
+<p>Detection runs in 5 phases:</p>
+<div class="highlight"><pre><span></span><code>Query
+  |
+  v
+[Phase 1] Early exit — parenthesized function definitions
+  |
+  v
+[Phase 2] Complex structural checks (17 rules)
+  |
+  v
+[Phase 3] Lifecycle trace &amp; execution trace
+  |
+  v
+[Phase 4] Dispatch table — priority-ordered detection rules
+  |
+  v
+[Phase 5] Fallback chain
+  |
+  v
+DetectionResult(type, target, target_variants, variable,
+                module_filter, file_path_filter, directory_filter)
+</code></pre></div>
+
+<p>Supports both English and Russian queries with morphological keyword matching via <code>keyword_match_morphological()</code>.</p>
+<h3  id="handler-architecture"><span id="handler_architecture"></span>Handler Architecture<a class="heading-anchor" href="#handler-architecture" title="Link to this section">&para;</a></h3>
+<p>The onboarding scenario uses a handler-based architecture with <code>OnboardingHandlerRegistry</code> containing 65 registered handlers across 7 categories:</p>
+<div class="highlight"><pre><span></span><code>DetectionResult
+    |
+    v
+OnboardingHandlerRegistry → find handler by query type
+    |
+    v
+OnboardingHandler.handle(query_info)
+    |
+    v
+OnboardingResult
+    |-- should_return=True  → return formatted answer (+ optional enrichment)
+    |-- should_return=False → gather data, fall through to LLM
+    |
+    v
+Post-processing safety net (catches missed queries)
+    |
+    v
+LLM response generation (if no handler matched)
+</code></pre></div>
+
+<p>Each handler inherits from <code>OnboardingHandler</code> and returns an <code>OnboardingResult</code> with 8 fields:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cpg_results</code></td>
+<td>list</td>
+<td>CPG query results</td>
+</tr>
+<tr>
+<td><code>retrieved_functions</code></td>
+<td>list</td>
+<td>Function names for context</td>
+</tr>
+<tr>
+<td><code>answer</code></td>
+<td>str</td>
+<td>Formatted response</td>
+</tr>
+<tr>
+<td><code>evidence</code></td>
+<td>list</td>
+<td>Evidence strings</td>
+</tr>
+<tr>
+<td><code>handled_flag</code></td>
+<td>str</td>
+<td>State flag to prevent re-handling</td>
+</tr>
+<tr>
+<td><code>should_return</code></td>
+<td>bool</td>
+<td>Return immediately or continue to LLM</td>
+</tr>
+<tr>
+<td><code>graph_context</code></td>
+<td>dict</td>
+<td>Additional graph data</td>
+</tr>
+<tr>
+<td><code>skip_enrichment</code></td>
+<td>bool</td>
+<td>Opt-out of LLM enrichment</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="retrieval-strategy"><span id="retrieval_strategy"></span>Retrieval Strategy<a class="heading-anchor" href="#retrieval-strategy" title="Link to this section">&para;</a></h3>
+<p>The base <code>OnboardingHandler</code> provides 6 specialized search methods for multi-source retrieval:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_vector_search_fallback()</code></td>
+<td>ChromaDB <code>code_comments</code></td>
+<td>Semantic search in docstrings when CPG returns nothing</td>
+</tr>
+<tr>
+<td><code>_snippet_search()</code></td>
+<td>ChromaDB <code>code_snippets</code></td>
+<td>Search in function implementations</td>
+</tr>
+<tr>
+<td><code>_domain_pattern_search()</code></td>
+<td>ChromaDB <code>domain_patterns</code></td>
+<td>Find security/taint patterns</td>
+</tr>
+<tr>
+<td><code>_vector_supplement()</code></td>
+<td>All sources</td>
+<td>4-phase additive merge (see below)</td>
+</tr>
+<tr>
+<td><code>_get_pre_retrieval_names()</code></td>
+<td><code>state["pre_retrieval_results"]</code></td>
+<td>Integrate HybridRetriever results</td>
+</tr>
+<tr>
+<td><code>enrich_retrieved_functions()</code></td>
+<td>CPG</td>
+<td>Add entity types (function/class/interface)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The <code>_vector_supplement()</code> method performs a 4-phase additive merge to maximize recall:</p>
+<div class="highlight"><pre><span></span><code>Phase 1: CPG exact matches (highest priority)
+Phase 2: Pre-retrieval hybrid results (from HybridRetriever)
+Phase 3: Vector search additions (semantic similarity)
+Phase 4: Code snippet additions (implementation search)
+    → Deduplicated merged list
+</code></pre></div>
+
+<h3  id="enrichment-pipeline"><span id="enrichment_pipeline"></span>Enrichment Pipeline<a class="heading-anchor" href="#enrichment-pipeline" title="Link to this section">&para;</a></h3>
+<p>When a handler returns <code>should_return=True</code> and enrichment is enabled, a 3-phase enrichment pipeline runs:</p>
+<div class="highlight"><pre><span></span><code>OnboardingResult (from handler)
+    |
+    v
+[Phase 1] CPG Comments
+    |-- Batch-fetch function descriptions from code comments
+    |-- Merge descriptions into cpg_results
+    |-- Reformat answer with descriptions
+    |
+    v
+[Phase 2] Vector Context (parallel, 4 workers)
+    |-- Q&amp;A pairs (retrieve_qa)
+    |-- SQL examples (retrieve_sql)
+    |-- Generated docs (retrieve_generated_docs)
+    |-- Code comments (retrieve_comments)
+    |-- Append to evidence
+    |
+    v
+[Phase 3] LLM Synthesis (optional)
+    |-- Build prompt with CPG + vector context
+    |-- Generate enriched answer (cached by query hash)
+    |-- Preserve original as _original_answer
+</code></pre></div>
+
+<p>Handlers can set <code>skip_enrichment=True</code> to opt out (e.g., for structured tabular responses).</p>
 <h2  id="use-cases"><span id="use_cases"></span>Use Cases<a class="heading-anchor" href="#use-cases" title="Link to this section">&para;</a></h2>
 <h3  id="day-1-codebase-overview"><span id="day_1_codebase_overview"></span>Day 1: Codebase Overview<a class="heading-anchor" href="#day-1-codebase-overview" title="Link to this section">&para;</a></h3>
 <p>Ask high-level questions about the system:</p>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">What</span><span class="w"> </span><span class="nv">is</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">executor</span><span class="w"> </span><span class="nv">subsystem</span>?
+<div class="highlight"><pre><span></span><code>&gt; What is the executor subsystem?
 
-╭───────────────<span class="w"> </span><span class="nv">Answer</span><span class="w"> </span>────────────────╮
-│<span class="w"> </span><span class="nv">The</span><span class="w"> </span><span class="nv">executor</span><span class="w"> </span><span class="nv">subsystem</span><span class="w"> </span><span class="nv">is</span><span class="w"> </span><span class="nv">responsible</span><span class="w"> </span>│
-│<span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">executing</span><span class="w"> </span><span class="nv">query</span><span class="w"> </span><span class="nv">plans</span><span class="w"> </span><span class="nv">generated</span><span class="w">   </span>│
-│<span class="w"> </span><span class="nv">by</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">planner</span>.<span class="w">                       </span>│
-│<span class="w">                                       </span>│
-│<span class="w"> </span><span class="nv">Key</span><span class="w"> </span><span class="nv">components</span>:<span class="w">                       </span>│
-│<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nv">ExecutorStart</span>:<span class="w"> </span><span class="nv">Initialize</span><span class="w"> </span><span class="nv">state</span><span class="w">   </span>│
-│<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nv">ExecutorRun</span>:<span class="w"> </span><span class="nv">Main</span><span class="w"> </span><span class="nv">execution</span><span class="w"> </span><span class="k">loop</span><span class="w">  </span>│
-│<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nv">ExecutorEnd</span>:<span class="w"> </span><span class="nv">Cleanup</span><span class="w"> </span><span class="nv">resources</span><span class="w">    </span>│
-│<span class="w">                                       </span>│
-│<span class="w"> </span><span class="nv">Entry</span><span class="w"> </span><span class="nv">point</span>:<span class="w"> </span><span class="nv">src</span><span class="o">/</span><span class="nv">backend</span><span class="o">/</span><span class="nv">executor</span><span class="o">/</span><span class="w">    </span>│
-│<span class="w">              </span><span class="nv">execMain</span>.<span class="nv">c</span><span class="w">               </span>│
+╭─────────────── Answer ────────────────╮
+│ The executor subsystem is responsible │
+│ for executing query plans generated   │
+│ by the planner.                       │
+│                                       │
+│ Key components:                       │
+│   - ExecutorStart: Initialize state   │
+│   - ExecutorRun: Main execution loop  │
+│   - ExecutorEnd: Cleanup resources    │
+│                                       │
+│ Entry point: src/backend/executor/    │
+│              execMain.c               │
 ╰───────────────────────────────────────╯
 
-<span class="o">&gt;</span><span class="w"> </span><span class="nv">What</span><span class="w"> </span><span class="nv">are</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">main</span><span class="w"> </span><span class="nv">entry</span><span class="w"> </span><span class="nv">points</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">executor</span>?
+&gt; What are the main entry points in the executor?
 
-<span class="o">&gt;</span><span class="w"> </span><span class="k">Show</span><span class="w"> </span><span class="nv">me</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">architecture</span><span class="w"> </span><span class="nv">of</span><span class="w"> </span><span class="nv">query</span><span class="w"> </span><span class="nv">execution</span>
+&gt; Show me the architecture of query execution
 </code></pre></div>
 
-<h3  id="finding-function-definitions"><span id="finding_function_definitions"></span>Finding Function Definitions<a class="heading-anchor" href="#finding-function-definitions" title="Link to this section">&para;</a></h3>
-<p>Locate function implementations quickly:</p>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">Where is palloc defined?</span>
+<h3  id="finding-definitions"><span id="finding_definitions"></span>Finding Definitions<a class="heading-anchor" href="#finding-definitions" title="Link to this section">&para;</a></h3>
+<p>The <code>DefinitionOnboardingHandler</code> locates function implementations with signatures and related functions, formatted by <code>DefinitionFormatter</code>:</p>
+<div class="highlight"><pre><span></span><code>&gt; Where is palloc defined?
 
 ╭─────────────── Answer ────────────────╮
 │ palloc is defined in:                 │
@@ -229,22 +462,28 @@
 </code></pre></div>
 
 <h3  id="understanding-call-graphs"><span id="understanding_call_graphs"></span>Understanding Call Graphs<a class="heading-anchor" href="#understanding-call-graphs" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="n">Show</span><span class="w"> </span><span class="n">me</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">callers</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="n">palloc</span>
+<p>The <code>CallGraphOnboardingHandler</code> family (8 handlers) provides callers, callees, shortest paths, cycle detection, SCC/WCC analysis, and centrality metrics, formatted by <code>CallGraphFormatter</code>:</p>
+<div class="highlight"><pre><span></span><code>&gt; Show me all callers of palloc
 
-<span class="err">╭───────────────</span><span class="w"> </span><span class="n">Callers</span><span class="w"> </span><span class="err">───────────────╮</span>
-<span class="err">│</span><span class="w"> </span><span class="mf">1.</span><span class="w"> </span><span class="n">heap_form_tuple</span><span class="p">()</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w"> </span><span class="mf">2.</span><span class="w"> </span><span class="n">ExecStoreTuple</span><span class="p">()</span><span class="w">                   </span><span class="err">│</span>
-<span class="err">│</span><span class="w"> </span><span class="mf">3.</span><span class="w"> </span><span class="n">construct_array</span><span class="p">()</span><span class="w">                  </span><span class="err">│</span>
-<span class="err">│</span><span class="w"> </span><span class="mf">4.</span><span class="w"> </span><span class="n">pnstrdup</span><span class="p">()</span><span class="w">                         </span><span class="err">│</span>
-<span class="err">│</span><span class="w"> </span><span class="mf">5.</span><span class="w"> </span><span class="n">SPI_connect</span><span class="p">()</span><span class="w">                      </span><span class="err">│</span>
-<span class="err">│</span><span class="w"> </span><span class="o">...</span><span class="w"> </span><span class="p">(</span><span class="n">showing</span><span class="w"> </span><span class="n">top</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="mi">847</span><span class="w"> </span><span class="n">callers</span><span class="p">)</span><span class="w">  </span><span class="err">│</span>
-<span class="err">╰───────────────────────────────────────╯</span>
+╭─────────────── Callers ───────────────╮
+│ 1. heap_form_tuple()                  │
+│ 2. ExecStoreTuple()                   │
+│ 3. construct_array()                  │
+│ 4. pnstrdup()                         │
+│ 5. SPI_connect()                      │
+│ ... (showing top 5 of 2,847 callers)  │
+╰───────────────────────────────────────╯
 
-<span class="o">&gt;</span><span class="w"> </span><span class="n">What</span><span class="w"> </span><span class="n">functions</span><span class="w"> </span><span class="n">does</span><span class="w"> </span><span class="n">LWLockAcquire</span><span class="w"> </span><span class="n">call</span><span class="err">?</span>
+&gt; What functions does LWLockAcquire call?
+
+&gt; Find shortest call path from main to heap_insert
+
+&gt; Detect cycles in the call graph involving executor
 </code></pre></div>
 
 <h3  id="tracing-data-flow"><span id="tracing_data_flow"></span>Tracing Data Flow<a class="heading-anchor" href="#tracing-data-flow" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">&gt; </span><span class="ge">How does data flow from pg_parse_query to executor?</span>
+<p>The <code>DataflowOnboardingHandler</code> family (5 handlers) traces data flow, taint propagation, privilege boundaries, reaching definitions, and interprocedural flows:</p>
+<div class="highlight"><pre><span></span><code>&gt; How does data flow from pg_parse_query to executor?
 
 ╭─────────────── Data Flow ─────────────╮
 │ pg_parse_query()                      │
@@ -261,46 +500,166 @@
 ╰───────────────────────────────────────╯
 </code></pre></div>
 
-<h3  id="understanding-memory-management"><span id="understanding_memory_management"></span>Understanding Memory Management<a class="heading-anchor" href="#understanding-memory-management" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="nv">How</span><span class="w"> </span><span class="nv">does</span><span class="w"> </span><span class="nv">memory</span><span class="w"> </span><span class="nv">allocation</span><span class="w"> </span><span class="nv">work</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">PostgreSQL</span>?
-
-╭───────────────<span class="w"> </span><span class="nv">Answer</span><span class="w"> </span>────────────────╮
-│<span class="w"> </span><span class="nv">PostgreSQL</span><span class="w"> </span><span class="nv">uses</span><span class="w"> </span><span class="nv">memory</span><span class="w"> </span><span class="nv">contexts</span><span class="w"> </span><span class="k">for</span><span class="w">   </span>│
-│<span class="w"> </span><span class="nv">hierarchical</span><span class="w"> </span><span class="nv">memory</span><span class="w"> </span><span class="nv">management</span>:<span class="w">       </span>│
-│<span class="w">                                       </span>│
-│<span class="w"> </span><span class="nv">Key</span><span class="w"> </span><span class="nv">functions</span>:<span class="w">                        </span>│
-│<span class="w">   </span><span class="nv">palloc</span><span class="ss">()</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Allocate</span><span class="w"> </span><span class="nv">memory</span><span class="w">         </span>│
-│<span class="w">   </span><span class="nv">pfree</span><span class="ss">()</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nv">Free</span><span class="w"> </span><span class="nv">memory</span><span class="w">             </span>│
-│<span class="w">   </span><span class="nv">MemoryContextCreate</span><span class="ss">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">New</span><span class="w"> </span><span class="nv">context</span><span class="w"> </span>│
-│<span class="w">   </span><span class="nv">MemoryContextReset</span><span class="ss">()</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Bulk</span><span class="w"> </span><span class="nv">free</span><span class="w">   </span>│
-│<span class="w">                                       </span>│
-│<span class="w"> </span><span class="nv">Main</span><span class="w"> </span><span class="nv">contexts</span>:<span class="w">                        </span>│
-│<span class="w">   </span><span class="nv">TopMemoryContext</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">Root</span><span class="w"> </span><span class="nv">context</span><span class="w">     </span>│
-│<span class="w">   </span><span class="nv">CurrentMemoryContext</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">Active</span><span class="w"> </span><span class="nv">ctx</span><span class="w">   </span>│
-│<span class="w">   </span><span class="nv">MessageContext</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">Per</span><span class="o">-</span><span class="nv">message</span><span class="w">        </span>│
-╰───────────────────────────────────────╯
+<h3  id="external-context"><span id="external_context"></span>External Context<a class="heading-anchor" href="#external-context" title="Link to this section">&para;</a></h3>
+<p>The external context handlers query Git history and issue trackers:</p>
+<div class="highlight"><pre><span></span><code>&gt; Who wrote heap_insert?              → AuthorQueryOnboardingHandler
+&gt; What issues are related to executor? → IssueQueryOnboardingHandler
+&gt; Show error hotspots in parser        → ErrorHotspotOnboardingHandler
+&gt; What functions change most often?    → ChurnAnalysisOnboardingHandler
 </code></pre></div>
 
-<h2  id="example-questions-for-day-1"><span id="example_questions_for_day_1"></span>Example Questions for Day 1<a class="heading-anchor" href="#example-questions-for-day-1" title="Link to this section">&para;</a></h2>
-<ol>
-<li>&ldquo;What is the main architecture?&rdquo;</li>
-<li>&ldquo;Where is [function_name] defined?&rdquo;</li>
-<li>&ldquo;Who calls [function_name]?&rdquo;</li>
-<li>&ldquo;What does [module_name] do?&rdquo;</li>
-<li>&ldquo;Show me the relationship between X and Y&rdquo;</li>
-</ol>
-<h2 id="tips">Tips<a class="heading-anchor" href="#tips" title="Link to this section">&para;</a></h2>
+<h2  id="handler-categories"><span id="handler_categories"></span>Handler Categories<a class="heading-anchor" href="#handler-categories" title="Link to this section">&para;</a></h2>
+<h3  id="core-handlers"><span id="core_handlers"></span>Core Handlers<a class="heading-anchor" href="#core-handlers" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Count</th>
+<th>Key Handlers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Definition</strong></td>
+<td>1</td>
+<td><code>DefinitionOnboardingHandler</code> — signatures, locations, related functions</td>
+</tr>
+<tr>
+<td><strong>Call Graph</strong></td>
+<td>8</td>
+<td>CallGraph, ShortestPath, CallDepth, CycleDetection, SCC, WCC, Centrality, Intersection</td>
+</tr>
+<tr>
+<td><strong>Dataflow</strong></td>
+<td>5</td>
+<td>Dataflow, TaintFlow, PrivilegeBoundary, ReachingDefinitions, InterproceduralFlow</td>
+</tr>
+<tr>
+<td><strong>Transitive Calls</strong></td>
+<td>4</td>
+<td>LimitedCallers, MultiLevelCallers, TransitiveCallees, CommonCallees</td>
+</tr>
+<tr>
+<td><strong>Query Types</strong></td>
+<td>3</td>
+<td>Debug, BusinessLogic, Subsystem</td>
+</tr>
+<tr>
+<td><strong>External Context</strong></td>
+<td>4</td>
+<td>Author, Issues, ErrorHotspot, ChurnAnalysis</td>
+</tr>
+<tr>
+<td><strong>Utility</strong></td>
+<td>5</td>
+<td>General, MechanismExplanation, FunctionSearch, ProjectStatistics, FileStructure</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="cross-scenario-adapters"><span id="cross_scenario_adapters"></span>Cross-Scenario Adapters<a class="heading-anchor" href="#cross-scenario-adapters" title="Link to this section">&para;</a></h3>
+<p>19 adapters bridge onboarding to other scenarios without leaving the onboarding context:</p>
 <ul>
-<li>Start with high-level questions, then dive deeper</li>
-<li>Use the call graph to understand dependencies</li>
-<li>Ask about data flow to understand how components interact</li>
-<li>Save your session with <code>/save</code> for future reference</li>
+<li><strong>Clone detection</strong>: CloneDetection, SemanticClone, StructuralClone, PatternClone</li>
+<li><strong>Documentation</strong>: APIDoc, ModuleDoc, SystemDoc, FunctionDoc</li>
+<li><strong>Debugging</strong>: DebugPoints, Hooks, MacroDefinition, ErrorPaths, ErrorHandling</li>
+<li><strong>Other</strong>: ExtensionPoints, APIMigration, UnitTest, DMLFlow, TraceExecution</li>
 </ul>
+<h3  id="security-refactoring-handlers"><span id="security-amp-refactoring-handlers"></span><span id="security_amp_refactoring_handlers"></span><span id="security_refactoring_handlers"></span>Security &amp; Refactoring Handlers<a class="heading-anchor" href="#security-refactoring-handlers" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Count</th>
+<th>Handlers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Security</strong></td>
+<td>5</td>
+<td>MemorySafetyVuln, InputValidationVuln, AuthSecurity, RaceCondition, NetworkEntry</td>
+</tr>
+<tr>
+<td><strong>Refactoring</strong></td>
+<td>4</td>
+<td>BulkOperations, ExtractionCandidates, FullAudit, DDLFlow</td>
+</tr>
+<tr>
+<td><strong>Analysis subtypes</strong></td>
+<td>14</td>
+<td>DeadCode, Tracking, Memory, Concurrency, EntryPoint, TrustBoundary, and more</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
+<p>Handler limits in <code>config.yaml</code> via <code>HandlerLimits</code> dataclass:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">workflows</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">handlers</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">limits</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">retrieved_functions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">25</span><span class="w">    </span><span class="c1"># Final result list size</span>
+<span class="w">      </span><span class="nt">cpg_results</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w">            </span><span class="c1"># CPG query result limit</span>
+<span class="w">      </span><span class="nt">display_items</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">          </span><span class="c1"># Items shown in output</span>
+<span class="w">      </span><span class="nt">callers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">                </span><span class="c1"># Call graph callers limit</span>
+<span class="w">      </span><span class="nt">callees</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">                </span><span class="c1"># Call graph callees limit</span>
+</code></pre></div>
+
+<p>Enrichment config (optional, disabled by default):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">workflows</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">onboarding</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enrichment</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">              </span><span class="c1"># Enable enrichment pipeline</span>
+<span class="w">      </span><span class="nt">enable_vector</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">       </span><span class="c1"># Enable vector context phase</span>
+<span class="w">      </span><span class="nt">enable_llm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># Enable LLM synthesis phase</span>
+<span class="w">      </span><span class="nt">vector_top_k</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span><span class="w">            </span><span class="c1"># Vector search results per collection</span>
+<span class="w">      </span><span class="nt">max_functions_to_describe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</code></pre></div>
+
+<p>All domain-specific behavior (debug categories, DML functions, business logic keywords, subsystem aliases) comes from the active domain plugin via <code>get_active_domain()</code> — nothing is hardcoded.</p>
+<h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Query-based onboarding</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Where is palloc defined?&quot;</span>
+
+<span class="c1"># Deep analysis with LLM</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Explain the executor subsystem architecture&quot;</span>
+
+<span class="c1"># Call graph exploration</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Show callers of heap_insert&quot;</span>
+
+<span class="c1"># Data flow tracing</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;How does data flow from parser to executor?&quot;</span>
+</code></pre></div>
+
+<h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
+<p><strong>Definitions &amp; Structure:</strong>
+- &ldquo;Where is palloc defined?&rdquo;
+- &ldquo;What is the executor subsystem?&rdquo;
+- &ldquo;Show file structure of src/backend/executor&rdquo;
+- &ldquo;How many functions are in the codebase?&rdquo;</p>
+<p><strong>Call Graphs:</strong>
+- &ldquo;Show all callers of heap_insert&rdquo;
+- &ldquo;What functions does ExecProcNode call?&rdquo;
+- &ldquo;Find shortest path from main to SPI_execute&rdquo;
+- &ldquo;Detect cycles in the call graph&rdquo;
+- &ldquo;Show betweenness centrality for executor functions&rdquo;</p>
+<p><strong>Data Flow:</strong>
+- &ldquo;How does data flow from pg_parse_query to executor?&rdquo;
+- &ldquo;Trace taint from user input to SQL execution&rdquo;
+- &ldquo;Show privilege boundary crossings&rdquo;</p>
+<p><strong>External Context:</strong>
+- &ldquo;Who wrote heap_insert?&rdquo;
+- &ldquo;What issues are related to the parser?&rdquo;
+- &ldquo;Show error hotspots in utils&rdquo;
+- &ldquo;What functions change most often?&rdquo;</p>
+<p><strong>Security (via onboarding):</strong>
+- &ldquo;Find memory safety issues in executor&rdquo;
+- &ldquo;Show input validation gaps&rdquo;
+- &ldquo;Find race conditions in shared memory&rdquo;</p>
 <h2  id="related-scenarios"><span id="related_scenarios"></span>Related Scenarios<a class="heading-anchor" href="#related-scenarios" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="04-feature-development.html">Feature Development</a> - Once you understand the codebase</li>
-<li><a href="15-debugging.html">Debugging</a> - For troubleshooting issues</li>
-<li><a href="11-architecture.html">Architecture</a> - For deeper architectural understanding</li>
+<li><a href="04-feature-development.html">Feature Development (S04)</a> — Once you understand the codebase</li>
+<li><a href="15-debugging.html">Debugging (S15)</a> — For troubleshooting issues</li>
+<li><a href="11-architecture.html">Architecture (S11)</a> — For deeper architectural understanding</li>
+<li><a href="02-security-audit.html">Security Audit (S02)</a> — For security-focused exploration</li>
 </ul>
       </article>
 
@@ -320,7 +679,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-07</span>
+        <span>Last updated: 2026-03-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/01-onboarding.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -330,15 +689,26 @@
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#scenario-01-codebase-onboarding" class="level-1">Scenario 01: Codebase Onboarding</a></li>
+<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
+<li><a href="#how-it-works" class="level-2">How It Works</a></li>
+<li><a href="#query-type-detection" class="level-3">Query Type Detection</a></li>
+<li><a href="#handler-architecture" class="level-3">Handler Architecture</a></li>
+<li><a href="#retrieval-strategy" class="level-3">Retrieval Strategy</a></li>
+<li><a href="#enrichment-pipeline" class="level-3">Enrichment Pipeline</a></li>
 <li><a href="#use-cases" class="level-2">Use Cases</a></li>
 <li><a href="#day-1-codebase-overview" class="level-3">Day 1: Codebase Overview</a></li>
-<li><a href="#finding-function-definitions" class="level-3">Finding Function Definitions</a></li>
+<li><a href="#finding-definitions" class="level-3">Finding Definitions</a></li>
 <li><a href="#understanding-call-graphs" class="level-3">Understanding Call Graphs</a></li>
 <li><a href="#tracing-data-flow" class="level-3">Tracing Data Flow</a></li>
-<li><a href="#understanding-memory-management" class="level-3">Understanding Memory Management</a></li>
-<li><a href="#example-questions-for-day-1" class="level-2">Example Questions for Day 1</a></li>
-<li><a href="#tips" class="level-2">Tips</a></li>
+<li><a href="#external-context" class="level-3">External Context</a></li>
+<li><a href="#handler-categories" class="level-2">Handler Categories</a></li>
+<li><a href="#core-handlers" class="level-3">Core Handlers</a></li>
+<li><a href="#cross-scenario-adapters" class="level-3">Cross-Scenario Adapters</a></li>
+<li><a href="#security-refactoring-handlers" class="level-3">Security & Refactoring Handlers</a></li>
+<li><a href="#configuration" class="level-2">Configuration</a></li>
+<li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
+<li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>
     </aside>
