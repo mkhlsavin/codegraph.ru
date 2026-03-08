@@ -207,6 +207,10 @@
 <li><a href="#sprint-based-planning">Sprint-Based Planning</a></li>
 <li><a href="#repaymentplan-data-model">RepaymentPlan Data Model</a></li>
 <li><a href="#repayment-example">Repayment Example</a></li>
+<li><a href="#config-hygiene">Config Hygiene</a></li>
+<li><a href="#6-orphan-types">6 Orphan Types</a></li>
+<li><a href="#cli-usage">CLI Usage</a></li>
+<li><a href="#audit-integration">Audit Integration</a></li>
 <li><a href="#cli-mcp-usage">CLI &amp; MCP Usage</a></li>
 <li><a href="#example-questions">Example Questions</a></li>
 <li><a href="#related-scenarios">Related Scenarios</a></li>
@@ -742,6 +746,56 @@
 ╰────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
+<h2  id="config-hygiene"><span id="config_hygiene"></span>Config Hygiene<a class="heading-anchor" href="#config-hygiene" title="Link to this section">&para;</a></h2>
+<p>The tech debt scenario includes <strong>config orphan detection</strong> — a static analysis tool that cross-references <code>config.yaml</code>, <code>unified_config.py</code> dataclasses, and code usage to find dead or missing configuration parameters.</p>
+<h3  id="6-orphan-types"><span id="6_orphan_types"></span>6 Orphan Types<a class="heading-anchor" href="#6-orphan-types" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>yaml_unused</code></td>
+<td>R1</td>
+<td>YAML section has no <code>@property</code> and no code references</td>
+</tr>
+<tr>
+<td><code>code_orphan</code></td>
+<td>R3</td>
+<td>Code references <code>cfg.X</code> but no <code>@property X</code> exists in schema</td>
+</tr>
+<tr>
+<td><code>orphaned_dataclass</code></td>
+<td>R5</td>
+<td>Dataclass has no matching <code>@property</code></td>
+</tr>
+<tr>
+<td><code>unused_default</code></td>
+<td>R6</td>
+<td>Dataclass field not in YAML and not referenced in code</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full scan (all severity levels)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check
+
+<span class="c1"># Errors only (used in CI)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span>--level<span class="w"> </span>error<span class="w"> </span>--format<span class="w"> </span>text
+
+<span class="c1"># JSON output with fix suggestions</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--fix-suggestions
+
+<span class="c1"># Custom paths (for other projects)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span>--config<span class="w"> </span>my_config.yaml<span class="w"> </span>--schema<span class="w"> </span>my_schema.py<span class="w"> </span>--source<span class="w"> </span>src/<span class="w"> </span>lib/
+</code></pre></div>
+
+<h3  id="audit-integration"><span id="audit_integration"></span>Audit Integration<a class="heading-anchor" href="#audit-integration" title="Link to this section">&para;</a></h3>
+<p>Config orphan findings feed into the audit composite (Q3 redundant code and Q9 maintainability dimensions). The <code>OrphanConfigHandler</code> in S12 handles <code>config_hygiene</code> and <code>orphan_config</code> query intents.</p>
 <h2  id="cli-mcp-usage"><span id="cli-amp-mcp-usage"></span><span id="cli_amp_mcp_usage"></span><span id="cli_mcp_usage"></span>CLI &amp; MCP Usage<a class="heading-anchor" href="#cli-mcp-usage" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Query-based debt analysis</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Calculate technical debt score&quot;</span>
@@ -774,6 +828,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 - &ldquo;Create a sprint plan for debt repayment&rdquo;
 - &ldquo;How many sprints to address critical debt?&rdquo;
 - &ldquo;Generate repayment plan with 30h velocity&rdquo;</p>
+<p><strong>Config Hygiene:</strong>
+- &ldquo;Check config for unused parameters&rdquo;
+- &ldquo;Find orphan config keys&rdquo;
+- &ldquo;Run config hygiene scan&rdquo;</p>
 <p><strong>Pattern-Specific:</strong>
 - &ldquo;Find TODO/FIXME comments&rdquo;
 - &ldquo;Find deprecated API usage&rdquo;
@@ -837,6 +895,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#sprint-based-planning" class="level-3">Sprint-Based Planning</a></li>
 <li><a href="#repaymentplan-data-model" class="level-3">RepaymentPlan Data Model</a></li>
 <li><a href="#repayment-example" class="level-3">Repayment Example</a></li>
+<li><a href="#config-hygiene" class="level-2">Config Hygiene</a></li>
+<li><a href="#6-orphan-types" class="level-3">6 Orphan Types</a></li>
+<li><a href="#cli-usage" class="level-3">CLI Usage</a></li>
+<li><a href="#audit-integration" class="level-3">Audit Integration</a></li>
 <li><a href="#cli-mcp-usage" class="level-2">CLI & MCP Usage</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>

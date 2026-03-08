@@ -207,6 +207,10 @@
 <li><a href="#planirovanie-po-sprintam">Планирование по спринтам</a></li>
 <li><a href="#model-dannyh-repaymentplan">Модель данных RepaymentPlan</a></li>
 <li><a href="#primer-plana-pogasheniya">Пример плана погашения</a></li>
+<li><a href="#gigiena-konfiguratsii">Гигиена конфигурации</a></li>
+<li><a href="#6-tipov-osirotevshih-parametrov">6 типов осиротевших параметров</a></li>
+<li><a href="#ispolzovanie-iz-cli">Использование из CLI</a></li>
+<li><a href="#integratsiya-s-auditom">Интеграция с аудитом</a></li>
 <li><a href="#cli-i-mcp">CLI и MCP</a></li>
 <li><a href="#primery-voprosov">Примеры вопросов</a></li>
 <li><a href="#svyazannye-stsenarii">Связанные сценарии</a></li>
@@ -742,6 +746,56 @@
 ╰────────────────────────────────────────────────────────────╯
 </code></pre></div>
 
+<h2  id="gigiena-konfiguratsii"><span id="gigiena_konfiguratsii"></span>Гигиена конфигурации<a class="heading-anchor" href="#gigiena-konfiguratsii" title="Link to this section">&para;</a></h2>
+<p>Сценарий технического долга включает <strong>обнаружение осиротевших параметров конфигурации</strong> — инструмент статического анализа, который перекрёстно проверяет <code>config.yaml</code>, датаклассы <code>unified_config.py</code> и использование параметров в коде для обнаружения мёртвых или отсутствующих параметров.</p>
+<h3  id="6-tipov-osirotevshih-parametrov"><span id="6_tipov_osirotevshih_parametrov"></span>6 типов осиротевших параметров<a class="heading-anchor" href="#6-tipov-osirotevshih-parametrov" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Тип</th>
+<th>Код</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>yaml_unused</code></td>
+<td>R1</td>
+<td>Секция YAML не имеет <code>@property</code> и не используется в коде</td>
+</tr>
+<tr>
+<td><code>code_orphan</code></td>
+<td>R3</td>
+<td>Код обращается к <code>cfg.X</code>, но <code>@property X</code> отсутствует в схеме</td>
+</tr>
+<tr>
+<td><code>orphaned_dataclass</code></td>
+<td>R5</td>
+<td>Датакласс не имеет соответствующего <code>@property</code></td>
+</tr>
+<tr>
+<td><code>unused_default</code></td>
+<td>R6</td>
+<td>Поле датакласса отсутствует в YAML и не используется в коде</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="ispolzovanie-iz-cli"><span id="ispolzovanie_iz_cli"></span>Использование из CLI<a class="heading-anchor" href="#ispolzovanie-iz-cli" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Полное сканирование (все уровни серьёзности)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check
+
+<span class="c1"># Только ошибки (используется в CI)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span>--level<span class="w"> </span>error<span class="w"> </span>--format<span class="w"> </span>text
+
+<span class="c1"># Вывод в JSON с рекомендациями по исправлению</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--fix-suggestions
+
+<span class="c1"># Пользовательские пути (для других проектов)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span>--config<span class="w"> </span>my_config.yaml<span class="w"> </span>--schema<span class="w"> </span>my_schema.py<span class="w"> </span>--source<span class="w"> </span>src/<span class="w"> </span>lib/
+</code></pre></div>
+
+<h3  id="integratsiya-s-auditom"><span id="integratsiya_s_auditom"></span>Интеграция с аудитом<a class="heading-anchor" href="#integratsiya-s-auditom" title="Link to this section">&para;</a></h3>
+<p>Результаты обнаружения осиротевших параметров поступают в композитный аудит (измерения Q3 — избыточный код и Q9 — поддерживаемость). Обработчик <code>OrphanConfigHandler</code> в S12 обрабатывает интенты <code>config_hygiene</code> и <code>orphan_config</code>.</p>
 <h2  id="cli-i-mcp"><span id="cli_i_mcp"></span>CLI и MCP<a class="heading-anchor" href="#cli-i-mcp" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Анализ долга по запросу</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Рассчитать показатель технического долга&quot;</span>
@@ -774,6 +828,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 - «Составить спринт-план для погашения долга»
 - «Сколько спринтов нужно для критического долга?»
 - «Сгенерировать план погашения со скоростью 30ч»</p>
+<p><strong>Гигиена конфигурации:</strong>
+- «Проверить конфигурацию на неиспользуемые параметры»
+- «Найти осиротевшие ключи конфигурации»
+- «Запустить проверку гигиены конфигурации»</p>
 <p><strong>По паттернам:</strong>
 - «Найти комментарии TODO/FIXME»
 - «Найти использование устаревших API»
@@ -837,6 +895,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#planirovanie-po-sprintam" class="level-3">Планирование по спринтам</a></li>
 <li><a href="#model-dannyh-repaymentplan" class="level-3">Модель данных RepaymentPlan</a></li>
 <li><a href="#primer-plana-pogasheniya" class="level-3">Пример плана погашения</a></li>
+<li><a href="#gigiena-konfiguratsii" class="level-2">Гигиена конфигурации</a></li>
+<li><a href="#6-tipov-osirotevshih-parametrov" class="level-3">6 типов осиротевших параметров</a></li>
+<li><a href="#ispolzovanie-iz-cli" class="level-3">Использование из CLI</a></li>
+<li><a href="#integratsiya-s-auditom" class="level-3">Интеграция с аудитом</a></li>
 <li><a href="#cli-i-mcp" class="level-2">CLI и MCP</a></li>
 <li><a href="#primery-voprosov" class="level-2">Примеры вопросов</a></li>
 <li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>

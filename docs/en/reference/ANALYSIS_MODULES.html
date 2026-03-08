@@ -259,7 +259,21 @@
 <li><a href="#raceconditionanalyzer-dataflow">RaceConditionAnalyzer (dataflow)</a></li>
 <li><a href="#data-model-modules">Data Model Modules</a></li>
 <li><a href="#database-schema-reference">Database Schema Reference</a></li>
+<li><a href="#key-tables-for-analysis">Key Tables for Analysis</a></li>
+<li><a href="#edge-types-for-dataflow">Edge Types for Dataflow</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#method-not-found">&ldquo;Method not found&rdquo;</a></li>
+<li><a href="#no-cfg-data-found">&ldquo;No CFG data found&rdquo;</a></li>
+<li><a href="#no-field-accesses-found">&ldquo;No field accesses found&rdquo;</a></li>
+<li><a href="#no-taint-paths-found">&ldquo;No taint paths found&rdquo;</a></li>
+<li><a href="#performance-considerations">Performance Considerations</a></li>
+<li><a href="#config-orphan-analysis">Config Orphan Analysis</a></li>
+<li><a href="#configorphananalyzer">ConfigOrphanAnalyzer</a></li>
+<li><a href="#orphanfinding">OrphanFinding</a></li>
+<li><a href="#analyzerconfig">AnalyzerConfig</a></li>
+<li><a href="#yamlextractor">YAMLExtractor</a></li>
+<li><a href="#astextractor">ASTExtractor</a></li>
+<li><a href="#codescanner">CodeScanner</a></li>
 <li><a href="#see-also">See Also</a></li>
 </ul>
 <hr />
@@ -798,7 +812,17 @@
 <strong>Scenarios:</strong> S02 (path feasibility in taint analysis)</p>
 <p>Lightweight symbolic execution for checking path feasibility using Z3 solver.</p>
 <h4  id="key-classes_6"><span id="key_classes_6"></span>Key Classes<a class="heading-anchor" href="#key-classes_6" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SymbolicExecutionConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for symbolic execution engine.&quot;&quot;&quot;</span>
+    <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">max_constraints</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">solver_timeout_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span>
+    <span class="n">solver_timeout_uf_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2000</span>
+    <span class="n">max_parse_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">enable_function_models</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">enable_arithmetic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PathConstraint</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A constraint on an execution path.&quot;&quot;&quot;</span>
     <span class="n">node_id</span><span class="p">:</span> <span class="nb">int</span>
@@ -1958,6 +1982,222 @@
 <li>Large methods may have many paths; consider sampling</li>
 </ul>
 <hr />
+<h2  id="config-orphan-analysis"><span id="config_orphan_analysis"></span>Config Orphan Analysis<a class="heading-anchor" href="#config-orphan-analysis" title="Link to this section">&para;</a></h2>
+<p>Module: <code>src/analysis/config_analyzer.py</code></p>
+<p>Detects unused, missing, and mismatched configuration parameters by cross-referencing YAML config, Pydantic/dataclass schema, and source code usage. Performs a 4-stage pipeline: extraction → cross-reference → FP filtering → reporting.</p>
+<p>Used by: S12 (tech debt) via <code>OrphanConfigHandler</code>, CLI <code>dogfood config-check</code>.</p>
+<h3 id="configorphananalyzer">ConfigOrphanAnalyzer<a class="heading-anchor" href="#configorphananalyzer" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.config_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigOrphanAnalyzer</span><span class="p">,</span> <span class="n">AnalyzerConfig</span>
+
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">ConfigOrphanAnalyzer</span><span class="p">(</span><span class="n">AnalyzerConfig</span><span class="p">())</span>
+<span class="n">orphans</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">scan</span><span class="p">()</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">get_summary</span><span class="p">(</span><span class="n">orphans</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Constructor</strong>: <code>ConfigOrphanAnalyzer(config: Optional[AnalyzerConfig] = None)</code></p>
+<p><strong>Methods</strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scan()</code></td>
+<td><code>List[OrphanFinding]</code></td>
+<td>Run full orphan detection pipeline (4 stages)</td>
+</tr>
+<tr>
+<td><code>get_summary(orphans)</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td>Generate summary statistics by type and severity</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Detection stages</strong>:
+1. <strong>Extraction</strong> — parse YAML keys (<code>YAMLExtractor</code>), schema dataclass fields (<code>ASTExtractor</code>), code references (<code>CodeScanner</code>)
+2. <strong>Cross-reference</strong> — compare defined vs used parameters
+3. <strong>FP filtering</strong> — remove false positives (env vars, dynamic access, known patterns)
+4. <strong>Reporting</strong> — produce <code>OrphanFinding</code> list</p>
+<h3 id="orphanfinding">OrphanFinding<a class="heading-anchor" href="#orphanfinding" title="Link to this section">&para;</a></h3>
+<p>Dataclass representing a single orphan config finding.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orphan_type</code></td>
+<td><code>str</code></td>
+<td>One of: <code>yaml_unused</code>, <code>yaml_missing</code>, <code>code_orphan</code>, <code>path_mismatch</code>, <code>orphaned_dataclass</code>, <code>unused_default</code></td>
+</tr>
+<tr>
+<td><code>severity</code></td>
+<td><code>str</code></td>
+<td><code>error</code>, <code>warning</code>, or <code>info</code></td>
+</tr>
+<tr>
+<td><code>param_name</code></td>
+<td><code>str</code></td>
+<td>Dotted parameter path (e.g. <code>timeouts.http_client</code>)</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td><code>str</code></td>
+<td>Human-readable description</td>
+</tr>
+<tr>
+<td><code>file_path</code></td>
+<td><code>str</code></td>
+<td>Source file where the issue was found</td>
+</tr>
+<tr>
+<td><code>line_number</code></td>
+<td><code>int</code></td>
+<td>Line number in source file</td>
+</tr>
+<tr>
+<td><code>suggestion</code></td>
+<td><code>str</code></td>
+<td>Fix suggestion (when available)</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td>Additional context</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="analyzerconfig">AnalyzerConfig<a class="heading-anchor" href="#analyzerconfig" title="Link to this section">&para;</a></h3>
+<p>Dataclass for domain-agnostic analyzer configuration.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config_files</code></td>
+<td><code>List[str]</code></td>
+<td><code>["config.yaml"]</code></td>
+<td>YAML config files to analyze</td>
+</tr>
+<tr>
+<td><code>schema_files</code></td>
+<td><code>List[str]</code></td>
+<td><code>["src/config/unified_config.py"]</code></td>
+<td>Pydantic/dataclass schema files</td>
+</tr>
+<tr>
+<td><code>source_dirs</code></td>
+<td><code>List[str]</code></td>
+<td><code>["src/"]</code></td>
+<td>Directories to scan for config usage</td>
+</tr>
+<tr>
+<td><code>exclude_dirs</code></td>
+<td><code>List[str]</code></td>
+<td><code>["tests/", "scripts/", "docs/"]</code></td>
+<td>Directories to exclude from scanning</td>
+</tr>
+<tr>
+<td><code>test_dirs</code></td>
+<td><code>List[str]</code></td>
+<td><code>["tests/"]</code></td>
+<td>Test directories (scanned separately)</td>
+</tr>
+<tr>
+<td><code>root_dir</code></td>
+<td><code>Optional[str]</code></td>
+<td><code>None</code></td>
+<td>Project root (auto-detected if not set)</td>
+</tr>
+<tr>
+<td><code>access_patterns</code></td>
+<td><code>List[str]</code></td>
+<td>regex list</td>
+<td>Patterns for typed config access (<code>cfg.section.field</code>)</td>
+</tr>
+<tr>
+<td><code>raw_access_patterns</code></td>
+<td><code>List[str]</code></td>
+<td>regex list</td>
+<td>Patterns for raw dict access (<code>_raw.get("key")</code>)</td>
+</tr>
+<tr>
+<td><code>dynamic_patterns</code></td>
+<td><code>List[str]</code></td>
+<td>regex list</td>
+<td>Patterns indicating dynamic access (excluded from detection)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="yamlextractor">YAMLExtractor<a class="heading-anchor" href="#yamlextractor" title="Link to this section">&para;</a></h3>
+<p>Extracts all leaf keys and environment variable references from YAML config files.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extract(config_path)</code></td>
+<td><code>Tuple[Dict[str, Any], Set[str]]</code></td>
+<td>Returns (flat_keys dict, env_var_keys set)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="astextractor">ASTExtractor<a class="heading-anchor" href="#astextractor" title="Link to this section">&para;</a></h3>
+<p>Parses Python schema files via AST to extract dataclass fields and <code>@property</code> definitions.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extract(schema_path)</code></td>
+<td><code>Tuple[Dict, Dict, Set]</code></td>
+<td>Returns (dataclass_fields, property_map, property_names)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="codescanner">CodeScanner<a class="heading-anchor" href="#codescanner" title="Link to this section">&para;</a></h3>
+<p>Scans Python source files for config access patterns with context-aware <code>cfg</code> variable tracking. Distinguishes between variables holding the full <code>UnifiedConfig</code> object vs sub-properties.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scan(source_dirs, exclude_dirs)</code></td>
+<td><code>Tuple[Dict, Set, bool]</code></td>
+<td>Returns (references, raw_keys, has_dynamic_access)</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
 <h2  id="see-also"><span id="see_also"></span>See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="SCHEMA.html">Schema Reference</a> — Complete database schema</li>
@@ -2053,6 +2293,13 @@
 <li><a href="#no-field-accesses-found" class="level-3">"No field accesses found"</a></li>
 <li><a href="#no-taint-paths-found" class="level-3">"No taint paths found"</a></li>
 <li><a href="#performance-considerations" class="level-3">Performance Considerations</a></li>
+<li><a href="#config-orphan-analysis" class="level-2">Config Orphan Analysis</a></li>
+<li><a href="#configorphananalyzer" class="level-3">ConfigOrphanAnalyzer</a></li>
+<li><a href="#orphanfinding" class="level-3">OrphanFinding</a></li>
+<li><a href="#analyzerconfig" class="level-3">AnalyzerConfig</a></li>
+<li><a href="#yamlextractor" class="level-3">YAMLExtractor</a></li>
+<li><a href="#astextractor" class="level-3">ASTExtractor</a></li>
+<li><a href="#codescanner" class="level-3">CodeScanner</a></li>
 <li><a href="#see-also" class="level-2">See Also</a></li>
       </ul>
     </aside>

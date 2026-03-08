@@ -2290,25 +2290,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 <hr />
 <h2  id="gocpg-operations"><span id="gocpg_operations"></span>GoCPG Operations<a class="heading-anchor" href="#gocpg-operations" title="Link to this section">&para;</a></h2>
 <p>Endpoints for interacting with the GoCPG code property graph engine. All endpoints require authentication and are prefixed with <code>/api/v1/gocpg/</code>.</p>
+<blockquote class="callout">
+<p><strong>Note:</strong> Only read-only analytical endpoints are exposed via the public API. Administrative operations (hooks, watch, branches, submodules, index management) are available through the CLI and gRPC interface.</p>
+</blockquote>
 <h3  id="get-apiv1gocpgstats"><span id="get_apiv1gocpgstats"></span>GET /api/v1/gocpg/stats<a class="heading-anchor" href="#get-apiv1gocpgstats" title="Link to this section">&para;</a></h3>
 <p>Get CPG statistics (node/edge counts, database size).</p>
-<p><strong>Query Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>db_path</code></td>
-<td>string (optional)</td>
-<td>DuckDB file path</td>
-</tr>
-</tbody>
-</table></div>
 <p><strong>Response (200):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;total_nodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">140000</span><span class="p">,</span>
@@ -2338,11 +2324,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>db_path</code></td>
-<td>string (optional)</td>
-<td>DuckDB file path</td>
-</tr>
 <tr>
 <td><code>top</code></td>
 <td>integer (optional, default: 20)</td>
@@ -2392,47 +2373,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 <span class="p">}</span>
 </code></pre></div>
 
-<h3  id="post-apiv1gocpgquery"><span id="post_apiv1gocpgquery"></span>POST /api/v1/gocpg/query<a class="heading-anchor" href="#post-apiv1gocpgquery" title="Link to this section">&para;</a></h3>
-<p>Execute an SQL query against the CPG database.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;sql&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM nodes_method&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Type</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>sql</code></td>
-<td>string</td>
-<td>yes</td>
-<td>SQL query to execute</td>
-</tr>
-<tr>
-<td><code>db_path</code></td>
-<td>string</td>
-<td>no</td>
-<td>DuckDB file path</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;columns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;count_star()&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[[</span><span class="mi">52000</span><span class="p">]],</span>
-<span class="w">  </span><span class="nt">&quot;row_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
-<span class="p">}</span>
-</code></pre></div>
-
 <h3  id="get-apiv1gocpgfrontends"><span id="get_apiv1gocpgfrontends"></span>GET /api/v1/gocpg/frontends<a class="heading-anchor" href="#get-apiv1gocpgfrontends" title="Link to this section">&para;</a></h3>
 <p>List available language frontends.</p>
 <p><strong>Response (200):</strong></p>
@@ -2448,341 +2388,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 <span class="w">    </span><span class="nt">&quot;extensions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.go&quot;</span><span class="p">]</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">]</span>
-</code></pre></div>
-
-<h3  id="post-apiv1gocpgmetrics"><span id="post_apiv1gocpgmetrics"></span>POST /api/v1/gocpg/metrics<a class="heading-anchor" href="#post-apiv1gocpgmetrics" title="Link to this section">&para;</a></h3>
-<p>Run metrics validation on source files.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;input_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;verbose&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Type</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>input_path</code></td>
-<td>string</td>
-<td>no</td>
-<td>Source file or directory (default: <code>.</code>)</td>
-</tr>
-<tr>
-<td><code>verbose</code></td>
-<td>boolean</td>
-<td>no</td>
-<td>Show per-file details (default: <code>false</code>)</td>
-</tr>
-</tbody>
-</table></div>
-<h3  id="get-apiv1gocpgbranches"><span id="get_apiv1gocpgbranches"></span>GET /api/v1/gocpg/branches<a class="heading-anchor" href="#get-apiv1gocpgbranches" title="Link to this section">&para;</a></h3>
-<p>List tracked CPG branches.</p>
-<p><strong>Query Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>db_path</code></td>
-<td>string (optional)</td>
-<td>DuckDB file path</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;branch_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc12345&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;file_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8500</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;node_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">140000</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;is_active&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">]</span>
-</code></pre></div>
-
-<h3  id="post-apiv1gocpgbranchesswitch"><span id="post_apiv1gocpgbranchesswitch"></span>POST /api/v1/gocpg/branches/switch<a class="heading-anchor" href="#post-apiv1gocpgbranchesswitch" title="Link to this section">&para;</a></h3>
-<p>Switch the active CPG branch.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;branch_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;feature-branch&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;feature-branch&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="post-apiv1gocpgbranchesprune"><span id="post_apiv1gocpgbranchesprune"></span>POST /api/v1/gocpg/branches/prune<a class="heading-anchor" href="#post-apiv1gocpgbranchesprune" title="Link to this section">&para;</a></h3>
-<p>Prune stale branches no longer present in the git repository.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;input_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pruned_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="get-apiv1gocpghooksstatus"><span id="get_apiv1gocpghooksstatus"></span>GET /api/v1/gocpg/hooks/status<a class="heading-anchor" href="#get-apiv1gocpghooksstatus" title="Link to this section">&para;</a></h3>
-<p>Get git hook installation status.</p>
-<p><strong>Query Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>repo_path</code></td>
-<td>string (optional)</td>
-<td>Repository path (default: <code>.</code>)</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;hook_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pre-commit&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;installed&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;hook_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;post-commit&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;installed&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">]</span>
-</code></pre></div>
-
-<h3  id="post-apiv1gocpghooksinstall"><span id="post_apiv1gocpghooksinstall"></span>POST /api/v1/gocpg/hooks/install<a class="heading-anchor" href="#post-apiv1gocpghooksinstall" title="Link to this section">&para;</a></h3>
-<p>Install git hooks for automatic CPG updates.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;repo_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;hook_types&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;async_hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Type</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>repo_path</code></td>
-<td>string</td>
-<td>no</td>
-<td>Repository path (default: <code>.</code>)</td>
-</tr>
-<tr>
-<td><code>db_path</code></td>
-<td>string</td>
-<td>no</td>
-<td>DuckDB file path</td>
-</tr>
-<tr>
-<td><code>hook_types</code></td>
-<td>string</td>
-<td>no</td>
-<td>Comma-separated hook types</td>
-</tr>
-<tr>
-<td><code>async_hooks</code></td>
-<td>boolean</td>
-<td>no</td>
-<td>Run hooks asynchronously (default: <code>true</code>)</td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>string</td>
-<td>no</td>
-<td>Language frontend</td>
-</tr>
-</tbody>
-</table></div>
-<h3  id="post-apiv1gocpghooksuninstall"><span id="post_apiv1gocpghooksuninstall"></span>POST /api/v1/gocpg/hooks/uninstall<a class="heading-anchor" href="#post-apiv1gocpghooksuninstall" title="Link to this section">&para;</a></h3>
-<p>Remove installed git hooks.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;repo_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;.&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="post-apiv1gocpgindex"><span id="post_apiv1gocpgindex"></span>POST /api/v1/gocpg/index<a class="heading-anchor" href="#post-apiv1gocpgindex" title="Link to this section">&para;</a></h3>
-<p>Create or recreate DuckDB indexes for optimized query performance.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="get-apiv1gocpgsubmodules"><span id="get_apiv1gocpgsubmodules"></span>GET /api/v1/gocpg/submodules<a class="heading-anchor" href="#get-apiv1gocpgsubmodules" title="Link to this section">&para;</a></h3>
-<p>List tracked submodules.</p>
-<p><strong>Query Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>db_path</code></td>
-<td>string (optional)</td>
-<td>DuckDB file path</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;contrib/pgcrypto&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123456789&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;initialized&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;recursive&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">]</span>
-</code></pre></div>
-
-<h3  id="post-apiv1gocpgsubmodulesprune"><span id="post_apiv1gocpgsubmodulesprune"></span>POST /api/v1/gocpg/submodules/prune<a class="heading-anchor" href="#post-apiv1gocpgsubmodulesprune" title="Link to this section">&para;</a></h3>
-<p>Prune stale submodules.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;input_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pruned_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="post-apiv1gocpgwatchstart"><span id="post_apiv1gocpgwatchstart"></span>POST /api/v1/gocpg/watch/start<a class="heading-anchor" href="#post-apiv1gocpgwatchstart" title="Link to this section">&para;</a></h3>
-<p>Start a file watcher (background process) for live CPG updates.</p>
-<p><strong>Request Body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;input_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/source&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;output_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;debounce_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;extensions&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;webhook_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Type</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>input_path</code></td>
-<td>string</td>
-<td>yes</td>
-<td>Directory to watch</td>
-</tr>
-<tr>
-<td><code>output_path</code></td>
-<td>string</td>
-<td>no</td>
-<td>DuckDB file path</td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>string</td>
-<td>no</td>
-<td>Language frontend</td>
-</tr>
-<tr>
-<td><code>debounce_ms</code></td>
-<td>integer</td>
-<td>no</td>
-<td>Debounce interval in ms</td>
-</tr>
-<tr>
-<td><code>extensions</code></td>
-<td>string</td>
-<td>no</td>
-<td>File extensions to watch</td>
-</tr>
-<tr>
-<td><code>webhook_url</code></td>
-<td>string</td>
-<td>no</td>
-<td>Webhook URL for notifications</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;started&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12345</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;input_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/source&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Error (409):</strong> Watcher already running.</p>
-<h3  id="post-apiv1gocpgwatchstop"><span id="post_apiv1gocpgwatchstop"></span>POST /api/v1/gocpg/watch/stop<a class="heading-anchor" href="#post-apiv1gocpgwatchstop" title="Link to this section">&para;</a></h3>
-<p>Stop the running file watcher.</p>
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stopped&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12345</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Error (404):</strong> No active watcher running.</p>
-<h3  id="get-apiv1gocpgwatchstatus"><span id="get_apiv1gocpgwatchstatus"></span>GET /api/v1/gocpg/watch/status<a class="heading-anchor" href="#get-apiv1gocpgwatchstatus" title="Link to this section">&para;</a></h3>
-<p>Get current watcher status.</p>
-<p><strong>Response (200):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;running&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12345</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;input_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/source&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;output_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;data/projects/myproject.duckdb&quot;</span>
-<span class="p">}</span>
 </code></pre></div>
 
 <h3  id="gocpg-error-responses"><span id="gocpg_error_responses"></span>GoCPG Error Responses<a class="heading-anchor" href="#gocpg-error-responses" title="Link to this section">&para;</a></h3>
@@ -2804,16 +2409,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 <td>504</td>
 <td><code>GoCPGTimeoutError</code></td>
 <td>GoCPG command timed out</td>
-</tr>
-<tr>
-<td>409</td>
-<td>Conflict</td>
-<td>Watcher already running (watch/start only)</td>
-</tr>
-<tr>
-<td>404</td>
-<td>Not Found</td>
-<td>No active watcher (watch/stop only)</td>
 </tr>
 </tbody>
 </table></div>
@@ -3368,21 +2963,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li><a href="#gocpg-operations" class="level-2">GoCPG Operations</a></li>
 <li><a href="#get-apiv1gocpgstats" class="level-3">GET /api/v1/gocpg/stats</a></li>
 <li><a href="#get-apiv1gocpgquality-stats" class="level-3">GET /api/v1/gocpg/quality-stats</a></li>
-<li><a href="#post-apiv1gocpgquery" class="level-3">POST /api/v1/gocpg/query</a></li>
 <li><a href="#get-apiv1gocpgfrontends" class="level-3">GET /api/v1/gocpg/frontends</a></li>
-<li><a href="#post-apiv1gocpgmetrics" class="level-3">POST /api/v1/gocpg/metrics</a></li>
-<li><a href="#get-apiv1gocpgbranches" class="level-3">GET /api/v1/gocpg/branches</a></li>
-<li><a href="#post-apiv1gocpgbranchesswitch" class="level-3">POST /api/v1/gocpg/branches/switch</a></li>
-<li><a href="#post-apiv1gocpgbranchesprune" class="level-3">POST /api/v1/gocpg/branches/prune</a></li>
-<li><a href="#get-apiv1gocpghooksstatus" class="level-3">GET /api/v1/gocpg/hooks/status</a></li>
-<li><a href="#post-apiv1gocpghooksinstall" class="level-3">POST /api/v1/gocpg/hooks/install</a></li>
-<li><a href="#post-apiv1gocpghooksuninstall" class="level-3">POST /api/v1/gocpg/hooks/uninstall</a></li>
-<li><a href="#post-apiv1gocpgindex" class="level-3">POST /api/v1/gocpg/index</a></li>
-<li><a href="#get-apiv1gocpgsubmodules" class="level-3">GET /api/v1/gocpg/submodules</a></li>
-<li><a href="#post-apiv1gocpgsubmodulesprune" class="level-3">POST /api/v1/gocpg/submodules/prune</a></li>
-<li><a href="#post-apiv1gocpgwatchstart" class="level-3">POST /api/v1/gocpg/watch/start</a></li>
-<li><a href="#post-apiv1gocpgwatchstop" class="level-3">POST /api/v1/gocpg/watch/stop</a></li>
-<li><a href="#get-apiv1gocpgwatchstatus" class="level-3">GET /api/v1/gocpg/watch/status</a></li>
 <li><a href="#gocpg-error-responses" class="level-3">GoCPG Error Responses</a></li>
 <li><a href="#structural-pattern-operations" class="level-2">Structural Pattern Operations</a></li>
 <li><a href="#post-apiv1patternssearch" class="level-3">POST /api/v1/patterns/search</a></li>
