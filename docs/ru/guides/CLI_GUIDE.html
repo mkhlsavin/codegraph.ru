@@ -514,6 +514,32 @@ codegraph projects list --active
 <div class="highlight"><pre><span></span><code>codegraph projects info &lt;имя&gt; [--group &lt;группа&gt;]
 </code></pre></div>
 
+<h4  id="pereimenovanie-proekta"><span id="pereimenovanie_proekta"></span>Переименование проекта<a class="heading-anchor" href="#pereimenovanie-proekta" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>codegraph projects rename &lt;имя&gt; &lt;новое_имя&gt; [--group &lt;группа&gt;]
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Аргумент</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>имя</code></td>
+<td>Текущее имя проекта</td>
+</tr>
+<tr>
+<td><code>новое_имя</code></td>
+<td>Новое имя проекта</td>
+</tr>
+<tr>
+<td><code>--group</code></td>
+<td>Имя группы проекта (для разрешения неоднозначности)</td>
+</tr>
+</tbody>
+</table></div>
 <h3  id="komandy-poshagovogo-vypolneniya"><span id="komandy_poshagovogo_vypolneniya"></span>Команды пошагового выполнения<a class="heading-anchor" href="#komandy-poshagovogo-vypolneniya" title="Link to this section">&para;</a></h3>
 <p>Выполнение отдельных шагов конвейера.</p>
 <div class="highlight"><pre><span></span><code><span class="gh">#</span> Клонирование репозитория
@@ -3197,8 +3223,73 @@ codegraph<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<spa
 
 <span class="c1"># Валидировать покрытие пользовательских историй через интерфейсы</span>
 codegraph<span class="w"> </span>dogfood<span class="w"> </span>validate-stories<span class="w"> </span><span class="o">[</span>--stories<span class="w"> </span><span class="m">2</span>,8,11<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>ФАЙЛ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>ФАЙЛ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>ПУТЬ<span class="o">]</span>
+
+<span class="c1"># Обнаружить осиротевшие параметры конфигурации</span>
+codegraph<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="p">|</span>csv<span class="o">]</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span>error<span class="p">|</span>warning<span class="p">|</span>info<span class="p">|</span>all<span class="o">]</span><span class="w"> </span><span class="o">[</span>--fix-suggestions<span class="o">]</span>
 </code></pre></div>
 
+<h4  id="proverka-konfiguratsii-config-check"><span id="proverka_konfiguratsii_config_check"></span>Проверка конфигурации (config-check)<a class="heading-anchor" href="#proverka-konfiguratsii-config-check" title="Link to this section">&para;</a></h4>
+<p>Сканирование кодовой базы на предмет осиротевших параметров конфигурации: ключи YAML, не используемые в коде; обращения к отсутствующим ключам YAML; неиспользуемые поля dataclass-классов; несоответствия путей.</p>
+<div class="highlight"><pre><span></span><code># Показать все осиротевшие параметры
+codegraph dogfood config-check
+
+# Только ошибки и предупреждения
+codegraph dogfood config-check --level warning
+
+# Вывод в JSON с рекомендациями по исправлению
+codegraph dogfood config-check --format json --fix-suggestions
+
+# Сохранить отчёт в файл
+codegraph dogfood config-check --output report.json --format json
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Аргумент</th>
+<th>Описание</th>
+<th>По умолчанию</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--format</code></td>
+<td>Формат вывода: <code>text</code>, <code>json</code>, <code>csv</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>--level</code></td>
+<td>Минимальный уровень: <code>error</code>, <code>warning</code>, <code>info</code>, <code>all</code></td>
+<td><code>all</code></td>
+</tr>
+<tr>
+<td><code>--fix-suggestions</code></td>
+<td>Показать рекомендации по исправлению</td>
+<td>выкл.</td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td>Путь к YAML-файлу конфигурации</td>
+<td><code>config.yaml</code></td>
+</tr>
+<tr>
+<td><code>--schema</code></td>
+<td>Путь к файлу схемы</td>
+<td><code>src/config/unified_config.py</code></td>
+</tr>
+<tr>
+<td><code>--source</code></td>
+<td>Каталоги исходного кода для сканирования</td>
+<td><code>src/</code></td>
+</tr>
+<tr>
+<td><code>--output</code></td>
+<td>Сохранить отчёт в файл</td>
+<td>stdout</td>
+</tr>
+</tbody>
+</table></div>
+<p>Обнаруживает 6 типов осиротевших параметров: <code>yaml_unused</code>, <code>yaml_missing</code>, <code>code_orphan</code>, <code>path_mismatch</code>, <code>orphaned_dataclass</code>, <code>unused_default</code>.</p>
 <hr />
 <h2  id="enterprise-cli"><span id="enterprise_cli"></span><span id="korporativnyy-cli"></span><span id="korporativnyy_cli"></span>Корпоративный CLI<a class="heading-anchor" href="#enterprise-cli" title="Link to this section">&para;</a></h2>
 <p>Команды управления корпоративными функциями: SIEM, Vault, аутентификация, провайдеры LLM, журнал аудита.</p>

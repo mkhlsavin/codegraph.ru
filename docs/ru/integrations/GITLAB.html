@@ -153,7 +153,7 @@
         <li><a href="GITHUB.html">Руководство по интеграции с GitHub</a></li>
         <li><a href="GITLAB.html" class="active">Руководство по интеграции с GitLab</a></li>
         <li><a href="GITVERSE.html">Руководство по интеграции с GitVerse</a></li>
-        <li><a href="OPENCODE_PLUGIN.html">Плагин CodeGraph для OpenCode</a></li>
+        <li><a href="OPENCODE_PLUGIN.html">Интеграция CodeGraph с OpenCode</a></li>
         <li><a href="SOURCECRAFT.html">Руководство по интеграции с SourceCraft</a></li>
         <li><a href="YANDEX_AI_STUDIO.html">Руководство по интеграции Yandex AI Studio</a></li>
       </ul>
@@ -236,7 +236,7 @@
 - <strong>401 Unauthorized</strong> &ndash; отсутствует заголовок <code>X-Gitlab-Token</code>
 - <strong>403 Forbidden</strong> &ndash; токен не совпадает с настроенным секретом</p>
 <blockquote class="callout">
-<p><strong>Примечание:</strong> В отличие от GitHub, который использует HMAC-SHA256 по телу запроса, GitLab отправляет секретный токен напрямую в заголовке <code>X-Gitlab-Token</code>. Это означает, что тело запроса не подписано. Для дополнительной безопасности используйте фильтрацию по IP-адресам или обратный прокси с mTLS.</p>
+<p><strong>Примечание:</strong> В отличие от GitHub, который использует HMAC-SHA256 по телу запроса, GitLab отправляет секретный токен напрямую в заголовке <code>X-Gitlab-Token</code>. Это означает, что тело запроса не подписано и отсутствует заголовок timestamp для защиты от replay-атак. Для дополнительной безопасности используйте фильтрацию по IP-адресам или обратный прокси с mTLS.</p>
 </blockquote>
 <h3  id="supported-events"><span id="podderzhivaemye-sobytiya"></span><span id="podderzhivaemye_sobytiya"></span><span id="supported_events"></span>Поддерживаемые события<a class="heading-anchor" href="#supported-events" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
@@ -478,6 +478,7 @@
 <span class="w">  </span><span class="nt">&quot;critical_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;high_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;medium_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;sarif&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
 <span class="w">  </span><span class="nt">&quot;low_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -500,6 +501,18 @@
 </code></pre></div>
 
 <p><strong>Ответ:</strong> <code>message</code>, <code>type</code>, <code>scope</code>, <code>files_changed</code>.</p>
+<h3  id="post-apiv1reviewmr----gitlab-mr-review"><span id="post-apiv1reviewmr-ndash-revyu-merzh-rekvesta-gitlab"></span><span id="post_apiv1reviewmr____gitlab_mr_review"></span><span id="post_apiv1reviewmr_ndash_revyu_merzh_rekvesta_gitlab"></span><code>POST /api/v1/review/mr</code> &ndash; Ревью мерж-реквеста GitLab<a class="heading-anchor" href="#post-apiv1reviewmr----gitlab-mr-review" title="Link to this section">&para;</a></h3>
+<p>Рецензирование мерж-реквеста GitLab напрямую — diff загружается из GitLab API (не нужно передавать raw diff).</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;org/repo&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mr_iid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gitlab_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://gitlab.com&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;task_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional review focus&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;dod_items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;No security issues&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Tests pass&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Ответ:</strong> <code>recommendation</code>, <code>score</code>, <code>findings[]</code>, <code>dod_validation[]</code>, <code>summary</code>, <code>processing_time_ms</code>, <code>request_id</code>.</p>
 <h3  id="get-apiv1webhooksstatusproject_id----update-status"><span id="get-apiv1webhooksstatusproject-id-ndash-status-obnovleniya"></span><span id="get_apiv1webhooksstatusproject_id____update_status"></span><span id="get_apiv1webhooksstatusproject_id_ndash_status_obnovleniya"></span><code>GET /api/v1/webhooks/status/{project_id}</code> &ndash; Статус обновления<a class="heading-anchor" href="#get-apiv1webhooksstatusproject_id----update-status" title="Link to this section">&para;</a></h3>
 <p>Возвращает последний статус конвейера обновления CPG для проекта.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -648,7 +661,7 @@ docker<span class="w"> </span>push<span class="w"> </span>registry.company.com/c
 <h3  id="mr-review-returns-empty-results"><span id="mr_review_returns_empty_results"></span><span id="revyu-merzh-rekvesta-vozvraschaet-pustye-rezultaty"></span><span id="revyu_merzh_rekvesta_vozvraschaet_pustye_rezultaty"></span>Ревью мерж-реквеста возвращает пустые результаты<a class="heading-anchor" href="#mr-review-returns-empty-results" title="Link to this section">&para;</a></h3>
 <ul>
 <li>Убедитесь, что <code>CI_MERGE_REQUEST_DIFF_BASE_SHA</code> доступна (требуется триггер <code>merge_requests</code>)</li>
-<li>Проверьте, что установлен <code>fetch-depth: 0</code> для полной истории git</li>
+<li>Проверьте, что установлен <code>GIT_DEPTH: "0"</code> в <code>variables:</code> для полной истории git (эквивалент <code>fetch-depth: 0</code> в GitLab CI)</li>
 <li>Проверьте токен API: <code>curl -sf ${CODEGRAPH_URL}/api/v1/health -H "Authorization: Bearer ${CODEGRAPH_TOKEN}"</code></li>
 </ul>
 <h3  id="self-managed-gitlab-certificate-issues"><span id="problemy-s-sertifikatami-self-managed-gitlab"></span><span id="problemy_s_sertifikatami_self_managed_gitlab"></span><span id="self_managed_gitlab_certificate_issues"></span>Проблемы с сертификатами self-managed GitLab<a class="heading-anchor" href="#self-managed-gitlab-certificate-issues" title="Link to this section">&para;</a></h3>
@@ -715,6 +728,7 @@ docker<span class="w"> </span>push<span class="w"> </span>registry.company.com/c
 <li><a href="#post-apiv1securityscan-diff----security-scan" class="level-3">`POST /api/v1/security/scan-diff` -- Сканирование безопасности</a></li>
 <li><a href="#post-apiv1reviewsummary----mr-summary" class="level-3">`POST /api/v1/review/summary` -- Резюме мерж-реквеста</a></li>
 <li><a href="#post-apiv1reviewcommit-message----commit-message" class="level-3">`POST /api/v1/review/commit-message` -- Сообщение коммита</a></li>
+<li><a href="#post-apiv1reviewmr----gitlab-mr-review" class="level-3">`POST /api/v1/review/mr` -- Ревью мерж-реквеста GitLab</a></li>
 <li><a href="#get-apiv1webhooksstatusproject_id----update-status" class="level-3">`GET /api/v1/webhooks/status/{project_id}` -- Статус обновления</a></li>
 <li><a href="#mcp-tools" class="level-2">Инструменты MCP</a></li>
 <li><a href="#incremental-cpg-updates" class="level-2">Инкрементальное обновление CPG</a></li>

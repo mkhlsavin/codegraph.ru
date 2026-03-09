@@ -153,7 +153,7 @@
         <li><a href="GITHUB.html" class="active">GitHub Integration Guide</a></li>
         <li><a href="GITLAB.html">GitLab Integration Guide</a></li>
         <li><a href="GITVERSE.html">GitVerse Integration Guide</a></li>
-        <li><a href="OPENCODE_PLUGIN.html">CodeGraph OpenCode Plugin</a></li>
+        <li><a href="OPENCODE_PLUGIN.html">CodeGraph OpenCode Integration</a></li>
         <li><a href="SOURCECRAFT.html">SourceCraft Integration Guide</a></li>
         <li><a href="YANDEX_AI_STUDIO.html">Yandex AI Studio Integration Guide</a></li>
       </ul>
@@ -249,8 +249,8 @@
 <td>Incremental CPG update via <code>CPGUpdateQueue</code></td>
 </tr>
 <tr>
-<td><code>pull_request</code> (opened/synchronize)</td>
-<td>Code review workflow</td>
+<td><code>pull_request</code></td>
+<td>Code review workflow (all actions: opened, synchronize, closed, merged, reopened)</td>
 </tr>
 <tr>
 <td><code>ping</code></td>
@@ -312,8 +312,8 @@
 <span class="w">          </span><span class="no">curl -sf -X POST &quot;${CODEGRAPH_URL}/api/v1/security/scan-diff&quot; \</span>
 <span class="w">            </span><span class="no">-H &quot;Authorization: Bearer ${CODEGRAPH_TOKEN}&quot; \</span>
 <span class="w">            </span><span class="no">-H &quot;Content-Type: application/json&quot; \</span>
-<span class="w">            </span><span class="no">-d &quot;{\&quot;diff_content\&quot;: $(echo &quot;$DIFF&quot; | python3 -c &#39;import sys,json; print(json.dumps(sys.stdin.read()))&#39;)}&quot; \</span>
-<span class="w">            </span><span class="no">-o security-results.json</span>
+<span class="w">            </span><span class="no">-d &quot;{\&quot;diff_content\&quot;: $(echo &quot;$DIFF&quot; | python3 -c &#39;import sys,json; print(json.dumps(sys.stdin.read()))&#39;), \&quot;output_format\&quot;: \&quot;sarif\&quot;}&quot; \</span>
+<span class="w">            </span><span class="no">-o security-results.sarif</span>
 <span class="w">        </span><span class="nt">env</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">CODEGRAPH_URL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ vars.CODEGRAPH_URL }}</span>
 <span class="w">          </span><span class="nt">CODEGRAPH_TOKEN</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.CODEGRAPH_API_TOKEN }}</span>
@@ -321,7 +321,7 @@
 <span class="w">        </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always()</span>
 <span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github/codeql-action/upload-sarif@v3</span>
 <span class="w">        </span><span class="nt">with</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">sarif_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security-results.json</span>
+<span class="w">          </span><span class="nt">sarif_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security-results.sarif</span>
 </code></pre></div>
 
 <h3  id="required-secretsvariables"><span id="required_secretsvariables"></span>Required Secrets/Variables<a class="heading-anchor" href="#required-secretsvariables" title="Link to this section">&para;</a></h3>
@@ -357,7 +357,7 @@
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="si">${</span><span class="nv">CODEGRAPH_TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;diff_content&quot;: &quot;...&quot;, &quot;output_format&quot;: &quot;sarif&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-o<span class="w"> </span>gl-sast-report.sarif
+<span class="w">  </span>-o<span class="w"> </span>security-results.sarif
 </code></pre></div>
 
 <p>Upload the SARIF file using <code>github/codeql-action/upload-sarif@v3</code> to see findings in the GitHub Security tab.</p>
@@ -414,6 +414,7 @@
 <span class="w">      </span><span class="nt">&quot;confidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.92</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;sarif&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
 <span class="w">  </span><span class="nt">&quot;new_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;fixed_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;total_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
@@ -442,6 +443,19 @@
 </code></pre></div>
 
 <p><strong>Response:</strong> <code>message</code>, <code>type</code>, <code>scope</code>, <code>files_changed</code>.</p>
+<h3  id="post-apiv1reviewpr-github-pr-review"><span id="post-apiv1reviewpr-ndash-github-pr-review"></span><span id="post_apiv1reviewpr_github_pr_review"></span><span id="post_apiv1reviewpr_ndash_github_pr_review"></span><code>POST /api/v1/review/pr</code> &ndash; GitHub PR Review<a class="heading-anchor" href="#post-apiv1reviewpr-github-pr-review" title="Link to this section">&para;</a></h3>
+<p>Reviews a GitHub PR directly by fetching the diff from GitHub API (no need to pass raw diff).</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;org&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;repo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;repo&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;pr_number&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;task_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional review focus&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;dod_items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;No security issues&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Tests pass&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Requires <code>X-GitHub-Token</code> header with a GitHub access token that has read access to the repository.</p>
+<p><strong>Response:</strong> <code>recommendation</code>, <code>score</code>, <code>findings[]</code>, <code>dod_validation[]</code>, <code>summary</code>, <code>processing_time_ms</code>, <code>request_id</code>.</p>
 <h3  id="get-apiv1webhooksstatusproject-id-update-status"><span id="get-apiv1webhooksstatusproject-id-ndash-update-status"></span><span id="get_apiv1webhooksstatusproject_id_ndash_update_status"></span><span id="get_apiv1webhooksstatusproject_id_update_status"></span><code>GET /api/v1/webhooks/status/{project_id}</code> &ndash; Update Status<a class="heading-anchor" href="#get-apiv1webhooksstatusproject-id-update-status" title="Link to this section">&para;</a></h3>
 <p>Returns the latest CPG update pipeline status for a project.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -649,6 +663,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <li><a href="#post-apiv1securityscan-diff-security-scan" class="level-3">`POST /api/v1/security/scan-diff` -- Security Scan</a></li>
 <li><a href="#post-apiv1reviewsummary-pr-summary" class="level-3">`POST /api/v1/review/summary` -- PR Summary</a></li>
 <li><a href="#post-apiv1reviewcommit-message-commit-message" class="level-3">`POST /api/v1/review/commit-message` -- Commit Message</a></li>
+<li><a href="#post-apiv1reviewpr-github-pr-review" class="level-3">`POST /api/v1/review/pr` -- GitHub PR Review</a></li>
 <li><a href="#get-apiv1webhooksstatusproject-id-update-status" class="level-3">`GET /api/v1/webhooks/status/{project_id}` -- Update Status</a></li>
 <li><a href="#mcp-tools" class="level-2">MCP Tools</a></li>
 <li><a href="#opencode-integration" class="level-3">OpenCode Integration</a></li>
