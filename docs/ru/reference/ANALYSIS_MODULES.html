@@ -97,14 +97,15 @@
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
+        <li><a href="../guides/LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
         <li><a href="../guides/MONITORING.html">Руководство по мониторингу</a></li>
+        <li><a href="../guides/OPENCODE_QUICK_START.html">CodeGraph + OpenCode: быстрый старт</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">Краткое руководство по CodeGraph</a></li>
         <li><a href="../guides/REFACTORING.html">Руководство по анализу рефакторинга</a></li>
         <li><a href="../guides/SCENARIOS.html">Руководство по сценариям рабочих процессов</a></li>
         <li><a href="../guides/TROUBLESHOOTING.html">Руководство по устранению неполадок</a></li>
-        <li><a href="../guides/TUI_USER_GUIDE.html">Руководство пользователя CodeGraph</a></li>
         <li><a href="../guides/01-onboarding.html">Сценарий 01: Онбординг в кодовую базу</a></li>
         <li><a href="../guides/02-security-audit-autofix.html">Аудит безопасности: Автоисправление</a></li>
         <li><a href="../guides/02-security-audit.html">Сценарий 02: Аудит безопасности</a></li>
@@ -149,7 +150,10 @@
         <li><a href="../integrations/CLAUDE_CODE_GIT.html">Руководство по интеграции Claude Code и Git</a></li>
         <li><a href="../integrations/EXTERNAL_CONTEXT.html">Руководство по интеграции внешнего контекста</a></li>
         <li><a href="../integrations/GIGACHAT.html">Руководство по интеграции GigaChat</a></li>
+        <li><a href="../integrations/GITHUB.html">Руководство по интеграции с GitHub</a></li>
+        <li><a href="../integrations/GITLAB.html">Руководство по интеграции с GitLab</a></li>
         <li><a href="../integrations/GITVERSE.html">Руководство по интеграции с GitVerse</a></li>
+        <li><a href="../integrations/OPENCODE_PLUGIN.html">Плагин CodeGraph для OpenCode</a></li>
         <li><a href="../integrations/SOURCECRAFT.html">Руководство по интеграции с SourceCraft</a></li>
         <li><a href="../integrations/YANDEX_AI_STUDIO.html">Руководство по интеграции Yandex AI Studio</a></li>
       </ul>
@@ -260,6 +264,9 @@
 <li><a href="#moduli-modeley-dannyh">Модули моделей данных</a></li>
 <li><a href="#spravochnik-shemy-bazy-dannyh">Справочник схемы базы данных</a></li>
 <li><a href="#ustranenie-nepoladok">Устранение неполадок</a></li>
+<li><a href="#dvizhok-analiza-metodov">Движок анализа методов</a></li>
+<li><a href="#explainresult">ExplainResult</a></li>
+<li><a href="#explainanalyzer">ExplainAnalyzer</a></li>
 <li><a href="#analiz-konfiguratsionnyh-parametrov">Анализ конфигурационных параметров</a></li>
 <li><a href="#configorphananalyzer">ConfigOrphanAnalyzer</a></li>
 <li><a href="#orphanfinding">OrphanFinding</a></li>
@@ -277,6 +284,7 @@
 ├── cfg_unreachable.py           # Обнаружение недостижимого кода
 ├── clone_detector.py            # Обнаружение дублей кода
 ├── compliance.py                # Маппинг стандартов безопасности
+├── explain.py                   # Движок анализа методов
 ├── concurrency_core.py          # Анализ параллелизма (4 примеси)
 ├── field_sensitive_tracer.py    # Анализ заражения с учётом полей
 ├── callgraph/                   # Анализ графа вызовов (8 модулей)
@@ -1977,6 +1985,158 @@
 <li>В больших методах может быть много путей; рассмотрите выборочный анализ</li>
 </ul>
 <hr />
+<h2  id="dvizhok-analiza-metodov"><span id="dvizhok_analiza_metodov"></span>Движок анализа методов<a class="heading-anchor" href="#dvizhok-analiza-metodov" title="Link to this section">&para;</a></h2>
+<p>Модуль: <code>src/analysis/explain.py</code></p>
+<p>Комплексный движок анализа методов, объединяющий метрики CPG, данные графа вызовов, информацию о заражении и доменный контекст в единый результат. Используется MCP-инструментом <code>codegraph_explain</code> и CLI.</p>
+<h3 id="explainresult">ExplainResult<a class="heading-anchor" href="#explainresult" title="Link to this section">&para;</a></h3>
+<p>Агрегированный результат анализа метода (dataclass).</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method_name</code></td>
+<td><code>str</code></td>
+<td>Краткое имя метода</td>
+</tr>
+<tr>
+<td><code>full_name</code></td>
+<td><code>str</code></td>
+<td>Полное квалифицированное имя</td>
+</tr>
+<tr>
+<td><code>file_path</code></td>
+<td><code>str</code></td>
+<td>Путь к исходному файлу</td>
+</tr>
+<tr>
+<td><code>line_start</code></td>
+<td><code>int</code></td>
+<td>Начальная строка</td>
+</tr>
+<tr>
+<td><code>line_end</code></td>
+<td><code>int</code></td>
+<td>Конечная строка</td>
+</tr>
+<tr>
+<td><code>line_count</code></td>
+<td><code>int</code></td>
+<td>Количество строк</td>
+</tr>
+<tr>
+<td><code>signature</code></td>
+<td><code>str</code></td>
+<td>Сигнатура метода (первая строка кода)</td>
+</tr>
+<tr>
+<td><code>cyclomatic_complexity</code></td>
+<td><code>int</code></td>
+<td>Оценка цикломатической сложности</td>
+</tr>
+<tr>
+<td><code>risk_level</code></td>
+<td><code>str</code></td>
+<td>Уровень риска: <code>low</code> (&lt;10), <code>moderate</code> (10–19), <code>high</code> (20–49), <code>critical</code> (≥50)</td>
+</tr>
+<tr>
+<td><code>fan_in</code></td>
+<td><code>int</code></td>
+<td>Количество вызывающих методов</td>
+</tr>
+<tr>
+<td><code>fan_out</code></td>
+<td><code>int</code></td>
+<td>Количество вызываемых методов</td>
+</tr>
+<tr>
+<td><code>direct_callers</code></td>
+<td><code>List[str]</code></td>
+<td>Имена прямых вызывающих методов</td>
+</tr>
+<tr>
+<td><code>transitive_caller_count</code></td>
+<td><code>int</code></td>
+<td>Общее количество транзитивных вызывающих до глубины <code>depth</code></td>
+</tr>
+<tr>
+<td><code>direct_callees</code></td>
+<td><code>List[str]</code></td>
+<td>Имена прямых вызываемых методов</td>
+</tr>
+<tr>
+<td><code>is_taint_source</code></td>
+<td><code>bool</code></td>
+<td>Метод является источником заражения (из доменного плагина)</td>
+</tr>
+<tr>
+<td><code>is_taint_sink</code></td>
+<td><code>bool</code></td>
+<td>Метод является приёмником заражения (из доменного плагина)</td>
+</tr>
+<tr>
+<td><code>taint_paths_through</code></td>
+<td><code>int</code></td>
+<td>Пути заражения, проходящие через метод</td>
+</tr>
+<tr>
+<td><code>subsystem</code></td>
+<td><code>str</code></td>
+<td>Имя подсистемы домена</td>
+</tr>
+<tr>
+<td><code>pattern_flags</code></td>
+<td><code>Dict[str, bool]</code></td>
+<td>Флаги: <code>has_todo_fixme</code>, <code>has_deprecated</code>, <code>has_debug_code</code></td>
+</tr>
+<tr>
+<td><code>docstring</code></td>
+<td><code>str</code></td>
+<td>Строка документации метода</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="explainanalyzer">ExplainAnalyzer<a class="heading-anchor" href="#explainanalyzer" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.explain</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplainAnalyzer</span><span class="p">,</span> <span class="n">ExplainResult</span>
+
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">ExplainAnalyzer</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;project.duckdb&quot;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="s2">&quot;process_data&quot;</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Конструктор</strong>: <code>ExplainAnalyzer(db_path: Optional[str] = None)</code></p>
+<p><strong>Методы</strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Возвращает</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>collect(method_name, depth=2)</code></td>
+<td><code>Optional[ExplainResult]</code></td>
+<td>Собрать комплексные данные анализа для метода</td>
+</tr>
+<tr>
+<td><code>to_dict(result)</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td>Преобразовать ExplainResult в словарь для JSON-вывода</td>
+</tr>
+<tr>
+<td><code>fuzzy_search(method_name, limit=5)</code></td>
+<td><code>List[str]</code></td>
+<td>Нечёткий поиск имён методов при неточном совпадении</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
 <h2  id="analiz-konfiguratsionnyh-parametrov"><span id="analiz_konfiguratsionnyh_parametrov"></span>Анализ конфигурационных параметров<a class="heading-anchor" href="#analiz-konfiguratsionnyh-parametrov" title="Link to this section">&para;</a></h2>
 <p>Модуль: <code>src/analysis/config_analyzer.py</code></p>
 <p>Обнаруживает неиспользуемые, отсутствующие и несогласованные конфигурационные параметры путём перекрёстной проверки YAML-конфигурации, схемы Pydantic/dataclass и использования в исходном коде. Выполняет 4-этапный конвейер: извлечение → перекрёстная проверка → фильтрация ложных срабатываний → отчёт.</p>
@@ -2218,7 +2378,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-08</span>
+        <span>Обновлено: 2026-03-09</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/ANALYSIS_MODULES.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -2288,6 +2448,9 @@
 <li><a href="#obrascheniya-k-polyam-ne-naydeny" class="level-3">«Обращения к полям не найдены»</a></li>
 <li><a href="#puti-zarazheniya-ne-naydeny" class="level-3">«Пути заражения не найдены»</a></li>
 <li><a href="#rekomendatsii-po-proizvoditelnosti" class="level-3">Рекомендации по производительности</a></li>
+<li><a href="#dvizhok-analiza-metodov" class="level-2">Движок анализа методов</a></li>
+<li><a href="#explainresult" class="level-3">ExplainResult</a></li>
+<li><a href="#explainanalyzer" class="level-3">ExplainAnalyzer</a></li>
 <li><a href="#analiz-konfiguratsionnyh-parametrov" class="level-2">Анализ конфигурационных параметров</a></li>
 <li><a href="#configorphananalyzer" class="level-3">ConfigOrphanAnalyzer</a></li>
 <li><a href="#orphanfinding" class="level-3">OrphanFinding</a></li>

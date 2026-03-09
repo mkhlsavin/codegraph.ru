@@ -97,14 +97,15 @@
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
+        <li><a href="../guides/LSP_SERVER.html">CodeGraph LSP Server</a></li>
         <li><a href="../guides/MONITORING.html">Monitoring Guide</a></li>
+        <li><a href="../guides/OPENCODE_QUICK_START.html">CodeGraph + OpenCode Quick Start</a></li>
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
         <li><a href="../guides/REFACTORING.html">Refactoring Analysis Guide</a></li>
         <li><a href="../guides/SCENARIOS.html">Workflow Scenarios Guide</a></li>
         <li><a href="../guides/TROUBLESHOOTING.html">Troubleshooting Guide</a></li>
-        <li><a href="../guides/TUI_USER_GUIDE.html">CodeGraph User Guide</a></li>
         <li><a href="../guides/01-onboarding.html">Scenario 01: Codebase Onboarding</a></li>
         <li><a href="../guides/02-security-audit-autofix.html">Security Audit: Autofix</a></li>
         <li><a href="../guides/02-security-audit.html">Scenario 02: Security Audit</a></li>
@@ -149,7 +150,10 @@
         <li><a href="../integrations/CLAUDE_CODE_GIT.html">Claude Code & Git Integration Guide</a></li>
         <li><a href="../integrations/EXTERNAL_CONTEXT.html">External Context Integration Guide</a></li>
         <li><a href="../integrations/GIGACHAT.html">GigaChat Integration Guide</a></li>
+        <li><a href="../integrations/GITHUB.html">GitHub Integration Guide</a></li>
+        <li><a href="../integrations/GITLAB.html">GitLab Integration Guide</a></li>
         <li><a href="../integrations/GITVERSE.html">GitVerse Integration Guide</a></li>
+        <li><a href="../integrations/OPENCODE_PLUGIN.html">CodeGraph OpenCode Plugin</a></li>
         <li><a href="../integrations/SOURCECRAFT.html">SourceCraft Integration Guide</a></li>
         <li><a href="../integrations/YANDEX_AI_STUDIO.html">Yandex AI Studio Integration Guide</a></li>
       </ul>
@@ -267,6 +271,9 @@
 <li><a href="#no-field-accesses-found">&ldquo;No field accesses found&rdquo;</a></li>
 <li><a href="#no-taint-paths-found">&ldquo;No taint paths found&rdquo;</a></li>
 <li><a href="#performance-considerations">Performance Considerations</a></li>
+<li><a href="#method-explanation-engine">Method Explanation Engine</a></li>
+<li><a href="#explainresult">ExplainResult</a></li>
+<li><a href="#explainanalyzer">ExplainAnalyzer</a></li>
 <li><a href="#config-orphan-analysis">Config Orphan Analysis</a></li>
 <li><a href="#configorphananalyzer">ConfigOrphanAnalyzer</a></li>
 <li><a href="#orphanfinding">OrphanFinding</a></li>
@@ -284,6 +291,7 @@
 ├── cfg_unreachable.py           # Unreachable code detection
 ├── clone_detector.py            # Code clone detection
 ├── compliance.py                # Security compliance mapping
+├── explain.py                   # Method analysis engine
 ├── concurrency_core.py          # Concurrency analysis (4 mixins)
 ├── field_sensitive_tracer.py    # Field-sensitive taint analysis
 ├── callgraph/                   # Call graph analysis (8 modules)
@@ -1982,6 +1990,158 @@
 <li>Large methods may have many paths; consider sampling</li>
 </ul>
 <hr />
+<h2  id="method-explanation-engine"><span id="method_explanation_engine"></span>Method Explanation Engine<a class="heading-anchor" href="#method-explanation-engine" title="Link to this section">&para;</a></h2>
+<p>Module: <code>src/analysis/explain.py</code></p>
+<p>Comprehensive method analysis engine that aggregates CPG metrics, call graph data, taint information, and domain context into a single result. Used by MCP tool <code>codegraph_explain</code> and CLI.</p>
+<h3 id="explainresult">ExplainResult<a class="heading-anchor" href="#explainresult" title="Link to this section">&para;</a></h3>
+<p>Aggregated method analysis result (dataclass).</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>method_name</code></td>
+<td><code>str</code></td>
+<td>Short method name</td>
+</tr>
+<tr>
+<td><code>full_name</code></td>
+<td><code>str</code></td>
+<td>Fully qualified name</td>
+</tr>
+<tr>
+<td><code>file_path</code></td>
+<td><code>str</code></td>
+<td>Source file path</td>
+</tr>
+<tr>
+<td><code>line_start</code></td>
+<td><code>int</code></td>
+<td>Start line number</td>
+</tr>
+<tr>
+<td><code>line_end</code></td>
+<td><code>int</code></td>
+<td>End line number</td>
+</tr>
+<tr>
+<td><code>line_count</code></td>
+<td><code>int</code></td>
+<td>Number of lines</td>
+</tr>
+<tr>
+<td><code>signature</code></td>
+<td><code>str</code></td>
+<td>Method signature (first line of code)</td>
+</tr>
+<tr>
+<td><code>cyclomatic_complexity</code></td>
+<td><code>int</code></td>
+<td>Cyclomatic complexity score</td>
+</tr>
+<tr>
+<td><code>risk_level</code></td>
+<td><code>str</code></td>
+<td>Risk level: <code>low</code> (&lt;10), <code>moderate</code> (10–19), <code>high</code> (20–49), <code>critical</code> (≥50)</td>
+</tr>
+<tr>
+<td><code>fan_in</code></td>
+<td><code>int</code></td>
+<td>Number of callers</td>
+</tr>
+<tr>
+<td><code>fan_out</code></td>
+<td><code>int</code></td>
+<td>Number of callees</td>
+</tr>
+<tr>
+<td><code>direct_callers</code></td>
+<td><code>List[str]</code></td>
+<td>Direct caller names</td>
+</tr>
+<tr>
+<td><code>transitive_caller_count</code></td>
+<td><code>int</code></td>
+<td>Total transitive callers up to <code>depth</code></td>
+</tr>
+<tr>
+<td><code>direct_callees</code></td>
+<td><code>List[str]</code></td>
+<td>Direct callee names</td>
+</tr>
+<tr>
+<td><code>is_taint_source</code></td>
+<td><code>bool</code></td>
+<td>Method is a taint source (from domain plugin)</td>
+</tr>
+<tr>
+<td><code>is_taint_sink</code></td>
+<td><code>bool</code></td>
+<td>Method is a taint sink (from domain plugin)</td>
+</tr>
+<tr>
+<td><code>taint_paths_through</code></td>
+<td><code>int</code></td>
+<td>Taint paths passing through</td>
+</tr>
+<tr>
+<td><code>subsystem</code></td>
+<td><code>str</code></td>
+<td>Domain subsystem name</td>
+</tr>
+<tr>
+<td><code>pattern_flags</code></td>
+<td><code>Dict[str, bool]</code></td>
+<td>Flags: <code>has_todo_fixme</code>, <code>has_deprecated</code>, <code>has_debug_code</code></td>
+</tr>
+<tr>
+<td><code>docstring</code></td>
+<td><code>str</code></td>
+<td>Method docstring</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="explainanalyzer">ExplainAnalyzer<a class="heading-anchor" href="#explainanalyzer" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.analysis.explain</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplainAnalyzer</span><span class="p">,</span> <span class="n">ExplainResult</span>
+
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">ExplainAnalyzer</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;project.duckdb&quot;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="s2">&quot;process_data&quot;</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Constructor</strong>: <code>ExplainAnalyzer(db_path: Optional[str] = None)</code></p>
+<p><strong>Methods</strong>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>collect(method_name, depth=2)</code></td>
+<td><code>Optional[ExplainResult]</code></td>
+<td>Collect comprehensive analysis data for a method</td>
+</tr>
+<tr>
+<td><code>to_dict(result)</code></td>
+<td><code>Dict[str, Any]</code></td>
+<td>Convert ExplainResult to dict for JSON output</td>
+</tr>
+<tr>
+<td><code>fuzzy_search(method_name, limit=5)</code></td>
+<td><code>List[str]</code></td>
+<td>Fuzzy search for method names when exact match fails</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
 <h2  id="config-orphan-analysis"><span id="config_orphan_analysis"></span>Config Orphan Analysis<a class="heading-anchor" href="#config-orphan-analysis" title="Link to this section">&para;</a></h2>
 <p>Module: <code>src/analysis/config_analyzer.py</code></p>
 <p>Detects unused, missing, and mismatched configuration parameters by cross-referencing YAML config, Pydantic/dataclass schema, and source code usage. Performs a 4-stage pipeline: extraction → cross-reference → FP filtering → reporting.</p>
@@ -2223,7 +2383,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-08</span>
+        <span>Last updated: 2026-03-09</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/ANALYSIS_MODULES.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -2293,6 +2453,9 @@
 <li><a href="#no-field-accesses-found" class="level-3">"No field accesses found"</a></li>
 <li><a href="#no-taint-paths-found" class="level-3">"No taint paths found"</a></li>
 <li><a href="#performance-considerations" class="level-3">Performance Considerations</a></li>
+<li><a href="#method-explanation-engine" class="level-2">Method Explanation Engine</a></li>
+<li><a href="#explainresult" class="level-3">ExplainResult</a></li>
+<li><a href="#explainanalyzer" class="level-3">ExplainAnalyzer</a></li>
 <li><a href="#config-orphan-analysis" class="level-2">Config Orphan Analysis</a></li>
 <li><a href="#configorphananalyzer" class="level-3">ConfigOrphanAnalyzer</a></li>
 <li><a href="#orphanfinding" class="level-3">OrphanFinding</a></li>
