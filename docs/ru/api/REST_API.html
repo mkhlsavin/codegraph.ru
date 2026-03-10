@@ -94,6 +94,7 @@
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
+        <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -104,7 +105,11 @@
         <li><a href="../guides/PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">Краткое руководство по CodeGraph</a></li>
         <li><a href="../guides/REFACTORING.html">Руководство по анализу рефакторинга</a></li>
+        <li><a href="../guides/RELEASE_GATE.html">Проверка готовности к выпуску</a></li>
+        <li><a href="../guides/SCA_SBOM.html">Композиционный анализ (КА) и SBOM</a></li>
         <li><a href="../guides/SCENARIOS.html">Руководство по сценариям рабочих процессов</a></li>
+        <li><a href="../guides/SUPPLY_CHAIN.html">Безопасность цепочки поставок</a></li>
+        <li><a href="../guides/THREAT_MODEL.html">Модель угроз STRIDE</a></li>
         <li><a href="../guides/TROUBLESHOOTING.html">Руководство по устранению неполадок</a></li>
         <li><a href="../guides/01-onboarding.html">Сценарий 01: Онбординг в кодовую базу</a></li>
         <li><a href="../guides/02-security-audit-autofix.html">Аудит безопасности: Автоисправление</a></li>
@@ -593,11 +598,74 @@ Authorization: Bearer &lt;token&gt;
 <div class="highlight"><pre><span></span><code>GET /api/v1/auth/oauth/{provider}/authorize
 </code></pre></div>
 
-<p>Поддерживаемые поставщики: <code>github</code>, <code>google</code>, <code>gitlab</code>, <code>keycloak</code></p>
+<p>Поддерживаемые поставщики: <code>github</code>, <code>google</code>, <code>gitlab</code>, <code>keycloak</code>, <code>sourcecraft</code>, <code>gitverse</code></p>
 <h4  id="obratnyy-vyzov-oauth"><span id="obratnyy_vyzov_oauth"></span>Обратный вызов OAuth<a class="heading-anchor" href="#obratnyy-vyzov-oauth" title="Link to this section">&para;</a></h4>
 <div class="highlight"><pre><span></span><code>GET /api/v1/auth/oauth/{provider}/callback?code=xxx&amp;state=xxx
 </code></pre></div>
 
+<h4  id="oauth-token-endpoint"><span id="konechnaya-tochka-oauth-tokena-rfc-6749"></span><span id="konechnaya_tochka_oauth_tokena_rfc_6749"></span><span id="oauth_token_endpoint"></span>Конечная точка OAuth-токена (RFC 6749)<a class="heading-anchor" href="#oauth-token-endpoint" title="Link to this section">&para;</a></h4>
+<p>Стандартная конечная точка OAuth 2.0 для программного доступа и автоматического обновления токенов.
+Поддерживает как JSON, так и <code>application/x-www-form-urlencoded</code> тела запросов.</p>
+<div class="highlight"><pre><span></span><code>POST /api/v1/auth/oauth/token
+Content-Type: application/json
+</code></pre></div>
+
+<p><strong>Предоставление по паролю</strong> — обмен учётных данных на токены:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;grant_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;secret&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Предоставление по refresh-токену</strong> — обновление истёкшего access-токена:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;grant_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;refresh_token&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;refresh_token&gt;&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Ответ</strong> (оба типа предоставления):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbG...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bearer&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expires_in&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1800</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbG...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;scenarios:read query:execute&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>access_token</code></td>
+<td>JWT-токен доступа (TTL: 30 минут)</td>
+</tr>
+<tr>
+<td><code>refresh_token</code></td>
+<td>JWT-токен обновления (TTL: 7 дней, одноразовый)</td>
+</tr>
+<tr>
+<td><code>expires_in</code></td>
+<td>Время жизни токена доступа в секундах</td>
+</tr>
+<tr>
+<td><code>scope</code></td>
+<td>Предоставленные области доступа</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="callout">
+<p>Эта конечная точка предназначена для MCP-клиентов (Claude Code, OpenCode) и
+CI/CD-интеграций, которым необходимо автоматическое обновление токенов без
+участия пользователя.</p>
+</blockquote>
 <h3  id="ldap-authentication"><span id="autentifikatsiya-cherez-ldap"></span><span id="autentifikatsiya_cherez_ldap"></span><span id="ldap_authentication"></span>Аутентификация через LDAP<a class="heading-anchor" href="#ldap-authentication" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>POST /api/v1/auth/ldap
 Content-Type: application/json
@@ -1989,6 +2057,74 @@ Content-Type: application/json
 <span class="p">}</span>
 </code></pre></div>
 
+<h4  id="post-deps-audit-sca"><span id="post-apiv1depsaudit-sca"></span><span id="post_apiv1depsaudit_sca"></span><span id="post_deps_audit_sca"></span>POST /api/v1/deps/audit-sca<a class="heading-anchor" href="#post-deps-audit-sca" title="Link to this section">&para;</a></h4>
+<p>Аудит зависимостей на наличие уязвимостей с настраиваемыми источниками и порогом серьёзности.</p>
+<p><strong>Запрос:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;fail_on&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;json&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Ответ:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;vulnerabilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CVE-2024-12345&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;dependency&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.28.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;fix_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.32.0&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;critical&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;high&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;medium&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;low&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;threshold_breached&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>При <code>format</code> = <code>sarif</code> возвращает документ SARIF 2.1.0 вместо JSON.</p>
+<h4  id="get-deps-gost-report"><span id="get-apiv1depsgost-report"></span><span id="get_apiv1depsgost_report"></span><span id="get_deps_gost_report"></span>GET /api/v1/deps/gost-report<a class="heading-anchor" href="#get-deps-gost-report" title="Link to this section">&para;</a></h4>
+<p>Формирование отчёта по ГОСТ Р 56939-2024 п. 5.16.3 для зависимостей.</p>
+<p><strong>Параметры запроса:</strong>
+- <code>language</code> — Язык отчёта (<code>en</code>, <code>ru</code>). По умолчанию: <code>en</code></p>
+<p><strong>Ответ:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;markdown&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;# Отчёт по ГОСТ Р 56939-2024 п. 5.16.3\n\n## 5.16.3.2 Перечень зависимостей...&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h4  id="post-deps-sync-cache"><span id="post-apiv1depssync-cache"></span><span id="post_apiv1depssync_cache"></span><span id="post_deps_sync_cache"></span>POST /api/v1/deps/sync-cache<a class="heading-anchor" href="#post-deps-sync-cache" title="Link to this section">&para;</a></h4>
+<p>Синхронизация локального кэша уязвимостей из настроенных источников.</p>
+<p><strong>Запрос:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;force&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Ответ:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;synced_sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;cleared_entries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cache_stats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;total_entries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1250</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;expired_entries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;db_size_bytes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">524288</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>При <code>force</code> = <code>true</code> очищает все записи кэша перед синхронизацией.</p>
 <hr />
 <h3  id="composition"><span id="kompozitsiya"></span>Композиция<a class="heading-anchor" href="#composition" title="Link to this section">&para;</a></h3>
 <h4  id="post-apiv1compositionquery"><span id="post_apiv1compositionquery"></span>POST /api/v1/composition/query<a class="heading-anchor" href="#post-apiv1compositionquery" title="Link to this section">&para;</a></h4>
@@ -2572,6 +2708,351 @@ Content-Type: application/json
 </tbody>
 </table></div>
 <hr />
+<h2  id="release-gate"><span id="proverka-gotovnosti-k-vypusku"></span><span id="proverka_gotovnosti_k_vypusku"></span><span id="release_gate"></span>Проверка готовности к выпуску<a class="heading-anchor" href="#release-gate" title="Link to this section">&para;</a></h2>
+<p>Автоматическая проверка готовности к выпуску с конфигурируемыми профилями и порогами критичности.</p>
+<h3  id="rg-check"><span id="post-apiv1releasecheck"></span><span id="post_apiv1releasecheck"></span><span id="rg_check"></span>POST /api/v1/release/check<a class="heading-anchor" href="#rg-check" title="Link to this section">&para;</a></h3>
+<p>Запуск проверок готовности к выпуску.</p>
+<p><strong>Тело запроса:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;profile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;base_ref&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;HEAD~10&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pass&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;profile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;passed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;blockers&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;warnings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;checks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;security.critical_findings&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Critical vulnerabilities&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;passed&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;blocker&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;All thresholds met&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{&#39;critical&#39;: 0}&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{&#39;max_critical&#39;: 0}&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="rg-profiles"><span id="get-apiv1releaseprofiles"></span><span id="get_apiv1releaseprofiles"></span><span id="rg_profiles"></span>GET /api/v1/release/profiles<a class="heading-anchor" href="#rg-profiles" title="Link to this section">&para;</a></h3>
+<p>Список доступных профилей проверки.</p>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gost-56939&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOST R 56939-2024 compliance profile&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;check_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard profile for internal releases&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;check_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3  id="rg-history"><span id="get-apiv1releasehistory"></span><span id="get_apiv1releasehistory"></span><span id="rg_history"></span>GET /api/v1/release/history<a class="heading-anchor" href="#rg-history" title="Link to this section">&para;</a></h3>
+<p>История решений проверки готовности.</p>
+<p><strong>Параметры запроса:</strong>
+- <code>limit</code> (int, по умолчанию: 10) — количество записей</p>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a1b2c3d4&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;profile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pass&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;passed_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;total_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3  id="rg-suppress"><span id="post-apiv1releasesuppress"></span><span id="post_apiv1releasesuppress"></span><span id="rg_suppress"></span>POST /api/v1/release/suppress<a class="heading-anchor" href="#rg-suppress" title="Link to this section">&para;</a></h3>
+<p>Подавление находки (принятие риска).</p>
+<p><strong>Тело запроса:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;finding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;F-1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false_positive&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;approved_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;jira_ticket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JIRA-123&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;finding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;F-1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false_positive&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;approved_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;approved_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;jira_ticket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JIRA-123&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="rg-suppressions"><span id="get-apiv1releasesuppressions"></span><span id="get_apiv1releasesuppressions"></span><span id="rg_suppressions"></span>GET /api/v1/release/suppressions<a class="heading-anchor" href="#rg-suppressions" title="Link to this section">&para;</a></h3>
+<p>Список активных подавлений для проекта.</p>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;finding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;F-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false_positive&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;approved_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;approved_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;jira_ticket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JIRA-123&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3  id="rg-delete-suppression"><span id="delete-apiv1releasesuppressionsfinding-id"></span><span id="delete_apiv1releasesuppressionsfinding_id"></span><span id="rg_delete_suppression"></span>DELETE /api/v1/release/suppressions/{finding_id}<a class="heading-anchor" href="#rg-delete-suppression" title="Link to this section">&para;</a></h3>
+<p>Удаление подавления. Возвращает 204 при успехе, 404 если не найдено.</p>
+<hr />
+<h2  id="stride-threat-model"><span id="model-ugroz-stride"></span><span id="model_ugroz_stride"></span><span id="stride_threat_model"></span>Модель угроз STRIDE<a class="heading-anchor" href="#stride-threat-model" title="Link to this section">&para;</a></h2>
+<p>Генерация и экспорт моделей угроз STRIDE из CPG проекта.</p>
+<h3  id="tm-generate"><span id="post-apiv1securitythreat-modelgenerate"></span><span id="post_apiv1securitythreat_modelgenerate"></span><span id="tm_generate"></span>POST /api/v1/security/threat-model/generate<a class="heading-anchor" href="#tm-generate" title="Link to this section">&para;</a></h3>
+<p>Генерация полной модели угроз STRIDE с извлечением DFD, определением границ доверия, классификацией угроз и рекомендациями по нейтрализации.</p>
+<p><strong>Тело запроса:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;min_severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;low&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_inferred&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;json&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;myproject&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;methodology&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;STRIDE&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_flows&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">67</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_boundaries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;threats_by_category&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;spoofing&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tampering&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;info_disclosure&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;dos&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;elevation&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.25</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;T-S-001&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;category&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;spoofing&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Auth bypass&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;cwe_ids&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;CWE-287&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;affected_component_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c42&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;risk_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">21.0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;mitigations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Implement JWT auth&quot;</span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="tm-export"><span id="post-apiv1securitythreat-modelexport"></span><span id="post_apiv1securitythreat_modelexport"></span><span id="tm_export"></span>POST /api/v1/security/threat-model/export<a class="heading-anchor" href="#tm-export" title="Link to this section">&para;</a></h3>
+<p>Экспорт модели угроз в форматах Markdown, шаблон ГОСТ, SARIF 2.1.0 или JSON.</p>
+<h3  id="tm-dfd"><span id="get-apiv1securitythreat-modeldfd"></span><span id="get_apiv1securitythreat_modeldfd"></span><span id="tm_dfd"></span>GET /api/v1/security/threat-model/dfd<a class="heading-anchor" href="#tm-dfd" title="Link to this section">&para;</a></h3>
+<p>Генерация диаграммы потоков данных (DFD) из CPG.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format</code></td>
+<td>string</td>
+<td><code>mermaid</code></td>
+<td>Формат вывода: <code>mermaid</code> или <code>json</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="tm-threats"><span id="get-apiv1securitythreat-modelthreats"></span><span id="get_apiv1securitythreat_modelthreats"></span><span id="tm_threats"></span>GET /api/v1/security/threat-model/threats<a class="heading-anchor" href="#tm-threats" title="Link to this section">&para;</a></h3>
+<p>Список угроз с фильтрацией по серьёзности и категории STRIDE.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>severity</code></td>
+<td>string</td>
+<td>—</td>
+<td>Фильтр: <code>low</code>, <code>medium</code>, <code>high</code>, <code>critical</code></td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>string</td>
+<td>—</td>
+<td>Фильтр по категории STRIDE</td>
+</tr>
+<tr>
+<td><code>language</code></td>
+<td>string</td>
+<td><code>ru</code></td>
+<td>Язык вывода</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="tm-update"><span id="post-apiv1securitythreat-modelupdate"></span><span id="post_apiv1securitythreat_modelupdate"></span><span id="tm_update"></span>POST /api/v1/security/threat-model/update<a class="heading-anchor" href="#tm-update" title="Link to this section">&para;</a></h3>
+<p>Инкрементальное обновление модели угроз — сравнение с предыдущей версией.</p>
+<h3  id="tm-mitigations"><span id="get-apiv1securitythreat-modelmitigations"></span><span id="get_apiv1securitythreat_modelmitigations"></span><span id="tm_mitigations"></span>GET /api/v1/security/threat-model/mitigations<a class="heading-anchor" href="#tm-mitigations" title="Link to this section">&para;</a></h3>
+<p>Список стандартных рекомендаций по нейтрализации STRIDE (18 базовых + CWE-специфичные).</p>
+<h3  id="tm-stride-mapping"><span id="get-apiv1securitythreat-modelstride-mapping"></span><span id="get_apiv1securitythreat_modelstride_mapping"></span><span id="tm_stride_mapping"></span>GET /api/v1/security/threat-model/stride-mapping<a class="heading-anchor" href="#tm-stride-mapping" title="Link to this section">&para;</a></h3>
+<p>Маппинг CWE в категории STRIDE (40+ записей CWE).</p>
+<hr />
+<h2  id="compliance-gost"><span id="compliance_gost"></span><span id="sootvetstvie-gost-r-56939-2024"></span><span id="sootvetstvie_gost_r_56939_2024"></span>Соответствие ГОСТ Р 56939-2024<a class="heading-anchor" href="#compliance-gost" title="Link to this section">&para;</a></h2>
+<h3  id="compliance-report"><span id="compliance_report"></span><span id="get-apiv1compliancegost-56939project-id"></span><span id="get_apiv1compliancegost_56939project_id"></span>GET /api/v1/compliance/gost-56939/{project_id}<a class="heading-anchor" href="#compliance-report" title="Link to this section">&para;</a></h3>
+<p>Возвращает полный отчет о соответствии по всем 25 процессам ГОСТ.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>include_traceability</td>
+<td>bool</td>
+<td>false</td>
+<td>Включить матрицу трассируемости</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;myproject&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;report_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">52.4</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gost_standard&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOST R 56939-2024&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;full&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;partial&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;gap&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;n_a&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">25</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;process_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5.7&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Моделирование угроз&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;full&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;requirements_total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;requirements_met&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;artifacts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;artifact_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5.7.3.1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Модель STRIDE&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;present&quot;</span><span class="p">}],</span>
+<span class="w">      </span><span class="nt">&quot;recommendations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;traceability&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="compliance-checklist"><span id="compliance_checklist"></span><span id="get-apiv1compliancegost-56939project-idchecklist"></span><span id="get_apiv1compliancegost_56939project_idchecklist"></span>GET /api/v1/compliance/gost-56939/{project_id}/checklist<a class="heading-anchor" href="#compliance-checklist" title="Link to this section">&para;</a></h3>
+<p>Возвращает чек-лист артефактов, сгруппированный по процессам.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>process_filter</td>
+<td>string</td>
+<td>Идентификаторы процессов через запятую (например, «5.7,5.10»)</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="compliance-traceability"><span id="compliance_traceability"></span><span id="get-apiv1compliancegost-56939project-idtraceability"></span><span id="get_apiv1compliancegost_56939project_idtraceability"></span>GET /api/v1/compliance/gost-56939/{project_id}/traceability<a class="heading-anchor" href="#compliance-traceability" title="Link to this section">&para;</a></h3>
+<p>Возвращает матрицу трассируемости: CWE-требования, код, тесты, находки.</p>
+<h3  id="compliance-history"><span id="compliance_history"></span><span id="get-apiv1compliancegost-56939project-idhistory"></span><span id="get_apiv1compliancegost_56939project_idhistory"></span>GET /api/v1/compliance/gost-56939/{project_id}/history<a class="heading-anchor" href="#compliance-history" title="Link to this section">&para;</a></h3>
+<p>Возвращает историю оценок соответствия.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>limit</td>
+<td>int</td>
+<td>10</td>
+<td>Количество записей (1-100)</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="compliance-export"><span id="compliance_export"></span><span id="get-apiv1compliancegost-56939project-idexport"></span><span id="get_apiv1compliancegost_56939project_idexport"></span>GET /api/v1/compliance/gost-56939/{project_id}/export<a class="heading-anchor" href="#compliance-export" title="Link to this section">&para;</a></h3>
+<p>Экспортирует отчет о соответствии в указанном формате.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>format</td>
+<td>string</td>
+<td>gost</td>
+<td>Формат экспорта: gost, markdown, json</td>
+</tr>
+<tr>
+<td>language</td>
+<td>string</td>
+<td>ru</td>
+<td>Язык: ru, en</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="compliance-evaluate"><span id="compliance_evaluate"></span><span id="post-apiv1compliancegost-56939project-idevaluate"></span><span id="post_apiv1compliancegost_56939project_idevaluate"></span>POST /api/v1/compliance/gost-56939/{project_id}/evaluate<a class="heading-anchor" href="#compliance-evaluate" title="Link to this section">&para;</a></h3>
+<p>Запускает оценку соответствия и сохраняет в историю (если включено в конфигурации).</p>
+<h3  id="compliance-delta"><span id="compliance_delta"></span><span id="get-apiv1compliancegost-56939project-iddelta"></span><span id="get_apiv1compliancegost_56939project_iddelta"></span>GET /api/v1/compliance/gost-56939/{project_id}/delta<a class="heading-anchor" href="#compliance-delta" title="Link to this section">&para;</a></h3>
+<p>Сравнивает две оценки соответствия.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>old</td>
+<td>string</td>
+<td>Идентификатор старого отчета (обязательный)</td>
+</tr>
+<tr>
+<td>new</td>
+<td>string</td>
+<td>Идентификатор нового отчета (обязательный)</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
 <h2  id="websocket-endpoints"><span id="konechnye-tochki-websocket"></span><span id="konechnye_tochki_websocket"></span><span id="websocket_endpoints"></span>Конечные точки WebSocket<a class="heading-anchor" href="#websocket-endpoints" title="Link to this section">&para;</a></h2>
 <h3 id="wschat">/ws/chat<a class="heading-anchor" href="#wschat" title="Link to this section">&para;</a></h3>
 <p>Соединение для чата в реальном времени.</p>
@@ -2905,6 +3386,29 @@ python -m src.api.cli migrate --revision abc123
 <li><a href="#get-apiv1patternsrules" class="level-3">GET /api/v1/patterns/rules</a></li>
 <li><a href="#post-apiv1patternsgenerate" class="level-3">POST /api/v1/patterns/generate</a></li>
 <li><a href="#oshibki-shablonov" class="level-3">Ошибки шаблонов</a></li>
+<li><a href="#release-gate" class="level-2">Проверка готовности к выпуску</a></li>
+<li><a href="#rg-check" class="level-3">POST /api/v1/release/check</a></li>
+<li><a href="#rg-profiles" class="level-3">GET /api/v1/release/profiles</a></li>
+<li><a href="#rg-history" class="level-3">GET /api/v1/release/history</a></li>
+<li><a href="#rg-suppress" class="level-3">POST /api/v1/release/suppress</a></li>
+<li><a href="#rg-suppressions" class="level-3">GET /api/v1/release/suppressions</a></li>
+<li><a href="#rg-delete-suppression" class="level-3">DELETE /api/v1/release/suppressions/{finding_id}</a></li>
+<li><a href="#stride-threat-model" class="level-2">Модель угроз STRIDE</a></li>
+<li><a href="#tm-generate" class="level-3">POST /api/v1/security/threat-model/generate</a></li>
+<li><a href="#tm-export" class="level-3">POST /api/v1/security/threat-model/export</a></li>
+<li><a href="#tm-dfd" class="level-3">GET /api/v1/security/threat-model/dfd</a></li>
+<li><a href="#tm-threats" class="level-3">GET /api/v1/security/threat-model/threats</a></li>
+<li><a href="#tm-update" class="level-3">POST /api/v1/security/threat-model/update</a></li>
+<li><a href="#tm-mitigations" class="level-3">GET /api/v1/security/threat-model/mitigations</a></li>
+<li><a href="#tm-stride-mapping" class="level-3">GET /api/v1/security/threat-model/stride-mapping</a></li>
+<li><a href="#compliance-gost" class="level-2">Соответствие ГОСТ Р 56939-2024</a></li>
+<li><a href="#compliance-report" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}</a></li>
+<li><a href="#compliance-checklist" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/checklist</a></li>
+<li><a href="#compliance-traceability" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/traceability</a></li>
+<li><a href="#compliance-history" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/history</a></li>
+<li><a href="#compliance-export" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/export</a></li>
+<li><a href="#compliance-evaluate" class="level-3">POST /api/v1/compliance/gost-56939/{project_id}/evaluate</a></li>
+<li><a href="#compliance-delta" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/delta</a></li>
 <li><a href="#websocket-endpoints" class="level-2">Конечные точки WebSocket</a></li>
 <li><a href="#wschat" class="level-3">/ws/chat</a></li>
 <li><a href="#wsjobsjob_id" class="level-3">/ws/jobs/{job_id}</a></li>

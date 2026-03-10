@@ -94,6 +94,7 @@
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
+        <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -104,7 +105,11 @@
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
         <li><a href="../guides/REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="../guides/RELEASE_GATE.html">Release Gate</a></li>
+        <li><a href="../guides/SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="../guides/SCENARIOS.html">Workflow Scenarios Guide</a></li>
+        <li><a href="../guides/SUPPLY_CHAIN.html">Supply Chain Security</a></li>
+        <li><a href="../guides/THREAT_MODEL.html">STRIDE Threat Model</a></li>
         <li><a href="../guides/TROUBLESHOOTING.html">Troubleshooting Guide</a></li>
         <li><a href="../guides/01-onboarding.html">Scenario 01: Codebase Onboarding</a></li>
         <li><a href="../guides/02-security-audit-autofix.html">Security Audit: Autofix</a></li>
@@ -394,7 +399,7 @@ Domain: python_generic
   <span class="gs">**Exposed via:**</span> CLI, MCP, REST API
 </code></pre></div>
 
-<p>The <code>lookup_interface_exposure()</code> function searches for calls to the entity from the 5 interface layers (CLI, REST API, TUI, MCP, ACP) via the <code>nodes_call</code> table in the CPG. This helps Claude assess the potential impact of changes on external interfaces.</p>
+<p>The <code>lookup_interface_exposure()</code> function searches for calls to the entity from the 4 interface layers (CLI, REST API, MCP, ACP) via the <code>nodes_call</code> table in the CPG. This helps Claude assess the potential impact of changes on external interfaces.</p>
 <h3  id="pretooluse-complexity-gate"><span id="pretooluse_complexity_gate"></span>PreToolUse: Complexity gate<a class="heading-anchor" href="#pretooluse-complexity-gate" title="Link to this section">&para;</a></h3>
 <p><strong>File:</strong> <code>.claude/hooks/pre_tool_use.py</code>
 <strong>Timeout:</strong> 8s
@@ -409,11 +414,11 @@ Domain: python_generic
 <h4  id="registration-completeness-check-cr2"><span id="registration_completeness_check_cr2"></span>Registration Completeness Check (CR2)<a class="heading-anchor" href="#registration-completeness-check-cr2" title="Link to this section">&para;</a></h4>
 <p>When editing files in <code>scenarios/</code>, <code>services/</code>, <code>analysis/</code>, <code>security/</code> directories, the hook additionally checks whether all public functions in the file are registered in interface layers:</p>
 <div class="highlight"><pre><span></span><code><span class="gu">## Registration Warning</span>
-<span class="gs">**Registration check:**</span> <span class="sb">`analyze_security`</span>, <span class="sb">`scan_endpoints`</span> not called from any interface layer (CLI/API/TUI/MCP/ACP)
+<span class="gs">**Registration check:**</span> <span class="sb">`analyze_security`</span>, <span class="sb">`scan_endpoints`</span> not called from any interface layer (CLI/API/MCP/ACP)
 </code></pre></div>
 
 <p>The <code>check_registration_completeness()</code> function extracts public functions (not starting with <code>_</code> or <code>test_</code>) from the target file via CPG, then checks whether they are called from any interface layer. If some functions are registered and some are not, a warning is produced.</p>
-<p>Files in the interface layers themselves (<code>src/cli/</code>, <code>src/api/routers/</code>, <code>src/tui/commands/</code>, <code>src/mcp/tools/</code>, <code>src/acp/</code>) are skipped.</p>
+<p>Files in the interface layers themselves (<code>src/cli/</code>, <code>src/api/routers/</code>, <code>src/mcp/tools/</code>, <code>src/acp/</code>) are skipped.</p>
 <h3  id="posttooluse-commit-analysis"><span id="posttooluse_commit_analysis"></span>PostToolUse: Commit analysis<a class="heading-anchor" href="#posttooluse-commit-analysis" title="Link to this section">&para;</a></h3>
 <p><strong>File:</strong> <code>.claude/hooks/commit_analysis.py</code>
 <strong>Timeout:</strong> 60s
@@ -445,7 +450,7 @@ Domain: python_generic
 <p><strong>Fallback path:</strong> If DuckDB import fails, falls back to subprocess-based analysis (simpler, without blast radius or delta report).</p>
 <h4  id="extended-analysis-phases-code-review-v3"><span id="extended_analysis_phases_code_review_v3"></span>Extended Analysis Phases (Code Review v3)<a class="heading-anchor" href="#extended-analysis-phases-code-review-v3" title="Link to this section">&para;</a></h4>
 <p>Beyond the base pipeline, the hook performs extended analysis:</p>
-<p><strong>Interface Impact Detection (CR1).</strong> If changed files are in interface layers (CLI, REST API, TUI, MCP, ACP), the hook reports which layers are affected and how many methods changed:</p>
+<p><strong>Interface Impact Detection (CR1).</strong> If changed files are in interface layers (CLI, REST API, MCP, ACP), the hook reports which layers are affected and how many methods changed:</p>
 <div class="highlight"><pre><span></span><code><span class="gs">**Interface Impact:**</span>
 <span class="k">-</span><span class="w"> </span>CLI: 3 methods affected in <span class="sb">`src/cli/audit_commands.py`</span>
 <span class="k">-</span><span class="w"> </span>MCP: 1 method affected in <span class="sb">`src/mcp/tools/search.py`</span>

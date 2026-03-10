@@ -94,6 +94,7 @@
         <li><a href="CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
+        <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html" class="active">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -104,7 +105,11 @@
         <li><a href="PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
         <li><a href="QUICK_REFERENCE.html">Краткое руководство по CodeGraph</a></li>
         <li><a href="REFACTORING.html">Руководство по анализу рефакторинга</a></li>
+        <li><a href="RELEASE_GATE.html">Проверка готовности к выпуску</a></li>
+        <li><a href="SCA_SBOM.html">Композиционный анализ (КА) и SBOM</a></li>
         <li><a href="SCENARIOS.html">Руководство по сценариям рабочих процессов</a></li>
+        <li><a href="SUPPLY_CHAIN.html">Безопасность цепочки поставок</a></li>
+        <li><a href="THREAT_MODEL.html">Модель угроз STRIDE</a></li>
         <li><a href="TROUBLESHOOTING.html">Руководство по устранению неполадок</a></li>
         <li><a href="01-onboarding.html">Сценарий 01: Онбординг в кодовую базу</a></li>
         <li><a href="02-security-audit-autofix.html">Аудит безопасности: Автоисправление</a></li>
@@ -344,7 +349,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
     |       Запрос call_containment (или nodes_call в качестве запасного варианта)
     |
     +-- Фаза 5: Обнаружение влияния на интерфейсы
-    |       Проверка принадлежности изменённых файлов к слоям интерфейсов (CLI, REST API, TUI, MCP, ACP)
+    |       Проверка принадлежности изменённых файлов к слоям интерфейсов (CLI, REST API, MCP, ACP)
     |
     +-- Фаза 6: Межмодульные предупреждения
     |       Поиск связанных функций в ДРУГИХ слоях по совпадению ключевых слов
@@ -426,7 +431,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
 <p>Методы без изменений метрик пропускаются.</p>
 <h3  id="obnaruzhenie-vliyaniya-na-interfeysy"><span id="obnaruzhenie_vliyaniya_na_interfeysy"></span>Обнаружение влияния на интерфейсы<a class="heading-anchor" href="#obnaruzhenie-vliyaniya-na-interfeysy" title="Link to this section">&para;</a></h3>
-<p>Анализатор отслеживает 5 слоёв интерфейсов, определённых в <code>INTERFACE_LAYERS</code>:</p>
+<p>Анализатор отслеживает 4 слоя интерфейсов, определённых в <code>INTERFACE_LAYERS</code>:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -445,11 +450,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <td>REST API</td>
 <td><code>src/api/routers/</code></td>
 <td>API-эндпоинты</td>
-</tr>
-<tr>
-<td>TUI</td>
-<td><code>src/tui/commands/</code></td>
-<td>TUI-команды</td>
 </tr>
 <tr>
 <td>MCP</td>
@@ -474,7 +474,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <h3  id="delta-pokrytiya-istoriy"><span id="delta_pokrytiya_istoriy"></span>Дельта покрытия историй<a class="heading-anchor" href="#delta-pokrytiya-istoriy" title="Link to this section">&para;</a></h3>
 <p>При изменении слоёв интерфейсов анализатор определяет, какие другие слои могут потребовать обновления для поддержания паритета функциональности. Отчёт включает секцию <strong>«Story coverage check»</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="gs">**Story coverage check**</span> — verify other interfaces:
-<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`reindex`</span>), check: MCP, REST API, TUI, ACP
+<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`reindex`</span>), check: MCP, REST API, ACP
 </code></pre></div>
 
 <h2  id="infrastruktura-hukov"><span id="infrastruktura_hukov"></span>Инфраструктура хуков<a class="heading-anchor" href="#infrastruktura-hukov" title="Link to this section">&para;</a></h2>
@@ -796,7 +796,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <tr>
 <td><code>interface_impacts</code></td>
 <td><code>List[dict]</code></td>
-<td>Затронутые слои интерфейсов (CLI, REST API, TUI, MCP, ACP)</td>
+<td>Затронутые слои интерфейсов (CLI, REST API, MCP, ACP)</td>
 </tr>
 <tr>
 <td><code>cross_module_alerts</code></td>
@@ -856,7 +856,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="k">-</span><span class="w"> </span>Changed CLI → check MCP: <span class="sb">`codegraph_intent`</span>, <span class="sb">`register_intent_tools`</span>
 
 <span class="gs">**Story coverage check**</span> — verify other interfaces:
-<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`intent`</span>), check: MCP, REST API, TUI, ACP
+<span class="k">-</span><span class="w"> </span>CLI changed (<span class="sb">`intent`</span>), check: MCP, REST API, ACP
 
 <span class="ge">*Analysis completed in 95ms*</span>
 </code></pre></div>

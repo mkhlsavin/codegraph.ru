@@ -94,6 +94,7 @@
         <li><a href="../guides/CLI_GUIDE.html">Руководство по CLI</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
+        <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
@@ -104,7 +105,11 @@
         <li><a href="../guides/PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">Краткое руководство по CodeGraph</a></li>
         <li><a href="../guides/REFACTORING.html">Руководство по анализу рефакторинга</a></li>
+        <li><a href="../guides/RELEASE_GATE.html">Проверка готовности к выпуску</a></li>
+        <li><a href="../guides/SCA_SBOM.html">Композиционный анализ (КА) и SBOM</a></li>
         <li><a href="../guides/SCENARIOS.html">Руководство по сценариям рабочих процессов</a></li>
+        <li><a href="../guides/SUPPLY_CHAIN.html">Безопасность цепочки поставок</a></li>
+        <li><a href="../guides/THREAT_MODEL.html">Модель угроз STRIDE</a></li>
         <li><a href="../guides/TROUBLESHOOTING.html">Руководство по устранению неполадок</a></li>
         <li><a href="../guides/01-onboarding.html">Сценарий 01: Онбординг в кодовую базу</a></li>
         <li><a href="../guides/02-security-audit-autofix.html">Аудит безопасности: Автоисправление</a></li>
@@ -394,7 +399,7 @@ Domain: python_generic
   <span class="gs">**Exposed via:**</span> CLI, MCP, REST API
 </code></pre></div>
 
-<p>Функция <code>lookup_interface_exposure()</code> ищет вызовы сущности из 5 интерфейсных слоёв (CLI, REST API, TUI, MCP, ACP) через таблицу <code>nodes_call</code> в CPG. Это позволяет Claude оценить потенциальное влияние изменений на внешние интерфейсы.</p>
+<p>Функция <code>lookup_interface_exposure()</code> ищет вызовы сущности из 4 интерфейсных слоёв (CLI, REST API, MCP, ACP) через таблицу <code>nodes_call</code> в CPG. Это позволяет Claude оценить потенциальное влияние изменений на внешние интерфейсы.</p>
 <h3  id="pretooluse-shlyuz-slozhnosti"><span id="pretooluse_shlyuz_slozhnosti"></span>PreToolUse: шлюз сложности<a class="heading-anchor" href="#pretooluse-shlyuz-slozhnosti" title="Link to this section">&para;</a></h3>
 <p><strong>Файл:</strong> <code>.claude/hooks/pre_tool_use.py</code>
 <strong>Время ожидания:</strong> 8с
@@ -409,11 +414,11 @@ Domain: python_generic
 <h4  id="proverka-polnoty-registratsii-cr2"><span id="proverka_polnoty_registratsii_cr2"></span>Проверка полноты регистрации (CR2)<a class="heading-anchor" href="#proverka-polnoty-registratsii-cr2" title="Link to this section">&para;</a></h4>
 <p>При редактировании файлов в директориях <code>scenarios/</code>, <code>services/</code>, <code>analysis/</code>, <code>security/</code> хук дополнительно проверяет, все ли публичные функции файла зарегистрированы в интерфейсных слоях:</p>
 <div class="highlight"><pre><span></span><code><span class="gu">## Registration Warning</span>
-<span class="gs">**Registration check:**</span> <span class="sb">`analyze_security`</span>, <span class="sb">`scan_endpoints`</span> not called from any interface layer (CLI/API/TUI/MCP/ACP)
+<span class="gs">**Registration check:**</span> <span class="sb">`analyze_security`</span>, <span class="sb">`scan_endpoints`</span> not called from any interface layer (CLI/API/MCP/ACP)
 </code></pre></div>
 
 <p>Функция <code>check_registration_completeness()</code> извлекает публичные функции (не начинающиеся с <code>_</code> или <code>test_</code>) из целевого файла через CPG, затем проверяет, вызываются ли они из любого интерфейсного слоя. Если часть функций зарегистрирована, а часть нет &ndash; выдаётся предупреждение.</p>
-<p>Файлы в самих интерфейсных слоях (<code>src/cli/</code>, <code>src/api/routers/</code>, <code>src/tui/commands/</code>, <code>src/mcp/tools/</code>, <code>src/acp/</code>) пропускаются.</p>
+<p>Файлы в самих интерфейсных слоях (<code>src/cli/</code>, <code>src/api/routers/</code>, <code>src/mcp/tools/</code>, <code>src/acp/</code>) пропускаются.</p>
 <h3  id="posttooluse-analiz-kommita"><span id="posttooluse_analiz_kommita"></span>PostToolUse: анализ коммита<a class="heading-anchor" href="#posttooluse-analiz-kommita" title="Link to this section">&para;</a></h3>
 <p><strong>Файл:</strong> <code>.claude/hooks/commit_analysis.py</code>
 <strong>Время ожидания:</strong> 60с
@@ -445,7 +450,7 @@ Domain: python_generic
 <p><strong>Запасной путь:</strong> Если импорт DuckDB не удаётся, переключается на анализ через подпроцесс (проще, без зоны поражения и дельта-отчёта).</p>
 <h4  id="dopolnitelnye-fazy-analiza-code-review-v3"><span id="dopolnitelnye_fazy_analiza_code_review_v3"></span>Дополнительные фазы анализа (Code Review v3)<a class="heading-anchor" href="#dopolnitelnye-fazy-analiza-code-review-v3" title="Link to this section">&para;</a></h4>
 <p>Помимо базового конвейера, хук выполняет расширенный анализ:</p>
-<p><strong>Обнаружение влияния на интерфейсы (CR1).</strong> Если изменённые файлы находятся в интерфейсных слоях (CLI, REST API, TUI, MCP, ACP), хук сообщает, какие слои затронуты и сколько методов в них изменилось:</p>
+<p><strong>Обнаружение влияния на интерфейсы (CR1).</strong> Если изменённые файлы находятся в интерфейсных слоях (CLI, REST API, MCP, ACP), хук сообщает, какие слои затронуты и сколько методов в них изменилось:</p>
 <div class="highlight"><pre><span></span><code><span class="gs">**Interface Impact:**</span>
 <span class="k">-</span><span class="w"> </span>CLI: 3 methods affected in <span class="sb">`src/cli/audit_commands.py`</span>
 <span class="k">-</span><span class="w"> </span>MCP: 1 method affected in <span class="sb">`src/mcp/tools/search.py`</span>

@@ -94,6 +94,7 @@
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
+        <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -104,7 +105,11 @@
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
         <li><a href="../guides/REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="../guides/RELEASE_GATE.html">Release Gate</a></li>
+        <li><a href="../guides/SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="../guides/SCENARIOS.html">Workflow Scenarios Guide</a></li>
+        <li><a href="../guides/SUPPLY_CHAIN.html">Supply Chain Security</a></li>
+        <li><a href="../guides/THREAT_MODEL.html">STRIDE Threat Model</a></li>
         <li><a href="../guides/TROUBLESHOOTING.html">Troubleshooting Guide</a></li>
         <li><a href="../guides/01-onboarding.html">Scenario 01: Codebase Onboarding</a></li>
         <li><a href="../guides/02-security-audit-autofix.html">Security Audit: Autofix</a></li>
@@ -270,7 +275,6 @@
 <div class="highlight"><pre><span></span><code><span class="n">flowchart</span><span class="w"> </span><span class="n">LR</span>
 <span class="w">    </span><span class="n">subgraph</span><span class="w"> </span><span class="n">Surfaces</span>
 <span class="w">        </span><span class="n">CLI</span><span class="p">[</span><span class="n">CLI</span><span class="p">]</span>
-<span class="w">        </span><span class="n">TUI</span><span class="p">[</span><span class="n">TUI</span><span class="p">]</span>
 <span class="w">        </span><span class="n">IDE</span><span class="p">[</span><span class="n">IDE</span><span class="p">]</span>
 <span class="w">        </span><span class="n">REST</span><span class="p">[</span><span class="n">REST</span><span class="w"> </span><span class="n">API</span><span class="p">]</span>
 <span class="w">    </span><span class="n">end</span>
@@ -292,7 +296,6 @@
 <span class="w">    </span><span class="n">end</span>
 
 <span class="w">    </span><span class="n">CLI</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
-<span class="w">    </span><span class="n">TUI</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
 <span class="w">    </span><span class="n">IDE</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
 <span class="w">    </span><span class="n">REST</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">AE</span>
 <span class="w">    </span><span class="n">AE</span><span class="w"> </span><span class="o">&lt;--&gt;</span><span class="w"> </span><span class="n">SM</span>
@@ -312,12 +315,12 @@
 </code></pre></div>
 
 <h2 id="codegraphharness">CodeGraphHarness<a class="heading-anchor" href="#codegraphharness" title="Link to this section">&para;</a></h2>
-<p><code>CodeGraphHarness</code> is the central singleton that owns all services and exposes them through a uniform internal API. All surfaces (CLI, TUI, REST, MCP, ACP) become thin clients.</p>
+<p><code>CodeGraphHarness</code> is the central singleton that owns all services and exposes them through a uniform internal API. All surfaces (CLI, REST, MCP, ACP) become thin clients.</p>
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CodeGraphHarness</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </code></pre></div>
 
-<p>When <code>db_path</code> is <code>None</code>, the harness falls back to <code>ProjectManager.get_active_db_path()</code> for the CLI/TUI path.</p>
+<p>When <code>db_path</code> is <code>None</code>, the harness falls back to <code>ProjectManager.get_active_db_path()</code> for the CLI path.</p>
 <p>Lazy-loaded properties:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -366,7 +369,7 @@
 </code></pre></div>
 
 <ul>
-<li><code>db_path=None</code> &ndash; returns the global singleton (CLI/TUI path). Created on first call.</li>
+<li><code>db_path=None</code> &ndash; returns the global singleton (CLI path). Created on first call.</li>
 <li><code>db_path="path"</code> &ndash; returns a project-specific harness from an LRU cache (max 5 entries), creating a new one if needed.</li>
 </ul>
 <h3  id="reset-harness"><span id="reset_harness"></span>reset_harness()<a class="heading-anchor" href="#reset-harness" title="Link to this section">&para;</a></h3>
@@ -588,7 +591,7 @@
 </code></pre></div>
 
 <h3  id="resolve-from-ui"><span id="resolve_from_ui"></span>Resolve from UI<a class="heading-anchor" href="#resolve-from-ui" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Called by CLI/TUI/IDE when user makes a decision</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Called by CLI/IDE when user makes a decision</span>
 <span class="n">harness</span><span class="o">.</span><span class="n">approval</span><span class="o">.</span><span class="n">resolve_approval</span><span class="p">(</span>
     <span class="n">request_id</span><span class="o">=</span><span class="s2">&quot;req_abc123&quot;</span><span class="p">,</span>
     <span class="n">decision</span><span class="o">=</span><span class="n">ApprovalDecision</span><span class="p">(</span><span class="n">decision</span><span class="o">=</span><span class="s2">&quot;accept&quot;</span><span class="p">)</span>

@@ -94,6 +94,7 @@
         <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
+        <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
@@ -104,7 +105,11 @@
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
         <li><a href="../guides/REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="../guides/RELEASE_GATE.html">Release Gate</a></li>
+        <li><a href="../guides/SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="../guides/SCENARIOS.html">Workflow Scenarios Guide</a></li>
+        <li><a href="../guides/SUPPLY_CHAIN.html">Supply Chain Security</a></li>
+        <li><a href="../guides/THREAT_MODEL.html">STRIDE Threat Model</a></li>
         <li><a href="../guides/TROUBLESHOOTING.html">Troubleshooting Guide</a></li>
         <li><a href="../guides/01-onboarding.html">Scenario 01: Codebase Onboarding</a></li>
         <li><a href="../guides/02-security-audit-autofix.html">Security Audit: Autofix</a></li>
@@ -595,11 +600,73 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/auth/oauth/{provider}/authorize</span>
 </code></pre></div>
 
-<p>Supported providers: <code>github</code>, <code>google</code>, <code>gitlab</code>, <code>keycloak</code></p>
+<p>Supported providers: <code>github</code>, <code>google</code>, <code>gitlab</code>, <code>keycloak</code>, <code>sourcecraft</code>, <code>gitverse</code></p>
 <h4  id="oauth-callback"><span id="oauth_callback"></span>OAuth Callback<a class="heading-anchor" href="#oauth-callback" title="Link to this section">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/auth/oauth/{provider}/callback?code=xxx&amp;state=xxx</span>
 </code></pre></div>
 
+<h4  id="oauth-token-endpoint-rfc-6749"><span id="oauth_token_endpoint_rfc_6749"></span>OAuth Token Endpoint (RFC 6749)<a class="heading-anchor" href="#oauth-token-endpoint-rfc-6749" title="Link to this section">&para;</a></h4>
+<p>Standard OAuth 2.0 token endpoint for programmatic access and automatic token refresh.
+Supports both JSON and <code>application/x-www-form-urlencoded</code> request bodies.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/auth/oauth/token</span>
+<span class="err">Content-Type: application/json</span>
+</code></pre></div>
+
+<p><strong>Password grant</strong> — exchange credentials for tokens:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;grant_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;secret&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Refresh token grant</strong> — renew an expired access token:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;grant_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;refresh_token&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;refresh_token&gt;&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response</strong> (both grants):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;access_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbG...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;token_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bearer&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expires_in&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1800</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;refresh_token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbG...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;scenarios:read query:execute&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>access_token</code></td>
+<td>JWT access token (TTL: 30 minutes)</td>
+</tr>
+<tr>
+<td><code>refresh_token</code></td>
+<td>JWT refresh token (TTL: 7 days, one-time use)</td>
+</tr>
+<tr>
+<td><code>expires_in</code></td>
+<td>Access token lifetime in seconds</td>
+</tr>
+<tr>
+<td><code>scope</code></td>
+<td>Granted permission scopes</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote class="callout">
+<p>This endpoint is designed for MCP clients (Claude Code, OpenCode) and CI/CD
+integrations that need automatic token refresh without user interaction.</p>
+</blockquote>
 <h3  id="ldap-authentication"><span id="ldap_authentication"></span>LDAP Authentication<a class="heading-anchor" href="#ldap-authentication" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/auth/ldap</span>
 <span class="err">Content-Type: application/json</span>
@@ -1992,6 +2059,74 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 <span class="p">}</span>
 </code></pre></div>
 
+<h4  id="post-apiv1depsaudit-sca"><span id="post_apiv1depsaudit_sca"></span>POST /api/v1/deps/audit-sca<a class="heading-anchor" href="#post-apiv1depsaudit-sca" title="Link to this section">&para;</a></h4>
+<p>Audit dependencies for vulnerabilities with configurable sources and severity threshold.</p>
+<p><strong>Request:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;fail_on&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;json&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;vulnerabilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CVE-2024-12345&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;dependency&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.28.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;fix_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.32.0&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;critical&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;high&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;medium&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;low&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;threshold_breached&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>When <code>format</code> is <code>sarif</code>, returns SARIF 2.1.0 document instead of JSON.</p>
+<h4  id="get-apiv1depsgost-report"><span id="get_apiv1depsgost_report"></span>GET /api/v1/deps/gost-report<a class="heading-anchor" href="#get-apiv1depsgost-report" title="Link to this section">&para;</a></h4>
+<p>Generate GOST R 56939-2024 section 5.16.3 compliance report for dependencies.</p>
+<p><strong>Query Parameters:</strong>
+- <code>language</code> — Report language (<code>en</code>, <code>ru</code>). Default: <code>en</code></p>
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;markdown&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;# Отчёт по ГОСТ Р 56939-2024 п. 5.16.3\n\n## 5.16.3.2 Перечень зависимостей...&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h4  id="post-apiv1depssync-cache"><span id="post_apiv1depssync_cache"></span>POST /api/v1/deps/sync-cache<a class="heading-anchor" href="#post-apiv1depssync-cache" title="Link to this section">&para;</a></h4>
+<p>Sync local vulnerability cache from configured sources.</p>
+<p><strong>Request:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;force&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;synced_sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;cleared_entries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cache_stats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;total_entries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1250</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;expired_entries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;db_size_bytes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">524288</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>When <code>force</code> is <code>true</code>, clears all cache entries before syncing.</p>
 <hr />
 <h3 id="composition">Composition<a class="heading-anchor" href="#composition" title="Link to this section">&para;</a></h3>
 <h4  id="post-apiv1compositionquery"><span id="post_apiv1compositionquery"></span>POST /api/v1/composition/query<a class="heading-anchor" href="#post-apiv1compositionquery" title="Link to this section">&para;</a></h4>
@@ -2643,6 +2778,416 @@ python<span class="w"> </span>-m<span class="w"> </span>src.api.cli<span class="
 </tbody>
 </table></div>
 <hr />
+<h2  id="release-gate"><span id="release_gate"></span>Release Gate<a class="heading-anchor" href="#release-gate" title="Link to this section">&para;</a></h2>
+<p>Automated release readiness checks with configurable profiles and severity thresholds.</p>
+<h3  id="post-apiv1releasecheck"><span id="post_apiv1releasecheck"></span>POST /api/v1/release/check<a class="heading-anchor" href="#post-apiv1releasecheck" title="Link to this section">&para;</a></h3>
+<p>Run release gate checks.</p>
+<p><strong>Request Body:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;profile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;base_ref&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;HEAD~10&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pass&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;profile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;passed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;blockers&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;warnings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;checks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;security.critical_findings&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Critical vulnerabilities&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;passed&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;blocker&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;All thresholds met&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{&#39;critical&#39;: 0}&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{&#39;max_critical&#39;: 0}&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="get-apiv1releaseprofiles"><span id="get_apiv1releaseprofiles"></span>GET /api/v1/release/profiles<a class="heading-anchor" href="#get-apiv1releaseprofiles" title="Link to this section">&para;</a></h3>
+<p>List available gate profiles.</p>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gost-56939&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOST R 56939-2024 compliance profile&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;check_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard profile for internal releases&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;check_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3  id="get-apiv1releasehistory"><span id="get_apiv1releasehistory"></span>GET /api/v1/release/history<a class="heading-anchor" href="#get-apiv1releasehistory" title="Link to this section">&para;</a></h3>
+<p>Get gate decision history.</p>
+<p><strong>Query Parameters:</strong>
+- <code>limit</code> (int, default: 10) — number of records</p>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a1b2c3d4&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;profile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pass&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;passed_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;total_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3  id="post-apiv1releasesuppress"><span id="post_apiv1releasesuppress"></span>POST /api/v1/release/suppress<a class="heading-anchor" href="#post-apiv1releasesuppress" title="Link to this section">&para;</a></h3>
+<p>Create a finding suppression (accept risk).</p>
+<p><strong>Request Body:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;finding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;F-1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false_positive&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;approved_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;jira_ticket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JIRA-123&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;finding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;F-1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false_positive&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;approved_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;approved_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;jira_ticket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JIRA-123&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="get-apiv1releasesuppressions"><span id="get_apiv1releasesuppressions"></span>GET /api/v1/release/suppressions<a class="heading-anchor" href="#get-apiv1releasesuppressions" title="Link to this section">&para;</a></h3>
+<p>List active suppressions for the project.</p>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;finding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;F-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;false_positive&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;approved_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;approved_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;jira_ticket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JIRA-123&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3  id="delete-apiv1releasesuppressionsfinding-id"><span id="delete_apiv1releasesuppressionsfinding_id"></span>DELETE /api/v1/release/suppressions/{finding_id}<a class="heading-anchor" href="#delete-apiv1releasesuppressionsfinding-id" title="Link to this section">&para;</a></h3>
+<p>Remove a suppression. Returns 204 on success, 404 if not found.</p>
+<hr />
+<h2  id="stride-threat-model"><span id="stride_threat_model"></span>STRIDE Threat Model<a class="heading-anchor" href="#stride-threat-model" title="Link to this section">&para;</a></h2>
+<p>Generate and export STRIDE threat models from the project CPG.</p>
+<h3  id="post-apiv1securitythreat-modelgenerate"><span id="post_apiv1securitythreat_modelgenerate"></span>POST /api/v1/security/threat-model/generate<a class="heading-anchor" href="#post-apiv1securitythreat-modelgenerate" title="Link to this section">&para;</a></h3>
+<p>Generate a complete STRIDE threat model with DFD extraction, trust boundary detection, threat classification, and mitigation recommendations.</p>
+<p><strong>Request Body:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;min_severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;low&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_inferred&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;json&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;myproject&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;methodology&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;STRIDE&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_flows&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">67</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_boundaries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;threats_by_category&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;spoofing&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;tampering&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;info_disclosure&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;dos&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;elevation&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.25</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;T-S-001&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;category&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;spoofing&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Auth bypass&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;cwe_ids&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;CWE-287&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;affected_component_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c42&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;risk_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">21.0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;mitigations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Implement JWT auth&quot;</span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="post-apiv1securitythreat-modelexport"><span id="post_apiv1securitythreat_modelexport"></span>POST /api/v1/security/threat-model/export<a class="heading-anchor" href="#post-apiv1securitythreat-modelexport" title="Link to this section">&para;</a></h3>
+<p>Export the threat model in Markdown, GOST template, SARIF 2.1.0, or JSON format.</p>
+<p><strong>Request Body:</strong> Same as <code>/generate</code>.</p>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;markdown&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;# Threat Model: myproject\n...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="get-apiv1securitythreat-modeldfd"><span id="get_apiv1securitythreat_modeldfd"></span>GET /api/v1/security/threat-model/dfd<a class="heading-anchor" href="#get-apiv1securitythreat-modeldfd" title="Link to this section">&para;</a></h3>
+<p>Generate a Data Flow Diagram from the CPG.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>format</code></td>
+<td>string</td>
+<td><code>mermaid</code></td>
+<td>Output format: <code>mermaid</code> or <code>json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mermaid&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;graph LR\n    c1(API Handler) --&gt; c2[(Database)]&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_flows&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">67</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_boundaries&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="get-apiv1securitythreat-modelthreats"><span id="get_apiv1securitythreat_modelthreats"></span>GET /api/v1/security/threat-model/threats<a class="heading-anchor" href="#get-apiv1securitythreat-modelthreats" title="Link to this section">&para;</a></h3>
+<p>List threats with optional severity and STRIDE category filters.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>severity</code></td>
+<td>string</td>
+<td>—</td>
+<td>Filter: <code>low</code>, <code>medium</code>, <code>high</code>, <code>critical</code></td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>string</td>
+<td>—</td>
+<td>Filter by STRIDE category</td>
+</tr>
+<tr>
+<td><code>language</code></td>
+<td>string</td>
+<td><code>ru</code></td>
+<td>Output language</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="post-apiv1securitythreat-modelupdate"><span id="post_apiv1securitythreat_modelupdate"></span>POST /api/v1/security/threat-model/update<a class="heading-anchor" href="#post-apiv1securitythreat-modelupdate" title="Link to this section">&para;</a></h3>
+<p>Incremental threat model update — compare against a previous model version.</p>
+<p><strong>Request Body:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;previous_model&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]},</span>
+<span class="w">  </span><span class="nt">&quot;changed_files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/api/main.py&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ru&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;added_threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;removed_threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;modified_threats&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;added_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;removed_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;has_changes&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;merged_model&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="get-apiv1securitythreat-modelmitigations"><span id="get_apiv1securitythreat_modelmitigations"></span>GET /api/v1/security/threat-model/mitigations<a class="heading-anchor" href="#get-apiv1securitythreat-modelmitigations" title="Link to this section">&para;</a></h3>
+<p>List standard STRIDE mitigation recommendations (18 base + CWE-specific).</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>category</code></td>
+<td>string</td>
+<td>—</td>
+<td>Filter by STRIDE category</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="get-apiv1securitythreat-modelstride-mapping"><span id="get_apiv1securitythreat_modelstride_mapping"></span>GET /api/v1/security/threat-model/stride-mapping<a class="heading-anchor" href="#get-apiv1securitythreat-modelstride-mapping" title="Link to this section">&para;</a></h3>
+<p>Returns the CWE-to-STRIDE category mapping (40+ CWE entries).</p>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;mapping&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;CWE-89&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;tampering&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;CWE-287&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;spoofing&quot;</span><span class="p">]},</span>
+<span class="w">  </span><span class="nt">&quot;total_cwes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">43</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2  id="gost-r-56939-2024-compliance"><span id="gost_r_56939_2024_compliance"></span>GOST R 56939-2024 Compliance<a class="heading-anchor" href="#gost-r-56939-2024-compliance" title="Link to this section">&para;</a></h2>
+<h3  id="get-apiv1compliancegost-56939project-id"><span id="get_apiv1compliancegost_56939project_id"></span>GET /api/v1/compliance/gost-56939/{project_id}<a class="heading-anchor" href="#get-apiv1compliancegost-56939project-id" title="Link to this section">&para;</a></h3>
+<p>Returns a full compliance report evaluating all 25 GOST processes.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>include_traceability</td>
+<td>bool</td>
+<td>false</td>
+<td>Include traceability matrix</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;myproject&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;report_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">52.4</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gost_standard&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOST R 56939-2024&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;full&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;partial&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;gap&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;n_a&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">25</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;process_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5.7&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;process_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Threat Model&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;full&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;requirements_total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;requirements_met&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;artifacts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;artifact_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5.7.3.1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;STRIDE model&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;present&quot;</span><span class="p">}],</span>
+<span class="w">      </span><span class="nt">&quot;recommendations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;traceability&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3  id="get-apiv1compliancegost-56939project-idchecklist"><span id="get_apiv1compliancegost_56939project_idchecklist"></span>GET /api/v1/compliance/gost-56939/{project_id}/checklist<a class="heading-anchor" href="#get-apiv1compliancegost-56939project-idchecklist" title="Link to this section">&para;</a></h3>
+<p>Returns artifact checklist grouped by process.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>process_filter</td>
+<td>string</td>
+<td>Comma-separated process IDs (e.g. &ldquo;5.7,5.10&rdquo;)</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="get-apiv1compliancegost-56939project-idtraceability"><span id="get_apiv1compliancegost_56939project_idtraceability"></span>GET /api/v1/compliance/gost-56939/{project_id}/traceability<a class="heading-anchor" href="#get-apiv1compliancegost-56939project-idtraceability" title="Link to this section">&para;</a></h3>
+<p>Returns the traceability matrix linking CWE requirements to code, tests, findings.</p>
+<h3  id="get-apiv1compliancegost-56939project-idhistory"><span id="get_apiv1compliancegost_56939project_idhistory"></span>GET /api/v1/compliance/gost-56939/{project_id}/history<a class="heading-anchor" href="#get-apiv1compliancegost-56939project-idhistory" title="Link to this section">&para;</a></h3>
+<p>Returns compliance assessment history.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>limit</td>
+<td>int</td>
+<td>10</td>
+<td>Number of records (1-100)</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="get-apiv1compliancegost-56939project-idexport"><span id="get_apiv1compliancegost_56939project_idexport"></span>GET /api/v1/compliance/gost-56939/{project_id}/export<a class="heading-anchor" href="#get-apiv1compliancegost-56939project-idexport" title="Link to this section">&para;</a></h3>
+<p>Exports the compliance report in a specified format.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>format</td>
+<td>string</td>
+<td>gost</td>
+<td>Export format: gost, markdown, json</td>
+</tr>
+<tr>
+<td>language</td>
+<td>string</td>
+<td>ru</td>
+<td>Language: ru, en</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="post-apiv1compliancegost-56939project-idevaluate"><span id="post_apiv1compliancegost_56939project_idevaluate"></span>POST /api/v1/compliance/gost-56939/{project_id}/evaluate<a class="heading-anchor" href="#post-apiv1compliancegost-56939project-idevaluate" title="Link to this section">&para;</a></h3>
+<p>Triggers a compliance evaluation and saves to history (if enabled in config).</p>
+<h3  id="get-apiv1compliancegost-56939project-iddelta"><span id="get_apiv1compliancegost_56939project_iddelta"></span>GET /api/v1/compliance/gost-56939/{project_id}/delta<a class="heading-anchor" href="#get-apiv1compliancegost-56939project-iddelta" title="Link to this section">&para;</a></h3>
+<p>Compares two compliance assessments.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>old</td>
+<td>string</td>
+<td>Old report ID (required)</td>
+</tr>
+<tr>
+<td>new</td>
+<td>string</td>
+<td>New report ID (required)</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
 <h2  id="websocket-endpoints"><span id="websocket_endpoints"></span>WebSocket Endpoints<a class="heading-anchor" href="#websocket-endpoints" title="Link to this section">&para;</a></h2>
 <h3 id="wschat">/ws/chat<a class="heading-anchor" href="#wschat" title="Link to this section">&para;</a></h3>
 <p>Real-time chat connection.</p>
@@ -2974,6 +3519,29 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li><a href="#get-apiv1patternsrules" class="level-3">GET /api/v1/patterns/rules</a></li>
 <li><a href="#post-apiv1patternsgenerate" class="level-3">POST /api/v1/patterns/generate</a></li>
 <li><a href="#patterns-error-responses" class="level-3">Patterns Error Responses</a></li>
+<li><a href="#release-gate" class="level-2">Release Gate</a></li>
+<li><a href="#post-apiv1releasecheck" class="level-3">POST /api/v1/release/check</a></li>
+<li><a href="#get-apiv1releaseprofiles" class="level-3">GET /api/v1/release/profiles</a></li>
+<li><a href="#get-apiv1releasehistory" class="level-3">GET /api/v1/release/history</a></li>
+<li><a href="#post-apiv1releasesuppress" class="level-3">POST /api/v1/release/suppress</a></li>
+<li><a href="#get-apiv1releasesuppressions" class="level-3">GET /api/v1/release/suppressions</a></li>
+<li><a href="#delete-apiv1releasesuppressionsfinding-id" class="level-3">DELETE /api/v1/release/suppressions/{finding_id}</a></li>
+<li><a href="#stride-threat-model" class="level-2">STRIDE Threat Model</a></li>
+<li><a href="#post-apiv1securitythreat-modelgenerate" class="level-3">POST /api/v1/security/threat-model/generate</a></li>
+<li><a href="#post-apiv1securitythreat-modelexport" class="level-3">POST /api/v1/security/threat-model/export</a></li>
+<li><a href="#get-apiv1securitythreat-modeldfd" class="level-3">GET /api/v1/security/threat-model/dfd</a></li>
+<li><a href="#get-apiv1securitythreat-modelthreats" class="level-3">GET /api/v1/security/threat-model/threats</a></li>
+<li><a href="#post-apiv1securitythreat-modelupdate" class="level-3">POST /api/v1/security/threat-model/update</a></li>
+<li><a href="#get-apiv1securitythreat-modelmitigations" class="level-3">GET /api/v1/security/threat-model/mitigations</a></li>
+<li><a href="#get-apiv1securitythreat-modelstride-mapping" class="level-3">GET /api/v1/security/threat-model/stride-mapping</a></li>
+<li><a href="#gost-r-56939-2024-compliance" class="level-2">GOST R 56939-2024 Compliance</a></li>
+<li><a href="#get-apiv1compliancegost-56939project-id" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}</a></li>
+<li><a href="#get-apiv1compliancegost-56939project-idchecklist" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/checklist</a></li>
+<li><a href="#get-apiv1compliancegost-56939project-idtraceability" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/traceability</a></li>
+<li><a href="#get-apiv1compliancegost-56939project-idhistory" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/history</a></li>
+<li><a href="#get-apiv1compliancegost-56939project-idexport" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/export</a></li>
+<li><a href="#post-apiv1compliancegost-56939project-idevaluate" class="level-3">POST /api/v1/compliance/gost-56939/{project_id}/evaluate</a></li>
+<li><a href="#get-apiv1compliancegost-56939project-iddelta" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/delta</a></li>
 <li><a href="#websocket-endpoints" class="level-2">WebSocket Endpoints</a></li>
 <li><a href="#wschat" class="level-3">/ws/chat</a></li>
 <li><a href="#wsjobsjob-id" class="level-3">/ws/jobs/{job_id}</a></li>
