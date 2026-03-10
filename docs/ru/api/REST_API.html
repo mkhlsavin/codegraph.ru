@@ -236,6 +236,7 @@
 <li><a href="#documentation-generation">Генерация документации</a></li>
 <li><a href="#structural-patterns">Операции со структурными шаблонами</a></li>
 <li><a href="#gocpg-operations">Операции GoCPG</a></li>
+<li><a href="#supply-chain-security">Безопасность цепочки поставок</a></li>
 <li><a href="#websocket-endpoints">Конечные точки WebSocket</a></li>
 <li><a href="#wschat">/ws/chat</a></li>
 <li><a href="#wsjobsjob_id">/ws/jobs/{job_id}</a></li>
@@ -3053,6 +3054,232 @@ Content-Type: application/json
 </tbody>
 </table></div>
 <hr />
+<h2  id="supply-chain-security"><span id="bezopasnost-tsepochki-postavok"></span><span id="bezopasnost_tsepochki_postavok"></span><span id="supply_chain_security"></span>Безопасность цепочки поставок<a class="heading-anchor" href="#supply-chain-security" title="Link to this section">&para;</a></h2>
+<p>Анализ состава программного обеспечения (SCA/SBOM), оценка доверенности зависимостей и отчётность по ГОСТ 5.17.3.</p>
+<h3  id="sc-scan"><span id="post-apiv1supply-chainscan"></span><span id="post_apiv1supply_chainscan"></span><span id="sc_scan"></span>POST /api/v1/supply-chain/scan<a class="heading-anchor" href="#sc-scan" title="Link to this section">&para;</a></h3>
+<p>Запускает полное сканирование цепочки поставок активного проекта. Строит граф зависимостей, оценивает доверенность компонентов и возвращает все найденные проблемы.</p>
+<p><strong>Тело запроса:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;fail_on&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_trust&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fail_on</code></td>
+<td>string</td>
+<td>—</td>
+<td>Порог серьёзности для ошибки: <code>critical</code>, <code>high</code>, <code>medium</code></td>
+</tr>
+<tr>
+<td><code>include_trust</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Включить оценку доверенности компонентов</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;medium&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">142</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;direct_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">18</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;transitive_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">124</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;avg_trust_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.72</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;findings_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;finding_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;vulnerable_dependency&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;component_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;component_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.25.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Известная CVE в requests 2.25.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CVE-2023-32681&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;recommendation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Обновите до версии 2.31.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;evidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;requirements.txt:12&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;components&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.25.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;library&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ecosystem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pypi&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;registry_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://pypi.org/project/requests/&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://github.com/psf/requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;license&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Apache-2.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;trust_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.85</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;low&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;integrity_verified&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Пример:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/supply-chain/scan<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;fail_on&quot;: &quot;critical&quot;, &quot;include_trust&quot;: true}&#39;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="sc-registry"><span id="get-apiv1supply-chainregistry"></span><span id="get_apiv1supply_chainregistry"></span><span id="sc_registry"></span>GET /api/v1/supply-chain/registry<a class="heading-anchor" href="#sc-registry" title="Link to this section">&para;</a></h3>
+<p>Возвращает реестр компонентов — все прямые и транзитивные зависимости проекта.</p>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fastapi&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.104.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;library&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ecosystem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pypi&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;registry_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://pypi.org/project/fastapi/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://github.com/tiangolo/fastapi&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;license&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIT&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;trust_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;integrity_verified&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p><strong>Пример:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/api/v1/supply-chain/registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="sc-trust"><span id="get-apiv1supply-chaintrust"></span><span id="get_apiv1supply_chaintrust"></span><span id="sc_trust"></span>GET /api/v1/supply-chain/trust<a class="heading-anchor" href="#sc-trust" title="Link to this section">&para;</a></h3>
+<p>Возвращает оценки доверенности всех компонентов. По желанию фильтрует компоненты ниже заданного порога.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>min_score</code></td>
+<td>float</td>
+<td><code>0.0</code></td>
+<td>Возвращать только компоненты с оценкой ниже указанного значения</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;some-package&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;overall&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.41</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;medium&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;scorecard&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.35</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;maintainer_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;last_release_days_ago&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">820</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;has_security_policy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p><strong>Пример:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/supply-chain/trust?min_score=0.5&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="sc-findings"><span id="get-apiv1supply-chainfindings"></span><span id="get_apiv1supply_chainfindings"></span><span id="sc_findings"></span>GET /api/v1/supply-chain/findings<a class="heading-anchor" href="#sc-findings" title="Link to this section">&para;</a></h3>
+<p>Возвращает находки анализа безопасности цепочки поставок с возможной фильтрацией по серьёзности.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>severity</code></td>
+<td>string</td>
+<td>—</td>
+<td>Фильтр по серьёзности: <code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;finding_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;outdated_dependency&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;medium&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;component_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;urllib3&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;component_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.26.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Устаревшая версия с известными уязвимостями&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Несколько CVE устранены в 1.26.18&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;recommendation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Обновите до &gt;=1.26.18&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;evidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;requirements.txt:15&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p><strong>Пример:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/supply-chain/findings?severity=high&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="sc-gost-report"><span id="get-apiv1supply-chaingost-report"></span><span id="get_apiv1supply_chaingost_report"></span><span id="sc_gost_report"></span>GET /api/v1/supply-chain/gost-report<a class="heading-anchor" href="#sc-gost-report" title="Link to this section">&para;</a></h3>
+<p>Формирует отчёт по ГОСТ 5.17.3 о безопасности цепочки поставок.</p>
+<p><strong>Параметры запроса:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>language</code></td>
+<td>string</td>
+<td><code>ru</code></td>
+<td>Язык отчёта: <code>ru</code> или <code>en</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Ответ (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;# Отчёт об анализе цепочки поставок\n...&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Пример:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/supply-chain/gost-report?language=ru&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
 <h2  id="websocket-endpoints"><span id="konechnye-tochki-websocket"></span><span id="konechnye_tochki_websocket"></span><span id="websocket_endpoints"></span>Конечные точки WebSocket<a class="heading-anchor" href="#websocket-endpoints" title="Link to this section">&para;</a></h2>
 <h3 id="wschat">/ws/chat<a class="heading-anchor" href="#wschat" title="Link to this section">&para;</a></h3>
 <p>Соединение для чата в реальном времени.</p>
@@ -3409,6 +3636,12 @@ python -m src.api.cli migrate --revision abc123
 <li><a href="#compliance-export" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/export</a></li>
 <li><a href="#compliance-evaluate" class="level-3">POST /api/v1/compliance/gost-56939/{project_id}/evaluate</a></li>
 <li><a href="#compliance-delta" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/delta</a></li>
+<li><a href="#supply-chain-security" class="level-2">Безопасность цепочки поставок</a></li>
+<li><a href="#sc-scan" class="level-3">POST /api/v1/supply-chain/scan</a></li>
+<li><a href="#sc-registry" class="level-3">GET /api/v1/supply-chain/registry</a></li>
+<li><a href="#sc-trust" class="level-3">GET /api/v1/supply-chain/trust</a></li>
+<li><a href="#sc-findings" class="level-3">GET /api/v1/supply-chain/findings</a></li>
+<li><a href="#sc-gost-report" class="level-3">GET /api/v1/supply-chain/gost-report</a></li>
 <li><a href="#websocket-endpoints" class="level-2">Конечные точки WebSocket</a></li>
 <li><a href="#wschat" class="level-3">/ws/chat</a></li>
 <li><a href="#wsjobsjob_id" class="level-3">/ws/jobs/{job_id}</a></li>

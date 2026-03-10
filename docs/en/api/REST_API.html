@@ -235,6 +235,7 @@
 <li><a href="#acp-protocol">ACP Protocol</a></li>
 <li><a href="#documentation-generation">Documentation Generation</a></li>
 <li><a href="#structural-pattern-operations">Structural Pattern Operations</a></li>
+<li><a href="#supply-chain-security">Supply Chain Security</a></li>
 <li><a href="#websocket-endpoints">WebSocket Endpoints</a></li>
 <li><a href="#wschat">/ws/chat</a></li>
 <li><a href="#wsjobsjob-id">/ws/jobs/{job_id}</a></li>
@@ -3188,6 +3189,232 @@ integrations that need automatic token refresh without user interaction.</p>
 </tbody>
 </table></div>
 <hr />
+<h2  id="supply-chain-security"><span id="supply_chain_security"></span>Supply Chain Security<a class="heading-anchor" href="#supply-chain-security" title="Link to this section">&para;</a></h2>
+<p>Software composition analysis (SCA/SBOM), dependency trust scoring, and GOST 5.17.3 reporting.</p>
+<h3  id="post-apiv1supply-chainscan"><span id="post_apiv1supply_chainscan"></span>POST /api/v1/supply-chain/scan<a class="heading-anchor" href="#post-apiv1supply-chainscan" title="Link to this section">&para;</a></h3>
+<p>Run a full supply chain security scan for the active project. Builds the dependency graph, scores component trust, and returns all findings.</p>
+<p><strong>Request Body:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;fail_on&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_trust&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fail_on</code></td>
+<td>string</td>
+<td>—</td>
+<td>Severity threshold to treat as error: <code>critical</code>, <code>high</code>, <code>medium</code></td>
+</tr>
+<tr>
+<td><code>include_trust</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Include trust scoring for each component</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-10T12:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;medium&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">142</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;direct_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">18</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;transitive_components&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">124</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;avg_trust_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.72</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;findings_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;finding_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;vulnerable_dependency&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;component_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;component_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.25.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Known CVE in requests 2.25.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CVE-2023-32681&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;recommendation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Upgrade to 2.31.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;evidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;requirements.txt:12&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;components&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.25.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;library&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ecosystem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pypi&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;registry_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://pypi.org/project/requests/&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://github.com/psf/requests&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;license&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Apache-2.0&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;trust_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.85</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;low&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;integrity_verified&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/supply-chain/scan<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;fail_on&quot;: &quot;critical&quot;, &quot;include_trust&quot;: true}&#39;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="get-apiv1supply-chainregistry"><span id="get_apiv1supply_chainregistry"></span>GET /api/v1/supply-chain/registry<a class="heading-anchor" href="#get-apiv1supply-chainregistry" title="Link to this section">&para;</a></h3>
+<p>Returns the component registry — all direct and transitive dependencies detected in the project.</p>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fastapi&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.104.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;library&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ecosystem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pypi&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;registry_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://pypi.org/project/fastapi/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://github.com/tiangolo/fastapi&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;license&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MIT&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;trust_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;integrity_verified&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/api/v1/supply-chain/registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="get-apiv1supply-chaintrust"><span id="get_apiv1supply_chaintrust"></span>GET /api/v1/supply-chain/trust<a class="heading-anchor" href="#get-apiv1supply-chaintrust" title="Link to this section">&para;</a></h3>
+<p>Returns trust scores for all components. Optionally filters to components below a score threshold.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>min_score</code></td>
+<td>float</td>
+<td><code>0.0</code></td>
+<td>Return only components with trust score below this value</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;some-package&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;overall&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.41</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;medium&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;scorecard&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.35</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;maintainer_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;last_release_days_ago&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">820</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;has_security_policy&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/supply-chain/trust?min_score=0.5&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="get-apiv1supply-chainfindings"><span id="get_apiv1supply_chainfindings"></span>GET /api/v1/supply-chain/findings<a class="heading-anchor" href="#get-apiv1supply-chainfindings" title="Link to this section">&para;</a></h3>
+<p>Returns supply chain security findings for the active project, with optional severity filter.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>severity</code></td>
+<td>string</td>
+<td>—</td>
+<td>Filter by severity: <code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;finding_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;outdated_dependency&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;medium&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;component_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;urllib3&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;component_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.26.0&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Outdated version with known issues&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Multiple CVEs fixed in 1.26.18&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;recommendation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Upgrade to &gt;=1.26.18&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;evidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;requirements.txt:15&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/supply-chain/findings?severity=high&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
+<h3  id="get-apiv1supply-chaingost-report"><span id="get_apiv1supply_chaingost_report"></span>GET /api/v1/supply-chain/gost-report<a class="heading-anchor" href="#get-apiv1supply-chaingost-report" title="Link to this section">&para;</a></h3>
+<p>Generates a GOST 5.17.3 supply chain security report in Markdown or text format.</p>
+<p><strong>Query Parameters:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>language</code></td>
+<td>string</td>
+<td><code>ru</code></td>
+<td>Report language: <code>ru</code> or <code>en</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Response (200):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;# Отчет об анализе цепочки поставок\n...&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/supply-chain/gost-report?language=ru&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
 <h2  id="websocket-endpoints"><span id="websocket_endpoints"></span>WebSocket Endpoints<a class="heading-anchor" href="#websocket-endpoints" title="Link to this section">&para;</a></h2>
 <h3 id="wschat">/ws/chat<a class="heading-anchor" href="#wschat" title="Link to this section">&para;</a></h3>
 <p>Real-time chat connection.</p>
@@ -3542,6 +3769,12 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li><a href="#get-apiv1compliancegost-56939project-idexport" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/export</a></li>
 <li><a href="#post-apiv1compliancegost-56939project-idevaluate" class="level-3">POST /api/v1/compliance/gost-56939/{project_id}/evaluate</a></li>
 <li><a href="#get-apiv1compliancegost-56939project-iddelta" class="level-3">GET /api/v1/compliance/gost-56939/{project_id}/delta</a></li>
+<li><a href="#supply-chain-security" class="level-2">Supply Chain Security</a></li>
+<li><a href="#post-apiv1supply-chainscan" class="level-3">POST /api/v1/supply-chain/scan</a></li>
+<li><a href="#get-apiv1supply-chainregistry" class="level-3">GET /api/v1/supply-chain/registry</a></li>
+<li><a href="#get-apiv1supply-chaintrust" class="level-3">GET /api/v1/supply-chain/trust</a></li>
+<li><a href="#get-apiv1supply-chainfindings" class="level-3">GET /api/v1/supply-chain/findings</a></li>
+<li><a href="#get-apiv1supply-chaingost-report" class="level-3">GET /api/v1/supply-chain/gost-report</a></li>
 <li><a href="#websocket-endpoints" class="level-2">WebSocket Endpoints</a></li>
 <li><a href="#wschat" class="level-3">/ws/chat</a></li>
 <li><a href="#wsjobsjob-id" class="level-3">/ws/jobs/{job_id}</a></li>
