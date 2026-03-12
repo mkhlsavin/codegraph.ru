@@ -199,6 +199,7 @@
 <li><a href="#data-flow">Data flow</a></li>
 <li><a href="#timeout-budget">Timeout budget</a></li>
 <li><a href="#cpg-freshness-and-automatic-update">CPG freshness and automatic update</a></li>
+<li><a href="#automatic-vs-explicit-freshness-controls">Automatic vs explicit freshness controls</a></li>
 <li><a href="#method-deduplication">Method deduplication</a></li>
 <li><a href="#delta-report">Delta report</a></li>
 <li><a href="#interface-impact-detection">Interface impact detection</a></li>
@@ -412,6 +413,44 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 <span class="n">checker</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>             <span class="c1"># Full status dict</span>
 </code></pre></div>
 
+<p>Freshness checks now include git-head fallback logic for environments where <code>git rev-parse HEAD</code> is unreliable in subprocesses. The checker resolves HEAD from <code>.git/HEAD</code>, refs, and <code>packed-refs</code> (including worktree indirection) before returning <code>head_commit</code> as unknown.</p>
+<p>When update fails with DuckDB lock contention, detailed diagnostics include lock classification, lock-holder PIDs, optional auto-unlock attempt results, and actionable <code>next_step</code> / <code>next_command</code> guidance.</p>
+<p>Freshness is reported in two forms:
+- <code>is_fresh_strict</code>: exact commit match (<code>cpg_commit == head_commit</code>)
+- <code>is_fresh</code>: effective freshness (strict match OR no CPG-relevant file changes between commits, e.g. docs-only commits)</p>
+<h3  id="automatic-vs-explicit-freshness-controls"><span id="automatic_vs_explicit_freshness_controls"></span>Automatic vs explicit freshness controls<a class="heading-anchor" href="#automatic-vs-explicit-freshness-controls" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Trigger</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Commit hook (<code>.claude/hooks/commit_analysis.py</code>)</td>
+<td>Automatic on <code>git commit</code> via Bash tool</td>
+<td>Normal plan/act/review loop after each commit</td>
+</tr>
+<tr>
+<td>Plugin post-commit webhook trigger</td>
+<td>Automatic best-effort</td>
+<td>OpenCode plugin workflows where API is running</td>
+</tr>
+<tr>
+<td><code>codegraph_watch check</code> / <code>codegraph_watch update</code></td>
+<td>Explicit/manual</td>
+<td>Deterministic freshness checks in headless and CI</td>
+</tr>
+<tr>
+<td><code>CPGFreshnessChecker.ensure_fresh_with_details()</code></td>
+<td>Explicit/manual</td>
+<td>Programmatic control and machine-readable failure diagnostics</td>
+</tr>
+</tbody>
+</table></div>
+<p>If your workflow depends on guaranteed freshness before analysis, prefer explicit <code>codegraph_watch update</code> over waiting for background hooks.</p>
 <h3  id="method-deduplication"><span id="method_deduplication"></span>Method deduplication<a class="heading-anchor" href="#method-deduplication" title="Link to this section">&para;</a></h3>
 <p>GoCPG may store the same method with different filename formats (forward slash <code>src/file.py</code> vs backslash <code>src\file.py</code>). The analyzer deduplicates by normalizing <code>full_name</code> slashes and keeping the entry with the highest CC value:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Before dedup: 2 entries for the same method</span>
@@ -904,7 +943,9 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 - If persistent, re-import the project from scratch: <code>python -m src.cli import /path/to/source</code></p>
 <p><strong>DuckDB lock error (&ldquo;file is being used by another process&rdquo;):</strong>
 - Another <code>gocpg.exe</code> process is running (e.g., from <code>gocpg watch</code> or a concurrent hook invocation).
-- The hook uses read-only connections and handles lock errors gracefully, falling back to subprocess queries.</p>
+- The hook uses read-only connections and handles lock errors gracefully, falling back to subprocess queries.
+- <code>codegraph_watch update</code> / <code>ensure_fresh_with_details()</code> return lock diagnostics (<code>failure_kind=db_lock</code>, <code>locker_pids</code>, <code>auto_unlock_*</code>, <code>next_command</code>) to speed up recovery.
+- If the locker PID is the current Python process, auto-unlock intentionally skips killing itself; run the suggested <code>next_command</code> after closing the locker.</p>
 <p><strong>Delta report not appearing:</strong>
 - The delta report only appears when the CPG was stale before the update (pre-update metrics were captured).
 - If the CPG is already fresh (e.g., <code>gocpg watch</code> updated it), there are no pre-update metrics to compare against.</p>
@@ -954,6 +995,7 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 <li><a href="#data-flow" class="level-3">Data flow</a></li>
 <li><a href="#timeout-budget" class="level-3">Timeout budget</a></li>
 <li><a href="#cpg-freshness-and-automatic-update" class="level-3">CPG freshness and automatic update</a></li>
+<li><a href="#automatic-vs-explicit-freshness-controls" class="level-3">Automatic vs explicit freshness controls</a></li>
 <li><a href="#method-deduplication" class="level-3">Method deduplication</a></li>
 <li><a href="#delta-report" class="level-3">Delta report</a></li>
 <li><a href="#interface-impact-detection" class="level-3">Interface impact detection</a></li>

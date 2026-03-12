@@ -252,6 +252,49 @@
 </tr>
 </tbody>
 </table></div>
+<h3  id="auto-vs-manual"><span id="auto_vs_manual"></span><span id="avtomaticheskie-i-ruchnye-mehanizmy"></span><span id="avtomaticheskie_i_ruchnye_mehanizmy"></span>Автоматические и ручные механизмы<a class="heading-anchor" href="#auto-vs-manual" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Механизм</th>
+<th>Тип запуска</th>
+<th>Что происходит</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chat.message</code> + <code>experimental.chat.system.transform</code> в плагине</td>
+<td>Автоматический</td>
+<td>В чат автоматически внедряется CPG-контекст при старте и упоминании файлов</td>
+</tr>
+<tr>
+<td><code>tool.execute.after</code> в плагине на <code>git commit</code></td>
+<td>Автоматический</td>
+<td>Best-effort вызов локального вебхука для инкрементального обновления CPG</td>
+</tr>
+<tr>
+<td>Диагностика LSP (<code>opencode</code> + <code>codegraph_lsp</code>)</td>
+<td>Автоматический</td>
+<td>Диагностики пересчитываются из текущего снимка DuckDB</td>
+</tr>
+<tr>
+<td>MCP <code>codegraph_watch</code> <code>check</code>/<code>update</code></td>
+<td>Ручной</td>
+<td>Явная проверка/обновление актуальности с подробным структурированным результатом</td>
+</tr>
+<tr>
+<td>Команда OpenCode <code>/update</code></td>
+<td>Ручной</td>
+<td>Удобная обёртка над процессом актуальности <code>codegraph_watch</code></td>
+</tr>
+<tr>
+<td>Прямой <code>gocpg update</code></td>
+<td>Ручной</td>
+<td>Принудительное инкрементальное обновление вне хуков OpenCode</td>
+</tr>
+</tbody>
+</table></div>
+<p>Автоматические хуки работают в режиме best-effort и не блокируют поток. Для детерминированного контроля актуальности в CI/headless используйте явный <code>codegraph_watch update</code> (или <code>/update</code>).</p>
 <h2  id="installation"><span id="ustanovka"></span>Установка<a class="heading-anchor" href="#installation" title="Link to this section">&para;</a></h2>
 <h3  id="minimal-setup"><span id="minimal_setup"></span><span id="minimalnaya-nastroyka-tolko-mcp"></span><span id="minimalnaya_nastroyka_tolko_mcp"></span>Минимальная настройка (только MCP)<a class="heading-anchor" href="#minimal-setup" title="Link to this section">&para;</a></h3>
 <p>Создайте <code>opencode.json</code> в корне проекта:</p>
@@ -392,6 +435,7 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <li>MCP-инструменты автоматически отражают новые данные</li>
 </ol>
 <p>Для локальных сценариев без push/вебхуков (или если <code>data/projects/codegraph.duckdb</code> устарел) используйте <code>/update</code>: команда запускает проверку актуальности и инкрементальное обновление через <code>codegraph_watch</code>.</p>
+<p>Для headless OpenCode это рекомендуемая точка контроля: команда возвращает структурированные поля актуальности (<code>cpg_commit</code>, <code>head_commit</code>, <code>commits_behind</code>, <code>commits_behind_strict</code>, <code>is_fresh</code>, <code>is_fresh_strict</code>, <code>has_relevant_changes_since_cpg</code>, <code>freshness_reason</code>, <code>needs_update</code>) и поля диагностики обновления (<code>failure_kind</code>, <code>auto_unlock_attempted</code>, <code>auto_unlock_killed_pids</code>, <code>auto_unlock_errors</code>, <code>next_step</code>, <code>next_command</code>).</p>
 <h2  id="plugin"><span id="plagin"></span>Плагин<a class="heading-anchor" href="#plugin" title="Link to this section">&para;</a></h2>
 <p>Плагин <a href="https://www.npmjs.com/package/opencode-codegraph"><code>opencode-codegraph</code></a> (npm, v0.1.1) добавляет автоматическое обогащение контекста поверх MCP-инструментов. Исходный код: каталог <code>opencode-codegraph/</code>.</p>
 <h3  id="plugin-features"><span id="funktsii-plagina"></span><span id="funktsii_plagina"></span><span id="plugin_features"></span>Функции плагина<a class="heading-anchor" href="#plugin-features" title="Link to this section">&para;</a></h3>
@@ -448,6 +492,7 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <p>Плагин требует запущенный REST API CodeGraph (<code>uvicorn src.api.main:app --port 8000</code>). Если API недоступен, плагин деградирует корректно — все хуки пропускаются, MCP-инструменты продолжают работать через stdio.</p>
 <h2  id="custom-commands"><span id="custom_commands"></span><span id="polzovatelskie-komandy"></span><span id="polzovatelskie_komandy"></span>Пользовательские команды<a class="heading-anchor" href="#custom-commands" title="Link to this section">&para;</a></h2>
 <p>Пять команд доступны через <code>/command</code> в TUI OpenCode:</p>
+<p>Для headless CLI используйте <code>opencode run --command &lt;name&gt; [args...]</code> (а не буквальное сообщение <code>/name</code>).</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -460,27 +505,27 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <tr>
 <td><code>/review</code></td>
 <td>Анализ кода на основе CPG (diff, taint, влияние)</td>
-<td><code>/review</code></td>
+<td>TUI: <code>/review</code> · Headless: <code>opencode run --command review</code></td>
 </tr>
 <tr>
 <td><code>/audit</code></td>
-<td>Полный аудит кодовой базы (12 измерений через <code>codegraph_compose</code>)</td>
-<td><code>/audit</code></td>
+<td>Полный аудит кодовой базы (через compose, с fallback на быстрый аудит при таймауте)</td>
+<td>TUI: <code>/audit</code> · Headless: <code>opencode run --command audit</code></td>
 </tr>
 <tr>
 <td><code>/explain</code></td>
-<td>Анализ функции с графом вызовов и метриками</td>
-<td><code>/explain process_data</code></td>
+<td>Анализ функции с фокусным графом вызовов и метриками</td>
+<td>TUI: <code>/explain process_data</code> · Headless: <code>opencode run --command explain process_data</code></td>
 </tr>
 <tr>
 <td><code>/onboard</code></td>
-<td>Изучение кодовой базы через CPG</td>
-<td><code>/onboard</code> или <code>/onboard how does auth work?</code></td>
+<td>Фокусное онбординг-объяснение по вопросу/теме</td>
+<td>TUI: <code>/onboard how does auth work?</code> · Headless: <code>opencode run --command onboard "how does auth work?"</code></td>
 </tr>
 <tr>
 <td><code>/update</code></td>
 <td>Проверка актуальности CPG и инкрементальное обновление активного проекта</td>
-<td><code>/update</code></td>
+<td>TUI: <code>/update</code> · Headless: <code>opencode run --command update</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -504,6 +549,21 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <li><strong>CodeLens</strong>: Количество вызывающих/вызываемых функций, пути распространения данных</li>
 <li><strong>Действия кода</strong>: Автоисправление для результатов анализа шаблонов</li>
 </ul>
+<p>Конвейер диагностик мёртвого кода отфильтрован от синтетических имён (например, <code>&lt;module&gt;</code> и артефактов metaclass adapter) и дедуплицируется по идентичности метода, чтобы headless-диагностика оставалась практичной для итеративного ревью.</p>
+<h3  id="headless-plan-act-review"><span id="headless-tsikl-planactreview"></span><span id="headless_plan_act_review"></span><span id="headless_tsikl_planactreview"></span>Headless цикл plan/act/review<a class="heading-anchor" href="#headless-plan-act-review" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Plan: проверка актуальности и текущих диагностик</span>
+opencode<span class="w"> </span>run<span class="w"> </span>--command<span class="w"> </span>update
+opencode<span class="w"> </span>debug<span class="w"> </span>lsp<span class="w"> </span>diagnostics<span class="w"> </span>src/dogfooding/cpg_freshness.py
+
+<span class="c1"># Act: изменения в коде и запуск фокусных тестов</span>
+pytest<span class="w"> </span>tests/unit/dogfooding/test_cpg_freshness.py<span class="w"> </span>tests/mcp/test_ci_ops.py<span class="w"> </span>-v
+
+<span class="c1"># Review: повторная проверка диагностик и актуальности</span>
+opencode<span class="w"> </span>debug<span class="w"> </span>lsp<span class="w"> </span>diagnostics<span class="w"> </span>src/mcp/tools/ci_ops.py
+opencode<span class="w"> </span>run<span class="w"> </span>--command<span class="w"> </span>update
+</code></pre></div>
+
+<p>Используйте этот цикл, когда нужно подтвердить, что данные CodeGraph остаются релевантными и применимыми между итерациями: исправление, повторная диагностика, повторная проверка актуальности CPG.</p>
 <h3  id="lsp-parameters"><span id="lsp_parameters"></span><span id="parametry"></span>Параметры<a class="heading-anchor" href="#lsp-parameters" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>codegraph_lsp<span class="w"> </span>--db<span class="w"> </span>project.duckdb<span class="w"> </span><span class="o">[</span>--complexity-threshold<span class="w"> </span><span class="m">10</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--transport<span class="w"> </span>stdio<span class="o">]</span><span class="w"> </span><span class="o">[</span>--log-level<span class="w"> </span>info<span class="o">]</span>
 </code></pre></div>
@@ -639,6 +699,12 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li>Перезапустите OpenCode после добавления новых команд</li>
 <li>Тест: <code>opencode debug skill</code> должен показать команды</li>
 </ul>
+<h3  id="headless-ispolzovanie-komand"><span id="headless_ispolzovanie_komand"></span>Headless-использование команд<a class="heading-anchor" href="#headless-ispolzovanie-komand" title="Link to this section">&para;</a></h3>
+<ul>
+<li>В TUI используйте <code>/review</code>, <code>/audit</code> и т.д.</li>
+<li>В headless-режиме используйте <code>opencode run --command review</code> (или <code>audit</code>, <code>explain</code>, <code>onboard</code>, <code>update</code>)</li>
+<li>Не передавайте <code>/review</code> как обычное сообщение в <code>opencode run</code>: оно будет воспринято как текст, а не как команда</li>
+</ul>
 <h3  id="agent-not-showing"><span id="agent-ne-otobrazhaetsya"></span><span id="agent_ne_otobrazhaetsya"></span><span id="agent_not_showing"></span>Агент не отображается<a class="heading-anchor" href="#agent-not-showing" title="Link to this section">&para;</a></h3>
 <ul>
 <li>Убедитесь, что файл <code>.opencode/agents/codegraph.md</code> существует</li>
@@ -690,6 +756,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
         <li><a href="#codegraph-opencode-integration" class="level-1">Интеграция CodeGraph с OpenCode</a></li>
 <li><a href="#table-of-contents" class="level-2">Содержание</a></li>
 <li><a href="#overview" class="level-2">Обзор</a></li>
+<li><a href="#auto-vs-manual" class="level-3">Автоматические и ручные механизмы</a></li>
 <li><a href="#installation" class="level-2">Установка</a></li>
 <li><a href="#minimal-setup" class="level-3">Минимальная настройка (только MCP)</a></li>
 <li><a href="#full-setup" class="level-3">Полная настройка (MCP + LSP)</a></li>
@@ -708,6 +775,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#custom-commands" class="level-2">Пользовательские команды</a></li>
 <li><a href="#custom-agent" class="level-2">Пользовательский агент</a></li>
 <li><a href="#lsp-server" class="level-2">LSP-сервер</a></li>
+<li><a href="#headless-plan-act-review" class="level-3">Headless цикл plan/act/review</a></li>
 <li><a href="#lsp-parameters" class="level-3">Параметры</a></li>
 <li><a href="#configuration" class="level-2">Конфигурация</a></li>
 <li><a href="#environment-variables" class="level-3">Переменные окружения</a></li>
@@ -716,6 +784,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#troubleshooting" class="level-2">Устранение неполадок</a></li>
 <li><a href="#mcp-not-connecting" class="level-3">MCP-сервер не подключается</a></li>
 <li><a href="#commands-not-available" class="level-3">Команды недоступны</a></li>
+<li><a href="#headless-ispolzovanie-komand" class="level-3">Headless-использование команд</a></li>
 <li><a href="#agent-not-showing" class="level-3">Агент не отображается</a></li>
 <li><a href="#lsp-not-working" class="level-3">LSP не работает</a></li>
 <li><a href="#no-cpg-data" class="level-3">Нет данных CPG в результатах инструментов</a></li>

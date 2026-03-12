@@ -252,6 +252,49 @@
 </tr>
 </tbody>
 </table></div>
+<h3  id="automatic-vs-manual-mechanisms"><span id="automatic_vs_manual_mechanisms"></span>Automatic vs manual mechanisms<a class="heading-anchor" href="#automatic-vs-manual-mechanisms" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Trigger type</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plugin <code>chat.message</code> + <code>experimental.chat.system.transform</code></td>
+<td>Automatic</td>
+<td>CPG context is injected when chat starts or file paths are mentioned</td>
+</tr>
+<tr>
+<td>Plugin <code>tool.execute.after</code> on <code>git commit</code></td>
+<td>Automatic</td>
+<td>Best-effort local webhook call triggers incremental CPG update</td>
+</tr>
+<tr>
+<td>LSP diagnostics (<code>opencode</code> + <code>codegraph_lsp</code>)</td>
+<td>Automatic</td>
+<td>Editor diagnostics are recomputed from current DuckDB snapshot</td>
+</tr>
+<tr>
+<td>MCP <code>codegraph_watch</code> <code>check</code>/<code>update</code></td>
+<td>Manual</td>
+<td>Explicit freshness check/update with structured status fields</td>
+</tr>
+<tr>
+<td>OpenCode <code>/update</code> command</td>
+<td>Manual</td>
+<td>Convenience wrapper around <code>codegraph_watch</code> freshness workflow</td>
+</tr>
+<tr>
+<td>Direct <code>gocpg update</code></td>
+<td>Manual</td>
+<td>Forced incremental parse outside OpenCode hooks</td>
+</tr>
+</tbody>
+</table></div>
+<p>Automatic hooks are best-effort and non-blocking. For deterministic CI/headless freshness guarantees, run <code>codegraph_watch update</code> (or <code>/update</code>) explicitly.</p>
 <h2 id="installation">Installation<a class="heading-anchor" href="#installation" title="Link to this section">&para;</a></h2>
 <h3  id="minimal-setup-mcp-only"><span id="minimal_setup_mcp_only"></span>Minimal setup (MCP only)<a class="heading-anchor" href="#minimal-setup-mcp-only" title="Link to this section">&para;</a></h3>
 <p>Create <code>opencode.json</code> in the project root:</p>
@@ -394,6 +437,7 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <li>MCP tools automatically reflect new data</li>
 </ol>
 <p>For local workflows without push/webhooks (or when <code>data/projects/codegraph.duckdb</code> is stale), use <code>/update</code> to run a manual freshness check and incremental update through <code>codegraph_watch</code>.</p>
+<p>In headless OpenCode, this is the recommended control point because it returns structured freshness diagnostics (<code>cpg_commit</code>, <code>head_commit</code>, <code>commits_behind</code>, <code>commits_behind_strict</code>, <code>is_fresh</code>, <code>is_fresh_strict</code>, <code>has_relevant_changes_since_cpg</code>, <code>freshness_reason</code>, <code>needs_update</code>) and update diagnostics (<code>failure_kind</code>, <code>auto_unlock_attempted</code>, <code>auto_unlock_killed_pids</code>, <code>auto_unlock_errors</code>, <code>next_step</code>, <code>next_command</code>).</p>
 <h2 id="plugin">Plugin<a class="heading-anchor" href="#plugin" title="Link to this section">&para;</a></h2>
 <p>The <a href="https://www.npmjs.com/package/opencode-codegraph"><code>opencode-codegraph</code></a> npm plugin (v0.1.1) adds auto-enrichment on top of MCP tools. Source code: <code>opencode-codegraph/</code> directory.</p>
 <h3  id="plugin-features"><span id="plugin_features"></span>Plugin Features<a class="heading-anchor" href="#plugin-features" title="Link to this section">&para;</a></h3>
@@ -450,6 +494,7 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <p>The plugin requires CodeGraph REST API running (<code>uvicorn src.api.main:app --port 8000</code>). If the API is not available, the plugin degrades gracefully — all hooks silently skip, MCP tools continue working via stdio.</p>
 <h2  id="custom-commands"><span id="custom_commands"></span>Custom Commands<a class="heading-anchor" href="#custom-commands" title="Link to this section">&para;</a></h2>
 <p>Five commands are available via <code>/command</code> in OpenCode TUI:</p>
+<p>For headless CLI runs, use <code>opencode run --command &lt;name&gt; [args...]</code> (not a literal <code>/name</code> message).</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -462,27 +507,27 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <tr>
 <td><code>/review</code></td>
 <td>CPG-powered code review (diff analysis, taint, impact)</td>
-<td><code>/review</code></td>
+<td>TUI: <code>/review</code> · Headless: <code>opencode run --command review</code></td>
 </tr>
 <tr>
 <td><code>/audit</code></td>
-<td>Full codebase audit (12 dimensions via <code>codegraph_compose</code>)</td>
-<td><code>/audit</code></td>
+<td>Full codebase audit (uses compose, falls back to quick audit on timeout)</td>
+<td>TUI: <code>/audit</code> · Headless: <code>opencode run --command audit</code></td>
 </tr>
 <tr>
 <td><code>/explain</code></td>
-<td>Function analysis with call graph and metrics</td>
-<td><code>/explain process_data</code></td>
+<td>Function analysis with focused call graph and metrics</td>
+<td>TUI: <code>/explain process_data</code> · Headless: <code>opencode run --command explain process_data</code></td>
 </tr>
 <tr>
 <td><code>/onboard</code></td>
-<td>Codebase understanding via CPG</td>
-<td><code>/onboard</code> or <code>/onboard how does auth work?</code></td>
+<td>Focused codebase onboarding for a question/topic</td>
+<td>TUI: <code>/onboard how does auth work?</code> · Headless: <code>opencode run --command onboard "how does auth work?"</code></td>
 </tr>
 <tr>
 <td><code>/update</code></td>
 <td>CPG freshness check + incremental update for active project</td>
-<td><code>/update</code></td>
+<td>TUI: <code>/update</code> · Headless: <code>opencode run --command update</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -506,6 +551,21 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <li><strong>CodeLens</strong>: Callers/callees count, taint paths</li>
 <li><strong>Code Actions</strong>: Auto-fix for pattern findings</li>
 </ul>
+<p>The dead-code diagnostics pipeline is filtered to reduce false positives from synthetic names (for example <code>&lt;module&gt;</code> and metaclass adapter artifacts) and deduplicated by method identity, so headless diagnostics are usable for iterative review.</p>
+<h3  id="headless-planactreview-loop-validated"><span id="headless_planactreview_loop_validated"></span>Headless plan/act/review loop (validated)<a class="heading-anchor" href="#headless-planactreview-loop-validated" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Plan: inspect freshness and current diagnostics</span>
+opencode<span class="w"> </span>run<span class="w"> </span>--command<span class="w"> </span>update
+opencode<span class="w"> </span>debug<span class="w"> </span>lsp<span class="w"> </span>diagnostics<span class="w"> </span>src/dogfooding/cpg_freshness.py
+
+<span class="c1"># Act: edit code and run focused tests</span>
+pytest<span class="w"> </span>tests/unit/dogfooding/test_cpg_freshness.py<span class="w"> </span>tests/mcp/test_ci_ops.py<span class="w"> </span>-v
+
+<span class="c1"># Review: verify diagnostics + freshness status again</span>
+opencode<span class="w"> </span>debug<span class="w"> </span>lsp<span class="w"> </span>diagnostics<span class="w"> </span>src/mcp/tools/ci_ops.py
+opencode<span class="w"> </span>run<span class="w"> </span>--command<span class="w"> </span>update
+</code></pre></div>
+
+<p>Use this loop when proving that CodeGraph data stays actionable across iterations: fix code, re-check diagnostics, and re-check CPG freshness in the same session.</p>
 <h3 id="parameters">Parameters<a class="heading-anchor" href="#parameters" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>codegraph_lsp<span class="w"> </span>--db<span class="w"> </span>project.duckdb<span class="w"> </span><span class="o">[</span>--complexity-threshold<span class="w"> </span><span class="m">10</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--transport<span class="w"> </span>stdio<span class="o">]</span><span class="w"> </span><span class="o">[</span>--log-level<span class="w"> </span>info<span class="o">]</span>
 </code></pre></div>
@@ -641,6 +701,12 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li>Restart OpenCode after adding new commands</li>
 <li>Test: <code>opencode debug skill</code> should list the commands</li>
 </ul>
+<h3  id="headless-command-usage"><span id="headless_command_usage"></span>Headless Command Usage<a class="heading-anchor" href="#headless-command-usage" title="Link to this section">&para;</a></h3>
+<ul>
+<li>In TUI use <code>/review</code>, <code>/audit</code>, etc.</li>
+<li>In headless mode use <code>opencode run --command review</code> (or <code>audit</code>, <code>explain</code>, <code>onboard</code>, <code>update</code>)</li>
+<li>Do not send <code>/review</code> as a plain message to <code>opencode run</code>; it is treated as normal text</li>
+</ul>
 <h3  id="agent-not-showing"><span id="agent_not_showing"></span>Agent Not Showing<a class="heading-anchor" href="#agent-not-showing" title="Link to this section">&para;</a></h3>
 <ul>
 <li>Verify <code>.opencode/agents/codegraph.md</code> exists</li>
@@ -692,6 +758,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
         <li><a href="#codegraph-opencode-integration" class="level-1">CodeGraph OpenCode Integration</a></li>
 <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#overview" class="level-2">Overview</a></li>
+<li><a href="#automatic-vs-manual-mechanisms" class="level-3">Automatic vs manual mechanisms</a></li>
 <li><a href="#installation" class="level-2">Installation</a></li>
 <li><a href="#minimal-setup-mcp-only" class="level-3">Minimal setup (MCP only)</a></li>
 <li><a href="#full-setup-mcp-lsp" class="level-3">Full setup (MCP + LSP)</a></li>
@@ -710,6 +777,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#custom-commands" class="level-2">Custom Commands</a></li>
 <li><a href="#custom-agent" class="level-2">Custom Agent</a></li>
 <li><a href="#lsp-server" class="level-2">LSP Server</a></li>
+<li><a href="#headless-planactreview-loop-validated" class="level-3">Headless plan/act/review loop (validated)</a></li>
 <li><a href="#parameters" class="level-3">Parameters</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
 <li><a href="#environment-variables" class="level-3">Environment Variables</a></li>
@@ -718,6 +786,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
 <li><a href="#mcp-server-not-connecting" class="level-3">MCP Server Not Connecting</a></li>
 <li><a href="#commands-not-available" class="level-3">Commands Not Available</a></li>
+<li><a href="#headless-command-usage" class="level-3">Headless Command Usage</a></li>
 <li><a href="#agent-not-showing" class="level-3">Agent Not Showing</a></li>
 <li><a href="#lsp-not-working" class="level-3">LSP Not Working</a></li>
 <li><a href="#no-cpg-data-in-tool-results" class="level-3">No CPG Data in Tool Results</a></li>

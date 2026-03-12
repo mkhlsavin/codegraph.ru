@@ -199,6 +199,7 @@
 <li><a href="#potok-dannyh">Поток данных</a></li>
 <li><a href="#byudzhet-ogranicheniy-po-vremeni">Бюджет ограничений по времени</a></li>
 <li><a href="#aktualnost-cpg-i-avtomaticheskoe-obnovlenie">Актуальность CPG и автоматическое обновление</a></li>
+<li><a href="#avtomaticheskiy-i-yavnyy-kontrol-aktualnosti">Автоматический и явный контроль актуальности</a></li>
 <li><a href="#deduplikatsiya-metodov">Дедупликация методов</a></li>
 <li><a href="#delta-otchyot">Дельта-отчёт</a></li>
 <li><a href="#obnaruzhenie-vliyaniya-na-interfeysy">Обнаружение влияния на интерфейсы</a></li>
@@ -412,6 +413,44 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="n">checker</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>             <span class="c1"># Полный словарь статуса</span>
 </code></pre></div>
 
+<p>Проверка актуальности теперь включает резервное определение git HEAD для окружений, где <code>git rev-parse HEAD</code> из подпроцесса нестабилен. Проверка читает <code>.git/HEAD</code>, refs и <code>packed-refs</code> (включая <code>gitdir:</code> для worktree) до того, как вернуть <code>head_commit=unknown</code>.</p>
+<p>При ошибках блокировки DuckDB возвращается детальная диагностика: классификация сбоя, PID процессов-блокировщиков, результаты попытки auto-unlock и рекомендации <code>next_step</code> / <code>next_command</code>.</p>
+<p>Актуальность выводится в двух вариантах:
+- <code>is_fresh_strict</code>: строгое совпадение коммитов (<code>cpg_commit == head_commit</code>)
+- <code>is_fresh</code>: эффективная актуальность (строгое совпадение ИЛИ отсутствие CPG-релевантных изменений файлов между коммитами, например при изменениях только документации)</p>
+<h3  id="avtomaticheskiy-i-yavnyy-kontrol-aktualnosti"><span id="avtomaticheskiy_i_yavnyy_kontrol_aktualnosti"></span>Автоматический и явный контроль актуальности<a class="heading-anchor" href="#avtomaticheskiy-i-yavnyy-kontrol-aktualnosti" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Механизм</th>
+<th>Триггер</th>
+<th>Типичный сценарий</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Хук коммита (<code>.claude/hooks/commit_analysis.py</code>)</td>
+<td>Автоматически на <code>git commit</code> через Bash</td>
+<td>Стандартный цикл Планирование-Действие-Проверка после коммита</td>
+</tr>
+<tr>
+<td>Post-commit webhook-триггер плагина</td>
+<td>Автоматический best-effort</td>
+<td>Сценарии OpenCode с запущенным API</td>
+</tr>
+<tr>
+<td><code>codegraph_watch check</code> / <code>codegraph_watch update</code></td>
+<td>Явный/ручной</td>
+<td>Детерминированная проверка актуальности в headless и CI</td>
+</tr>
+<tr>
+<td><code>CPGFreshnessChecker.ensure_fresh_with_details()</code></td>
+<td>Явный/ручной</td>
+<td>Программный контроль и машиночитаемая диагностика сбоев</td>
+</tr>
+</tbody>
+</table></div>
+<p>Если требуется гарантированная актуальность перед анализом, используйте явный <code>codegraph_watch update</code>, а не фоновые хуки.</p>
 <h3  id="deduplikatsiya-metodov"><span id="deduplikatsiya_metodov"></span>Дедупликация методов<a class="heading-anchor" href="#deduplikatsiya-metodov" title="Link to this section">&para;</a></h3>
 <p>GoCPG может хранить один и тот же метод с разными форматами имени файла (прямой слеш <code>src/file.py</code> vs обратный <code>src\file.py</code>). Анализатор дедуплицирует путём нормализации слешей в <code>full_name</code> и сохранения записи с наибольшим значением CC:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># До дедупликации: 2 записи для одного метода</span>
@@ -904,7 +943,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 - При постоянных проблемах переимпортируйте проект с нуля: <code>python -m src.cli import /path/to/source</code></p>
 <p><strong>Ошибка блокировки DuckDB (&ldquo;file is being used by another process&rdquo;):</strong>
 - Другой процесс <code>gocpg.exe</code> запущен (например, от <code>gocpg watch</code> или параллельного вызова хука).
-- Хук использует соединения в режиме только для чтения и обрабатывает ошибки блокировки, переключаясь на запросы через подпроцесс.</p>
+- Хук использует соединения в режиме только для чтения и обрабатывает ошибки блокировки, переключаясь на запросы через подпроцесс.
+- <code>codegraph_watch update</code> / <code>ensure_fresh_with_details()</code> возвращают диагностику блокировки (<code>failure_kind=db_lock</code>, <code>locker_pids</code>, <code>auto_unlock_*</code>, <code>next_command</code>) для ускорения восстановления.
+- Если PID блокировщика совпадает с текущим Python-процессом, auto-unlock преднамеренно не завершает сам себя; выполните предложенный <code>next_command</code> после закрытия блокирующего процесса.</p>
 <p><strong>Дельта-отчёт не появляется:</strong>
 - Дельта-отчёт появляется только когда CPG был устаревшим до обновления (были захвачены метрики до обновления).
 - Если CPG уже актуален (например, <code>gocpg watch</code> обновил его), метрики до обновления отсутствуют для сравнения.</p>
@@ -954,6 +995,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#potok-dannyh" class="level-3">Поток данных</a></li>
 <li><a href="#byudzhet-ogranicheniy-po-vremeni" class="level-3">Бюджет ограничений по времени</a></li>
 <li><a href="#aktualnost-cpg-i-avtomaticheskoe-obnovlenie" class="level-3">Актуальность CPG и автоматическое обновление</a></li>
+<li><a href="#avtomaticheskiy-i-yavnyy-kontrol-aktualnosti" class="level-3">Автоматический и явный контроль актуальности</a></li>
 <li><a href="#deduplikatsiya-metodov" class="level-3">Дедупликация методов</a></li>
 <li><a href="#delta-otchyot" class="level-3">Дельта-отчёт</a></li>
 <li><a href="#obnaruzhenie-vliyaniya-na-interfeysy" class="level-3">Обнаружение влияния на интерфейсы</a></li>
