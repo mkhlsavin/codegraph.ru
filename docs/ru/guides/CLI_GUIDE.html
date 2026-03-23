@@ -100,7 +100,6 @@
         <li><a href="DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
         <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
-        <li><a href="DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -222,6 +221,7 @@
 <li><a href="#security-incident-cli">CLI расследования инцидентов</a></li>
 <li><a href="#impact-analysis-cli">CLI анализа влияния</a></li>
 <li><a href="#coverage-cli">CLI покрытия кода</a></li>
+<li><a href="#doctor-cli">CLI самодиагностики</a></li>
 <li><a href="#dogfood-cli">CLI самотестирования (Dogfood)</a></li>
 <li><a href="#enterprise-cli">Корпоративный CLI</a></li>
 <li><a href="#compliance-cli">CLI соответствия требованиям</a></li>
@@ -294,6 +294,11 @@
 <td>codegraph coverage</td>
 <td>Управление данными покрытия</td>
 <td>Импорт и отображение данных покрытия тестами</td>
+</tr>
+<tr>
+<td>codegraph doctor</td>
+<td>Самодиагностика runtime</td>
+<td>Проверка config/data/GoCPG/CPG и безопасное восстановление scaffolding</td>
 </tr>
 <tr>
 <td>codegraph dogfood</td>
@@ -628,6 +633,107 @@ codegraph languages
 </tr>
 </tbody>
 </table></div>
+<hr />
+<h3  id="doctor-cli"><span id="cli-samodiagnostiki"></span><span id="cli_samodiagnostiki"></span><span id="doctor_cli"></span>CLI самодиагностики<a class="heading-anchor" href="#doctor-cli" title="Link to this section">&para;</a></h3>
+<p><code>codegraph doctor</code> — canonical entrypoint для самодиагностики server runtime. Команда проверяет целостность конфигурации, обязательные runtime-каталоги, sidecar sqlite/json state, доступность GoCPG gRPC, lifecycle/freshness CPG и grpc-only архитектурные guardrails.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>doctor
+codegraph<span class="w"> </span>doctor<span class="w"> </span>--json
+codegraph<span class="w"> </span>doctor<span class="w"> </span>--repair
+codegraph<span class="w"> </span>doctor<span class="w"> </span>--repair<span class="w"> </span>--dry-run
+codegraph<span class="w"> </span>doctor<span class="w"> </span>config
+codegraph<span class="w"> </span>doctor<span class="w"> </span>data
+codegraph<span class="w"> </span>doctor<span class="w"> </span>project
+codegraph<span class="w"> </span>doctor<span class="w"> </span>gocpg
+codegraph<span class="w"> </span>doctor<span class="w"> </span>cpg
+codegraph<span class="w"> </span>doctor<span class="w"> </span>architecture
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--json</code></td>
+<td>Вывести machine-readable JSON report</td>
+</tr>
+<tr>
+<td><code>--full</code></td>
+<td>Reserved для расширенной диагностики</td>
+</tr>
+<tr>
+<td><code>--repair</code></td>
+<td>Применить safe-only восстановление config/data scaffolding</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Показать план исправлений без записи файлов</td>
+</tr>
+<tr>
+<td><code>--project</code></td>
+<td>Явно указать имя проекта</td>
+</tr>
+<tr>
+<td><code>--db</code></td>
+<td>Явно указать путь к DuckDB проекта</td>
+</tr>
+<tr>
+<td><code>--repo</code></td>
+<td>Явно указать путь к repo/source</td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td>Переопределить путь к <code>config.yaml</code></td>
+</tr>
+<tr>
+<td><code>--projects-config</code></td>
+<td>Переопределить путь к <code>projects.yaml</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Что проверяется по умолчанию</strong></p>
+<ul>
+<li><code>config</code>: <code>config.yaml</code>, опциональный <code>projects.yaml</code></li>
+<li><code>data</code>: <code>data/</code>, <code>data/projects/</code>, <code>data/sessions/</code>, обнаруженные sidecar sqlite/json файлы</li>
+<li><code>project</code>: разрешение активного проекта и существование его путей</li>
+<li><code>gocpg</code>: доступность gRPC и наличие frontend-ов</li>
+<li><code>cpg</code>: lifecycle, freshness и maintenance plan</li>
+<li><code>architecture</code>: guardrails против прямого DuckDB runtime-access и <code>grpc_only=False</code></li>
+</ul>
+<p><strong>Поведение <code>--repair</code></strong></p>
+<ul>
+<li>создаёт отсутствующие runtime-каталоги;</li>
+<li>восстанавливает минимальный skeleton <code>config.yaml</code>, если файл отсутствует или повреждён;</li>
+<li>чинит структуру <code>projects.yaml</code>, если файл существует, но некорректен;</li>
+<li>делает timestamped backup перед изменением существующих YAML-файлов;</li>
+<li>не выполняет destructive recovery и не модифицирует project DuckDB.</li>
+</ul>
+<p><strong>Примеры</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Полная диагностика runtime</span>
+codegraph<span class="w"> </span>doctor
+
+<span class="c1"># Проверить только конфигурацию в JSON</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>config<span class="w"> </span>--json
+
+<span class="c1"># Посмотреть план восстановления без изменений</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>config<span class="w"> </span>--repair<span class="w"> </span>--dry-run
+
+<span class="c1"># Восстановить обязательные runtime-каталоги</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>data<span class="w"> </span>--repair
+
+<span class="c1"># Проверить ownership contract новой архитектуры</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>architecture
+</code></pre></div>
+
+<p><strong>Коды завершения</strong></p>
+<ul>
+<li><code>0</code>: все проверки прошли или были пропущены</li>
+<li><code>1</code>: найдены предупреждения</li>
+<li><code>2</code>: найдены ошибки</li>
+</ul>
 <hr />
 <h3  id="gocpg-cli"><span id="gocpg_cli"></span>GoCPG CLI<a class="heading-anchor" href="#gocpg-cli" title="Link to this section">&para;</a></h3>
 <p>Прямой доступ к операциям GoCPG через унифицированную обёртку на Python.</p>
@@ -5588,17 +5694,22 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <h3  id="dogfood-maintain-db"><span id="dogfood_maintain_db"></span><code>dogfood maintain-db</code><a class="heading-anchor" href="#dogfood-maintain-db" title="Link to this section">&para;</a></h3>
 <p>Выполнить обслуживание dogfood state database.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--days<span class="w"> </span><span class="m">30</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dogfood-continue"><span id="dogfood_continue"></span><code>dogfood continue</code><a class="heading-anchor" href="#dogfood-continue" title="Link to this section">&para;</a></h3>
 <p>Продолжить прерванный dogfood workflow с последнего checkpoint.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dogfood-unlock-db"><span id="dogfood_unlock_db"></span><code>dogfood unlock-db</code><a class="heading-anchor" href="#dogfood-unlock-db" title="Link to this section">&para;</a></h3>
 <p>Снять устаревший lock dogfood database после операторской проверки.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>unlock-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>unlock-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="doctor"><code>doctor</code><a class="heading-anchor" href="#doctor" title="Link to this section">&para;</a></h3>
+<p>Продуктовая команда самодиагностики и safe recovery для проблем server runtime.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>doctor<span class="w"> </span><span class="o">[</span>config<span class="p">|</span>data<span class="p">|</span>project<span class="p">|</span>gocpg<span class="p">|</span>cpg<span class="p">|</span>architecture<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--repair<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dynamic-runs"><span id="dynamic_runs"></span><code>dynamic runs</code><a class="heading-anchor" href="#dynamic-runs" title="Link to this section">&para;</a></h3>
@@ -5718,6 +5829,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#import-command" class="level-3">Команда импорта</a></li>
 <li><a href="#projects-management" class="level-3">Управление проектами</a></li>
 <li><a href="#komandy-poshagovogo-vypolneniya" class="level-3">Команды пошагового выполнения</a></li>
+<li><a href="#doctor-cli" class="level-3">CLI самодиагностики</a></li>
 <li><a href="#gocpg-cli" class="level-3">GoCPG CLI</a></li>
 <li><a href="#patterns-cli" class="level-3">CLI шаблонов</a></li>
 <li><a href="#cli-servera-api" class="level-2">CLI-сервера API</a></li>
@@ -5916,6 +6028,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#dogfood-maintain-db" class="level-3">`dogfood maintain-db`</a></li>
 <li><a href="#dogfood-continue" class="level-3">`dogfood continue`</a></li>
 <li><a href="#dogfood-unlock-db" class="level-3">`dogfood unlock-db`</a></li>
+<li><a href="#doctor" class="level-3">`doctor`</a></li>
 <li><a href="#dynamic-runs" class="level-3">`dynamic runs`</a></li>
 <li><a href="#dynamic-findings" class="level-3">`dynamic findings`</a></li>
 <li><a href="#hypothesis" class="level-3">`hypothesis`</a></li>

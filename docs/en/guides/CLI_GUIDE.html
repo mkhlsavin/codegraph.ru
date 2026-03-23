@@ -100,7 +100,6 @@
         <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
         <li><a href="DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
-        <li><a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -227,6 +226,7 @@
 <li><a href="#security-incident-cli">Security Incident CLI</a></li>
 <li><a href="#impact-analysis-cli">Impact Analysis CLI</a></li>
 <li><a href="#coverage-cli">Coverage CLI</a></li>
+<li><a href="#doctor-cli">Doctor CLI</a></li>
 <li><a href="#dogfood-cli">Dogfood CLI</a></li>
 <li><a href="#enterprise-cli">Enterprise CLI</a></li>
 <li><a href="#compliance-cli">Compliance CLI</a></li>
@@ -295,6 +295,11 @@
 <td><code>codegraph coverage</code></td>
 <td>Coverage data management</td>
 <td>Import and display test coverage data</td>
+</tr>
+<tr>
+<td><code>codegraph doctor</code></td>
+<td>Runtime self-diagnostics</td>
+<td>Validate config/data/GoCPG/CPG health and apply safe repairs</td>
 </tr>
 <tr>
 <td><code>codegraph dogfood</code></td>
@@ -629,6 +634,107 @@ codegraph<span class="w"> </span>languages
 </tr>
 </tbody>
 </table></div>
+<hr />
+<h3  id="doctor-cli"><span id="doctor_cli"></span>Doctor CLI<a class="heading-anchor" href="#doctor-cli" title="Link to this section">&para;</a></h3>
+<p><code>codegraph doctor</code> is the canonical self-diagnostics entrypoint for server runtime incidents. It checks configuration integrity, required runtime directories, sidecar sqlite/json state, GoCPG gRPC availability, CPG lifecycle/freshness, and grpc-only architecture guardrails.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>doctor
+codegraph<span class="w"> </span>doctor<span class="w"> </span>--json
+codegraph<span class="w"> </span>doctor<span class="w"> </span>--repair
+codegraph<span class="w"> </span>doctor<span class="w"> </span>--repair<span class="w"> </span>--dry-run
+codegraph<span class="w"> </span>doctor<span class="w"> </span>config
+codegraph<span class="w"> </span>doctor<span class="w"> </span>data
+codegraph<span class="w"> </span>doctor<span class="w"> </span>project
+codegraph<span class="w"> </span>doctor<span class="w"> </span>gocpg
+codegraph<span class="w"> </span>doctor<span class="w"> </span>cpg
+codegraph<span class="w"> </span>doctor<span class="w"> </span>architecture
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--json</code></td>
+<td>Emit machine-readable JSON report</td>
+</tr>
+<tr>
+<td><code>--full</code></td>
+<td>Reserved for extended diagnostics</td>
+</tr>
+<tr>
+<td><code>--repair</code></td>
+<td>Apply safe runtime repairs for config/data scaffolding</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Show planned repair actions without writing files</td>
+</tr>
+<tr>
+<td><code>--project</code></td>
+<td>Override project name</td>
+</tr>
+<tr>
+<td><code>--db</code></td>
+<td>Override project DuckDB path</td>
+</tr>
+<tr>
+<td><code>--repo</code></td>
+<td>Override repository/source path</td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td>Override main config path (<code>config.yaml</code>)</td>
+</tr>
+<tr>
+<td><code>--projects-config</code></td>
+<td>Override legacy projects config path (<code>projects.yaml</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Default checks</strong></p>
+<ul>
+<li><code>config</code>: <code>config.yaml</code>, optional <code>projects.yaml</code></li>
+<li><code>data</code>: <code>data/</code>, <code>data/projects/</code>, <code>data/sessions/</code>, detected sidecar sqlite/json files</li>
+<li><code>project</code>: active project resolution and configured paths</li>
+<li><code>gocpg</code>: gRPC reachability and frontend availability</li>
+<li><code>cpg</code>: lifecycle, freshness, maintenance plan</li>
+<li><code>architecture</code>: runtime guardrails against direct DuckDB access and <code>grpc_only=False</code></li>
+</ul>
+<p><strong>Safe repair behavior</strong></p>
+<ul>
+<li>Creates missing runtime directories.</li>
+<li>Recreates minimal <code>config.yaml</code> skeleton when the file is missing or invalid.</li>
+<li>Repairs legacy <code>projects.yaml</code> structure when it exists but is invalid.</li>
+<li>Creates a timestamped backup before mutating existing YAML files.</li>
+<li>Does not rewrite project DuckDB files or perform destructive recovery.</li>
+</ul>
+<p><strong>Examples</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full runtime diagnosis</span>
+codegraph<span class="w"> </span>doctor
+
+<span class="c1"># Diagnose only configuration problems in JSON</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>config<span class="w"> </span>--json
+
+<span class="c1"># Preview repair actions without changing files</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>config<span class="w"> </span>--repair<span class="w"> </span>--dry-run
+
+<span class="c1"># Restore missing runtime directories</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>data<span class="w"> </span>--repair
+
+<span class="c1"># Validate grpc-only ownership contract</span>
+codegraph<span class="w"> </span>doctor<span class="w"> </span>architecture
+</code></pre></div>
+
+<p><strong>Exit codes</strong></p>
+<ul>
+<li><code>0</code>: all checks passed or were skipped</li>
+<li><code>1</code>: warnings found</li>
+<li><code>2</code>: failures found</li>
+</ul>
 <hr />
 <h3  id="gocpg-cli"><span id="gocpg_cli"></span>GoCPG CLI<a class="heading-anchor" href="#gocpg-cli" title="Link to this section">&para;</a></h3>
 <p>Direct access to GoCPG operations via the unified Python wrapper.</p>
@@ -5659,17 +5765,22 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <h3  id="dogfood-maintain-db"><span id="dogfood_maintain_db"></span><code>dogfood maintain-db</code><a class="heading-anchor" href="#dogfood-maintain-db" title="Link to this section">&para;</a></h3>
 <p>Run maintenance on the dogfood state database.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--days<span class="w"> </span><span class="m">30</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dogfood-continue"><span id="dogfood_continue"></span><code>dogfood continue</code><a class="heading-anchor" href="#dogfood-continue" title="Link to this section">&para;</a></h3>
 <p>Resume an interrupted dogfood workflow from the last saved checkpoint.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dogfood-unlock-db"><span id="dogfood_unlock_db"></span><code>dogfood unlock-db</code><a class="heading-anchor" href="#dogfood-unlock-db" title="Link to this section">&para;</a></h3>
 <p>Remove a stale dogfood database lock after operator validation.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>unlock-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>unlock-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>DIR<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="doctor"><code>doctor</code><a class="heading-anchor" href="#doctor" title="Link to this section">&para;</a></h3>
+<p>Product-level self-diagnostics and safe recovery entrypoint for server runtime issues.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>doctor<span class="w"> </span><span class="o">[</span>config<span class="p">|</span>data<span class="p">|</span>project<span class="p">|</span>gocpg<span class="p">|</span>cpg<span class="p">|</span>architecture<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--repair<span class="o">]</span><span class="w"> </span><span class="o">[</span>--dry-run<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dynamic-runs"><span id="dynamic_runs"></span><code>dynamic runs</code><a class="heading-anchor" href="#dynamic-runs" title="Link to this section">&para;</a></h3>
@@ -5789,6 +5900,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#import-command" class="level-3">Import Command</a></li>
 <li><a href="#projects-management" class="level-3">Projects Management</a></li>
 <li><a href="#single-step-commands" class="level-3">Single Step Commands</a></li>
+<li><a href="#doctor-cli" class="level-3">Doctor CLI</a></li>
 <li><a href="#gocpg-cli" class="level-3">GoCPG CLI</a></li>
 <li><a href="#patterns-cli" class="level-3">Patterns CLI</a></li>
 <li><a href="#api-server-cli" class="level-2">API Server CLI</a></li>
@@ -5981,6 +6093,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#dogfood-maintain-db" class="level-3">`dogfood maintain-db`</a></li>
 <li><a href="#dogfood-continue" class="level-3">`dogfood continue`</a></li>
 <li><a href="#dogfood-unlock-db" class="level-3">`dogfood unlock-db`</a></li>
+<li><a href="#doctor" class="level-3">`doctor`</a></li>
 <li><a href="#dynamic-runs" class="level-3">`dynamic runs`</a></li>
 <li><a href="#dynamic-findings" class="level-3">`dynamic findings`</a></li>
 <li><a href="#hypothesis" class="level-3">`hypothesis`</a></li>
