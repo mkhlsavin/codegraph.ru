@@ -96,6 +96,11 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html" class="active">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -233,13 +238,13 @@
 <p><strong>GoCPG</strong> builds and maintains a Code Property Graph (DuckDB) with pre-computed metrics for every method: cyclomatic complexity, fan-in/fan-out, TODO/FIXME flags, debug code, deprecated usage.</p>
 </li>
 <li>
-<p><strong>Git hooks</strong> trigger CPG updates after each commit, keeping the database synchronized with the codebase.</p>
+<p><strong>Git hooks</strong> trigger CPG updates after each commit, keep the database synchronized with the codebase, and can persist traced review artifacts per commit.</p>
 </li>
 <li>
 <p><strong>Claude Code hooks</strong> fire after <code>git commit</code> commands, query the CPG for changed methods, compute quality metrics, blast radius, interface impact and cross-module alerts, then inject the report back into the conversation as additional context.</p>
 </li>
 </ol>
-<p>The result: every commit produces an instant quality assessment without leaving the IDE or running separate tools.</p>
+<p>The result: every commit can produce a visible, traceable quality assessment without leaving the IDE or running separate tools.</p>
 <h2  id="usage-scenarios"><span id="usage_scenarios"></span>Usage Scenarios<a class="heading-anchor" href="#usage-scenarios" title="Link to this section">&para;</a></h2>
 <h3  id="scenario-1-automatic-post-commit-feedback"><span id="scenario_1_automatic_post_commit_feedback"></span>Scenario 1: Automatic post-commit feedback<a class="heading-anchor" href="#scenario-1-automatic-post-commit-feedback" title="Link to this section">&para;</a></h3>
 <p>The primary scenario. You work in Claude Code, make changes, commit:</p>
@@ -272,6 +277,20 @@ Claude: git add src/intent/classifier.py &amp;&amp; git commit -m &quot;refactor
 <p>Claude sees this context and can react: &ldquo;The refactoring reduced <code>_get_fallback_domain</code> complexity from 29 to 8. Two methods still have CC&gt;10: <code>classify</code> and <code>_score_domain</code>. CLI was changed — check if the MCP tool needs updating.&rdquo;</p>
 <p><strong>What triggers the hook:</strong> Any <code>git commit</code> command executed via the Bash tool. The hook detects <code>"git commit"</code> in the command string. Non-commit Bash commands (e.g., <code>git status</code>, <code>ls</code>) are ignored.</p>
 <p><strong>What does NOT trigger it:</strong> Direct terminal commits outside Claude Code, <code>git commit --amend</code>, or commits via other tools.</p>
+<h3  id="scenario-1b-durable-post-commit-trace-outside-the-chat-loop"><span id="scenario_1b_durable_post_commit_trace_outside_the_chat_loop"></span>Scenario 1b: Durable post-commit trace outside the chat loop<a class="heading-anchor" href="#scenario-1b-durable-post-commit-trace-outside-the-chat-loop" title="Link to this section">&para;</a></h3>
+<p>For terminal commits, CI-like local workflows, or any session where you want a durable audit trail, enable GoCPG review tracing:</p>
+<div class="highlight"><pre><span></span><code>gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="o">=</span>.<span class="w"> </span>--db<span class="o">=</span>data/projects/codegraph.duckdb<span class="w"> </span>--review-trace
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;<span class="w"> </span>--watch
+</code></pre></div>
+
+<p>Each commit writes these files to <code>data/reviews/</code>:</p>
+<ul>
+<li><code>&lt;sha&gt;.log</code> — chronological worker log with heartbeats</li>
+<li><code>&lt;sha&gt;.status.json</code> — current phase and progress snapshot</li>
+<li><code>&lt;sha&gt;.meta.json</code> — final outcome (<code>gocpg_update_ok</code>, <code>db_unlocked_after_update</code>, review status)</li>
+<li><code>&lt;sha&gt;.json</code> / <code>&lt;sha&gt;.md</code> — machine-readable and human-readable review output</li>
+</ul>
+<p>The traced worker narrows review scope to changed files, so post-commit review usually completes in seconds rather than rescanning the full diff base.</p>
 <h3  id="scenario-2-find-and-fix-quality-issues"><span id="scenario_2_find_and_fix_quality_issues"></span>Scenario 2: Find and fix quality issues<a class="heading-anchor" href="#scenario-2-find-and-fix-quality-issues" title="Link to this section">&para;</a></h3>
 <p>Use CPG queries to find code quality targets, then fix them with the pipeline providing feedback:</p>
 <div class="highlight"><pre><span></span><code>You: &quot;Query the CPG for methods with CC &gt; 15 and TODO/FIXME flags in src/workflow/&quot;
@@ -974,7 +993,7 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-12</span>
+        <span>Last updated: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DOGFOODING.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -988,6 +1007,7 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 <li><a href="#how-it-works" class="level-2">How It Works</a></li>
 <li><a href="#usage-scenarios" class="level-2">Usage Scenarios</a></li>
 <li><a href="#scenario-1-automatic-post-commit-feedback" class="level-3">Scenario 1: Automatic post-commit feedback</a></li>
+<li><a href="#scenario-1b-durable-post-commit-trace-outside-the-chat-loop" class="level-3">Scenario 1b: Durable post-commit trace outside the chat loop</a></li>
 <li><a href="#scenario-2-find-and-fix-quality-issues" class="level-3">Scenario 2: Find and fix quality issues</a></li>
 <li><a href="#scenario-3-validate-refactoring-impact" class="level-3">Scenario 3: Validate refactoring impact</a></li>
 <li><a href="#scenario-4-on-demand-analysis" class="level-3">Scenario 4: On-demand analysis</a></li>

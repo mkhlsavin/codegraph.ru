@@ -96,6 +96,11 @@
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="../guides/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="../guides/LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -143,7 +148,7 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DEMO_API.html">Демо API</a></li>
-        <li><a href="../api/REST_API.html">Документация по REST API CodeGraph</a></li>
+        <li><a href="../api/REST_API.html">Справочник REST API</a></li>
         <li><a href="../api/WEBSOCKET_API.html">Справочная документация по WebSocket API</a></li>
       </ul>
     </div>
@@ -204,6 +209,7 @@
 <ul>
 <li><a href="#overview">Обзор</a></li>
 <li><a href="#installation">Установка</a></li>
+<li><a href="#unified-launch-script">Единый скрипт запуска</a></li>
 <li><a href="#repository-walkthrough">Пошагово для этого репозитория</a></li>
 <li><a href="#features">Функции</a></li>
 <li><a href="#plugin">Плагин</a></li>
@@ -226,7 +232,7 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>MCP-инструменты</strong> (65)</td>
+<td><strong>MCP-инструменты</strong> (93)</td>
 <td>Прямые CPG-запросы</td>
 <td><code>codegraph_query</code>, <code>codegraph_explain</code> и др. через stdio</td>
 </tr>
@@ -236,9 +242,9 @@
 <td>Внедрение CPG-контекста в чат, обновления после коммитов, <code>codegraph_review</code>/<code>codegraph_explain_function</code></td>
 </tr>
 <tr>
-<td><strong>Пользовательские команды</strong> (5)</td>
+<td><strong>Пользовательские команды</strong> (10)</td>
 <td>Переиспользуемые шаблоны анализа</td>
-<td><code>/review</code>, <code>/audit</code>, <code>/explain</code>, <code>/onboard</code>, <code>/update</code></td>
+<td><code>/review</code>, <code>/audit</code>, <code>/explain</code>, <code>/onboard</code>, <code>/update</code>, <code>/status</code>, <code>/next</code>, <code>/continue</code>, <code>/maintain-db</code>, <code>/unlock-db</code></td>
 </tr>
 <tr>
 <td><strong>Пользовательский агент</strong></td>
@@ -248,7 +254,7 @@
 <tr>
 <td><strong>LSP-сервер</strong></td>
 <td>Диагностика в реальном времени</td>
-<td>Результаты безопасности, мёртвый код, сложность в редакторе</td>
+<td>Результаты безопасности, мёртвый код и сложность в редакторе через GoCPG gRPC</td>
 </tr>
 </tbody>
 </table></div>
@@ -275,7 +281,7 @@
 <tr>
 <td>Диагностика LSP (<code>opencode</code> + <code>codegraph_lsp</code>)</td>
 <td>Автоматический</td>
-<td>Диагностики пересчитываются из текущего снимка DuckDB</td>
+<td>Диагностики пересчитываются через read-only gRPC-запросы к GoCPG</td>
 </tr>
 <tr>
 <td>MCP <code>codegraph_watch</code> <code>check</code>/<code>update</code></td>
@@ -286,6 +292,31 @@
 <td>Команда OpenCode <code>/update</code></td>
 <td>Ручной</td>
 <td>Удобная обёртка над процессом актуальности <code>codegraph_watch</code></td>
+</tr>
+<tr>
+<td>Команда OpenCode <code>/status</code></td>
+<td>Ручной</td>
+<td>Единый статус по актуальности CPG, текущему <code>HEAD</code> и последней review trace</td>
+</tr>
+<tr>
+<td>Команда OpenCode <code>/next</code></td>
+<td>Ручной</td>
+<td>Одна лучшая следующая команда на основе текущего dogfooding state</td>
+</tr>
+<tr>
+<td>Команда OpenCode <code>/continue</code></td>
+<td>Ручной</td>
+<td>Безопасно выполняет следующий шаг refresh/review workflow</td>
+</tr>
+<tr>
+<td>Команда OpenCode <code>/maintain-db</code></td>
+<td>Ручной</td>
+<td>Выполняет обслуживание DuckDB, когда локальная база требует компакции</td>
+</tr>
+<tr>
+<td>Команда OpenCode <code>/unlock-db</code></td>
+<td>Ручной</td>
+<td>Показывает безопасные шаги восстановления, если DuckDB заблокирована другим процессом</td>
 </tr>
 <tr>
 <td>Прямой <code>gocpg update</code></td>
@@ -303,14 +334,14 @@
 <span class="w">  </span><span class="nt">&quot;mcp&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;codegraph&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;local&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src.mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--transport&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src.mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--transport&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--db&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;data/projects/codegraph.duckdb&quot;</span><span class="p">],</span>
 <span class="w">      </span><span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CODEGRAPH_PROJECT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;plugin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;opencode-codegraph&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.codegraph/AGENTS.md&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.codegraph/AGENTS.md&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.codegraph/SCENARIO_PLAYBOOK.md&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 
@@ -321,7 +352,7 @@
 <span class="w">  </span><span class="nt">&quot;mcp&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;codegraph&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;local&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src.mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--transport&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src.mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--transport&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--db&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;data/projects/codegraph.duckdb&quot;</span><span class="p">],</span>
 <span class="w">      </span><span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CODEGRAPH_PROJECT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
 <span class="w">      </span><span class="p">}</span>
@@ -334,20 +365,41 @@
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;plugin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;opencode-codegraph&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.codegraph/AGENTS.md&quot;</span><span class="p">]</span>
+<span class="w">  </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.codegraph/AGENTS.md&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.codegraph/SCENARIO_PLAYBOOK.md&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <blockquote class="callout">
 <p><strong>Примечание</strong>: Плагин <a href="https://www.npmjs.com/package/opencode-codegraph"><code>opencode-codegraph</code></a> обеспечивает автоматическое обогащение контекста и 2 дополнительных инструмента (<code>codegraph_review</code>, <code>codegraph_explain_function</code>). Требует запущенный API CodeGraph (<code>uvicorn src.api.main:app --port 8000</code>). Если API недоступен, плагин деградирует корректно — MCP-инструменты продолжают работать через stdio.</p>
-<p><strong>Примечание</strong>: Параметр <code>--db</code> обязателен. В этом репозитории используется <code>data/projects/codegraph.duckdb</code>.</p>
+<p><strong>Примечание</strong>: Параметр <code>--db</code> обязателен. Он задаёт целевую CPG-базу, которой владеет GoCPG. В этом репозитории используется <code>data/projects/codegraph.duckdb</code>.</p>
 </blockquote>
 <h3  id="prerequisites"><span id="predvaritelnye-trebovaniya"></span><span id="predvaritelnye_trebovaniya"></span>Предварительные требования<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h3>
 <ul>
 <li>CodeGraph установлен (<code>pip install -e .</code> в репозитории codegraph)</li>
 <li>CPG-база данных создана (<code>gocpg parse --input=. --output=project.duckdb</code>)</li>
+<li>GoCPG gRPC server запущен и имеет доступ к целевой CPG-базе</li>
 <li>OpenCode 1.2.0+ установлен (<code>npm install -g opencode-ai</code>)</li>
 </ul>
+<h2  id="unified-launch-script"><span id="edinyy-skript-zapuska"></span><span id="edinyy_skript_zapuska"></span><span id="unified_launch_script"></span>Единый скрипт запуска<a class="heading-anchor" href="#unified-launch-script" title="Link to this section">&para;</a></h2>
+<p>Рекомендуемая команда запуска (MCP + плагин + LSP + сценарный контекст):</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/run_opencode_codegraph.py<span class="w"> </span>--model<span class="w"> </span>openai/gpt-5.3-codex
+</code></pre></div>
+
+<p>Что гарантирует launcher перед стартом OpenCode:</p>
+<ol>
+<li>В <code>opencode.json</code> присутствуют <code>mcp.codegraph</code>, <code>lsp.codegraph</code>, плагин <code>opencode-codegraph</code> и инструкции.</li>
+<li>Зависимости плагина в <code>.opencode/</code> установлены (выполняет <code>npm install</code> только при необходимости).</li>
+<li>API CodeGraph автоматически поднимается, если недоступен (нужно для хуков/инструментов плагина).</li>
+<li>OpenCode запускается с <code>--agent codegraph</code> по умолчанию.</li>
+</ol>
+<p>Пример headless запуска:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/run_opencode_codegraph.py<span class="w"> </span>--run<span class="w"> </span><span class="s2">&quot;Use codegraph_project_context and summarize top risks&quot;</span>
+</code></pre></div>
+
+<p>Передача дополнительных флагов OpenCode после <code>--</code>:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/run_opencode_codegraph.py<span class="w"> </span>--model<span class="w"> </span>openai/gpt-5.3-codex<span class="w"> </span>--<span class="w"> </span>--print-logs
+</code></pre></div>
+
 <h3  id="verify-setup"><span id="proverka-nastroyki"></span><span id="proverka_nastroyki"></span><span id="verify_setup"></span>Проверка настройки<a class="heading-anchor" href="#verify-setup" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>opencode<span class="w"> </span>mcp<span class="w"> </span>list<span class="w">              </span><span class="c1"># Должно показать: ✓ codegraph connected</span>
 opencode<span class="w"> </span>debug<span class="w"> </span>config<span class="w">          </span><span class="c1"># Проверка итоговой конфигурации</span>
@@ -360,9 +412,11 @@ python<span class="w"> </span>-m<span class="w"> </span>codegraph_lsp<span class
 <p>Фактически примененные шаги в этом репозитории:</p>
 <ol>
 <li>Обновлен <code>opencode.json</code>: добавлены <code>mcp.codegraph</code> и <code>lsp.codegraph</code>.</li>
-<li>Для LSP задан путь БД <code>data/projects/codegraph.duckdb</code>.</li>
+<li>Для LSP задан путь БД <code>data/projects/codegraph.duckdb</code> как идентификатор CPG, которой владеет GoCPG.</li>
 <li>LSP оставлен в режиме <strong>stdio</strong> (по умолчанию), чтобы OpenCode сам управлял жизненным циклом процесса.</li>
-<li>Подключены <code>plugin: ["opencode-codegraph"]</code> и <code>instructions: [".codegraph/AGENTS.md"]</code>.</li>
+<li>Подключены <code>plugin: ["opencode-codegraph"]</code> и инструкции:
+   - <code>.codegraph/AGENTS.md</code> (MCP-инструменты + CPG reference)
+   - <code>.codegraph/SCENARIO_PLAYBOOK.md</code> (маршрутизация 21 сценария)</li>
 <li>Выполнена проверка конфигурации и доступности команд:</li>
 </ol>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>json.tool<span class="w"> </span>opencode.json<span class="w">          </span><span class="c1"># JSON валиден</span>
@@ -370,7 +424,7 @@ opencode<span class="w"> </span>mcp<span class="w"> </span>list<span class="w"> 
 opencode<span class="w"> </span>debug<span class="w"> </span>config<span class="w">                      </span><span class="c1"># видны mcp/lsp/plugin/instructions</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--help<span class="w">                   </span><span class="c1"># MCP сервер доступен</span>
 python<span class="w"> </span>-m<span class="w"> </span>codegraph_lsp<span class="w"> </span>--help<span class="w">             </span><span class="c1"># LSP сервер доступен</span>
-python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import duckdb; duckdb.connect(&#39;data/projects/codegraph.duckdb&#39;, read_only=True)&quot;</span>
+gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 </code></pre></div>
 
 <h3  id="stdio-vs-tcp"><span id="stdio-i-tcp"></span><span id="stdio_i_tcp"></span><span id="stdio_vs_tcp"></span>Stdio и TCP<a class="heading-anchor" href="#stdio-vs-tcp" title="Link to this section">&para;</a></h3>
@@ -381,9 +435,15 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>codegraph_lsp<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb<span class="w"> </span>--transport<span class="w"> </span>tcp<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">2087</span>
 </code></pre></div>
 
+<h3  id="ownership-model"><span id="model-vladeniya"></span><span id="model_vladeniya"></span><span id="ownership_model"></span>Модель владения<a class="heading-anchor" href="#ownership-model" title="Link to this section">&para;</a></h3>
+<ul>
+<li>GoCPG — единственный runtime-процесс, который открывает и изменяет CPG DuckDB.</li>
+<li>Интеграции OpenCode MCP, plugin и LSP являются read-only клиентами поверх API GoCPG.</li>
+<li><code>--db</code> в конфигурации OpenCode и LSP — это идентификатор целевой базы, а не разрешение открывать DuckDB напрямую.</li>
+</ul>
 <h2  id="features"><span id="funktsii"></span>Функции<a class="heading-anchor" href="#features" title="Link to this section">&para;</a></h2>
-<h3  id="mcp-tools"><span id="1-mcp-instrumenty-65-instrumentov"></span><span id="1_mcp_instrumenty_65_instrumentov"></span><span id="mcp_tools"></span>1. MCP-инструменты (65 инструментов)<a class="heading-anchor" href="#mcp-tools" title="Link to this section">&para;</a></h3>
-<p>Все 65 MCP-инструментов CodeGraph доступны в чате OpenCode. Основные группы:</p>
+<h3  id="mcp-tools"><span id="1-mcp-instrumenty-93-instrumenta"></span><span id="1_mcp_instrumenty_93_instrumenta"></span><span id="mcp_tools"></span>1. MCP-инструменты (93 инструмента)<a class="heading-anchor" href="#mcp-tools" title="Link to this section">&para;</a></h3>
+<p>Все 93 MCP-инструмента CodeGraph доступны в чате OpenCode. Основные группы:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -421,11 +481,18 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 </tbody>
 </table></div>
 <p>Полный справочник инструментов находится в <code>.codegraph/AGENTS.md</code> (автоматически загружается через <code>instructions</code>).</p>
-<h3  id="instructions-file"><span id="2-fayl-instruktsiy"></span><span id="2_fayl_instruktsiy"></span><span id="instructions_file"></span>2. Файл инструкций<a class="heading-anchor" href="#instructions-file" title="Link to this section">&para;</a></h3>
-<p>Файл <code>.codegraph/AGENTS.md</code> загружается в каждый диалог через конфигурацию <code>instructions</code>. Он содержит:
-- Полный список доступных MCP-инструментов с описаниями
-- Справочник таблиц CPG (<code>nodes_method</code>, <code>edges_call</code> и др.)
-- Рекомендации по использованию (когда какой инструмент применять)</p>
+<h3  id="instructions-file"><span id="2-fayly-instruktsiy"></span><span id="2_fayly_instruktsiy"></span><span id="instructions_file"></span>2. Файлы инструкций<a class="heading-anchor" href="#instructions-file" title="Link to this section">&para;</a></h3>
+<p>В каждый диалог через <code>instructions</code> загружаются два файла:</p>
+<ul>
+<li><code>.codegraph/AGENTS.md</code> содержит:</li>
+<li>Полный список доступных MCP-инструментов с описаниями</li>
+<li>Справочник таблиц CPG (<code>nodes_method</code>, <code>edges_call</code> и др.)</li>
+<li>Рекомендации по использованию (когда какой инструмент применять)</li>
+<li><code>.codegraph/SCENARIO_PLAYBOOK.md</code> содержит:</li>
+<li>Маршрутизацию по всем 21 сценариям CodeGraph</li>
+<li>Связку intent -&gt; scenario (когда использовать S02 vs S09 vs S18)</li>
+<li>Пояснение, что structural pattern search — это tool/CLI feature, а не numbered scenario</li>
+</ul>
 <h3  id="post-commit-cpg-updates"><span id="3-obnovlenie-cpg-posle-kommitov-cherez-vebhuki"></span><span id="3_obnovlenie_cpg_posle_kommitov_cherez_vebhuki"></span><span id="post_commit_cpg_updates"></span>3. Обновление CPG после коммитов (через вебхуки)<a class="heading-anchor" href="#post-commit-cpg-updates" title="Link to this section">&para;</a></h3>
 <p>Когда API CodeGraph запущен, вебхуки могут запускать инкрементальное обновление CPG после изменений кода:</p>
 <ol>
@@ -436,8 +503,14 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 </ol>
 <p>Для локальных сценариев без push/вебхуков (или если <code>data/projects/codegraph.duckdb</code> устарел) используйте <code>/update</code>: команда запускает проверку актуальности и инкрементальное обновление через <code>codegraph_watch</code>.</p>
 <p>Для headless OpenCode это рекомендуемая точка контроля: команда возвращает структурированные поля актуальности (<code>cpg_commit</code>, <code>head_commit</code>, <code>commits_behind</code>, <code>commits_behind_strict</code>, <code>is_fresh</code>, <code>is_fresh_strict</code>, <code>has_relevant_changes_since_cpg</code>, <code>freshness_reason</code>, <code>needs_update</code>) и поля диагностики обновления (<code>failure_kind</code>, <code>auto_unlock_attempted</code>, <code>auto_unlock_killed_pids</code>, <code>auto_unlock_errors</code>, <code>next_step</code>, <code>next_command</code>).</p>
+<p>Для локального git-сценария GoCPG-хуки теперь могут сохранять трассируемое ревью после коммита в <code>data/reviews/</code>. Этот путь дополняет webhook-триггер плагина:</p>
+<div class="highlight"><pre><span></span><code>gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="o">=</span>.<span class="w"> </span>--db<span class="o">=</span>data/projects/codegraph.duckdb<span class="w"> </span>--review-trace
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;<span class="w"> </span>--watch
+</code></pre></div>
+
+<p>Для каждого коммита создаются артефакты <code>.log</code>, <code>.status.json</code>, <code>.meta.json</code>, <code>.json</code> и <code>.md</code>. Трассировка фиксирует, успешно ли выполнился <code>gocpg update</code>, освободилась ли DuckDB сразу после обновления и какая область файлов использовалась для ревью.</p>
 <h2  id="plugin"><span id="plagin"></span>Плагин<a class="heading-anchor" href="#plugin" title="Link to this section">&para;</a></h2>
-<p>Плагин <a href="https://www.npmjs.com/package/opencode-codegraph"><code>opencode-codegraph</code></a> (npm, v0.1.1) добавляет автоматическое обогащение контекста поверх MCP-инструментов. Исходный код: каталог <code>opencode-codegraph/</code>.</p>
+<p>Плагин <a href="https://www.npmjs.com/package/opencode-codegraph"><code>opencode-codegraph</code></a> (npm, v0.1.33) добавляет автоматическое обогащение контекста поверх MCP-инструментов. Исходный код: каталог <code>opencode-codegraph/</code>.</p>
 <h3  id="plugin-features"><span id="funktsii-plagina"></span><span id="funktsii_plagina"></span><span id="plugin_features"></span>Функции плагина<a class="heading-anchor" href="#plugin-features" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -456,8 +529,12 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <td>Автоматически обогащает чат CPG-контекстом при упоминании файлов (методы, метрики, результаты безопасности)</td>
 </tr>
 <tr>
+<td><code>chat.message</code> при edit intent</td>
+<td>Добавляет pre-edit warnings, если сообщение похоже на запрос на изменение кода (<code>refactor</code>, <code>fix</code>, <code>update</code> и т.д.)</td>
+</tr>
+<tr>
 <td><code>tool.execute.after</code></td>
-<td>Обнаруживает <code>git commit</code> и запускает инкрементальное обновление CPG через <code>POST /api/v1/webhooks/local</code></td>
+<td>Обнаруживает <code>git commit</code>, запускает инкрементальное обновление CPG через <code>POST /api/v1/webhooks/local</code> и добавляет либо готовую review summary, либо pending summary с понятным следующим действием</td>
 </tr>
 <tr>
 <td><code>permission.ask</code></td>
@@ -465,6 +542,7 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 </tr>
 </tbody>
 </table></div>
+<p>Хук плагина ориентирован на conversational/best-effort сценарий. Если нужен устойчивый цифровой след по каждому коммиту, включайте GoCPG <code>--review-trace</code>; git-хук сохраняет артефакты даже вне TUI-сессий OpenCode.</p>
 <h3  id="plugin-tools"><span id="instrumenty-plagina"></span><span id="instrumenty_plagina"></span><span id="plugin_tools"></span>Инструменты плагина<a class="heading-anchor" href="#plugin-tools" title="Link to this section">&para;</a></h3>
 <p>Два дополнительных инструмента (реализованы на TypeScript, вызывают CodeGraph REST API):</p>
 <div class="table-wrapper"><table>
@@ -488,10 +566,11 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 </tr>
 </tbody>
 </table></div>
+<p><code>codegraph_review</code> сначала использует стандартный workflow ревью; если результат пустой, API автоматически переключается на детерминированный CPG-fallback (изменённые файлы из diff, затронутые методы/вызывающие, security pattern findings по файлам).</p>
 <h3  id="plugin-requirements"><span id="plugin_requirements"></span><span id="trebovaniya"></span>Требования<a class="heading-anchor" href="#plugin-requirements" title="Link to this section">&para;</a></h3>
 <p>Плагин требует запущенный REST API CodeGraph (<code>uvicorn src.api.main:app --port 8000</code>). Если API недоступен, плагин деградирует корректно — все хуки пропускаются, MCP-инструменты продолжают работать через stdio.</p>
 <h2  id="custom-commands"><span id="custom_commands"></span><span id="polzovatelskie-komandy"></span><span id="polzovatelskie_komandy"></span>Пользовательские команды<a class="heading-anchor" href="#custom-commands" title="Link to this section">&para;</a></h2>
-<p>Пять команд доступны через <code>/command</code> в TUI OpenCode:</p>
+<p>Десять команд доступны через <code>/command</code> в TUI OpenCode:</p>
 <p>Для headless CLI используйте <code>opencode run --command &lt;name&gt; [args...]</code> (а не буквальное сообщение <code>/name</code>).</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -527,6 +606,31 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 <td>Проверка актуальности CPG и инкрементальное обновление активного проекта</td>
 <td>TUI: <code>/update</code> · Headless: <code>opencode run --command update</code></td>
 </tr>
+<tr>
+<td><code>/status</code></td>
+<td>Единый статус разработки по актуальности и review trace</td>
+<td>TUI: <code>/status</code> · Headless: <code>opencode run --command status</code></td>
+</tr>
+<tr>
+<td><code>/next</code></td>
+<td>Одна лучшая следующая команда из текущего workflow state</td>
+<td>TUI: <code>/next</code> · Headless: <code>opencode run --command next</code></td>
+</tr>
+<tr>
+<td><code>/continue</code></td>
+<td>Безопасно выполняет следующий шаг refresh/review workflow</td>
+<td>TUI: <code>/continue</code> · Headless: <code>opencode run --command continue</code></td>
+</tr>
+<tr>
+<td><code>/maintain-db</code></td>
+<td>Выполняет обслуживание DuckDB, когда локальная база требует компакции</td>
+<td>TUI: <code>/maintain-db</code> · Headless: <code>opencode run --command maintain-db</code></td>
+</tr>
+<tr>
+<td><code>/unlock-db</code></td>
+<td>Показывает безопасные шаги восстановления при блокировке DuckDB</td>
+<td>TUI: <code>/unlock-db</code> · Headless: <code>opencode run --command unlock-db</code></td>
+</tr>
 </tbody>
 </table></div>
 <p>Команды определены в <code>.opencode/commands/</code> как файлы markdown с YAML-заголовком (frontmatter).</p>
@@ -551,7 +655,8 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 </ul>
 <p>Конвейер диагностик мёртвого кода отфильтрован от синтетических имён (например, <code>&lt;module&gt;</code> и артефактов metaclass adapter) и дедуплицируется по идентичности метода, чтобы headless-диагностика оставалась практичной для итеративного ревью.</p>
 <h3  id="headless-plan-act-review"><span id="headless-tsikl-planactreview"></span><span id="headless_plan_act_review"></span><span id="headless_tsikl_planactreview"></span>Headless цикл plan/act/review<a class="heading-anchor" href="#headless-plan-act-review" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Plan: проверка актуальности и текущих диагностик</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Plan: сначала проверка статуса, затем обновление при необходимости</span>
+opencode<span class="w"> </span>run<span class="w"> </span>--command<span class="w"> </span>status
 opencode<span class="w"> </span>run<span class="w"> </span>--command<span class="w"> </span>update
 opencode<span class="w"> </span>debug<span class="w"> </span>lsp<span class="w"> </span>diagnostics<span class="w"> </span>src/dogfooding/cpg_freshness.py
 
@@ -640,14 +745,16 @@ opencode<span class="w"> </span>run<span class="w"> </span>--command<span class=
 <span class="w">    </span><span class="n">explain</span><span class="p">.</span><span class="n">md</span><span class="w">    </span><span class="err">#</span><span class="w"> </span><span class="n">Команда</span><span class="w"> </span><span class="o">/</span><span class="n">explain</span>
 <span class="w">    </span><span class="n">onboard</span><span class="p">.</span><span class="n">md</span><span class="w">    </span><span class="err">#</span><span class="w"> </span><span class="n">Команда</span><span class="w"> </span><span class="o">/</span><span class="n">onboard</span>
 <span class="w">    </span><span class="n">update</span><span class="p">.</span><span class="n">md</span><span class="w">     </span><span class="err">#</span><span class="w"> </span><span class="n">Команда</span><span class="w"> </span><span class="o">/</span><span class="n">update</span>
+<span class="w">    </span><span class="n">status</span><span class="p">.</span><span class="n">md</span><span class="w">     </span><span class="err">#</span><span class="w"> </span><span class="n">Команда</span><span class="w"> </span><span class="o">/</span><span class="n">status</span>
 <span class="w">  </span><span class="n">agents</span><span class="o">/</span>
 <span class="w">    </span><span class="n">codegraph</span><span class="p">.</span><span class="n">md</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="n">Агент</span><span class="w"> </span><span class="n">codegraph</span>
 
 <span class="p">.</span><span class="n">codegraph</span><span class="o">/</span>
 <span class="w">  </span><span class="n">AGENTS</span><span class="p">.</span><span class="n">md</span><span class="w">       </span><span class="err">#</span><span class="w"> </span><span class="n">Справочник</span><span class="w"> </span><span class="n">MCP</span><span class="o">-</span><span class="n">инструментов</span><span class="w"> </span><span class="p">(</span><span class="n">загружается</span><span class="w"> </span><span class="n">через</span><span class="w"> </span><span class="n">opencode</span><span class="p">.</span><span class="n">json</span><span class="w"> </span><span class="n">instructions</span><span class="p">)</span>
+<span class="w">  </span><span class="n">SCENARIO_PLAYBOOK</span><span class="p">.</span><span class="n">md</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="n">Маршрутизация</span><span class="w"> </span><span class="n">сценариев</span><span class="w"> </span><span class="n">для</span><span class="w"> </span><span class="n">контекста</span><span class="w"> </span><span class="n">модели</span>
 
 <span class="n">opencode</span><span class="p">.</span><span class="n">json</span><span class="w">           </span><span class="err">#</span><span class="w"> </span><span class="n">Конфигурация</span><span class="w"> </span><span class="n">MCP</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">плагин</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">инструкции</span>
-<span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="o">/</span><span class="w">     </span><span class="err">#</span><span class="w"> </span><span class="n">Исходный</span><span class="w"> </span><span class="n">код</span><span class="w"> </span><span class="n">плагина</span><span class="w"> </span><span class="p">(</span><span class="n">npm</span><span class="o">:</span><span class="w"> </span><span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="mf">@0.1.1</span><span class="p">)</span>
+<span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="o">/</span><span class="w">     </span><span class="err">#</span><span class="w"> </span><span class="n">Исходный</span><span class="w"> </span><span class="n">код</span><span class="w"> </span><span class="n">плагина</span><span class="w"> </span><span class="p">(</span><span class="n">npm</span><span class="o">:</span><span class="w"> </span><span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="mf">@0.1.33</span><span class="p">)</span>
 </code></pre></div>
 
 <h2  id="architecture"><span id="arhitektura"></span>Архитектура<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h2>
@@ -661,12 +768,13 @@ opencode<span class="w"> </span>run<span class="w"> </span>--command<span class=
 <span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="err">инструменты</span><span class="w">                                </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">CodeGraph</span><span class="w"> </span><span class="n">REST</span><span class="w"> </span><span class="n">API</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">review</span><span class="o">/</span><span class="n">explain</span>
 <span class="w">  </span><span class="o">|</span>
 <span class="w">  </span><span class="o">+--</span><span class="w"> </span><span class="n">MCP</span><span class="o">-</span><span class="err">сервер</span><span class="w"> </span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">mcp</span><span class="p">,</span><span class="w"> </span><span class="n">stdio</span><span class="p">)</span>
-<span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="mi">65</span><span class="w"> </span><span class="err">инструментов</span><span class="w">       </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">CPG</span><span class="o">-</span><span class="err">запросы</span><span class="p">,</span><span class="w"> </span><span class="n">taint</span><span class="p">,</span><span class="w"> </span><span class="err">шаблоны</span><span class="p">,</span><span class="w"> </span><span class="n">compose</span>
+<span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="mi">93</span><span class="w"> </span><span class="err">инструмента</span><span class="w">        </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">CPG</span><span class="o">-</span><span class="err">запросы</span><span class="p">,</span><span class="w"> </span><span class="n">taint</span><span class="p">,</span><span class="w"> </span><span class="err">шаблоны</span><span class="p">,</span><span class="w"> </span><span class="n">compose</span>
 <span class="w">  </span><span class="o">|</span>
 <span class="w">  </span><span class="o">+--</span><span class="w"> </span><span class="err">Пользовательские</span><span class="w"> </span><span class="err">команды</span><span class="w"> </span><span class="p">(</span><span class="o">.</span><span class="n">opencode</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="p">)</span>
 <span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="o">/</span><span class="n">review</span><span class="p">,</span><span class="w"> </span><span class="o">/</span><span class="n">audit</span><span class="w">      </span><span class="o">--&gt;</span><span class="w"> </span><span class="err">Шаблоны</span><span class="w"> </span><span class="err">промптов</span><span class="w"> </span><span class="err">с</span><span class="w"> </span><span class="n">MCP</span><span class="o">-</span><span class="err">инструментами</span>
 <span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="o">/</span><span class="n">explain</span><span class="p">,</span><span class="w"> </span><span class="o">/</span><span class="n">onboard</span><span class="w">   </span><span class="o">--&gt;</span><span class="w"> </span><span class="err">Шаблоны</span><span class="w"> </span><span class="err">промптов</span><span class="w"> </span><span class="err">с</span><span class="w"> </span><span class="n">MCP</span><span class="o">-</span><span class="err">инструментами</span>
 <span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="o">/</span><span class="n">update</span><span class="w">              </span><span class="o">--&gt;</span><span class="w"> </span><span class="err">Проверка</span><span class="w"> </span><span class="err">актуальности</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">инкрементальный</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="n">update</span>
+<span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="o">/</span><span class="n">status</span><span class="w">              </span><span class="o">--&gt;</span><span class="w"> </span><span class="err">Единый</span><span class="w"> </span><span class="err">статус</span><span class="w"> </span><span class="err">актуальности</span><span class="w"> </span><span class="err">и</span><span class="w"> </span><span class="n">review</span><span class="w"> </span><span class="n">trace</span>
 <span class="w">  </span><span class="o">|</span>
 <span class="w">  </span><span class="o">+--</span><span class="w"> </span><span class="err">Пользовательский</span><span class="w"> </span><span class="err">агент</span><span class="w"> </span><span class="p">(</span><span class="o">.</span><span class="n">opencode</span><span class="o">/</span><span class="n">agents</span><span class="o">/</span><span class="n">codegraph</span><span class="o">.</span><span class="n">md</span><span class="p">)</span>
 <span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="n">CPG</span><span class="o">-</span><span class="n">first</span><span class="w"> </span><span class="err">рабочий</span><span class="w"> </span><span class="err">процесс</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="err">Всегда</span><span class="w"> </span><span class="err">проверяет</span><span class="w"> </span><span class="err">вызывающих</span><span class="w"> </span><span class="err">перед</span><span class="w"> </span><span class="err">рефакторингом</span>
@@ -744,7 +852,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/OPENCODE_PLUGIN.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -761,12 +869,14 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#minimal-setup" class="level-3">Минимальная настройка (только MCP)</a></li>
 <li><a href="#full-setup" class="level-3">Полная настройка (MCP + LSP)</a></li>
 <li><a href="#prerequisites" class="level-3">Предварительные требования</a></li>
+<li><a href="#unified-launch-script" class="level-2">Единый скрипт запуска</a></li>
 <li><a href="#verify-setup" class="level-3">Проверка настройки</a></li>
 <li><a href="#repository-walkthrough" class="level-2">Пошагово для этого репозитория</a></li>
 <li><a href="#stdio-vs-tcp" class="level-3">Stdio и TCP</a></li>
+<li><a href="#ownership-model" class="level-3">Модель владения</a></li>
 <li><a href="#features" class="level-2">Функции</a></li>
-<li><a href="#mcp-tools" class="level-3">1. MCP-инструменты (65 инструментов)</a></li>
-<li><a href="#instructions-file" class="level-3">2. Файл инструкций</a></li>
+<li><a href="#mcp-tools" class="level-3">1. MCP-инструменты (93 инструмента)</a></li>
+<li><a href="#instructions-file" class="level-3">2. Файлы инструкций</a></li>
 <li><a href="#post-commit-cpg-updates" class="level-3">3. Обновление CPG после коммитов (через вебхуки)</a></li>
 <li><a href="#plugin" class="level-2">Плагин</a></li>
 <li><a href="#plugin-features" class="level-3">Функции плагина</a></li>

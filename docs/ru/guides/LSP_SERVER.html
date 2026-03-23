@@ -96,6 +96,11 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="LSP_SERVER.html" class="active">LSP-сервер CodeGraph</a></li>
@@ -202,7 +207,7 @@
 <li><a href="#troubleshooting">Устранение неполадок</a></li>
 </ul>
 <h2  id="overview"><span id="obzor"></span>Обзор<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>LSP-сервер CodeGraph соединяет любой LSP-совместимый редактор с базой данных CPG (Code Property Graph) DuckDB. Сервер предоставляет:</p>
+<p>LSP-сервер CodeGraph соединяет любой LSP-совместимый редактор с CPG (Code Property Graph), которым во время выполнения владеет GoCPG. Сам LSP-сервер работает как gRPC-клиент: он не открывает DuckDB напрямую и создаёт только read-only нагрузку через GoCPG. Сервер предоставляет:</p>
 <ul>
 <li><strong>Диагностика безопасности</strong> &ndash; результаты 190+ правил шаблонов (привязка к CWE)</li>
 <li><strong>Обнаружение мёртвого кода</strong> &ndash; методы без вызывающих (fan_in=0)</li>
@@ -222,11 +227,12 @@
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>codegraph_lsp<span class="w"> </span>--db<span class="w"> </span>&lt;path-to-duckdb&gt;
 </code></pre></div>
 
+<p><code>--db</code> задаёт идентификатор целевой CPG-базы, которой владеет GoCPG. Сам процесс LSP не владеет файлом DuckDB и не открывает его напрямую.</p>
 <h3  id="dependencies"><span id="zavisimosti"></span>Зависимости<a class="heading-anchor" href="#dependencies" title="Link to this section">&para;</a></h3>
 <ul>
 <li><code>pygls&gt;=2.0.0</code> &ndash; фреймворк Python LSP</li>
 <li><code>lsprotocol</code> &ndash; определения типов LSP</li>
-<li><code>duckdb&gt;=1.4.4</code> &ndash; доступ к базе данных CPG</li>
+<li>Запущенный GoCPG gRPC server с доступом к целевой CPG-базе</li>
 </ul>
 <h2  id="quick-start"><span id="bystryy-start"></span><span id="bystryy_start"></span><span id="quick_start"></span>Быстрый старт<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
 <ol>
@@ -236,12 +242,18 @@
 </code></pre></div>
 
 <ol start="2">
+<li><strong>Запустите GoCPG</strong>, чтобы CPG была доступна по gRPC:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>gocpg<span class="w"> </span>serve<span class="w"> </span>--data-dir<span class="w"> </span>.
+</code></pre></div>
+
+<ol start="3">
 <li><strong>Запустите LSP-сервер</strong>:</li>
 </ol>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>codegraph_lsp<span class="w"> </span>--db<span class="w"> </span>project.duckdb
 </code></pre></div>
 
-<ol start="3">
+<ol start="4">
 <li><strong>Настройте редактор</strong> для работы с сервером (см. разделы для конкретных редакторов ниже).</li>
 </ol>
 <h2  id="diagnostics"><span id="diagnostika"></span>Диагностика<a class="heading-anchor" href="#diagnostics" title="Link to this section">&para;</a></h2>
@@ -441,14 +453,14 @@
 - Включает диагностику в контекст LLM через <code>experimental.chat.system.transform</code>
 - Предлагает быстрые исправления для шаблонов с поддержкой автоисправления</p>
 <h2  id="connection-pool"><span id="connection_pool"></span><span id="pul-podklyucheniy"></span><span id="pul_podklyucheniy"></span>Пул подключений<a class="heading-anchor" href="#connection-pool" title="Link to this section">&para;</a></h2>
-<p>LSP-сервер использует пул подключений DuckDB в режиме только для чтения:</p>
+<p>LSP-сервер использует read-only пул запросов поверх GoCPG:</p>
 <ul>
-<li><strong>Максимум подключений</strong>: 3 (настраиваемо)</li>
-<li><strong>Только чтение</strong>: предотвращает случайную запись</li>
-<li><strong>Автоматическое переподключение</strong>: отслеживает изменение времени модификации файла <code>.duckdb</code> и переподключает простаивающие соединения</li>
-<li><strong>Потокобезопасность</strong>: использует <code>threading.Lock</code> для доступа к пулу</li>
+<li><strong>Максимум логических подключений</strong>: 3 (настраиваемо)</li>
+<li><strong>Только gRPC</strong>: процесс LSP не открывает DuckDB напрямую</li>
+<li><strong>Только чтение</strong>: diagnostics, hover, CodeLens и code actions идут через query RPC GoCPG</li>
+<li><strong>Потокобезопасность</strong>: используется <code>threading.Lock</code></li>
 </ul>
-<p>При обновлении базы данных CPG (например, после вызова <code>gocpg parse</code> по вебхуку) пул автоматически подхватывает новые данные при следующем запросе.</p>
+<p>Владение DuckDB остаётся внутри GoCPG. Когда GoCPG обновляет или пересоздаёт CPG, LSP-клиент получает новый снимок на следующих RPC-запросах.</p>
 <h2  id="configuration"><span id="konfiguratsiya"></span>Конфигурация<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
 <h3  id="cli-options"><span id="cli_options"></span><span id="parametry-cli"></span><span id="parametry_cli"></span>Параметры CLI<a class="heading-anchor" href="#cli-options" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
@@ -463,7 +475,7 @@
 <tr>
 <td><code>--db</code></td>
 <td>(обязательный)</td>
-<td>Путь к базе данных DuckDB CPG</td>
+<td>Путь к целевой CPG-базе, используемый GoCPG</td>
 </tr>
 <tr>
 <td><code>--complexity-threshold</code></td>
@@ -504,23 +516,24 @@
 <h2  id="troubleshooting"><span id="ustranenie-nepoladok"></span><span id="ustranenie_nepoladok"></span>Устранение неполадок<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
 <h3  id="no-diagnostics-appearing"><span id="diagnostika-ne-otobrazhaetsya"></span><span id="diagnostika_ne_otobrazhaetsya"></span><span id="no_diagnostics_appearing"></span>Диагностика не отображается<a class="heading-anchor" href="#no-diagnostics-appearing" title="Link to this section">&para;</a></h3>
 <ul>
-<li>Убедитесь, что файл DuckDB существует и содержит данные CPG: <code>python -c "import duckdb; print(duckdb.connect('project.duckdb', read_only=True).execute('SELECT COUNT(*) FROM nodes_method').fetchone())"</code></li>
-<li>Проверьте наличие данных в таблице <code>cpg_pattern_results</code>: <code>SELECT COUNT(*) FROM cpg_pattern_results</code></li>
-<li>Убедитесь, что пути к файлам в базе данных совпадают с путями в рабочем пространстве (прямые слэши, относительные пути)</li>
+<li>Убедитесь, что GoCPG gRPC доступен и обслуживает нужную базу.</li>
+<li>Убедитесь, что целевой DuckDB-файл существует и содержит CPG-данные, например через GoCPG lifecycle/query endpoints или <code>gocpg stats --db project.duckdb</code>.</li>
+<li>Убедитесь, что пути к файлам в базе данных совпадают с путями в рабочем пространстве (прямые слэши, относительные пути).</li>
 </ul>
 <h3  id="connection-pool-exhausted-error"><span id="connection_pool_exhausted_error"></span><span id="oshibka-connection-pool-exhausted"></span><span id="oshibka_connection_pool_exhausted"></span>Ошибка «Connection Pool Exhausted»<a class="heading-anchor" href="#connection-pool-exhausted-error" title="Link to this section">&para;</a></h3>
-<p>Означает, что активны 3 одновременных запроса. Это может произойти, если:
-- Файл DuckDB очень большой и запросы выполняются медленно
+<p>Означает, что активны 3 одновременных read-запроса. Это может произойти, если:
+- GoCPG выполняет медленные запросы к очень большой CPG
 - Одновременно были открыты несколько файлов</p>
 <p>Решение: закройте часть файлов или увеличьте размер пула (требует изменения кода).</p>
 <h3  id="stale-diagnostics-after-cpg-update"><span id="stale_diagnostics_after_cpg_update"></span><span id="ustarevshaya-diagnostika-posle-obnovleniya-cpg"></span><span id="ustarevshaya_diagnostika_posle_obnovleniya_cpg"></span>Устаревшая диагностика после обновления CPG<a class="heading-anchor" href="#stale-diagnostics-after-cpg-update" title="Link to this section">&para;</a></h3>
-<p>Пул подключений автоматически отслеживает изменение времени модификации файла. Если диагностика кажется устаревшей:
+<p>Если диагностика кажется устаревшей:
 - Закройте и откройте файл заново
-- Убедитесь, что время модификации файла <code>.duckdb</code> обновилось</p>
+- Убедитесь, что GoCPG завершил update/reparse и сообщает <code>read_available=true</code>
+- Перепроверьте lifecycle status через CodeGraph <code>/status</code> или <code>dogfood status</code></p>
 <h3  id="server-fails-to-start"><span id="server-ne-zapuskaetsya"></span><span id="server_fails_to_start"></span><span id="server_ne_zapuskaetsya"></span>Сервер не запускается<a class="heading-anchor" href="#server-fails-to-start" title="Link to this section">&para;</a></h3>
 <ul>
 <li>Убедитесь, что pygls установлен: <code>python -c "import pygls; print(pygls.__version__)"</code></li>
-<li>Убедитесь, что duckdb установлен: <code>python -c "import duckdb; print(duckdb.__version__)"</code></li>
+<li>Убедитесь, что GoCPG gRPC server запущен и доступен для процесса LSP</li>
 <li>Проверьте сообщения об ошибках в stderr</li>
 </ul>
 <h3  id="windows-path-issues"><span id="problemy-s-putyami-v-windows"></span><span id="problemy_s_putyami_v_windows"></span><span id="windows_path_issues"></span>Проблемы с путями в Windows<a class="heading-anchor" href="#windows-path-issues" title="Link to this section">&para;</a></h3>
@@ -543,7 +556,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/LSP_SERVER.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

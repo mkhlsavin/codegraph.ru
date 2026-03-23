@@ -96,6 +96,11 @@
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="../guides/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="../guides/LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -143,7 +148,7 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DEMO_API.html">Демо API</a></li>
-        <li><a href="../api/REST_API.html">Документация по REST API CodeGraph</a></li>
+        <li><a href="../api/REST_API.html">Справочник REST API</a></li>
         <li><a href="../api/WEBSOCKET_API.html">Справочная документация по WebSocket API</a></li>
       </ul>
     </div>
@@ -179,6 +184,7 @@
         <li><a href="MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="SCHEMA.html">Дизайн схемы DuckDB CPG (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Модуль корпоративной безопасности</a></li>
+        <li><a href="SNAPSHOT_STORE.html">Справочник по хранилищу снимков</a></li>
         <li><a href="SQL_QUERY_COOKBOOK.html">Кулинарная книга SQL-запросов для DuckDB CPG</a></li>
         <li><a href="SYMBOLIC_EXECUTION.html">Символьное выполнение (Z3 SMT Solver)</a></li>
         <li><a href="WORKFLOWS.html">Справочник по рабочим процессам</a></li>
@@ -213,8 +219,8 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="spravochnik-grpc-api"><span id="spravochnik_grpc_api"></span>Справочник gRPC API<a class="heading-anchor" href="#spravochnik-grpc-api" title="Link to this section">&para;</a></h1>
-<p>GoCPG предоставляет gRPC-интерфейс для операций с графом кода (CPG), запросов, навигации и сканирования шаблонов. Python-клиент (<code>GrpcTransport</code> в <code>src/services/gocpg/grpc_transport.py</code>) оборачивает все вызовы RPC в асинхронные методы, возвращающие те же Pydantic-модели, что и транспорт через подпроцесс.</p>
-<p>Используются четыре gRPC-сервиса: <code>CPGService</code> (разбор/обновление/индексы), <code>QueryService</code> (запросы/статистика/ветки/подмодули/фронтенды), <code>PatternService</code> (поиск/сканирование/валидация), <code>NavigationService</code> (методы nav_*).</p>
+<p>GoCPG предоставляет gRPC-интерфейс для операций с графом кода (CPG), запросов, навигации, lifecycle/status и сканирования шаблонов. Python-клиент (<code>GrpcTransport</code> в <code>src/services/gocpg/grpc_transport.py</code>) оборачивает все вызовы RPC в асинхронные методы, возвращающие те же Pydantic-модели, что и транспорт через подпроцесс.</p>
+<p>Используются пять gRPC-сервисов: <code>CPGService</code> (разбор/обновление/индексы), <code>QueryService</code> (запросы/статистика/ветки/подмодули/фронтенды), <code>PatternService</code> (поиск/сканирование/валидация), <code>NavigationService</code> (методы nav_*), <code>LifecycleService</code> (status/freshness/maintenance).</p>
 <h2 id="podklyuchenie">Подключение<a class="heading-anchor" href="#podklyuchenie" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
@@ -629,6 +635,179 @@
 </tbody>
 </table></div>
 <p>Возвращает: <code>GoCPGQualityStatsResult</code></p>
+<h2  id="zhiznennyy-tsikl-i-obsluzhivanie"><span id="zhiznennyy_tsikl_i_obsluzhivanie"></span>Жизненный цикл и обслуживание<a class="heading-anchor" href="#zhiznennyy-tsikl-i-obsluzhivanie" title="Link to this section">&para;</a></h2>
+<h3  id="lifecycle-status"><span id="lifecycle_status"></span>lifecycle_status<a class="heading-anchor" href="#lifecycle-status" title="Link to this section">&para;</a></h3>
+<p>Получение текущего lifecycle snapshot для базы. Соответствует <code>LifecycleService.GetDatabaseStatus</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>обязательный</td>
+<td>Путь к целевому DuckDB-файлу</td>
+</tr>
+<tr>
+<td><code>repo_path</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Корень git-репозитория для freshness checks</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>30</code></td>
+<td>Тайм-аут RPC (секунды)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Возвращает: <code>GoCPGLifecycleStatusResult</code></p>
+<p>Модель включает поля <code>state</code>, <code>read_available</code>, <code>active_operation</code>, <code>progress_percent</code>, <code>started_at</code>, <code>last_successful_update_at</code>, <code>last_successful_maintenance_at</code>, lock metadata и freshness details.</p>
+<h3  id="watch-database-status"><span id="watch_database_status"></span>watch_database_status<a class="heading-anchor" href="#watch-database-status" title="Link to this section">&para;</a></h3>
+<p>Потоковая выдача status snapshots для базы. Соответствует <code>LifecycleService.WatchDatabaseStatus</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>обязательный</td>
+<td>Путь к целевому DuckDB-файлу</td>
+</tr>
+<tr>
+<td><code>repo_path</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Корень git-репозитория для freshness checks</td>
+</tr>
+<tr>
+<td><code>max_events</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Максимальное число событий (0 = до отмены)</td>
+</tr>
+<tr>
+<td><code>poll_interval_ms</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Переопределение poll interval в миллисекундах</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>60</code></td>
+<td>Тайм-аут RPC (секунды)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Возвращает: <code>AsyncIterator[GoCPGLifecycleStatusResult]</code></p>
+<h3  id="freshness-status"><span id="freshness_status"></span>freshness_status<a class="heading-anchor" href="#freshness-status" title="Link to this section">&para;</a></h3>
+<p>Получение freshness-only проекции для базы. Соответствует <code>LifecycleService.GetFreshnessStatus</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>обязательный</td>
+<td>Путь к целевому DuckDB-файлу</td>
+</tr>
+<tr>
+<td><code>repo_path</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Корень git-репозитория для freshness checks</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>30</code></td>
+<td>Тайм-аут RPC (секунды)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Возвращает: <code>GoCPGFreshnessStatusResult</code></p>
+<h3  id="run-maintenance"><span id="run_maintenance"></span>run_maintenance<a class="heading-anchor" href="#run-maintenance" title="Link to this section">&para;</a></h3>
+<p>Явный запуск DuckDB maintenance внутри GoCPG. Соответствует <code>LifecycleService.RunMaintenance</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>обязательный</td>
+<td>Путь к целевому DuckDB-файлу</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>str</code></td>
+<td>обязательный</td>
+<td><code>checkpoint_vacuum</code> или <code>copy_from_database_rewrite</code></td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>300</code></td>
+<td>Тайм-аут RPC (секунды)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Возвращает: <code>GoCPGMaintenanceResult</code></p>
+<h3  id="maintenance-plan"><span id="maintenance_plan"></span>maintenance_plan<a class="heading-anchor" href="#maintenance-plan" title="Link to this section">&para;</a></h3>
+<p>Получение текущей рекомендации по обслуживанию базы. Соответствует <code>LifecycleService.GetMaintenancePlan</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Параметр</th>
+<th>Тип</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>обязательный</td>
+<td>Путь к целевому DuckDB-файлу</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>30</code></td>
+<td>Тайм-аут RPC (секунды)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Возвращает: <code>GoCPGMaintenancePlanResult</code></p>
 <h2 id="navigatsiya">Навигация<a class="heading-anchor" href="#navigatsiya" title="Link to this section">&para;</a></h2>
 <h3  id="nav-symbols"><span id="nav_symbols"></span>nav_symbols<a class="heading-anchor" href="#nav-symbols" title="Link to this section">&para;</a></h3>
 <p>Поиск символов по имени в графе кода. Поддерживает точное совпадение и поиск по префиксу.</p>
@@ -1310,11 +1489,8 @@
 </tbody>
 </table></div>
 <p>Возвращает: <code>dict[str, Any]</code></p>
-<h2  id="proverka-sostoyaniya"><span id="proverka_sostoyaniya"></span>Проверка состояния<a class="heading-anchor" href="#proverka-sostoyaniya" title="Link to this section">&para;</a></h2>
-<h3  id="check-health"><span id="check_health"></span>check_health<a class="heading-anchor" href="#check-health" title="Link to this section">&para;</a></h3>
-<p>Проверка доступности gRPC-сервера. Использует <code>ListFrontends</code> с тайм-аутом 2 секунды в качестве лёгкого зонда.</p>
-<p>Параметры отсутствуют (кроме неявной конфигурации подключения).</p>
-<p>Возвращает: <code>bool</code> (<code>True</code> если сервер ответил, <code>False</code> в противном случае)</p>
+<h2  id="primechaniya-po-transportu"><span id="primechaniya_po_transportu"></span>Примечания по транспорту<a class="heading-anchor" href="#primechaniya-po-transportu" title="Link to this section">&para;</a></h2>
+<p><code>GrpcTransport.check_health()</code> является клиентским helper-методом проверки соединения, а не публичным gRPC RPC. Он использует <code>ListFrontends</code> как лёгкий probe и поэтому намеренно исключён из RPC-surface, который отслеживает <code>docs-sync</code>.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -1333,7 +1509,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/GRPC_API.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1354,6 +1530,12 @@
 <li><a href="#search" class="level-3">search</a></li>
 <li><a href="#stats" class="level-3">stats</a></li>
 <li><a href="#quality-stats" class="level-3">quality_stats</a></li>
+<li><a href="#zhiznennyy-tsikl-i-obsluzhivanie" class="level-2">Жизненный цикл и обслуживание</a></li>
+<li><a href="#lifecycle-status" class="level-3">lifecycle_status</a></li>
+<li><a href="#watch-database-status" class="level-3">watch_database_status</a></li>
+<li><a href="#freshness-status" class="level-3">freshness_status</a></li>
+<li><a href="#run-maintenance" class="level-3">run_maintenance</a></li>
+<li><a href="#maintenance-plan" class="level-3">maintenance_plan</a></li>
 <li><a href="#navigatsiya" class="level-2">Навигация</a></li>
 <li><a href="#nav-symbols" class="level-3">nav_symbols</a></li>
 <li><a href="#nav-callers" class="level-3">nav_callers</a></li>
@@ -1373,8 +1555,7 @@
 <li><a href="#mehanizm-shablonov" class="level-2">Механизм шаблонов</a></li>
 <li><a href="#scan" class="level-3">scan</a></li>
 <li><a href="#validate-rule" class="level-3">validate_rule</a></li>
-<li><a href="#proverka-sostoyaniya" class="level-2">Проверка состояния</a></li>
-<li><a href="#check-health" class="level-3">check_health</a></li>
+<li><a href="#primechaniya-po-transportu" class="level-2">Примечания по транспорту</a></li>
       </ul>
     </aside>
   </div>

@@ -96,6 +96,11 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -299,7 +304,7 @@
 <tr>
 <td><code>codegraph auth</code></td>
 <td>Authentication management</td>
-<td>RBAC roles, OAuth status, LDAP status</td>
+<td>RBAC roles, OAuth/LDAP status, service accounts</td>
 </tr>
 <tr>
 <td><code>codegraph llm</code></td>
@@ -761,7 +766,7 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>branches<span clas
 </tbody>
 </table></div>
 <h4  id="gocpg-hooks-git-hook-management"><span id="gocpg_hooks_git_hook_management"></span><code>gocpg hooks</code> — Git Hook Management<a class="heading-anchor" href="#gocpg-hooks-git-hook-management" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--hooks<span class="w"> </span>TYPES<span class="o">]</span><span class="w"> </span><span class="o">[</span>--lang<span class="w"> </span>LANG<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--hooks<span class="w"> </span>TYPES<span class="o">]</span><span class="w"> </span><span class="o">[</span>--lang<span class="w"> </span>LANG<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-trace<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-base-ref<span class="w"> </span>REF<span class="o">]</span>
 codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>uninstall<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span>
 codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>PATH<span class="o">]</span>
 </code></pre></div>
@@ -817,8 +822,41 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="
 <td>auto-detect</td>
 <td>Language frontend</td>
 </tr>
+<tr>
+<td><code>--review-trace</code></td>
+<td><code>false</code></td>
+<td>Enable post-commit review artifacts (<code>.log</code>, <code>.status.json</code>, <code>.meta.json</code>, <code>.json</code>, <code>.md</code>)</td>
+</tr>
+<tr>
+<td><code>--review-dir</code></td>
+<td><code>data/reviews</code></td>
+<td>Output directory for per-commit review traces</td>
+</tr>
+<tr>
+<td><code>--review-base-ref</code></td>
+<td><code>HEAD~1</code></td>
+<td>Base ref used when building the review scope</td>
+</tr>
 </tbody>
 </table></div>
+<p>When <code>--review-trace</code> is enabled, the <code>post-commit</code> hook launches a detached worker that:</p>
+<ol>
+<li>Runs <code>gocpg update</code></li>
+<li>Verifies DuckDB can be reopened and checkpointed immediately after the update</li>
+<li>Runs the review pipeline on changed files</li>
+<li>Writes per-commit trace files to <code>data/reviews/</code></li>
+</ol>
+<p>Useful commands:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install traced post-commit hooks</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb<span class="w"> </span>--review-trace
+
+<span class="c1"># Inspect the latest review trace</span>
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;
+
+<span class="c1"># Watch live status updates until the worker finishes</span>
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;<span class="w"> </span>--watch
+</code></pre></div>
+
 <h4  id="gocpg-watch-file-watcher"><span id="gocpg_watch_file_watcher"></span><code>gocpg watch</code> — File Watcher<a class="heading-anchor" href="#gocpg-watch-file-watcher" title="Link to this section">&para;</a></h4>
 <div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>gocpg<span class="w"> </span>watch<span class="w"> </span>--input<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--lang<span class="w"> </span>LANG<span class="o">]</span><span class="w"> </span><span class="o">[</span>--debounce<span class="w"> </span>MS<span class="o">]</span><span class="w"> </span><span class="o">[</span>--webhook<span class="w"> </span>URL<span class="o">]</span>
 </code></pre></div>
@@ -956,30 +994,21 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>submodules<span cl
 </tbody>
 </table></div>
 <p>Displays cross-language quality metrics including dead code candidates, complexity hotspots, and overall quality score.</p>
-<h4  id="code-navigation-commands"><span id="code_navigation_commands"></span>Code Navigation Commands<a class="heading-anchor" href="#code-navigation-commands" title="Link to this section">&para;</a></h4>
-<p>8 commands for navigating CPG data. All support <code>--json</code> for machine-readable output.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find symbols by name (exact or prefix match)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>symbols<span class="w"> </span>--name<span class="o">=</span>ParseFile
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>symbols<span class="w"> </span>--name<span class="o">=</span>Parse<span class="w"> </span>--prefix<span class="w"> </span>--type<span class="o">=</span>method
+<h4  id="operational-commands"><span id="operational_commands"></span>Operational Commands<a class="heading-anchor" href="#operational-commands" title="Link to this section">&para;</a></h4>
+<p>Current <code>gocpg</code> CLI focuses on CPG lifecycle and operational tasks.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Show available frontends and metrics</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>frontends
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>metrics<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
 
-<span class="c1"># Call graph traversal (BFS with configurable depth)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>callers<span class="w"> </span>--name<span class="o">=</span>ParseFile<span class="w"> </span>--depth<span class="o">=</span><span class="m">3</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>callees<span class="w"> </span>--name<span class="o">=</span>main<span class="w"> </span>--depth<span class="o">=</span><span class="m">2</span>
+<span class="c1"># Manage tracked branches and submodules</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>branches<span class="w"> </span>list<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>branches<span class="w"> </span>switch<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span>--branch<span class="w"> </span>feature/my-change
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>submodules<span class="w"> </span>list<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
 
-<span class="c1"># Type inheritance hierarchy</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>hierarchy<span class="w"> </span>--name<span class="o">=</span>BaseHandler<span class="w"> </span>--direction<span class="o">=</span>down
-
-<span class="c1"># File outline (methods, classes, members sorted by line)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>outline<span class="w"> </span>--file<span class="o">=</span>pkg/frontend/c/frontend.go
-
-<span class="c1"># All call sites of a method</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>usages<span class="w"> </span>--name<span class="o">=</span>process_data
-
-<span class="c1"># File-level dependencies (cross-file call edges)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>deps<span class="w"> </span>--file<span class="o">=</span>src/main.py<span class="w"> </span>--direction<span class="o">=</span>outgoing
-
-<span class="c1"># Debug FQN resolution chain</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>resolve<span class="w"> </span>--name<span class="o">=</span>ParseFile
+<span class="c1"># Watch the repository and maintain indexes/hooks</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>watch<span class="w"> </span>--input<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>status
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>index<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
 </code></pre></div>
 
 <div class="table-wrapper"><table>
@@ -992,44 +1021,39 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>resolve<span class
 </thead>
 <tbody>
 <tr>
-<td><code>symbols</code></td>
-<td>Find symbols by name</td>
-<td><code>--name</code>, <code>--prefix</code>, <code>--type</code>, <code>--visibility</code></td>
+<td><code>frontends</code></td>
+<td>List available language frontends</td>
+<td>none</td>
 </tr>
 <tr>
-<td><code>callers</code></td>
-<td>Who calls this method?</td>
-<td><code>--name</code>, <code>--depth</code></td>
+<td><code>metrics</code></td>
+<td>Validate/print GoCPG metrics</td>
+<td><code>--db</code>, <code>--json</code></td>
 </tr>
 <tr>
-<td><code>callees</code></td>
-<td>What does this method call?</td>
-<td><code>--name</code>, <code>--depth</code></td>
+<td><code>branches list|switch|prune</code></td>
+<td>Manage tracked branches</td>
+<td><code>--db</code>, <code>--branch</code>, <code>--input</code></td>
 </tr>
 <tr>
-<td><code>hierarchy</code></td>
-<td>Type inheritance tree</td>
-<td><code>--name</code>, <code>--direction</code> (up/down/both)</td>
+<td><code>hooks install|uninstall|status</code></td>
+<td>Manage repository hooks</td>
+<td><code>--repo</code></td>
 </tr>
 <tr>
-<td><code>outline</code></td>
-<td>All symbols in a file</td>
-<td><code>--file</code></td>
+<td><code>watch</code></td>
+<td>Watch repository changes and refresh CPG data</td>
+<td><code>--input</code>, <code>--db</code>, <code>--debounce-ms</code></td>
 </tr>
 <tr>
-<td><code>usages</code></td>
-<td>All call sites of a method</td>
-<td><code>--name</code></td>
+<td><code>index</code></td>
+<td>Recreate indexes</td>
+<td><code>--db</code></td>
 </tr>
 <tr>
-<td><code>deps</code></td>
-<td>File-level dependencies</td>
-<td><code>--file</code>, <code>--direction</code> (outgoing/incoming/both)</td>
-</tr>
-<tr>
-<td><code>resolve</code></td>
-<td>Debug FQN resolution</td>
-<td><code>--name</code>, <code>--sig</code>, <code>--file</code></td>
+<td><code>submodules list|prune</code></td>
+<td>Manage tracked submodules</td>
+<td><code>--db</code>, <code>--input</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1723,11 +1747,11 @@ patch-review<span class="w"> </span>diff<span class="w"> </span>changes.diff<spa
 </tr>
 <tr>
 <td><code>--scenario N</code></td>
-<td>Run specific scenario (1-21)</td>
+<td>Run a specific benchmark scenario</td>
 </tr>
 <tr>
 <td><code>--all-scenarios</code></td>
-<td>Run all 21 scenarios</td>
+<td>Run the full benchmark scenario set</td>
 </tr>
 <tr>
 <td><code>--output DIR</code></td>
@@ -2093,41 +2117,6 @@ codegraph<span class="w"> </span>edit<span class="w"> </span>apply<span class="w
 codegraph<span class="w"> </span>edit<span class="w"> </span>apply<span class="w"> </span>--file<span class="w"> </span>src/utils.py<span class="w"> </span>--target<span class="w"> </span>validate_input<span class="w"> </span>--new-code<span class="w"> </span>@fix.py<span class="w"> </span>--preview
 </code></pre></div>
 
-<h3 id="rename">Rename<a class="heading-anchor" href="#rename" title="Link to this section">&para;</a></h3>
-<p>Rename a symbol across the codebase.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>edit<span class="w"> </span>rename<span class="w"> </span>--old<span class="w"> </span>&lt;name&gt;<span class="w"> </span>--new<span class="w"> </span>&lt;name&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--old</code></td>
-<td>Current symbol name</td>
-</tr>
-<tr>
-<td><code>--new</code></td>
-<td>New symbol name</td>
-</tr>
-<tr>
-<td><code>--scope</code></td>
-<td>Limit to specific path</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Examples:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Rename function</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>rename<span class="w"> </span>--old<span class="w"> </span>processData<span class="w"> </span>--new<span class="w"> </span>process_data
-
-<span class="c1"># Rename within scope</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>rename<span class="w"> </span>--old<span class="w"> </span>handler<span class="w"> </span>--new<span class="w"> </span>request_handler<span class="w"> </span>--scope<span class="w"> </span>src/api/
-</code></pre></div>
-
 <h3  id="undo-history"><span id="undo-amp-history"></span><span id="undo_amp_history"></span><span id="undo_history"></span>Undo &amp; History<a class="heading-anchor" href="#undo-history" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Undo last edit</span>
 codegraph<span class="w"> </span>edit<span class="w"> </span>undo
@@ -2189,14 +2178,11 @@ codegraph<span class="w"> </span>optimize<span class="w"> </span>analyze<span cl
 </code></pre></div>
 
 <h3  id="view-suggestions"><span id="view_suggestions"></span>View Suggestions<a class="heading-anchor" href="#view-suggestions" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># List all suggestions</span>
-codegraph<span class="w"> </span>optimize<span class="w"> </span>list
-
-<span class="c1"># List pending suggestions with status filter</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># List pending suggestions with status filter</span>
 codegraph<span class="w"> </span>optimize<span class="w"> </span>list-suggestions<span class="w"> </span>--status<span class="w"> </span>pending
 
-<span class="c1"># Show specific suggestion details</span>
-codegraph<span class="w"> </span>optimize<span class="w"> </span>show<span class="w"> </span>--id<span class="w"> </span>&lt;suggestion_id&gt;
+<span class="c1"># List rejected suggestions</span>
+codegraph<span class="w"> </span>optimize<span class="w"> </span>list-suggestions<span class="w"> </span>--status<span class="w"> </span>rejected
 </code></pre></div>
 
 <div class="table-wrapper"><table>
@@ -2260,25 +2246,18 @@ codegraph<span class="w"> </span>optimize<span class="w"> </span>patterns<span c
 <div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>standards<span class="w"> </span>&lt;subcommand&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
 </code></pre></div>
 
-<h3  id="import-validate"><span id="import-amp-validate"></span><span id="import_amp_validate"></span><span id="import_validate"></span>Import &amp; Validate<a class="heading-anchor" href="#import-validate" title="Link to this section">&para;</a></h3>
+<h3  id="import-documents"><span id="import_documents"></span>Import Documents<a class="heading-anchor" href="#import-documents" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import standards document</span>
 codegraph<span class="w"> </span>standards<span class="w"> </span>import<span class="w"> </span>&lt;document.yaml&gt;
-
-<span class="c1"># Validate document syntax</span>
-codegraph<span class="w"> </span>standards<span class="w"> </span>validate<span class="w"> </span>&lt;document.yaml&gt;
 </code></pre></div>
 
 <p><strong>Examples:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import company standards</span>
 codegraph<span class="w"> </span>standards<span class="w"> </span>import<span class="w"> </span>company_standards.yaml
-
-<span class="c1"># Validate before import</span>
-codegraph<span class="w"> </span>standards<span class="w"> </span>validate<span class="w"> </span>company_standards.yaml
 </code></pre></div>
 
 <h3  id="list-rules"><span id="list_rules"></span>List Rules<a class="heading-anchor" href="#list-rules" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># List all imported rules</span>
-codegraph<span class="w"> </span>standards<span class="w"> </span>list
 codegraph<span class="w"> </span>standards<span class="w"> </span>list-rules
 
 <span class="c1"># List by category</span>
@@ -2348,12 +2327,9 @@ codegraph<span class="w"> </span>standards<span class="w"> </span>check<span cla
 codegraph<span class="w"> </span>standards<span class="w"> </span>check<span class="w"> </span>src/<span class="w"> </span>--category<span class="w"> </span>security
 </code></pre></div>
 
-<h3  id="report-clear"><span id="report-amp-clear"></span><span id="report_amp_clear"></span><span id="report_clear"></span>Report &amp; Clear<a class="heading-anchor" href="#report-clear" title="Link to this section">&para;</a></h3>
+<h3 id="report">Report<a class="heading-anchor" href="#report" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Generate violation report</span>
 codegraph<span class="w"> </span>standards<span class="w"> </span>report<span class="w"> </span>src/<span class="w"> </span>--output<span class="w"> </span>violations.json
-
-<span class="c1"># Clear all imported rules</span>
-codegraph<span class="w"> </span>standards<span class="w"> </span>clear
 </code></pre></div>
 
 <h3  id="delete-document"><span id="delete_document"></span>Delete Document<a class="heading-anchor" href="#delete-document" title="Link to this section">&para;</a></h3>
@@ -2481,65 +2457,6 @@ codegraph<span class="w"> </span>deps<span class="w"> </span>check-vulns
 codegraph<span class="w"> </span>deps<span class="w"> </span>check-vulns<span class="w"> </span>--severity<span class="w"> </span>critical<span class="w"> </span>--fail-on<span class="w"> </span>critical
 </code></pre></div>
 
-<h3  id="vulnerability-audit"><span id="vulnerability_audit"></span>Vulnerability Audit<a class="heading-anchor" href="#vulnerability-audit" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--severity</code></td>
-<td>Filter: <code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code></td>
-</tr>
-<tr>
-<td><code>--fail-on</code></td>
-<td>Exit with error on severity level</td>
-</tr>
-<tr>
-<td><code>--report</code></td>
-<td>Output detailed report file</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Examples:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Full audit</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit
-
-<span class="c1"># Critical and high only</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span>--severity<span class="w"> </span>critical,high
-
-<span class="c1"># CI/CD mode (fail on high)</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span>--fail-on<span class="w"> </span>high
-</code></pre></div>
-
-<h3  id="outdated-packages"><span id="outdated_packages"></span>Outdated Packages<a class="heading-anchor" href="#outdated-packages" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>deps<span class="w"> </span>outdated<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--direct-only</code></td>
-<td>Show only direct dependencies</td>
-</tr>
-<tr>
-<td><code>--show-updates</code></td>
-<td>Show available update versions</td>
-</tr>
-</tbody>
-</table></div>
 <h3  id="license-compliance"><span id="license_compliance"></span>License Compliance<a class="heading-anchor" href="#license-compliance" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>deps<span class="w"> </span>licenses<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
 </code></pre></div>
@@ -2573,48 +2490,8 @@ codegraph<span class="w"> </span>deps<span class="w"> </span>licenses<span class
 codegraph<span class="w"> </span>deps<span class="w"> </span>licenses<span class="w"> </span>--fail-on<span class="w"> </span>GPL-3.0
 </code></pre></div>
 
-<h3  id="sbom-generation"><span id="sbom_generation"></span>SBOM Generation<a class="heading-anchor" href="#sbom-generation" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--format</code></td>
-<td>Format: <code>cyclonedx</code>, <code>spdx</code></td>
-</tr>
-<tr>
-<td><code>--output</code></td>
-<td>Output file path</td>
-</tr>
-<tr>
-<td><code>--include-vulnerabilities</code></td>
-<td>Include vulnerability data</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Examples:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Generate CycloneDX SBOM</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span>--format<span class="w"> </span>cyclonedx<span class="w"> </span>--output<span class="w"> </span>sbom.json
-
-<span class="c1"># Generate SPDX with vulnerabilities</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span>--format<span class="w"> </span>spdx<span class="w"> </span>--output<span class="w"> </span>sbom.spdx<span class="w"> </span>--include-vulnerabilities
-</code></pre></div>
-
 <h3  id="dependency-graph"><span id="dependency_graph"></span>Dependency Graph<a class="heading-anchor" href="#dependency-graph" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Show dependency tree</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>tree
-
-<span class="c1"># Show why a package is installed</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>why<span class="w"> </span>&lt;package&gt;
-
-<span class="c1"># Export graph</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Export graph</span>
 codegraph<span class="w"> </span>deps<span class="w"> </span>graph<span class="w"> </span>--format<span class="w"> </span>dot<span class="w"> </span>--output<span class="w"> </span>deps.dot
 </code></pre></div>
 
@@ -3476,6 +3353,12 @@ codegraph<span class="w"> </span>vault<span class="w"> </span>rotate<span class=
 codegraph<span class="w"> </span>auth<span class="w"> </span>permissions<span class="w"> </span>--role<span class="w"> </span>ADMIN<span class="w"> </span>--format<span class="w"> </span>json
 codegraph<span class="w"> </span>auth<span class="w"> </span>oauth-status<span class="w">             </span><span class="c1"># Check OAuth provider status</span>
 codegraph<span class="w"> </span>auth<span class="w"> </span>ldap-status<span class="w">              </span><span class="c1"># Check LDAP integration status</span>
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>create<span class="w"> </span>--owner<span class="w"> </span>admin<span class="w"> </span>--name<span class="w"> </span>ci-bot<span class="w"> </span>--template<span class="w"> </span>ci<span class="w"> </span>--interface<span class="w"> </span>api
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>list<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>inspect<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>rotate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>revoke<span class="w"> </span>--id<span class="w"> </span>&lt;credential-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>deactivate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
 </code></pre></div>
 
 <div class="table-wrapper"><table>
@@ -3501,6 +3384,30 @@ codegraph<span class="w"> </span>auth<span class="w"> </span>ldap-status<span cl
 <tr>
 <td><code>ldap-status</code></td>
 <td>Show LDAP integration status</td>
+</tr>
+<tr>
+<td><code>service-account create</code></td>
+<td>Create a scoped service account and issue the first credential</td>
+</tr>
+<tr>
+<td><code>service-account list</code></td>
+<td>List service accounts</td>
+</tr>
+<tr>
+<td><code>service-account inspect</code></td>
+<td>Show scopes, interfaces, status, and credential metadata</td>
+</tr>
+<tr>
+<td><code>service-account rotate</code></td>
+<td>Issue a new credential without revoking the old one</td>
+</tr>
+<tr>
+<td><code>service-account revoke</code></td>
+<td>Revoke one credential</td>
+</tr>
+<tr>
+<td><code>service-account deactivate</code></td>
+<td>Disable the service account</td>
 </tr>
 </tbody>
 </table></div>
@@ -4453,6 +4360,172 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="risk-management-cli-gost-r-575803"><span id="risk_management_cli_gost_r_575803"></span>Risk Management CLI (GOST R 57580.3)<a class="heading-anchor" href="#risk-management-cli-gost-r-575803" title="Link to this section">&para;</a></h2>
+<p>Risk indicators, assessment, threat model, event classification, and self-assessment per GOST R 57580.3-2022.</p>
+<h3  id="risk-kir-key-risk-indicators"><span id="risk_kir_key_risk_indicators"></span><code>risk kir</code> — Key Risk Indicators<a class="heading-anchor" href="#risk-kir-key-risk-indicators" title="Link to this section">&para;</a></h3>
+<p>Calculate 8 KIR values with threshold status (NORMAL/SIGNAL/CONTROL).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>kir<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--format</code></td>
+<td><code>json</code></td>
+<td>Output format: <code>json</code> or <code>markdown</code></td>
+</tr>
+<tr>
+<td><code>--db</code></td>
+<td>—</td>
+<td>Database path</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="risk-kpur-control-risk-level-indicators"><span id="risk_kpur_control_risk_level_indicators"></span><code>risk kpur</code> — Control Risk Level Indicators<a class="heading-anchor" href="#risk-kpur-control-risk-level-indicators" title="Link to this section">&para;</a></h3>
+<p>Calculate KPUR by 3 groups (losses, reliability, unauthorized operations).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>kpur<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-dashboard-full-risk-dashboard"><span id="risk_dashboard_full_risk_dashboard"></span><code>risk dashboard</code> — Full Risk Dashboard<a class="heading-anchor" href="#risk-dashboard-full-risk-dashboard" title="Link to this section">&para;</a></h3>
+<p>KIR + KPUR + alerts with overall risk status.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>dashboard<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-assess-risk-assessment-svr-stp"><span id="risk_assess_risk_assessment_svr_stp"></span><code>risk assess</code> — Risk Assessment (SVR × STP)<a class="heading-anchor" href="#risk-assess-risk-assessment-svr-stp" title="Link to this section">&para;</a></h3>
+<p>Calculate threat realization probability (SVR) and consequence severity (STP) for each finding.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>assess<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-matrix-risk-matrix-55"><span id="risk_matrix_risk_matrix_55"></span><code>risk matrix</code> — Risk Matrix 5×5<a class="heading-anchor" href="#risk-matrix-risk-matrix-55" title="Link to this section">&para;</a></h3>
+<p>Show SVR × STP matrix with finding distribution.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>matrix
+</code></pre></div>
+
+<h3  id="risk-detail-finding-risk-detail"><span id="risk_detail_finding_risk_detail"></span><code>risk detail</code> — Finding Risk Detail<a class="heading-anchor" href="#risk-detail-finding-risk-detail" title="Link to this section">&para;</a></h3>
+<p>Show detailed risk assessment for a specific finding.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>detail<span class="w"> </span>--finding-id<span class="w"> </span>&lt;ID&gt;
+</code></pre></div>
+
+<h3  id="risk-threat-model-57580-gost-r-575803-threat-model"><span id="risk_threat_model_57580_gost_r_575803_threat_model"></span><code>risk threat-model-57580</code> — GOST R 57580.3 Threat Model<a class="heading-anchor" href="#risk-threat-model-57580-gost-r-575803-threat-model" title="Link to this section">&para;</a></h3>
+<p>Generate threat model with intruder profiles and ATT&amp;CK techniques.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>threat-model-57580<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-events-risk-event-classification"><span id="risk_events_risk_event_classification"></span><code>risk events</code> — Risk Event Classification<a class="heading-anchor" href="#risk-events-risk-event-classification" title="Link to this section">&para;</a></h3>
+<p>Classify and view risk events by 4 dimensions (appendices A-D).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>events<span class="w"> </span><span class="o">[</span>classify<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-checklist-self-assessment-checklist"><span id="risk_checklist_self_assessment_checklist"></span><code>risk checklist</code> — Self-Assessment Checklist<a class="heading-anchor" href="#risk-checklist-self-assessment-checklist" title="Link to this section">&para;</a></h3>
+<p>Generate self-assessment checklist (~72 measures) with auto-fill.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>checklist<span class="w"> </span><span class="o">[</span>export<span class="o">]</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span><span class="m">1</span><span class="p">|</span><span class="m">2</span><span class="p">|</span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-anomalies-kir-anomaly-detection"><span id="risk_anomalies_kir_anomaly_detection"></span><code>risk anomalies</code> — KIR Anomaly Detection<a class="heading-anchor" href="#risk-anomalies-kir-anomaly-detection" title="Link to this section">&para;</a></h3>
+<p>Detect KIR value anomalies using z-score on sliding window.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>anomalies<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--project</code></td>
+<td>active project</td>
+<td>Project name</td>
+</tr>
+<tr>
+<td><code>--threshold</code></td>
+<td><code>2.0</code></td>
+<td>Z-score threshold for alerts</td>
+</tr>
+<tr>
+<td><code>--window</code></td>
+<td><code>10</code></td>
+<td>Sliding window size</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="risk-report-fincert-fincert-regulatory-report"><span id="risk_report_fincert_fincert_regulatory_report"></span><code>risk report-fincert</code> — FinCERT Regulatory Report<a class="heading-anchor" href="#risk-report-fincert-fincert-regulatory-report" title="Link to this section">&para;</a></h3>
+<p>Generate FinCERT report (form 0403203 per Regulation 716-P).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>report-fincert<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--project</code></td>
+<td>active project</td>
+<td>Project name</td>
+</tr>
+<tr>
+<td><code>--period</code></td>
+<td>—</td>
+<td>Reporting period (e.g. <code>2026-Q1</code>)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>markdown</code></td>
+<td>Output format: <code>markdown</code>, <code>json</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>ru</code></td>
+<td>Report language: <code>ru</code>, <code>en</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="risk-org-docs-organizational-document-templates"><span id="risk_org_docs_organizational_document_templates"></span><code>risk org-docs</code> — Organizational Document Templates<a class="heading-anchor" href="#risk-org-docs-organizational-document-templates" title="Link to this section">&para;</a></h3>
+<p>Generate or check status of ORD templates for GOST R 57580.3 organizational measures (26 measures across 9 documents).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>org-docs<span class="w"> </span>generate<span class="w"> </span>--all<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>org-docs<span class="w"> </span>generate<span class="w"> </span>--measures<span class="w"> </span>OPR.1,OPR.14,RM.9<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>org-docs<span class="w"> </span>status
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>generate --all</code></td>
+<td>Generate all 9 templates covering 26 organizational measures</td>
+</tr>
+<tr>
+<td><code>generate --measures X,Y</code></td>
+<td>Generate specific templates by measure ID</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>Show which ORD documents exist and their coverage</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Generated documents</strong> are placed in <code>docs/compliance/org/</code> and include: ORD metadata (ID, version, standard, protection level), approval sheet, change log, and pre-filled content sections with <code>TODO</code> markers for manual completion.</p>
+<hr />
 <h2  id="sbom-sca-cli"><span id="sbom_sca_cli"></span>SBOM / SCA CLI<a class="heading-anchor" href="#sbom-sca-cli" title="Link to this section">&para;</a></h2>
 <p>Software composition analysis (SCA) and Software Bill of Materials (SBOM) — dependency scanning, vulnerability checking, and GOST 5.16 reporting.</p>
 <p><strong>Module:</strong> <code>src.cli.sbom_commands</code></p>
@@ -4789,6 +4862,175 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="issues-cli"><span id="issues_cli"></span>Issues CLI<a class="heading-anchor" href="#issues-cli" title="Link to this section">&para;</a></h2>
+<p>Issue tracker integration for bidirectional sync with Jira, Yandex Tracker, and YouTrack (GOST 5.5).</p>
+<p><strong>Module:</strong> <code>src.cli.issues_commands</code></p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>&lt;subcommand&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="issues-create-create-issue-from-finding"><span id="issues_create_create_issue_from_finding"></span><code>issues create</code> — Create Issue from Finding<a class="heading-anchor" href="#issues-create-create-issue-from-finding" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>create<span class="w"> </span>--finding-id<span class="w"> </span>F-1<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;SQL Injection in query.py&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--severity<span class="w"> </span>high<span class="w"> </span>--cwe<span class="w"> </span>CWE-89<span class="w"> </span><span class="o">[</span>--tracker<span class="w"> </span>jira<span class="p">|</span>yandex_tracker<span class="p">|</span>youtrack<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--finding-id</code></td>
+<td>(required)</td>
+<td>CodeGraph finding ID</td>
+</tr>
+<tr>
+<td><code>--title</code></td>
+<td>(required)</td>
+<td>Issue title</td>
+</tr>
+<tr>
+<td><code>--description</code></td>
+<td><code>""</code></td>
+<td>Issue description</td>
+</tr>
+<tr>
+<td><code>--severity</code></td>
+<td><code>medium</code></td>
+<td>Severity level</td>
+</tr>
+<tr>
+<td><code>--cwe</code></td>
+<td><code>""</code></td>
+<td>CWE identifier</td>
+</tr>
+<tr>
+<td><code>--tracker</code></td>
+<td><code>jira</code></td>
+<td>Tracker type</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>text</code></td>
+<td>Output format</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="issues-bulk-create-bulk-create-issues"><span id="issues_bulk_create_bulk_create_issues"></span><code>issues bulk-create</code> — Bulk Create Issues<a class="heading-anchor" href="#issues-bulk-create-bulk-create-issues" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>bulk-create<span class="w"> </span>--input<span class="w"> </span>findings.json<span class="w"> </span><span class="o">[</span>--tracker<span class="w"> </span>jira<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="issues-update-update-issue-status"><span id="issues_update_update_issue_status"></span><code>issues update</code> — Update Issue Status<a class="heading-anchor" href="#issues-update-update-issue-status" title="Link to this section">&para;</a></h3>
+<p>Update issue status via tracker transitions API.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>update<span class="w"> </span>--issue-id<span class="w"> </span>PROJ-123<span class="w"> </span>--status<span class="w"> </span>Done<span class="w"> </span><span class="o">[</span>--comment<span class="w"> </span><span class="s2">&quot;Fixed in abc123&quot;</span><span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--issue-id</code></td>
+<td>(required)</td>
+<td>Issue ID in tracker</td>
+</tr>
+<tr>
+<td><code>--status</code></td>
+<td>(required)</td>
+<td>Target status (e.g., <code>Done</code>, <code>Fixed</code>)</td>
+</tr>
+<tr>
+<td><code>--comment</code></td>
+<td><code>""</code></td>
+<td>Optional comment</td>
+</tr>
+<tr>
+<td><code>--tracker</code></td>
+<td><code>jira</code></td>
+<td>Tracker type</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="issues-sync-bidirectional-sync"><span id="issues_sync_bidirectional_sync"></span><code>issues sync</code> — Bidirectional Sync<a class="heading-anchor" href="#issues-sync-bidirectional-sync" title="Link to this section">&para;</a></h3>
+<p>Sync findings with tracker: create new, check statuses, close fixed.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>sync<span class="w"> </span>--findings-file<span class="w"> </span>findings.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="o">[</span>--tracked-file<span class="w"> </span>tracked.json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--close-on-fix<span class="o">]</span><span class="w"> </span><span class="o">[</span>--min-severity<span class="w"> </span>high<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--findings-file</code></td>
+<td><code>""</code></td>
+<td>Path to current findings JSON</td>
+</tr>
+<tr>
+<td><code>--tracked-file</code></td>
+<td><code>""</code></td>
+<td>Path to tracked issues mapping JSON</td>
+</tr>
+<tr>
+<td><code>--close-on-fix</code></td>
+<td><code>true</code></td>
+<td>Close issues when findings disappear</td>
+</tr>
+<tr>
+<td><code>--min-severity</code></td>
+<td><code>high</code></td>
+<td>Minimum severity for auto-create</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Examples:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create issue from finding</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>create<span class="w"> </span>--finding-id<span class="w"> </span>F-42<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;Buffer overflow in parser.c&quot;</span><span class="w"> </span>--severity<span class="w"> </span>critical
+
+<span class="c1"># Sync all findings with Jira</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>sync<span class="w"> </span>--findings-file<span class="w"> </span>data/findings.json<span class="w"> </span>--tracked-file<span class="w"> </span>data/tracked.json
+
+<span class="c1"># Update issue status</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>update<span class="w"> </span>--issue-id<span class="w"> </span>PROJ-123<span class="w"> </span>--status<span class="w"> </span>Done<span class="w"> </span>--comment<span class="w"> </span><span class="s2">&quot;Fixed in commit abc1234&quot;</span>
+</code></pre></div>
+
+<hr />
+<h2  id="dynamic-analysis-cli"><span id="dynamic_analysis_cli"></span>Dynamic Analysis CLI<a class="heading-anchor" href="#dynamic-analysis-cli" title="Link to this section">&para;</a></h2>
+<p>Dynamic analysis result management (GOST 5.11): import DAST/fuzzer results, correlate with static findings, generate reports.</p>
+<p><strong>Module:</strong> <code>src.cli.dynamic_commands</code></p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>&lt;subcommand&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-import-import-results"><span id="dynamic_import_import_results"></span><code>dynamic import</code> — Import Results<a class="heading-anchor" href="#dynamic-import-import-results" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>results.sarif<span class="w"> </span><span class="o">[</span>--tool<span class="w"> </span>dast<span class="p">|</span>fuzzer<span class="p">|</span>iast<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-correlate-correlate-static-and-dynamic-findings"><span id="dynamic_correlate_correlate_static_and_dynamic_findings"></span><code>dynamic correlate</code> — Correlate Static and Dynamic Findings<a class="heading-anchor" href="#dynamic-correlate-correlate-static-and-dynamic-findings" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>correlate<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-fuzz-targets-generate-fuzz-targets"><span id="dynamic_fuzz_targets_generate_fuzz_targets"></span><code>dynamic fuzz-targets</code> — Generate Fuzz Targets<a class="heading-anchor" href="#dynamic-fuzz-targets-generate-fuzz-targets" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>fuzz-targets<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-report-gost-5113-report"><span id="dynamic_report_gost_5113_report"></span><code>dynamic report</code> — GOST 5.11.3 Report<a class="heading-anchor" href="#dynamic-report-gost-5113-report" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>report<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<hr />
 <h2  id="threat-model-cli"><span id="threat_model_cli"></span>Threat Model CLI<a class="heading-anchor" href="#threat-model-cli" title="Link to this section">&para;</a></h2>
 <p>STRIDE threat model generation from CPG data — full model generation, incremental updates, Data Flow Diagram export, and threat listing.</p>
 <p><strong>Module:</strong> <code>src.cli.threat_model_commands</code></p>
@@ -5010,9 +5252,505 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="dashboard-cli"><span id="dashboard_cli"></span>Dashboard CLI<a class="heading-anchor" href="#dashboard-cli" title="Link to this section">&para;</a></h2>
+<p>CISO/CTO Portfolio Dashboard commands for health scores, trend analysis, red-zone monitoring, project comparison, and report export.</p>
+<hr />
+<h3  id="dashboard-overview-portfolio-overview"><span id="dashboard_overview_portfolio_overview"></span><code>dashboard overview</code> — Portfolio Overview<a class="heading-anchor" href="#dashboard-overview-portfolio-overview" title="Link to this section">&para;</a></h3>
+<p>Display an aggregated health summary for all projects in a group.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--group</code></td>
+<td>—</td>
+<td>Group name or UUID to scope portfolio</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Output format: <code>table</code>, <code>json</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>en</code></td>
+<td>Display language: <code>en</code>, <code>ru</code></td>
+</tr>
+<tr>
+<td><code>--min-risk</code></td>
+<td>—</td>
+<td>Show only projects at or above risk level: <code>low</code>, <code>medium</code>, <code>high</code>, <code>critical</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Examples:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Table view of all projects</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview
+
+<span class="c1"># JSON output scoped to a group</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview<span class="w"> </span>--group<span class="w"> </span>my-team<span class="w"> </span>--format<span class="w"> </span>json
+
+<span class="c1"># Show only high-risk and critical projects</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview<span class="w"> </span>--min-risk<span class="w"> </span>high
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-health-project-health-report"><span id="dashboard_health_project_health_report"></span><code>dashboard health</code> — Project Health Report<a class="heading-anchor" href="#dashboard-health-project-health-report" title="Link to this section">&para;</a></h3>
+<p>Show full health score breakdown for a single project.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>PROJECT<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--include-sections</code></td>
+<td>off</td>
+<td>Show per-section breakdown (audit, compliance, release, SCA, quality)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Output format: <code>table</code>, <code>json</code>, <code>markdown</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>en</code></td>
+<td>Display language: <code>en</code>, <code>ru</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Examples:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Table view of health score</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>my-project
+
+<span class="c1"># Full breakdown in Markdown</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>my-project<span class="w"> </span>--include-sections<span class="w"> </span>--format<span class="w"> </span>markdown
+
+<span class="c1"># JSON for CI integration</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>my-project<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-trends-health-trends"><span id="dashboard_trends_health_trends"></span><code>dashboard trends</code> — Health Trends<a class="heading-anchor" href="#dashboard-trends-health-trends" title="Link to this section">&para;</a></h3>
+<p>Display time-series trend data for a project.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>PROJECT<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--period</code></td>
+<td><code>30d</code></td>
+<td>Time window: <code>7d</code>, <code>30d</code>, <code>90d</code>, <code>180d</code>, <code>1y</code></td>
+</tr>
+<tr>
+<td><code>--metrics</code></td>
+<td><code>health</code></td>
+<td>Comma-separated metrics: <code>health</code>, <code>audit</code>, <code>compliance</code>, <code>sca</code>, <code>quality</code></td>
+</tr>
+<tr>
+<td><code>--granularity</code></td>
+<td><code>day</code></td>
+<td>Data point interval: <code>day</code>, <code>week</code>, <code>month</code></td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Output format: <code>table</code>, <code>json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Examples:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 30-day health trend</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>my-project
+
+<span class="c1"># 90-day multi-metric trend</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>my-project<span class="w"> </span>--period<span class="w"> </span>90d<span class="w"> </span>--metrics<span class="w"> </span>health,audit,compliance
+
+<span class="c1"># Weekly granularity, JSON output</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>my-project<span class="w"> </span>--period<span class="w"> </span>1y<span class="w"> </span>--granularity<span class="w"> </span>week<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-red-zone-red-zone-monitor"><span id="dashboard_red_zone_red_zone_monitor"></span><code>dashboard red-zone</code> — Red-Zone Monitor<a class="heading-anchor" href="#dashboard-red-zone-red-zone-monitor" title="Link to this section">&para;</a></h3>
+<p>List projects currently in the red zone.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--severity</code></td>
+<td><code>critical,high</code></td>
+<td>Severity filter: <code>critical</code>, <code>high</code>, <code>medium</code> (comma-separated)</td>
+</tr>
+<tr>
+<td><code>--category</code></td>
+<td>—</td>
+<td>Finding category: <code>security</code>, <code>compliance</code>, <code>quality</code></td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td><code>50</code></td>
+<td>Maximum number of results</td>
+</tr>
+<tr>
+<td><code>--group</code></td>
+<td>—</td>
+<td>Group name or UUID</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Output format: <code>table</code>, <code>json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Examples:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># All red-zone projects (critical + high)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone
+
+<span class="c1"># Only critical security findings, top 10</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone<span class="w"> </span>--severity<span class="w"> </span>critical<span class="w"> </span>--category<span class="w"> </span>security<span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span>
+
+<span class="c1"># JSON output for alerting</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-compare-project-comparison"><span id="dashboard_compare_project_comparison"></span><code>dashboard compare</code> — Project Comparison<a class="heading-anchor" href="#dashboard-compare-project-comparison" title="Link to this section">&para;</a></h3>
+<p>Compare multiple projects across quality dimensions.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>P1<span class="w"> </span>P2<span class="w"> </span><span class="o">[</span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dimensions</code></td>
+<td><code>1,2,3,4,5</code></td>
+<td>Dimension IDs (1=audit, 2=compliance, 3=release, 4=SCA, 5=quality, 6=trend, 7=risk)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Output format: <code>table</code>, <code>json</code>, <code>radar</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>en</code></td>
+<td>Display language: <code>en</code>, <code>ru</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Examples:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Compare two projects, table view</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>proj-a<span class="w"> </span>proj-b
+
+<span class="c1"># Compare three projects with audit + compliance + risk dimensions</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>proj-a<span class="w"> </span>proj-b<span class="w"> </span>proj-c<span class="w"> </span>--dimensions<span class="w"> </span><span class="m">1</span>,2,7
+
+<span class="c1"># Radar chart JSON for visualization</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>proj-a<span class="w"> </span>proj-b<span class="w"> </span>--format<span class="w"> </span>radar
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-export-report-export"><span id="dashboard_export_report_export"></span><code>dashboard export</code> — Report Export<a class="heading-anchor" href="#dashboard-export-report-export" title="Link to this section">&para;</a></h3>
+<p>Export a dashboard report to file.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--scope</code></td>
+<td><code>portfolio</code></td>
+<td>Export scope: <code>portfolio</code>, <code>project</code></td>
+</tr>
+<tr>
+<td><code>--project</code></td>
+<td>—</td>
+<td>Project name (required when <code>--scope project</code>)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>json</code></td>
+<td>Output format: <code>json</code>, <code>pdf</code>, <code>markdown</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>en</code></td>
+<td>Report language: <code>en</code>, <code>ru</code></td>
+</tr>
+<tr>
+<td><code>--sections</code></td>
+<td>all</td>
+<td>Comma-separated sections: <code>health,compliance,sca,trends,red_zone,cross_repo</code></td>
+</tr>
+<tr>
+<td><code>--output</code></td>
+<td>stdout</td>
+<td>Output file path</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Examples:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Portfolio JSON export</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--output<span class="w"> </span>portfolio.json
+
+<span class="c1"># Single-project Markdown report</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--scope<span class="w"> </span>project<span class="w"> </span>--project<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--format<span class="w"> </span>markdown<span class="w"> </span>--output<span class="w"> </span>report.md
+
+<span class="c1"># PDF export in Russian</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--scope<span class="w"> </span>project<span class="w"> </span>--project<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--format<span class="w"> </span>pdf<span class="w"> </span>--language<span class="w"> </span>ru<span class="w"> </span>--output<span class="w"> </span>отчёт.pdf
+</code></pre></div>
+
+<hr />
+<h2  id="additional-command-coverage"><span id="additional_command_coverage"></span>Additional Command Coverage<a class="heading-anchor" href="#additional-command-coverage" title="Link to this section">&para;</a></h2>
+<p>This appendix tracks newer operational commands that are part of the supported CLI surface and are validated by <code>docs-sync</code>.</p>
+<h3  id="audit-progress"><span id="audit_progress"></span><code>audit progress</code><a class="heading-anchor" href="#audit-progress" title="Link to this section">&para;</a></h3>
+<p>Aggregate audit progress over a selected period.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>progress<span class="w"> </span>--from<span class="w"> </span><span class="m">2026</span>-01-01<span class="w"> </span>--to<span class="w"> </span><span class="m">2026</span>-01-31<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="audit-markup-status"><span id="audit_markup_status"></span><code>audit markup-status</code><a class="heading-anchor" href="#audit-markup-status" title="Link to this section">&para;</a></h3>
+<p>Show unreviewed findings and overdue markup deadlines.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>markup-status<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="audit-diff"><span id="audit_diff"></span><code>audit-diff</code><a class="heading-anchor" href="#audit-diff" title="Link to this section">&para;</a></h3>
+<p>Compare two audit results and highlight deltas.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit-diff<span class="w"> </span>--old<span class="w"> </span>old_audit.json<span class="w"> </span>--new<span class="w"> </span>new_audit.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="auth-service-account"><span id="auth_service_account"></span><code>auth service-account</code><a class="heading-anchor" href="#auth-service-account" title="Link to this section">&para;</a></h3>
+<p>Manage machine identities and credentials for API/MCP access.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>&lt;create<span class="p">|</span>list<span class="p">|</span>inspect<span class="p">|</span>rotate<span class="p">|</span>revoke<span class="p">|</span>deactivate&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="compliance-report-57580"><span id="compliance_report_57580"></span><code>compliance report-57580</code><a class="heading-anchor" href="#compliance-report-57580" title="Link to this section">&para;</a></h3>
+<p>Generate a GOST R 57580.3 compliance report.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>compliance<span class="w"> </span>report-57580<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="compliance-report-57580-history"><span id="compliance_report_57580_history"></span><code>compliance report-57580-history</code><a class="heading-anchor" href="#compliance-report-57580-history" title="Link to this section">&para;</a></h3>
+<p>Show history of saved GOST R 57580.3 reports.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>compliance<span class="w"> </span>report-57580-history<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span><span class="m">10</span><span class="o">]</span>
+</code></pre></div>
+
+<h3  id="compliance-report-57580-delta"><span id="compliance_report_57580_delta"></span><code>compliance report-57580-delta</code><a class="heading-anchor" href="#compliance-report-57580-delta" title="Link to this section">&para;</a></h3>
+<p>Compare two saved GOST R 57580.3 reports.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>compliance<span class="w"> </span>report-57580-delta<span class="w"> </span>--old<span class="w"> </span>old-report-id<span class="w"> </span>--new<span class="w"> </span>new-report-id
+</code></pre></div>
+
+<h3  id="dashboard-compare-periods"><span id="dashboard_compare_periods"></span><code>dashboard compare-periods</code><a class="heading-anchor" href="#dashboard-compare-periods" title="Link to this section">&para;</a></h3>
+<p>Compare adjacent periods for one project.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare-periods<span class="w"> </span>PROJECT<span class="w"> </span><span class="o">[</span>--baseline-period<span class="w"> </span>30d<span class="o">]</span><span class="w"> </span><span class="o">[</span>--comparison-period<span class="w"> </span>7d<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-metrics"><span id="dashboard_metrics"></span><code>dashboard metrics</code><a class="heading-anchor" href="#dashboard-metrics" title="Link to this section">&para;</a></h3>
+<p>Emit Grafana-friendly portfolio metrics.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>metrics<span class="w"> </span><span class="o">[</span>--group<span class="w"> </span>GROUP<span class="o">]</span><span class="w"> </span><span class="o">[</span>--organization<span class="w"> </span>ORG<span class="o">]</span><span class="w"> </span><span class="o">[</span>--team<span class="w"> </span>TEAM<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-release-compare"><span id="dashboard_release_compare"></span><code>dashboard release-compare</code><a class="heading-anchor" href="#dashboard-release-compare" title="Link to this section">&para;</a></h3>
+<p>Compare two release-gate runs for one project.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>release-compare<span class="w"> </span>PROJECT<span class="w"> </span><span class="o">[</span>--from-run<span class="w"> </span>RUN_ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--to-run<span class="w"> </span>RUN_ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-drilldown"><span id="dashboard_drilldown"></span><code>dashboard drilldown</code><a class="heading-anchor" href="#dashboard-drilldown" title="Link to this section">&para;</a></h3>
+<p>Drill down from aggregates to findings and source locations.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>drilldown<span class="w"> </span>PROJECT<span class="w"> </span>--category<span class="w"> </span>security<span class="p">|</span>compliance<span class="p">|</span>release<span class="p">|</span>sca<span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span><span class="m">50</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot"><span id="dashboard_snapshot"></span><code>dashboard snapshot</code><a class="heading-anchor" href="#dashboard-snapshot" title="Link to this section">&para;</a></h3>
+<p>Snapshot management entrypoint.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>&lt;create<span class="p">|</span>list<span class="p">|</span>compare<span class="p">|</span>export&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-create"><span id="dashboard_snapshot_create"></span><code>dashboard snapshot create</code><a class="heading-anchor" href="#dashboard-snapshot-create" title="Link to this section">&para;</a></h3>
+<p>Create a manual project/group snapshot.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span><span class="o">[</span>--scope<span class="w"> </span>project<span class="p">|</span>group<span class="o">]</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--group<span class="w"> </span>GROUP<span class="o">]</span><span class="w"> </span><span class="o">[</span>--reason<span class="w"> </span>TEXT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--immutable<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-list"><span id="dashboard_snapshot_list"></span><code>dashboard snapshot list</code><a class="heading-anchor" href="#dashboard-snapshot-list" title="Link to this section">&para;</a></h3>
+<p>List stored snapshots for a project or group.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>--scope<span class="w"> </span>project<span class="p">|</span>group<span class="o">]</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--group<span class="w"> </span>GROUP<span class="o">]</span><span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span>N<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-compare"><span id="dashboard_snapshot_compare"></span><code>dashboard snapshot compare</code><a class="heading-anchor" href="#dashboard-snapshot-compare" title="Link to this section">&para;</a></h3>
+<p>Compare two snapshots or fallback timestamps.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>compare<span class="w"> </span><span class="o">[</span>--from-snapshot<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--to-snapshot<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--include-drilldown<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-export"><span id="dashboard_snapshot_export"></span><code>dashboard snapshot export</code><a class="heading-anchor" href="#dashboard-snapshot-export" title="Link to this section">&para;</a></h3>
+<p>Export one snapshot or a compare report.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span><span class="nb">export</span><span class="w"> </span>SNAPSHOT_ID<span class="w"> </span><span class="o">[</span>--baseline-snapshot<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="p">|</span>pdf<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>FILE<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views"><span id="dashboard_saved_views"></span><code>dashboard saved-views</code><a class="heading-anchor" href="#dashboard-saved-views" title="Link to this section">&para;</a></h3>
+<p>Saved dashboard view management entrypoint.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>&lt;list<span class="p">|</span>save<span class="p">|</span>get<span class="p">|</span>delete&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-list"><span id="dashboard_saved_views_list"></span><code>dashboard saved-views list</code><a class="heading-anchor" href="#dashboard-saved-views-list" title="Link to this section">&para;</a></h3>
+<p>List saved views for one owner.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-save"><span id="dashboard_saved_views_save"></span><code>dashboard saved-views save</code><a class="heading-anchor" href="#dashboard-saved-views-save" title="Link to this section">&para;</a></h3>
+<p>Save a reusable dashboard view definition.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>save<span class="w"> </span>NAME<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--scope<span class="w"> </span>portfolio<span class="p">|</span>red-zone<span class="p">|</span>compare<span class="p">|</span>compliance<span class="p">|</span>sca<span class="o">]</span><span class="w"> </span><span class="o">[</span>--filters<span class="w"> </span>JSON<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-delete"><span id="dashboard_saved_views_delete"></span><code>dashboard saved-views delete</code><a class="heading-anchor" href="#dashboard-saved-views-delete" title="Link to this section">&para;</a></h3>
+<p>Delete a saved view by ID.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>delete<span class="w"> </span>VIEW_ID<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-get"><span id="dashboard_saved_views_get"></span><code>dashboard saved-views get</code><a class="heading-anchor" href="#dashboard-saved-views-get" title="Link to this section">&para;</a></h3>
+<p>Load one saved view by ID.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>get<span class="w"> </span>VIEW_ID<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-maintain-db"><span id="dogfood_maintain_db"></span><code>dogfood maintain-db</code><a class="heading-anchor" href="#dogfood-maintain-db" title="Link to this section">&para;</a></h3>
+<p>Run maintenance on the dogfood state database.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--days<span class="w"> </span><span class="m">30</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-continue"><span id="dogfood_continue"></span><code>dogfood continue</code><a class="heading-anchor" href="#dogfood-continue" title="Link to this section">&para;</a></h3>
+<p>Resume an interrupted dogfood workflow from the last saved checkpoint.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-unlock-db"><span id="dogfood_unlock_db"></span><code>dogfood unlock-db</code><a class="heading-anchor" href="#dogfood-unlock-db" title="Link to this section">&para;</a></h3>
+<p>Remove a stale dogfood database lock after operator validation.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>unlock-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-runs"><span id="dynamic_runs"></span><code>dynamic runs</code><a class="heading-anchor" href="#dynamic-runs" title="Link to this section">&para;</a></h3>
+<p>List imported dynamic-analysis runs.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>runs<span class="w"> </span><span class="o">[</span>--tool<span class="w"> </span>dast<span class="p">|</span>fuzzer<span class="p">|</span>iast<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-findings"><span id="dynamic_findings"></span><code>dynamic findings</code><a class="heading-anchor" href="#dynamic-findings" title="Link to this section">&para;</a></h3>
+<p>Show findings for one imported dynamic-analysis run.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>findings<span class="w"> </span>--run-id<span class="w"> </span>RUN_ID<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="hypothesis"><code>hypothesis</code><a class="heading-anchor" href="#hypothesis" title="Link to this section">&para;</a></h3>
+<p>Security hypothesis validation command group.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>hypothesis<span class="w"> </span>&lt;run<span class="p">|</span>export<span class="p">|</span>list-cwes<span class="p">|</span>providers&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="hypothesis-export"><span id="hypothesis_export"></span><code>hypothesis export</code><a class="heading-anchor" href="#hypothesis-export" title="Link to this section">&para;</a></h3>
+<p>Export previously generated hypothesis results.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>hypothesis<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--input<span class="w"> </span>results.json<span class="w"> </span>--output<span class="w"> </span>report.md<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="qualification"><code>qualification</code><a class="heading-anchor" href="#qualification" title="Link to this section">&para;</a></h3>
+<p>Qualification workflow for benchmark runs, metrics, reports, and error catalogs.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>&lt;run<span class="p">|</span>metrics<span class="p">|</span>report<span class="p">|</span>error-catalog<span class="p">|</span>coverage&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="qualification-metrics"><span id="qualification_metrics"></span><code>qualification metrics</code><a class="heading-anchor" href="#qualification-metrics" title="Link to this section">&para;</a></h3>
+<p>Show FP/FN metrics for a qualification result set.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>metrics<span class="w"> </span>--results<span class="w"> </span>results.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="qualification-report"><span id="qualification_report"></span><code>qualification report</code><a class="heading-anchor" href="#qualification-report" title="Link to this section">&para;</a></h3>
+<p>Generate a qualification report from collected results.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>report<span class="w"> </span>--results<span class="w"> </span>results.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="qualification-error-catalog"><span id="qualification_error_catalog"></span><code>qualification error-catalog</code><a class="heading-anchor" href="#qualification-error-catalog" title="Link to this section">&para;</a></h3>
+<p>Render the qualification error catalog for a target language.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>error-catalog<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>c<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="risk"><code>risk</code><a class="heading-anchor" href="#risk" title="Link to this section">&para;</a></h3>
+<p>Top-level entrypoint for KIR/KPUR, threat-model, event, and checklist operations.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>&lt;kir<span class="p">|</span>kpur<span class="p">|</span>dashboard<span class="p">|</span>history<span class="p">|</span>list-kirs<span class="p">|</span>assess<span class="p">|</span>matrix<span class="p">|</span>detail<span class="p">|</span>threat-model-57580<span class="p">|</span>events<span class="p">|</span>anomalies<span class="p">|</span>org-docs<span class="p">|</span>checklist&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-history"><span id="risk_history"></span><code>risk history</code><a class="heading-anchor" href="#risk-history" title="Link to this section">&para;</a></h3>
+<p>Show stored KIR history for a project.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span><span class="nb">history</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span><span class="m">20</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-list-kirs"><span id="risk_list_kirs"></span><code>risk list-kirs</code><a class="heading-anchor" href="#risk-list-kirs" title="Link to this section">&para;</a></h3>
+<p>List supported Key Risk Indicators and their definitions.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>list-kirs<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-threat-model-57580-diff"><span id="risk_threat_model_57580_diff"></span><code>risk threat-model-57580 diff</code><a class="heading-anchor" href="#risk-threat-model-57580-diff" title="Link to this section">&para;</a></h3>
+<p>Compare two threat-model snapshots.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>threat-model-57580<span class="w"> </span>diff<span class="w"> </span>--old<span class="w"> </span>old-model.json<span class="w"> </span>--new<span class="w"> </span>new-model.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-threat-model-57580-review-status"><span id="risk_threat_model_57580_review_status"></span><code>risk threat-model-57580 review-status</code><a class="heading-anchor" href="#risk-threat-model-57580-review-status" title="Link to this section">&para;</a></h3>
+<p>Show reviewer status for a threat-model package.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>threat-model-57580<span class="w"> </span>review-status<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>PROJECT<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-events-classify"><span id="risk_events_classify"></span><code>risk events classify</code><a class="heading-anchor" href="#risk-events-classify" title="Link to this section">&para;</a></h3>
+<p>Classify all currently known findings into risk-event categories.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>events<span class="w"> </span>classify<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-checklist-export"><span id="risk_checklist_export"></span><code>risk checklist export</code><a class="heading-anchor" href="#risk-checklist-export" title="Link to this section">&para;</a></h3>
+<p>Export the self-assessment checklist for auditors or external review.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>checklist<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span><span class="m">1</span><span class="p">|</span><span class="m">2</span><span class="p">|</span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
 <h2  id="see-also"><span id="see_also"></span>See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="./PROJECT_IMPORT.html">Project Import Guide</a> - Detailed import documentation</li>
+<li><a href="./DASHBOARD_METHODOLOGY.html">Dashboard Methodology</a> - Health Score formula and grading</li>
 <li><a href="../../api/REST_API.html">REST API Reference</a> - API endpoints</li>
 <li><a href="../../reference/SECURITY.html">Security Documentation</a> - Security features</li>
 </ul>
@@ -5034,7 +5772,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-12</span>
+        <span>Last updated: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/CLI_GUIDE.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -5092,7 +5830,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#find-target" class="level-3">Find Target</a></li>
 <li><a href="#preview-edit" class="level-3">Preview Edit</a></li>
 <li><a href="#apply-edit" class="level-3">Apply Edit</a></li>
-<li><a href="#rename" class="level-3">Rename</a></li>
 <li><a href="#undo-history" class="level-3">Undo & History</a></li>
 <li><a href="#code-optimization-cli-s18" class="level-2">Code Optimization CLI (S18)</a></li>
 <li><a href="#analyze" class="level-3">Analyze</a></li>
@@ -5101,20 +5838,17 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#apply-undo" class="level-3">Apply & Undo</a></li>
 <li><a href="#optimization-patterns" class="level-3">Optimization Patterns</a></li>
 <li><a href="#standards-check-cli-s19" class="level-2">Standards Check CLI (S19)</a></li>
-<li><a href="#import-validate" class="level-3">Import & Validate</a></li>
+<li><a href="#import-documents" class="level-3">Import Documents</a></li>
 <li><a href="#list-rules" class="level-3">List Rules</a></li>
 <li><a href="#list-documents" class="level-3">List Documents</a></li>
 <li><a href="#check-code" class="level-3">Check Code</a></li>
-<li><a href="#report-clear" class="level-3">Report & Clear</a></li>
+<li><a href="#report" class="level-3">Report</a></li>
 <li><a href="#delete-document" class="level-3">Delete Document</a></li>
 <li><a href="#dependencies-cli-s20" class="level-2">Dependencies CLI (S20)</a></li>
 <li><a href="#scan-dependencies" class="level-3">Scan Dependencies</a></li>
 <li><a href="#list-dependencies" class="level-3">List Dependencies</a></li>
 <li><a href="#vulnerability-check" class="level-3">Vulnerability Check</a></li>
-<li><a href="#vulnerability-audit" class="level-3">Vulnerability Audit</a></li>
-<li><a href="#outdated-packages" class="level-3">Outdated Packages</a></li>
 <li><a href="#license-compliance" class="level-3">License Compliance</a></li>
-<li><a href="#sbom-generation" class="level-3">SBOM Generation</a></li>
 <li><a href="#dependency-graph" class="level-3">Dependency Graph</a></li>
 <li><a href="#health-score" class="level-3">Health Score</a></li>
 <li><a href="#update-suggestions" class="level-3">Update Suggestions</a></li>
@@ -5177,6 +5911,19 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#release-suppressions-manage-suppressions" class="level-3">`release suppressions` — Manage Suppressions</a></li>
 <li><a href="#release-history-gate-decision-history" class="level-3">`release history` — Gate Decision History</a></li>
 <li><a href="#release-profiles-list-gate-profiles" class="level-3">`release profiles` — List Gate Profiles</a></li>
+<li><a href="#risk-management-cli-gost-r-575803" class="level-2">Risk Management CLI (GOST R 57580.3)</a></li>
+<li><a href="#risk-kir-key-risk-indicators" class="level-3">`risk kir` — Key Risk Indicators</a></li>
+<li><a href="#risk-kpur-control-risk-level-indicators" class="level-3">`risk kpur` — Control Risk Level Indicators</a></li>
+<li><a href="#risk-dashboard-full-risk-dashboard" class="level-3">`risk dashboard` — Full Risk Dashboard</a></li>
+<li><a href="#risk-assess-risk-assessment-svr-stp" class="level-3">`risk assess` — Risk Assessment (SVR × STP)</a></li>
+<li><a href="#risk-matrix-risk-matrix-55" class="level-3">`risk matrix` — Risk Matrix 5×5</a></li>
+<li><a href="#risk-detail-finding-risk-detail" class="level-3">`risk detail` — Finding Risk Detail</a></li>
+<li><a href="#risk-threat-model-57580-gost-r-575803-threat-model" class="level-3">`risk threat-model-57580` — GOST R 57580.3 Threat Model</a></li>
+<li><a href="#risk-events-risk-event-classification" class="level-3">`risk events` — Risk Event Classification</a></li>
+<li><a href="#risk-checklist-self-assessment-checklist" class="level-3">`risk checklist` — Self-Assessment Checklist</a></li>
+<li><a href="#risk-anomalies-kir-anomaly-detection" class="level-3">`risk anomalies` — KIR Anomaly Detection</a></li>
+<li><a href="#risk-report-fincert-fincert-regulatory-report" class="level-3">`risk report-fincert` — FinCERT Regulatory Report</a></li>
+<li><a href="#risk-org-docs-organizational-document-templates" class="level-3">`risk org-docs` — Organizational Document Templates</a></li>
 <li><a href="#sbom-sca-cli" class="level-2">SBOM / SCA CLI</a></li>
 <li><a href="#sbom-generate-generate-sbom" class="level-3">`sbom generate` — Generate SBOM</a></li>
 <li><a href="#sbom-gost-report-gost-516-report" class="level-3">`sbom gost-report` — GOST 5.16 Report</a></li>
@@ -5187,11 +5934,68 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#supply-chain-trust-trust-score-assessment" class="level-3">`supply-chain trust` — Trust Score Assessment</a></li>
 <li><a href="#supply-chain-typosquatting-typosquatting-detection" class="level-3">`supply-chain typosquatting` — Typosquatting Detection</a></li>
 <li><a href="#supply-chain-gost-report-gost-5173-report" class="level-3">`supply-chain gost-report` — GOST 5.17.3 Report</a></li>
+<li><a href="#issues-cli" class="level-2">Issues CLI</a></li>
+<li><a href="#issues-create-create-issue-from-finding" class="level-3">`issues create` — Create Issue from Finding</a></li>
+<li><a href="#issues-bulk-create-bulk-create-issues" class="level-3">`issues bulk-create` — Bulk Create Issues</a></li>
+<li><a href="#issues-update-update-issue-status" class="level-3">`issues update` — Update Issue Status</a></li>
+<li><a href="#issues-sync-bidirectional-sync" class="level-3">`issues sync` — Bidirectional Sync</a></li>
+<li><a href="#dynamic-analysis-cli" class="level-2">Dynamic Analysis CLI</a></li>
+<li><a href="#dynamic-import-import-results" class="level-3">`dynamic import` — Import Results</a></li>
+<li><a href="#dynamic-correlate-correlate-static-and-dynamic-findings" class="level-3">`dynamic correlate` — Correlate Static and Dynamic Findings</a></li>
+<li><a href="#dynamic-fuzz-targets-generate-fuzz-targets" class="level-3">`dynamic fuzz-targets` — Generate Fuzz Targets</a></li>
+<li><a href="#dynamic-report-gost-5113-report" class="level-3">`dynamic report` — GOST 5.11.3 Report</a></li>
 <li><a href="#threat-model-cli" class="level-2">Threat Model CLI</a></li>
 <li><a href="#threat-model-generate-generate-threat-model" class="level-3">`threat-model generate` — Generate Threat Model</a></li>
 <li><a href="#threat-model-update-incremental-update" class="level-3">`threat-model update` — Incremental Update</a></li>
 <li><a href="#threat-model-dfd-data-flow-diagram" class="level-3">`threat-model dfd` — Data Flow Diagram</a></li>
 <li><a href="#threat-model-list-list-threats" class="level-3">`threat-model list` — List Threats</a></li>
+<li><a href="#dashboard-cli" class="level-2">Dashboard CLI</a></li>
+<li><a href="#dashboard-overview-portfolio-overview" class="level-3">`dashboard overview` — Portfolio Overview</a></li>
+<li><a href="#dashboard-health-project-health-report" class="level-3">`dashboard health` — Project Health Report</a></li>
+<li><a href="#dashboard-trends-health-trends" class="level-3">`dashboard trends` — Health Trends</a></li>
+<li><a href="#dashboard-red-zone-red-zone-monitor" class="level-3">`dashboard red-zone` — Red-Zone Monitor</a></li>
+<li><a href="#dashboard-compare-project-comparison" class="level-3">`dashboard compare` — Project Comparison</a></li>
+<li><a href="#dashboard-export-report-export" class="level-3">`dashboard export` — Report Export</a></li>
+<li><a href="#additional-command-coverage" class="level-2">Additional Command Coverage</a></li>
+<li><a href="#audit-progress" class="level-3">`audit progress`</a></li>
+<li><a href="#audit-markup-status" class="level-3">`audit markup-status`</a></li>
+<li><a href="#audit-diff" class="level-3">`audit-diff`</a></li>
+<li><a href="#auth-service-account" class="level-3">`auth service-account`</a></li>
+<li><a href="#compliance-report-57580" class="level-3">`compliance report-57580`</a></li>
+<li><a href="#compliance-report-57580-history" class="level-3">`compliance report-57580-history`</a></li>
+<li><a href="#compliance-report-57580-delta" class="level-3">`compliance report-57580-delta`</a></li>
+<li><a href="#dashboard-compare-periods" class="level-3">`dashboard compare-periods`</a></li>
+<li><a href="#dashboard-metrics" class="level-3">`dashboard metrics`</a></li>
+<li><a href="#dashboard-release-compare" class="level-3">`dashboard release-compare`</a></li>
+<li><a href="#dashboard-drilldown" class="level-3">`dashboard drilldown`</a></li>
+<li><a href="#dashboard-snapshot" class="level-3">`dashboard snapshot`</a></li>
+<li><a href="#dashboard-snapshot-create" class="level-3">`dashboard snapshot create`</a></li>
+<li><a href="#dashboard-snapshot-list" class="level-3">`dashboard snapshot list`</a></li>
+<li><a href="#dashboard-snapshot-compare" class="level-3">`dashboard snapshot compare`</a></li>
+<li><a href="#dashboard-snapshot-export" class="level-3">`dashboard snapshot export`</a></li>
+<li><a href="#dashboard-saved-views" class="level-3">`dashboard saved-views`</a></li>
+<li><a href="#dashboard-saved-views-list" class="level-3">`dashboard saved-views list`</a></li>
+<li><a href="#dashboard-saved-views-save" class="level-3">`dashboard saved-views save`</a></li>
+<li><a href="#dashboard-saved-views-delete" class="level-3">`dashboard saved-views delete`</a></li>
+<li><a href="#dashboard-saved-views-get" class="level-3">`dashboard saved-views get`</a></li>
+<li><a href="#dogfood-maintain-db" class="level-3">`dogfood maintain-db`</a></li>
+<li><a href="#dogfood-continue" class="level-3">`dogfood continue`</a></li>
+<li><a href="#dogfood-unlock-db" class="level-3">`dogfood unlock-db`</a></li>
+<li><a href="#dynamic-runs" class="level-3">`dynamic runs`</a></li>
+<li><a href="#dynamic-findings" class="level-3">`dynamic findings`</a></li>
+<li><a href="#hypothesis" class="level-3">`hypothesis`</a></li>
+<li><a href="#hypothesis-export" class="level-3">`hypothesis export`</a></li>
+<li><a href="#qualification" class="level-3">`qualification`</a></li>
+<li><a href="#qualification-metrics" class="level-3">`qualification metrics`</a></li>
+<li><a href="#qualification-report" class="level-3">`qualification report`</a></li>
+<li><a href="#qualification-error-catalog" class="level-3">`qualification error-catalog`</a></li>
+<li><a href="#risk" class="level-3">`risk`</a></li>
+<li><a href="#risk-history" class="level-3">`risk history`</a></li>
+<li><a href="#risk-list-kirs" class="level-3">`risk list-kirs`</a></li>
+<li><a href="#risk-threat-model-57580-diff" class="level-3">`risk threat-model-57580 diff`</a></li>
+<li><a href="#risk-threat-model-57580-review-status" class="level-3">`risk threat-model-57580 review-status`</a></li>
+<li><a href="#risk-events-classify" class="level-3">`risk events classify`</a></li>
+<li><a href="#risk-checklist-export" class="level-3">`risk checklist export`</a></li>
 <li><a href="#see-also" class="level-2">See Also</a></li>
       </ul>
     </aside>

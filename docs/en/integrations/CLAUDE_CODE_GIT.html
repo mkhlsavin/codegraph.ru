@@ -96,6 +96,11 @@
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="../guides/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -143,7 +148,7 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DEMO_API.html">Demo API</a></li>
-        <li><a href="../api/REST_API.html">CodeGraph REST API Documentation</a></li>
+        <li><a href="../api/REST_API.html">REST API Reference</a></li>
         <li><a href="../api/WEBSOCKET_API.html">WebSocket API Reference</a></li>
       </ul>
     </div>
@@ -427,7 +432,7 @@ Domain: python_generic
 <ol>
 <li><strong>CPG freshness check</strong> (2s) &ndash; compares <code>cpg_git_state.commit_hash</code> to <code>git rev-parse HEAD</code></li>
 <li><strong>Pre-update metrics capture</strong> (~1s) &ndash; snapshots current metrics for changed files (enables delta report)</li>
-<li><strong>CPG update with force re-parse</strong> (40s) &ndash; runs <code>gocpg update --force</code> for accurate metrics</li>
+<li><strong>CPG update</strong> (40s) &ndash; runs <code>gocpg update</code>; durable post-commit traces are handled by the detached GoCPG worker</li>
 <li><strong>Quality + blast radius analysis</strong> (16s) &ndash; queries <code>nodes_method</code> for CC, fan-out, TODO/FIXME, deprecated; queries <code>call_containment</code> for callers of changed methods</li>
 <li><strong>Delta computation</strong> &ndash; compares pre-update vs post-update metrics</li>
 </ol>
@@ -585,11 +590,23 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 - Any unhandled exception: caught at top level, empty JSON output</p>
 <h2  id="git-integration"><span id="git_integration"></span>Git Integration<a class="heading-anchor" href="#git-integration" title="Link to this section">&para;</a></h2>
 <h3  id="gocpg-git-hooks"><span id="gocpg_git_hooks"></span>GoCPG git hooks<a class="heading-anchor" href="#gocpg-git-hooks" title="Link to this section">&para;</a></h3>
-<p>GoCPG can install git <code>post-commit</code> hooks that trigger an incremental CPG update after every commit:</p>
-<div class="highlight"><pre><span></span><code>gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="o">=</span>.<span class="w"> </span>--db<span class="o">=</span>data/projects/codegraph.duckdb
+<p>GoCPG can install git hooks that trigger an incremental CPG update after every commit. With <code>--review-trace</code>, the <code>post-commit</code> hook also persists a full review trace:</p>
+<div class="highlight"><pre><span></span><code>gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="o">=</span>.<span class="w"> </span>--db<span class="o">=</span>data/projects/codegraph.duckdb<span class="w"> </span>--review-trace
 </code></pre></div>
 
-<p>This creates <code>.git/hooks/post-commit</code> which runs <code>gocpg update</code> in the background. The CPG stays synchronized with the latest code without manual intervention.</p>
+<p>This creates <code>.git/hooks/post-commit</code> which launches a detached worker. The worker runs <code>gocpg update</code>, verifies the DuckDB file can be reopened immediately after the update, and writes review artifacts to <code>data/reviews/</code>.</p>
+<p>Trace artifacts per commit:</p>
+<ul>
+<li><code>&lt;sha&gt;.log</code> — live worker log with heartbeats</li>
+<li><code>&lt;sha&gt;.status.json</code> — current phase/progress snapshot</li>
+<li><code>&lt;sha&gt;.meta.json</code> — final status including <code>gocpg_update_ok</code> and <code>db_unlocked_after_update</code></li>
+<li><code>&lt;sha&gt;.json</code> / <code>&lt;sha&gt;.md</code> — review output</li>
+</ul>
+<p>Inspect the trace from the terminal:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;<span class="w"> </span>--watch
+</code></pre></div>
+
 <p><strong>Check hook status:</strong></p>
 <div class="highlight"><pre><span></span><code>gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span class="w"> </span>--repo<span class="o">=</span>.
 </code></pre></div>
@@ -603,26 +620,27 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <ul>
 <li><strong><code>is_fresh()</code></strong> &ndash; compares <code>cpg_git_state.commit_hash</code> (stored in DuckDB) against <code>git rev-parse HEAD</code></li>
 <li><strong><code>commits_behind()</code></strong> &ndash; counts how many commits the CPG is behind HEAD</li>
-<li><strong><code>ensure_fresh(force=True)</code></strong> &ndash; runs <code>gocpg update --force</code> if stale</li>
+<li><strong><code>ensure_fresh()</code></strong> &ndash; runs <code>gocpg update</code> if stale</li>
 </ul>
-<p>The <code>--force</code> flag is critical: incremental updates (<code>gocpg update</code> without <code>--force</code>) skip <code>MethodMetricsPass</code>, leaving <code>cyclomatic_complexity</code>, <code>fan_in</code>, and <code>fan_out</code> at 0 for new/modified methods. Force re-parse runs the full pipeline including metrics computation.</p>
+<p>For durable post-commit feedback, the traced worker does not rely on <code>src.cli review</code>. It runs <code>ReviewPipeline</code> directly on the changed files, which avoids unrelated CLI import failures and keeps the review bounded to the actual commit scope.</p>
 <p><strong>Interaction between git hooks and Claude Code hooks:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">Developer</span><span class="w"> </span><span class="n">commits</span><span class="w"> </span><span class="p">(</span><span class="n">terminal</span><span class="p">)</span><span class="w">     </span><span class="n">Developer</span><span class="w"> </span><span class="n">commits</span><span class="w"> </span><span class="p">(</span><span class="n">Claude</span><span class="w"> </span><span class="n">Code</span><span class="p">)</span>
-<span class="w">    </span><span class="o">|</span><span class="w">                                </span><span class="o">|</span>
-<span class="w">    </span><span class="n">v</span><span class="w">                                </span><span class="n">v</span>
-<span class="n">git</span><span class="w"> </span><span class="n">post</span><span class="o">-</span><span class="n">commit</span><span class="w"> </span><span class="n">hook</span><span class="w">             </span><span class="n">PostToolUse</span><span class="w"> </span><span class="n">hook</span><span class="w"> </span><span class="n">fires</span>
-<span class="w">    </span><span class="o">|</span><span class="w">                                </span><span class="o">|</span>
-<span class="w">    </span><span class="n">v</span><span class="w">                                </span><span class="o">+--</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="n">freshness</span><span class="w"> </span><span class="n">check</span>
-<span class="n">gocpg</span><span class="w"> </span><span class="n">update</span><span class="w"> </span><span class="p">(</span><span class="n">incremental</span><span class="p">)</span><span class="w">      </span><span class="o">|</span><span class="w">   </span><span class="o">+--</span><span class="w"> </span><span class="n">Pre</span><span class="o">-</span><span class="n">update</span><span class="w"> </span><span class="n">metrics</span><span class="w"> </span><span class="n">capture</span>
-<span class="w">    </span><span class="o">|</span><span class="w">                                </span><span class="o">+--</span><span class="w"> </span><span class="n">gocpg</span><span class="w"> </span><span class="n">update</span><span class="w"> </span><span class="o">--</span><span class="n">force</span><span class="w"> </span><span class="p">(</span><span class="kr">full</span><span class="w"> </span><span class="n">re</span><span class="o">-</span><span class="nf">parse</span><span class="p">)</span>
-<span class="w">    </span><span class="n">v</span><span class="w">                                </span><span class="o">+--</span><span class="w"> </span><span class="n">Quality</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">blast</span><span class="w"> </span><span class="n">radius</span><span class="w"> </span><span class="n">analysis</span>
-<span class="n">CPG</span><span class="w"> </span><span class="n">updated</span><span class="w"> </span><span class="p">(</span><span class="n">CC</span><span class="o">=</span><span class="mi">0</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">new</span><span class="p">)</span><span class="w">       </span><span class="o">+--</span><span class="w"> </span><span class="n">Delta</span><span class="w"> </span><span class="n">report</span><span class="w"> </span><span class="p">(</span><span class="kr">before</span><span class="o">-&gt;</span><span class="n">after</span><span class="p">)</span>
-<span class="w">                                     </span><span class="o">|</span>
-<span class="w">                                     </span><span class="n">v</span>
-<span class="w">                                 </span><span class="n">Report</span><span class="w"> </span><span class="n">injected</span><span class="w"> </span><span class="n">into</span><span class="w"> </span><span class="n">conversation</span>
+<div class="highlight"><pre><span></span><code>Developer commits (terminal)     Developer commits (Claude Code)
+    |                                |
+    v                                v
+git post-commit hook             PostToolUse hook fires
+    |                                |
+    v                                +-- CPG freshness check
+Detached review worker           |   +-- Best-effort update via API/webhook
+    |                            |   +-- Conversational diagnostics
+    +-- gocpg update             |   
+    +-- DuckDB unlock check      |
+    +-- ReviewPipeline(files=changed)
+    +-- data/reviews/&lt;sha&gt;.*     |
+    v                            v
+Durable local trace              Report injected into conversation
 </code></pre></div>
 
-<p>When both hooks are active, the git <code>post-commit</code> hook may run concurrently with the Claude Code <code>PostToolUse</code> hook. The Claude Code hook handles this gracefully &ndash; if the DuckDB file is locked by another <code>gocpg.exe</code> process, it catches the error and falls back to subprocess queries or produces partial output.</p>
+<p>When both hooks are active, the git <code>post-commit</code> trace provides the durable audit trail while the Claude Code hook remains best-effort and conversational. The traced worker records whether the DB was unlocked immediately after update, so lock issues are visible in <code>data/reviews/&lt;sha&gt;.meta.json</code>.</p>
 <h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
 <h3  id="claude-code-settings"><span id="claude_code_settings"></span>Claude Code settings<a class="heading-anchor" href="#claude-code-settings" title="Link to this section">&para;</a></h3>
 <p>The hook configuration lives in <code>.claude/settings.json</code>:</p>
@@ -811,7 +829,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-12</span>
+        <span>Last updated: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/CLAUDE_CODE_GIT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>

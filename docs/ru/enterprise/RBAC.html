@@ -96,6 +96,11 @@
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="../guides/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="../guides/DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="../guides/LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -143,7 +148,7 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DEMO_API.html">Демо API</a></li>
-        <li><a href="../api/REST_API.html">Документация по REST API CodeGraph</a></li>
+        <li><a href="../api/REST_API.html">Справочник REST API</a></li>
         <li><a href="../api/WEBSOCKET_API.html">Справочная документация по WebSocket API</a></li>
       </ul>
     </div>
@@ -179,6 +184,7 @@
         <li><a href="../reference/MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="../reference/SCHEMA.html">Дизайн схемы DuckDB CPG (CPG Spec v1.1)</a></li>
         <li><a href="../reference/SECURITY.html">Модуль корпоративной безопасности</a></li>
+        <li><a href="../reference/SNAPSHOT_STORE.html">Справочник по хранилищу снимков</a></li>
         <li><a href="../reference/SQL_QUERY_COOKBOOK.html">Кулинарная книга SQL-запросов для DuckDB CPG</a></li>
         <li><a href="../reference/SYMBOLIC_EXECUTION.html">Символьное выполнение (Z3 SMT Solver)</a></li>
         <li><a href="../reference/WORKFLOWS.html">Справочник по рабочим процессам</a></li>
@@ -240,6 +246,7 @@
 <li><a href="#metody-autentifikatsii">Методы аутентификации</a></li>
 <li><a href="#1-jwt-bearer-token">1. JWT Bearer Token</a></li>
 <li><a href="#2-api-klyuchi">2. API-ключи</a></li>
+<li><a href="#service-accounts-i-machine-access">Service accounts и machine access</a></li>
 <li><a href="#3-oauth2oidc">3. OAuth2/OIDC</a></li>
 <li><a href="#4-ldapactive-directory">4. LDAP/Active Directory</a></li>
 <li><a href="#5-iam-yandex-cloud">5. IAM (Yandex Cloud)</a></li>
@@ -272,7 +279,8 @@
 <ul>
 <li><strong>4 уровня ролей</strong> с иерархическим наследованием</li>
 <li><strong>21 гранулярное разрешение</strong> по функциональным категориям</li>
-<li><strong>6 методов аутентификации</strong>: JWT, API-ключи, OAuth2, LDAP, IAM (Yandex Cloud), без аутентификации</li>
+<li><strong>Режимы аутентификации</strong>: JWT, API-ключи, OAuth2, LDAP, IAM (Yandex Cloud) и неаутентифицированный доступ там, где он явно разрешён</li>
+<li><strong>Lifecycle service accounts</strong> для нечеловеческих machine identities</li>
 <li><strong>Чёрный список токенов</strong> для мгновенного отзыва доступа</li>
 <li><strong>Проверка подписи вебхуков</strong> с защитой от атак повторного воспроизведения</li>
 <li><strong>Проверка scope</strong> для детализированного контроля доступа по API-ключам</li>
@@ -662,7 +670,7 @@
 </table></div>
 <hr />
 <h2  id="metody-autentifikatsii"><span id="metody_autentifikatsii"></span>Методы аутентификации<a class="heading-anchor" href="#metody-autentifikatsii" title="Link to this section">&para;</a></h2>
-<p>CodeGraph поддерживает 6 методов аутентификации. Поле <code>auth_method</code> в <code>AuthContext</code> указывает, какой метод был использован:</p>
+<p>CodeGraph поддерживает несколько режимов аутентификации. Поле <code>auth_method</code> в <code>AuthContext</code> указывает, какой режим был использован:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -859,6 +867,45 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-API-Key: rag_a1b2c3d4_e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8&quot;</span>
 </code></pre></div>
 
+<hr />
+<h3  id="service-accounts-i-machine-access"><span id="service_accounts_i_machine_access"></span>Service accounts и machine access<a class="heading-anchor" href="#service-accounts-i-machine-access" title="Link to this section">&para;</a></h3>
+<p>Service accounts используют тот же транспорт <code>X-API-Key</code>, но вводят отдельный lifecycle для machine identity.</p>
+<p>Реализованные возможности:</p>
+<ul>
+<li>отдельные сущности <code>ServiceAccount</code> и <code>ServiceAccountCredential</code></li>
+<li>project/group scoping</li>
+<li>interface allowlist (<code>api</code>, <code>mcp</code>)</li>
+<li>rotate/revoke/deactivate flows</li>
+<li>unified audit metadata для API и MCP</li>
+<li>per-service-account rate limiting</li>
+<li>проверка версии machine contract через <code>X-CodeGraph-Machine-Contract</code></li>
+</ul>
+<p>Admin API:</p>
+<ul>
+<li><code>GET /api/v1/auth/service-accounts/action-catalog</code></li>
+<li><code>POST /api/v1/auth/service-accounts</code></li>
+<li><code>GET /api/v1/auth/service-accounts</code></li>
+<li><code>GET /api/v1/auth/service-accounts/{id}</code></li>
+<li><code>POST /api/v1/auth/service-accounts/{id}/rotate</code></li>
+<li><code>POST /api/v1/auth/service-accounts/{id}/credentials/{credential_id}/revoke</code></li>
+<li><code>POST /api/v1/auth/service-accounts/{id}/deactivate</code></li>
+</ul>
+<p>CLI:</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>create<span class="w"> </span>--owner<span class="w"> </span>admin<span class="w"> </span>--name<span class="w"> </span>ci-bot<span class="w"> </span>--template<span class="w"> </span>ci<span class="w"> </span>--interface<span class="w"> </span>api
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>list
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>inspect<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>rotate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>revoke<span class="w"> </span>--id<span class="w"> </span>&lt;credential-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>deactivate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+</code></pre></div>
+
+<p>Эксплуатационные замечания:</p>
+<ul>
+<li>используйте service accounts для CI, ботов, порталов и MCP/API automation</li>
+<li>при rotation сначала раскатывайте новый credential, затем revoke старого</li>
+<li>API и MCP используют одну и ту же логику проверки scope и interface</li>
+<li>текущий незакрытый hardening gap — mTLS-based machine auth; API-key-based machine auth уже реализован</li>
+</ul>
 <hr />
 <h3  id="3-oauth2oidc"><span id="3_oauth2oidc"></span>3. OAuth2/OIDC<a class="heading-anchor" href="#3-oauth2oidc" title="Link to this section">&para;</a></h3>
 <p>Поддержка корпоративных поставщиков идентификации. Полное руководство по настройке см. в документе <a href="OAUTH_LDAP.html">Интеграция OAuth2/OIDC и LDAP/AD</a>.</p>
@@ -1748,7 +1795,7 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/enterprise/RBAC.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1769,6 +1816,7 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
 <li><a href="#metody-autentifikatsii" class="level-2">Методы аутентификации</a></li>
 <li><a href="#1-jwt-bearer-token" class="level-3">1. JWT Bearer Token</a></li>
 <li><a href="#2-api-klyuchi" class="level-3">2. API-ключи</a></li>
+<li><a href="#service-accounts-i-machine-access" class="level-3">Service accounts и machine access</a></li>
 <li><a href="#3-oauth2oidc" class="level-3">3. OAuth2/OIDC</a></li>
 <li><a href="#4-ldapactive-directory" class="level-3">4. LDAP/Active Directory</a></li>
 <li><a href="#5-iam-yandex-cloud" class="level-3">5. IAM (Yandex Cloud)</a></li>

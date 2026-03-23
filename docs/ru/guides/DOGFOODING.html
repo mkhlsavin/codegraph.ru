@@ -96,6 +96,11 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html" class="active">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -233,13 +238,13 @@
 <p><strong>GoCPG</strong> строит и поддерживает граф свойств кода (CPG) в DuckDB с предвычисленными метриками для каждого метода: цикломатическая сложность, входящая/исходящая связность, флаги TODO/FIXME, отладочный код, устаревшие вызовы.</p>
 </li>
 <li>
-<p><strong>Git-хуки</strong> запускают обновление CPG после каждого коммита, поддерживая базу данных в синхронизации с кодом.</p>
+<p><strong>Git-хуки</strong> запускают обновление CPG после каждого коммита, поддерживают базу данных в синхронизации с кодом и могут сохранять трассируемые артефакты ревью по каждому коммиту.</p>
 </li>
 <li>
 <p><strong>Хуки Claude Code</strong> срабатывают после команд <code>git commit</code>, запрашивают CPG по изменённым методам, вычисляют метрики качества, зону поражения, анализ влияния на интерфейсы и межмодульные предупреждения, затем внедряют отчёт обратно в диалог как дополнительный контекст.</p>
 </li>
 </ol>
-<p>Результат: каждый коммит мгновенно получает оценку качества без выхода из IDE и запуска отдельных инструментов.</p>
+<p>Результат: каждый коммит может получать видимую и трассируемую оценку качества без выхода из IDE и запуска отдельных инструментов.</p>
 <h2  id="stsenarii-ispolzovaniya"><span id="stsenarii_ispolzovaniya"></span>Сценарии использования<a class="heading-anchor" href="#stsenarii-ispolzovaniya" title="Link to this section">&para;</a></h2>
 <h3  id="stsenariy-1-avtomaticheskaya-obratnaya-svyaz-posle-kommita"><span id="stsenariy_1_avtomaticheskaya_obratnaya_svyaz_posle_kommita"></span>Сценарий 1: Автоматическая обратная связь после коммита<a class="heading-anchor" href="#stsenariy-1-avtomaticheskaya-obratnaya-svyaz-posle-kommita" title="Link to this section">&para;</a></h3>
 <p>Основной сценарий. Вы работаете в Claude Code, вносите изменения, коммитите:</p>
@@ -272,6 +277,20 @@ Claude: git add src/intent/classifier.py &amp;&amp; git commit -m &quot;refactor
 <p>Claude видит этот контекст и может отреагировать: &ldquo;Рефакторинг снизил сложность <code>_get_fallback_domain</code> с 29 до 8. Два метода всё ещё имеют CC&gt;10: <code>classify</code> и <code>_score_domain</code>. CLI был изменён — проверьте, нужно ли обновить инструмент MCP.&rdquo;</p>
 <p><strong>Что запускает хук:</strong> Любая команда <code>git commit</code>, выполненная через инструмент Bash. Хук обнаруживает <code>"git commit"</code> в строке команды. Другие Bash-команды (<code>git status</code>, <code>ls</code>) игнорируются.</p>
 <p><strong>Что НЕ запускает хук:</strong> Прямые коммиты из терминала вне Claude Code, <code>git commit --amend</code>, коммиты через другие инструменты.</p>
+<h3  id="stsenariy-1b-ustoychivyy-post-commit-trace-vne-dialoga"><span id="stsenariy_1b_ustoychivyy_post_commit_trace_vne_dialoga"></span>Сценарий 1b: Устойчивый post-commit trace вне диалога<a class="heading-anchor" href="#stsenariy-1b-ustoychivyy-post-commit-trace-vne-dialoga" title="Link to this section">&para;</a></h3>
+<p>Для обычных терминальных коммитов, локальных CI-подобных сценариев и случаев, где нужен долговечный цифровой след, включайте GoCPG review trace:</p>
+<div class="highlight"><pre><span></span><code>gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="o">=</span>.<span class="w"> </span>--db<span class="o">=</span>data/projects/codegraph.duckdb<span class="w"> </span>--review-trace
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;<span class="w"> </span>--watch
+</code></pre></div>
+
+<p>Для каждого коммита в <code>data/reviews/</code> появляются файлы:</p>
+<ul>
+<li><code>&lt;sha&gt;.log</code> — хронологический лог worker с heartbeat-сообщениями</li>
+<li><code>&lt;sha&gt;.status.json</code> — текущая фаза и снимок прогресса</li>
+<li><code>&lt;sha&gt;.meta.json</code> — финальный итог (<code>gocpg_update_ok</code>, <code>db_unlocked_after_update</code>, статус ревью)</li>
+<li><code>&lt;sha&gt;.json</code> / <code>&lt;sha&gt;.md</code> — машиночитаемый и человекочитаемый отчёт ревью</li>
+</ul>
+<p>Worker с трассировкой сужает область ревью до реально изменённых файлов, поэтому post-commit review обычно завершается за секунды, а не пересканирует весь diff-base.</p>
 <h3  id="stsenariy-2-poisk-i-ispravlenie-problem-kachestva"><span id="stsenariy_2_poisk_i_ispravlenie_problem_kachestva"></span>Сценарий 2: Поиск и исправление проблем качества<a class="heading-anchor" href="#stsenariy-2-poisk-i-ispravlenie-problem-kachestva" title="Link to this section">&para;</a></h3>
 <p>Используйте CPG-запросы для поиска целей по улучшению качества, затем исправляйте их с обратной связью от конвейера:</p>
 <div class="highlight"><pre><span></span><code>Вы: &quot;Запроси CPG для методов с CC &gt; 15 и флагами TODO/FIXME в src/workflow/&quot;
@@ -974,7 +993,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DOGFOODING.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -988,6 +1007,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#kak-eto-rabotaet" class="level-2">Как это работает</a></li>
 <li><a href="#stsenarii-ispolzovaniya" class="level-2">Сценарии использования</a></li>
 <li><a href="#stsenariy-1-avtomaticheskaya-obratnaya-svyaz-posle-kommita" class="level-3">Сценарий 1: Автоматическая обратная связь после коммита</a></li>
+<li><a href="#stsenariy-1b-ustoychivyy-post-commit-trace-vne-dialoga" class="level-3">Сценарий 1b: Устойчивый post-commit trace вне диалога</a></li>
 <li><a href="#stsenariy-2-poisk-i-ispravlenie-problem-kachestva" class="level-3">Сценарий 2: Поиск и исправление проблем качества</a></li>
 <li><a href="#stsenariy-3-validatsiya-vliyaniya-refaktoringa" class="level-3">Сценарий 3: Валидация влияния рефакторинга</a></li>
 <li><a href="#stsenariy-4-analiz-po-zaprosu" class="level-3">Сценарий 4: Анализ по запросу</a></li>

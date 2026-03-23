@@ -96,6 +96,11 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -298,7 +303,7 @@
 <tr>
 <td>codegraph auth</td>
 <td>Управление аутентификацией</td>
-<td>Роли RBAC, статус OAuth, статус LDAP</td>
+<td>Роли RBAC, статус OAuth/LDAP, service accounts</td>
 </tr>
 <tr>
 <td>codegraph llm</td>
@@ -760,7 +765,7 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>branches<span clas
 </tbody>
 </table></div>
 <h4  id="gocpg-hooks-upravlenie-git-hukami"><span id="gocpg_hooks_upravlenie_git_hukami"></span><code>gocpg hooks</code> — Управление git-хуками<a class="heading-anchor" href="#gocpg-hooks-upravlenie-git-hukami" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>ПУТЬ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>ПУТЬ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--hooks<span class="w"> </span>ТИПЫ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--lang<span class="w"> </span>ЯЗЫК<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>ПУТЬ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>ПУТЬ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--hooks<span class="w"> </span>ТИПЫ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--lang<span class="w"> </span>ЯЗЫК<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-trace<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>ПУТЬ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-base-ref<span class="w"> </span>REF<span class="o">]</span>
 codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>uninstall<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>ПУТЬ<span class="o">]</span>
 codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>--repo<span class="w"> </span>ПУТЬ<span class="o">]</span>
 </code></pre></div>
@@ -816,8 +821,41 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="
 <td>автоопределение</td>
 <td>Языковой модуль</td>
 </tr>
+<tr>
+<td><code>--review-trace</code></td>
+<td><code>false</code></td>
+<td>Включить артефакты post-commit review (<code>.log</code>, <code>.status.json</code>, <code>.meta.json</code>, <code>.json</code>, <code>.md</code>)</td>
+</tr>
+<tr>
+<td><code>--review-dir</code></td>
+<td><code>data/reviews</code></td>
+<td>Каталог для трассировок ревью по коммитам</td>
+</tr>
+<tr>
+<td><code>--review-base-ref</code></td>
+<td><code>HEAD~1</code></td>
+<td>Базовая git-ссылка для вычисления области ревью</td>
+</tr>
 </tbody>
 </table></div>
+<p>Если включён <code>--review-trace</code>, хук <code>post-commit</code> запускает отделённый worker, который:</p>
+<ol>
+<li>Выполняет <code>gocpg update</code></li>
+<li>Сразу проверяет, что DuckDB можно повторно открыть и выполнить <code>CHECKPOINT</code></li>
+<li>Запускает review pipeline по изменённым файлам</li>
+<li>Записывает файлы трассировки в <code>data/reviews/</code></li>
+</ol>
+<p>Полезные команды:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Установить post-commit хуки с трассировкой ревью</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb<span class="w"> </span>--review-trace
+
+<span class="c1"># Посмотреть состояние последнего ревью</span>
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;
+
+<span class="c1"># Следить за обновлениями статуса до завершения worker</span>
+python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;<span class="w"> </span>--watch
+</code></pre></div>
+
 <h4  id="gocpg-watch-monitoring-faylov"><span id="gocpg_watch_monitoring_faylov"></span><code>gocpg watch</code> — Мониторинг файлов<a class="heading-anchor" href="#gocpg-watch-monitoring-faylov" title="Link to this section">&para;</a></h4>
 <div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>gocpg<span class="w"> </span>watch<span class="w"> </span>--input<span class="w"> </span>ПУТЬ<span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>ПУТЬ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--lang<span class="w"> </span>ЯЗЫК<span class="o">]</span><span class="w"> </span><span class="o">[</span>--debounce<span class="w"> </span>МС<span class="o">]</span><span class="w"> </span><span class="o">[</span>--webhook<span class="w"> </span>URL<span class="o">]</span>
 </code></pre></div>
@@ -955,30 +993,21 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>submodules<span cl
 </tbody>
 </table></div>
 <p>Отображает кросс-языковые метрики качества: кандидаты на мёртвый код, точки сложности и общий показатель качества.</p>
-<h4  id="komandy-navigatsii-po-kodu"><span id="komandy_navigatsii_po_kodu"></span>Команды навигации по коду<a class="heading-anchor" href="#komandy-navigatsii-po-kodu" title="Link to this section">&para;</a></h4>
-<p>8 команд для навигации по данным CPG. Все поддерживают <code>--json</code> для машиночитаемого вывода.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Поиск символов по имени (точное совпадение или по префиксу)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>symbols<span class="w"> </span>--name<span class="o">=</span>ParseFile
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>symbols<span class="w"> </span>--name<span class="o">=</span>Parse<span class="w"> </span>--prefix<span class="w"> </span>--type<span class="o">=</span>method
+<h4  id="operatsionnye-komandy"><span id="operatsionnye_komandy"></span>Операционные команды<a class="heading-anchor" href="#operatsionnye-komandy" title="Link to this section">&para;</a></h4>
+<p>Текущий <code>gocpg</code> CLI сфокусирован на жизненном цикле CPG и эксплуатационных задачах.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Список фронтендов и метрик</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>frontends
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>metrics<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
 
-<span class="c1"># Обход графа вызовов (BFS с настраиваемой глубиной)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>callers<span class="w"> </span>--name<span class="o">=</span>ParseFile<span class="w"> </span>--depth<span class="o">=</span><span class="m">3</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>callees<span class="w"> </span>--name<span class="o">=</span>main<span class="w"> </span>--depth<span class="o">=</span><span class="m">2</span>
+<span class="c1"># Управление ветками и подмодулями</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>branches<span class="w"> </span>list<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>branches<span class="w"> </span>switch<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb<span class="w"> </span>--branch<span class="w"> </span>feature/my-change
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>submodules<span class="w"> </span>list<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
 
-<span class="c1"># Иерархия наследования типов</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>hierarchy<span class="w"> </span>--name<span class="o">=</span>BaseHandler<span class="w"> </span>--direction<span class="o">=</span>down
-
-<span class="c1"># Обзор файла (методы, классы, члены отсортированы по номеру строки)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>outline<span class="w"> </span>--file<span class="o">=</span>pkg/frontend/c/frontend.go
-
-<span class="c1"># Все места вызова метода</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>usages<span class="w"> </span>--name<span class="o">=</span>process_data
-
-<span class="c1"># Зависимости на уровне файлов (межфайловые рёбра вызовов)</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>deps<span class="w"> </span>--file<span class="o">=</span>src/main.py<span class="w"> </span>--direction<span class="o">=</span>outgoing
-
-<span class="c1"># Отладка цепочки разрешения FQN</span>
-codegraph<span class="w"> </span>gocpg<span class="w"> </span>resolve<span class="w"> </span>--name<span class="o">=</span>ParseFile
+<span class="c1"># Наблюдение за репозиторием и обслуживание индексов/хуков</span>
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>watch<span class="w"> </span>--input<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>hooks<span class="w"> </span>status
+codegraph<span class="w"> </span>gocpg<span class="w"> </span>index<span class="w"> </span>--db<span class="w"> </span>/path/to/cpg.duckdb
 </code></pre></div>
 
 <div class="table-wrapper"><table>
@@ -991,44 +1020,39 @@ codegraph<span class="w"> </span>gocpg<span class="w"> </span>resolve<span class
 </thead>
 <tbody>
 <tr>
-<td><code>symbols</code></td>
-<td>Поиск символов по имени</td>
-<td><code>--name</code>, <code>--prefix</code>, <code>--type</code>, <code>--visibility</code></td>
+<td><code>frontends</code></td>
+<td>Показать доступные языковые фронтенды</td>
+<td>нет</td>
 </tr>
 <tr>
-<td><code>callers</code></td>
-<td>Кто вызывает метод?</td>
-<td><code>--name</code>, <code>--depth</code></td>
+<td><code>metrics</code></td>
+<td>Проверить/вывести метрики GoCPG</td>
+<td><code>--db</code>, <code>--json</code></td>
 </tr>
 <tr>
-<td><code>callees</code></td>
-<td>Что вызывает метод?</td>
-<td><code>--name</code>, <code>--depth</code></td>
+<td><code>branches list|switch|prune</code></td>
+<td>Управление отслеживаемыми ветками</td>
+<td><code>--db</code>, <code>--branch</code>, <code>--input</code></td>
 </tr>
 <tr>
-<td><code>hierarchy</code></td>
-<td>Дерево наследования типов</td>
-<td><code>--name</code>, <code>--direction</code> (up/down/both)</td>
+<td><code>hooks install|uninstall|status</code></td>
+<td>Управление git-хуками</td>
+<td><code>--repo</code></td>
 </tr>
 <tr>
-<td><code>outline</code></td>
-<td>Все символы в файле</td>
-<td><code>--file</code></td>
+<td><code>watch</code></td>
+<td>Наблюдение за изменениями и обновление CPG</td>
+<td><code>--input</code>, <code>--db</code>, <code>--debounce-ms</code></td>
 </tr>
 <tr>
-<td><code>usages</code></td>
-<td>Все места вызова метода</td>
-<td><code>--name</code></td>
+<td><code>index</code></td>
+<td>Пересоздать индексы</td>
+<td><code>--db</code></td>
 </tr>
 <tr>
-<td><code>deps</code></td>
-<td>Зависимости уровня файлов</td>
-<td><code>--file</code>, <code>--direction</code> (outgoing/incoming/both)</td>
-</tr>
-<tr>
-<td><code>resolve</code></td>
-<td>Отладка разрешения FQN</td>
-<td><code>--name</code>, <code>--sig</code>, <code>--file</code></td>
+<td><code>submodules list|prune</code></td>
+<td>Управление отслеживаемыми подмодулями</td>
+<td><code>--db</code>, <code>--input</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1721,11 +1745,11 @@ patch-review diff changes.diff --dead-code
 </tr>
 <tr>
 <td>&ndash;scenario N</td>
-<td>Запуск конкретного сценария (1–21)</td>
+<td>Запуск конкретного benchmark-сценария</td>
 </tr>
 <tr>
 <td>&ndash;all-scenarios</td>
-<td>Запуск всех 21 сценария</td>
+<td>Запуск полного набора benchmark-сценариев</td>
 </tr>
 <tr>
 <td>&ndash;output DIR</td>
@@ -1863,41 +1887,6 @@ codegraph<span class="w"> </span>edit<span class="w"> </span>apply<span class="w
 codegraph<span class="w"> </span>edit<span class="w"> </span>apply<span class="w"> </span>--file<span class="w"> </span>src/utils.py<span class="w"> </span>--target<span class="w"> </span>validate_input<span class="w"> </span>--new-code<span class="w"> </span>@fix.py<span class="w"> </span>--preview
 </code></pre></div>
 
-<h3 id="pereimenovanie">Переименование<a class="heading-anchor" href="#pereimenovanie" title="Link to this section">&para;</a></h3>
-<p>Переименование символа по всей кодовой базе.</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>edit<span class="w"> </span>rename<span class="w"> </span>--old<span class="w"> </span>&lt;имя&gt;<span class="w"> </span>--new<span class="w"> </span>&lt;имя&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Опция</th>
-<th>Описание</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--old</code></td>
-<td>Текущее имя символа</td>
-</tr>
-<tr>
-<td><code>--new</code></td>
-<td>Новое имя символа</td>
-</tr>
-<tr>
-<td><code>--scope</code></td>
-<td>Ограничить область конкретным путём</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Примеры:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Переименовать функцию</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>rename<span class="w"> </span>--old<span class="w"> </span>processData<span class="w"> </span>--new<span class="w"> </span>process_data
-
-<span class="c1"># Переименовать в пределах области</span>
-codegraph<span class="w"> </span>edit<span class="w"> </span>rename<span class="w"> </span>--old<span class="w"> </span>handler<span class="w"> </span>--new<span class="w"> </span>request_handler<span class="w"> </span>--scope<span class="w"> </span>src/api/
-</code></pre></div>
-
 <h3  id="otmena-i-istoriya"><span id="otmena_i_istoriya"></span>Отмена и история<a class="heading-anchor" href="#otmena-i-istoriya" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Показать историю редактирований</span>
 codegraph<span class="w"> </span>edit<span class="w"> </span><span class="nb">history</span>
@@ -1959,14 +1948,11 @@ codegraph<span class="w"> </span>optimize<span class="w"> </span>analyze<span cl
 </code></pre></div>
 
 <h3  id="prosmotr-predlozheniy"><span id="prosmotr_predlozheniy"></span>Просмотр предложений<a class="heading-anchor" href="#prosmotr-predlozheniy" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Список всех предложений</span>
-codegraph<span class="w"> </span>optimize<span class="w"> </span>list
-
-<span class="c1"># Список ожидающих предложений с фильтром по статусу</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Список ожидающих предложений с фильтром по статусу</span>
 codegraph<span class="w"> </span>optimize<span class="w"> </span>list-suggestions<span class="w"> </span>--status<span class="w"> </span>pending
 
-<span class="c1"># Показать детали конкретного предложения</span>
-codegraph<span class="w"> </span>optimize<span class="w"> </span>show<span class="w"> </span>--id<span class="w"> </span>&lt;suggestion_id&gt;
+<span class="c1"># Список отклонённых предложений</span>
+codegraph<span class="w"> </span>optimize<span class="w"> </span>list-suggestions<span class="w"> </span>--status<span class="w"> </span>rejected
 </code></pre></div>
 
 <h3 id="utverzhdenieotklonenie">Утверждение/Отклонение<a class="heading-anchor" href="#utverzhdenieotklonenie" title="Link to this section">&para;</a></h3>
@@ -2016,17 +2002,13 @@ codegraph<span class="w"> </span>optimize<span class="w"> </span>patterns<span c
 <div class="highlight"><pre><span></span><code>codegraph standards &lt;подкоманда&gt; [опции]
 </code></pre></div>
 
-<h3  id="import-i-validatsiya"><span id="import_i_validatsiya"></span>Импорт и валидация<a class="heading-anchor" href="#import-i-validatsiya" title="Link to this section">&para;</a></h3>
+<h3  id="import-dokumentov"><span id="import_dokumentov"></span>Импорт документов<a class="heading-anchor" href="#import-dokumentov" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Импортировать документ стандартов</span>
 codegraph<span class="w"> </span>standards<span class="w"> </span>import<span class="w"> </span>&lt;document.yaml&gt;
-
-<span class="c1"># Валидировать синтаксис документа</span>
-codegraph<span class="w"> </span>standards<span class="w"> </span>validate<span class="w"> </span>&lt;document.yaml&gt;
 </code></pre></div>
 
 <h3  id="spisok-pravil"><span id="spisok_pravil"></span>Список правил<a class="heading-anchor" href="#spisok-pravil" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Список всех импортированных правил</span>
-codegraph<span class="w"> </span>standards<span class="w"> </span>list
 codegraph<span class="w"> </span>standards<span class="w"> </span>list-rules
 
 <span class="c1"># Список по категории</span>
@@ -2096,12 +2078,9 @@ codegraph<span class="w"> </span>standards<span class="w"> </span>check<span cla
 codegraph<span class="w"> </span>standards<span class="w"> </span>check<span class="w"> </span>src/<span class="w"> </span>--category<span class="w"> </span>security
 </code></pre></div>
 
-<h3  id="otchyot-i-ochistka"><span id="otchyot_i_ochistka"></span>Отчёт и очистка<a class="heading-anchor" href="#otchyot-i-ochistka" title="Link to this section">&para;</a></h3>
+<h3 id="otchyot">Отчёт<a class="heading-anchor" href="#otchyot" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Сгенерировать отчёт о нарушениях</span>
 codegraph<span class="w"> </span>standards<span class="w"> </span>report<span class="w"> </span>src/<span class="w"> </span>--output<span class="w"> </span>violations.json
-
-<span class="c1"># Очистить все импортированные правила</span>
-codegraph<span class="w"> </span>standards<span class="w"> </span>clear
 </code></pre></div>
 
 <h3  id="udalenie-dokumenta"><span id="udalenie_dokumenta"></span>Удаление документа<a class="heading-anchor" href="#udalenie-dokumenta" title="Link to this section">&para;</a></h3>
@@ -2226,51 +2205,6 @@ codegraph<span class="w"> </span>deps<span class="w"> </span>check-vulns
 codegraph<span class="w"> </span>deps<span class="w"> </span>check-vulns<span class="w"> </span>--severity<span class="w"> </span>critical<span class="w"> </span>--fail-on<span class="w"> </span>critical
 </code></pre></div>
 
-<h3  id="audit-uyazvimostey"><span id="audit_uyazvimostey"></span>Аудит уязвимостей<a class="heading-anchor" href="#audit-uyazvimostey" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>codegraph deps audit [опции]
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Опция</th>
-<th>Описание</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--severity</code></td>
-<td>Фильтр: <code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code></td>
-</tr>
-<tr>
-<td><code>--fail-on</code></td>
-<td>Выход с ошибкой при указанном уровне</td>
-</tr>
-<tr>
-<td><code>--report</code></td>
-<td>Файл для детального отчёта</td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Примеры:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Полный аудит</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit
-
-<span class="c1"># Только критические и высокие</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span>--severity<span class="w"> </span>critical,high
-
-<span class="c1"># Режим CI/CD (ошибка при high)</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>audit<span class="w"> </span>--fail-on<span class="w"> </span>high
-</code></pre></div>
-
-<h3  id="ustarevshie-pakety"><span id="ustarevshie_pakety"></span>Устаревшие пакеты<a class="heading-anchor" href="#ustarevshie-pakety" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Проверить устаревшие пакеты</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>outdated
-
-<span class="c1"># Только прямые зависимости</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>outdated<span class="w"> </span>--direct-only
-</code></pre></div>
-
 <h3  id="proverka-litsenziy"><span id="proverka_litsenziy"></span>Проверка лицензий<a class="heading-anchor" href="#proverka-litsenziy" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Проверить все лицензии</span>
 codegraph<span class="w"> </span>deps<span class="w"> </span>licenses
@@ -2282,22 +2216,8 @@ codegraph<span class="w"> </span>deps<span class="w"> </span>licenses<span class
 codegraph<span class="w"> </span>deps<span class="w"> </span>licenses<span class="w"> </span>--fail-on<span class="w"> </span>GPL-3.0
 </code></pre></div>
 
-<h3  id="generatsiya-sbom"><span id="generatsiya_sbom"></span>Генерация SBOM<a class="heading-anchor" href="#generatsiya-sbom" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Сгенерировать CycloneDX SBOM</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span>--format<span class="w"> </span>cyclonedx<span class="w"> </span>--output<span class="w"> </span>sbom.json
-
-<span class="c1"># Сгенерировать SPDX с уязвимостями</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>sbom<span class="w"> </span>--format<span class="w"> </span>spdx<span class="w"> </span>--output<span class="w"> </span>sbom.spdx<span class="w"> </span>--include-vulnerabilities
-</code></pre></div>
-
 <h3  id="graf-zavisimostey"><span id="graf_zavisimostey"></span>Граф зависимостей<a class="heading-anchor" href="#graf-zavisimostey" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Показать дерево зависимостей</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>tree
-
-<span class="c1"># Показать почему пакет установлен</span>
-codegraph<span class="w"> </span>deps<span class="w"> </span>why<span class="w"> </span>&lt;package&gt;
-
-<span class="c1"># Экспортировать граф</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Экспортировать граф</span>
 codegraph<span class="w"> </span>deps<span class="w"> </span>graph<span class="w"> </span>--format<span class="w"> </span>dot<span class="w"> </span>--output<span class="w"> </span>deps.dot
 </code></pre></div>
 
@@ -3356,6 +3276,12 @@ codegraph<span class="w"> </span>vault<span class="w"> </span>rotate<span class=
 codegraph<span class="w"> </span>auth<span class="w"> </span>permissions<span class="w"> </span>--role<span class="w"> </span>ADMIN<span class="w"> </span>--format<span class="w"> </span>json
 codegraph<span class="w"> </span>auth<span class="w"> </span>oauth-status<span class="w">             </span><span class="c1"># Статус OAuth-провайдера</span>
 codegraph<span class="w"> </span>auth<span class="w"> </span>ldap-status<span class="w">              </span><span class="c1"># Статус интеграции с LDAP</span>
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>create<span class="w"> </span>--owner<span class="w"> </span>admin<span class="w"> </span>--name<span class="w"> </span>ci-bot<span class="w"> </span>--template<span class="w"> </span>ci<span class="w"> </span>--interface<span class="w"> </span>api
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>list<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>inspect<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>rotate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>revoke<span class="w"> </span>--id<span class="w"> </span>&lt;credential-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>deactivate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
 </code></pre></div>
 
 <div class="table-wrapper"><table>
@@ -3381,6 +3307,30 @@ codegraph<span class="w"> </span>auth<span class="w"> </span>ldap-status<span cl
 <tr>
 <td><code>ldap-status</code></td>
 <td>Статус интеграции с LDAP</td>
+</tr>
+<tr>
+<td><code>service-account create</code></td>
+<td>Создать service account с первым credential</td>
+</tr>
+<tr>
+<td><code>service-account list</code></td>
+<td>Показать список service accounts</td>
+</tr>
+<tr>
+<td><code>service-account inspect</code></td>
+<td>Показать scopes, interfaces, статус и metadata credentials</td>
+</tr>
+<tr>
+<td><code>service-account rotate</code></td>
+<td>Выпустить новый credential без немедленного revoke старого</td>
+</tr>
+<tr>
+<td><code>service-account revoke</code></td>
+<td>Отозвать один credential</td>
+</tr>
+<tr>
+<td><code>service-account deactivate</code></td>
+<td>Деактивировать service account</td>
 </tr>
 </tbody>
 </table></div>
@@ -4330,6 +4280,151 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="risk-management-cli"><span id="cli-upravleniya-riskami-gost-r-575803"></span><span id="cli_upravleniya_riskami_gost_r_575803"></span><span id="risk_management_cli"></span>CLI управления рисками (ГОСТ Р 57580.3)<a class="heading-anchor" href="#risk-management-cli" title="Link to this section">&para;</a></h2>
+<p>Индикаторы риска, оценка рисков, модель угроз, классификация событий и чек-лист самооценки по ГОСТ Р 57580.3-2022.</p>
+<h3  id="risk-kir"><span id="risk-kir-klyuchevye-indikatory-riska"></span><span id="risk_kir"></span><span id="risk_kir_klyuchevye_indikatory_riska"></span><code>risk kir</code> — Ключевые индикаторы риска<a class="heading-anchor" href="#risk-kir" title="Link to this section">&para;</a></h3>
+<p>Расчёт 8 КИР из данных CPG с пороговыми статусами (NORMAL/SIGNAL/CONTROL).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>kir<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>ПУТЬ<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-kpur"><span id="risk-kpur-kontrolnye-pokazateli-urovnya-riska"></span><span id="risk_kpur"></span><span id="risk_kpur_kontrolnye_pokazateli_urovnya_riska"></span><code>risk kpur</code> — Контрольные показатели уровня риска<a class="heading-anchor" href="#risk-kpur" title="Link to this section">&para;</a></h3>
+<p>Расчёт КПУР по 3 группам (потери, операционная надёжность, несанкционированные операции).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>kpur<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>ПУТЬ<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-dashboard"><span id="risk-dashboard-dashbord-riskov"></span><span id="risk_dashboard"></span><span id="risk_dashboard_dashbord_riskov"></span><code>risk dashboard</code> — Дашборд рисков<a class="heading-anchor" href="#risk-dashboard" title="Link to this section">&para;</a></h3>
+<p>КИР + КПУР + оповещения с общим статусом риска.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>dashboard<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>ПУТЬ<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-assess"><span id="risk-assess-otsenka-riskov-svr-stp"></span><span id="risk_assess"></span><span id="risk_assess_otsenka_riskov_svr_stp"></span><code>risk assess</code> — Оценка рисков (СВР × СТП)<a class="heading-anchor" href="#risk-assess" title="Link to this section">&para;</a></h3>
+<p>Расчёт вероятности реализации угрозы (СВР) и тяжести последствий (СТП) для каждой находки.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>assess<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-matrix"><span id="risk-matrix-matritsa-riskov-55"></span><span id="risk_matrix"></span><span id="risk_matrix_matritsa_riskov_55"></span><code>risk matrix</code> — Матрица рисков 5×5<a class="heading-anchor" href="#risk-matrix" title="Link to this section">&para;</a></h3>
+<p>Матрица СВР × СТП с распределением находок по 25 ячейкам.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>matrix
+</code></pre></div>
+
+<h3  id="risk-detail"><span id="risk-detail-detali-riska-nahodki"></span><span id="risk_detail"></span><span id="risk_detail_detali_riska_nahodki"></span><code>risk detail</code> — Детали риска находки<a class="heading-anchor" href="#risk-detail" title="Link to this section">&para;</a></h3>
+<p>Детальная оценка риска для конкретной находки.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>detail<span class="w"> </span>--finding-id<span class="w"> </span>&lt;ID&gt;
+</code></pre></div>
+
+<h3  id="risk-threat-model"><span id="risk-threat-model-57580-model-ugroz-gost-r-575803"></span><span id="risk_threat_model"></span><span id="risk_threat_model_57580_model_ugroz_gost_r_575803"></span><code>risk threat-model-57580</code> — Модель угроз ГОСТ Р 57580.3<a class="heading-anchor" href="#risk-threat-model" title="Link to this section">&para;</a></h3>
+<p>Генерация модели угроз с профилями нарушителей и техниками ATT&amp;CK.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>threat-model-57580<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-events"><span id="risk-events-klassifikatsiya-sobytiy-riska"></span><span id="risk_events"></span><span id="risk_events_klassifikatsiya_sobytiy_riska"></span><code>risk events</code> — Классификация событий риска<a class="heading-anchor" href="#risk-events" title="Link to this section">&para;</a></h3>
+<p>Классификация и просмотр событий по 4 измерениям (приложения А–Г).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>events<span class="w"> </span><span class="o">[</span>classify<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-checklist"><span id="risk-checklist-chek-list-samootsenki"></span><span id="risk_checklist"></span><span id="risk_checklist_chek_list_samootsenki"></span><code>risk checklist</code> — Чек-лист самооценки<a class="heading-anchor" href="#risk-checklist" title="Link to this section">&para;</a></h3>
+<p>Генерация чек-листа самооценки (~72 мер) с автозаполнением.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>checklist<span class="w"> </span><span class="o">[</span>export<span class="o">]</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span><span class="m">1</span><span class="p">|</span><span class="m">2</span><span class="p">|</span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-anomalies"><span id="risk-anomalies-detektsiya-anomaliy-kir"></span><span id="risk_anomalies"></span><span id="risk_anomalies_detektsiya_anomaliy_kir"></span><code>risk anomalies</code> — Детекция аномалий КИР<a class="heading-anchor" href="#risk-anomalies" title="Link to this section">&para;</a></h3>
+<p>Обнаружение аномалий значений КИР по z-score на скользящем окне.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>anomalies<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--project</code></td>
+<td>активный проект</td>
+<td>Имя проекта</td>
+</tr>
+<tr>
+<td><code>--threshold</code></td>
+<td><code>2.0</code></td>
+<td>Порог z-score для алертов</td>
+</tr>
+<tr>
+<td><code>--window</code></td>
+<td><code>10</code></td>
+<td>Размер скользящего окна</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="risk-report-fincert"><span id="risk-report-fincert-otchyot-dlya-fintsert"></span><span id="risk_report_fincert"></span><span id="risk_report_fincert_otchyot_dlya_fintsert"></span><code>risk report-fincert</code> — Отчёт для ФинЦЕРТ<a class="heading-anchor" href="#risk-report-fincert" title="Link to this section">&para;</a></h3>
+<p>Формирование отчёта ФинЦЕРТ (форма 0403203 по Положению 716-П).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>report-fincert<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--project</code></td>
+<td>активный проект</td>
+<td>Имя проекта</td>
+</tr>
+<tr>
+<td><code>--period</code></td>
+<td>—</td>
+<td>Отчётный период (например, <code>2026-Q1</code>)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>markdown</code></td>
+<td>Формат вывода: <code>markdown</code>, <code>json</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>ru</code></td>
+<td>Язык отчёта: <code>ru</code>, <code>en</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="risk-org-docs"><span id="risk-org-docs-shablony-organizatsionno-rasporyaditelnyh-dokumentov"></span><span id="risk_org_docs"></span><span id="risk_org_docs_shablony_organizatsionno_rasporyaditelnyh_dokumentov"></span><code>risk org-docs</code> — Шаблоны организационно-распорядительных документов<a class="heading-anchor" href="#risk-org-docs" title="Link to this section">&para;</a></h3>
+<p>Генерация или проверка статуса шаблонов ОРД для организационных мер ГОСТ Р 57580.3 (26 мер в 9 документах).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>org-docs<span class="w"> </span>generate<span class="w"> </span>--all<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>org-docs<span class="w"> </span>generate<span class="w"> </span>--measures<span class="w"> </span>OPR.1,OPR.14,RM.9<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>org-docs<span class="w"> </span>status
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Подкоманда</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>generate --all</code></td>
+<td>Сгенерировать все 9 шаблонов, покрывающих 26 организационных мер</td>
+</tr>
+<tr>
+<td><code>generate --measures X,Y</code></td>
+<td>Сгенерировать шаблоны по конкретным ID мер</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>Показать, какие ОРД существуют и что они покрывают</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Генерируемые документы</strong> размещаются в <code>docs/compliance/org/</code> и содержат: метаданные ОРД (идентификатор, версия, стандарт, уровень защищённости), лист согласования, историю изменений и предзаполненные разделы с маркерами <code>TODO</code> для ручного заполнения.</p>
+<hr />
 <h2  id="sbom--sca-cli"><span id="cli-sbom-sca"></span><span id="cli_sbom_sca"></span><span id="sbom__sca_cli"></span>CLI SBOM / SCA<a class="heading-anchor" href="#sbom--sca-cli" title="Link to this section">&para;</a></h2>
 <p>Анализ состава программного обеспечения (SCA) и реестр программных компонентов (SBOM) — сканирование зависимостей, проверка уязвимостей и отчёт по ГОСТ 5.16.</p>
 <p><strong>Модуль:</strong> <code>src.cli.sbom_commands</code></p>
@@ -4666,6 +4761,175 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="issues-cli"><span id="cli-trekera-zadach"></span><span id="cli_trekera_zadach"></span><span id="issues_cli"></span>CLI трекера задач<a class="heading-anchor" href="#issues-cli" title="Link to this section">&para;</a></h2>
+<p>Интеграция с трекерами задач для двунаправленной синхронизации с Jira, Yandex Tracker и YouTrack (ГОСТ 5.5).</p>
+<p><strong>Модуль:</strong> <code>src.cli.issues_commands</code></p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>&lt;подкоманда&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="issues-create"><span id="issues-create-sozdanie-zadachi-iz-obnaruzheniya"></span><span id="issues_create"></span><span id="issues_create_sozdanie_zadachi_iz_obnaruzheniya"></span><code>issues create</code> — Создание задачи из обнаружения<a class="heading-anchor" href="#issues-create" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>create<span class="w"> </span>--finding-id<span class="w"> </span>F-1<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;SQL-инъекция в query.py&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--severity<span class="w"> </span>high<span class="w"> </span>--cwe<span class="w"> </span>CWE-89<span class="w"> </span><span class="o">[</span>--tracker<span class="w"> </span>jira<span class="p">|</span>yandex_tracker<span class="p">|</span>youtrack<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--finding-id</code></td>
+<td>(обязательно)</td>
+<td>ID обнаружения CodeGraph</td>
+</tr>
+<tr>
+<td><code>--title</code></td>
+<td>(обязательно)</td>
+<td>Заголовок задачи</td>
+</tr>
+<tr>
+<td><code>--description</code></td>
+<td><code>""</code></td>
+<td>Описание задачи</td>
+</tr>
+<tr>
+<td><code>--severity</code></td>
+<td><code>medium</code></td>
+<td>Уровень критичности</td>
+</tr>
+<tr>
+<td><code>--cwe</code></td>
+<td><code>""</code></td>
+<td>Идентификатор CWE</td>
+</tr>
+<tr>
+<td><code>--tracker</code></td>
+<td><code>jira</code></td>
+<td>Тип трекера</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>text</code></td>
+<td>Формат вывода</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="issues-bulk-create"><span id="issues-bulk-create-massovoe-sozdanie-zadach"></span><span id="issues_bulk_create"></span><span id="issues_bulk_create_massovoe_sozdanie_zadach"></span><code>issues bulk-create</code> — Массовое создание задач<a class="heading-anchor" href="#issues-bulk-create" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>bulk-create<span class="w"> </span>--input<span class="w"> </span>findings.json<span class="w"> </span><span class="o">[</span>--tracker<span class="w"> </span>jira<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="issues-update"><span id="issues-update-obnovlenie-statusa-zadachi"></span><span id="issues_update"></span><span id="issues_update_obnovlenie_statusa_zadachi"></span><code>issues update</code> — Обновление статуса задачи<a class="heading-anchor" href="#issues-update" title="Link to this section">&para;</a></h3>
+<p>Обновление статуса задачи через API переходов трекера.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>update<span class="w"> </span>--issue-id<span class="w"> </span>PROJ-123<span class="w"> </span>--status<span class="w"> </span>Done<span class="w"> </span><span class="o">[</span>--comment<span class="w"> </span><span class="s2">&quot;Исправлено в abc123&quot;</span><span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--issue-id</code></td>
+<td>(обязательно)</td>
+<td>ID задачи в трекере</td>
+</tr>
+<tr>
+<td><code>--status</code></td>
+<td>(обязательно)</td>
+<td>Целевой статус (например, <code>Done</code>, <code>Fixed</code>)</td>
+</tr>
+<tr>
+<td><code>--comment</code></td>
+<td><code>""</code></td>
+<td>Комментарий (необязательно)</td>
+</tr>
+<tr>
+<td><code>--tracker</code></td>
+<td><code>jira</code></td>
+<td>Тип трекера</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="issues-sync"><span id="issues-sync-dvunapravlennaya-sinhronizatsiya"></span><span id="issues_sync"></span><span id="issues_sync_dvunapravlennaya_sinhronizatsiya"></span><code>issues sync</code> — Двунаправленная синхронизация<a class="heading-anchor" href="#issues-sync" title="Link to this section">&para;</a></h3>
+<p>Синхронизация обнаружений с трекером: создание новых, проверка статусов, закрытие исправленных.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>sync<span class="w"> </span>--findings-file<span class="w"> </span>findings.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="o">[</span>--tracked-file<span class="w"> </span>tracked.json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--close-on-fix<span class="o">]</span><span class="w"> </span><span class="o">[</span>--min-severity<span class="w"> </span>high<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--findings-file</code></td>
+<td><code>""</code></td>
+<td>Путь к JSON текущих обнаружений</td>
+</tr>
+<tr>
+<td><code>--tracked-file</code></td>
+<td><code>""</code></td>
+<td>Путь к JSON маппинга отслеживаемых задач</td>
+</tr>
+<tr>
+<td><code>--close-on-fix</code></td>
+<td><code>true</code></td>
+<td>Закрывать задачи при исчезновении обнаружений</td>
+</tr>
+<tr>
+<td><code>--min-severity</code></td>
+<td><code>high</code></td>
+<td>Минимальная критичность для автосоздания</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Примеры:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Создание задачи из обнаружения</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>create<span class="w"> </span>--finding-id<span class="w"> </span>F-42<span class="w"> </span>--title<span class="w"> </span><span class="s2">&quot;Переполнение буфера в parser.c&quot;</span><span class="w"> </span>--severity<span class="w"> </span>critical
+
+<span class="c1"># Синхронизация всех обнаружений с Jira</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>sync<span class="w"> </span>--findings-file<span class="w"> </span>data/findings.json<span class="w"> </span>--tracked-file<span class="w"> </span>data/tracked.json
+
+<span class="c1"># Обновление статуса задачи</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>issues<span class="w"> </span>update<span class="w"> </span>--issue-id<span class="w"> </span>PROJ-123<span class="w"> </span>--status<span class="w"> </span>Done<span class="w"> </span>--comment<span class="w"> </span><span class="s2">&quot;Исправлено в коммите abc1234&quot;</span>
+</code></pre></div>
+
+<hr />
+<h2  id="dynamic-analysis-cli"><span id="cli-dinamicheskogo-analiza"></span><span id="cli_dinamicheskogo_analiza"></span><span id="dynamic_analysis_cli"></span>CLI динамического анализа<a class="heading-anchor" href="#dynamic-analysis-cli" title="Link to this section">&para;</a></h2>
+<p>Управление результатами динамического анализа (ГОСТ 5.11): импорт результатов DAST/фаззера, корреляция со статическими обнаружениями, генерация отчётов.</p>
+<p><strong>Модуль:</strong> <code>src.cli.dynamic_commands</code></p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>&lt;подкоманда&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-import"><span id="dynamic-import-import-rezultatov"></span><span id="dynamic_import"></span><span id="dynamic_import_import_rezultatov"></span><code>dynamic import</code> — Импорт результатов<a class="heading-anchor" href="#dynamic-import" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>import<span class="w"> </span>--file<span class="w"> </span>results.sarif<span class="w"> </span><span class="o">[</span>--tool<span class="w"> </span>dast<span class="p">|</span>fuzzer<span class="p">|</span>iast<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-correlate"><span id="dynamic-correlate-korrelyatsiya-staticheskih-i-dinamicheskih-obnaruzheniy"></span><span id="dynamic_correlate"></span><span id="dynamic_correlate_korrelyatsiya_staticheskih_i_dinamicheskih_obnaruzheniy"></span><code>dynamic correlate</code> — Корреляция статических и динамических обнаружений<a class="heading-anchor" href="#dynamic-correlate" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>correlate<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-fuzz-targets"><span id="dynamic-fuzz-targets-generatsiya-tseley-fazzinga"></span><span id="dynamic_fuzz_targets"></span><span id="dynamic_fuzz_targets_generatsiya_tseley_fazzinga"></span><code>dynamic fuzz-targets</code> — Генерация целей фаззинга<a class="heading-anchor" href="#dynamic-fuzz-targets" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>fuzz-targets<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-report"><span id="dynamic-report-otchyot-po-gost-5113"></span><span id="dynamic_report"></span><span id="dynamic_report_otchyot_po_gost_5113"></span><code>dynamic report</code> — Отчёт по ГОСТ 5.11.3<a class="heading-anchor" href="#dynamic-report" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>report<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<hr />
 <h2  id="threat-model-cli"><span id="cli-modeli-ugroz"></span><span id="cli_modeli_ugroz"></span><span id="threat_model_cli"></span>CLI модели угроз<a class="heading-anchor" href="#threat-model-cli" title="Link to this section">&para;</a></h2>
 <p>Генерация модели угроз STRIDE на основе данных CPG — полная генерация, инкрементальное обновление, экспорт диаграммы потоков данных и список угроз.</p>
 <p><strong>Модуль:</strong> <code>src.cli.threat_model_commands</code></p>
@@ -4887,9 +5151,535 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <hr />
+<h2  id="dashboard-cli"><span id="cli-dashborda"></span><span id="cli_dashborda"></span><span id="dashboard_cli"></span>CLI дашборда<a class="heading-anchor" href="#dashboard-cli" title="Link to this section">&para;</a></h2>
+<p>Команды портфельного дашборда CISO/CTO: показатели качества, анализ трендов, мониторинг зоны риска, сравнение проектов и экспорт отчётов.</p>
+<hr />
+<h3  id="dashboard-overview"><span id="dashboard-overview-obzor-portfelya"></span><span id="dashboard_overview"></span><span id="dashboard_overview_obzor_portfelya"></span><code>dashboard overview</code> — Обзор портфеля<a class="heading-anchor" href="#dashboard-overview" title="Link to this section">&para;</a></h3>
+<p>Выводит агрегированную сводку качества по всем проектам группы.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--group</code></td>
+<td>—</td>
+<td>Имя или UUID группы для ограничения портфеля</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Формат вывода: <code>table</code>, <code>json</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>ru</code></td>
+<td>Язык отображения: <code>en</code>, <code>ru</code></td>
+</tr>
+<tr>
+<td><code>--min-risk</code></td>
+<td>—</td>
+<td>Показывать проекты начиная с уровня риска: <code>low</code>, <code>medium</code>, <code>high</code>, <code>critical</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Примеры:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Таблица по всем проектам</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview
+
+<span class="c1"># JSON, ограниченный группой</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview<span class="w"> </span>--group<span class="w"> </span>my-team<span class="w"> </span>--format<span class="w"> </span>json
+
+<span class="c1"># Только проекты с высоким и критическим риском</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>overview<span class="w"> </span>--min-risk<span class="w"> </span>high
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-health"><span id="dashboard-health-otchyot-o-kachestve-proekta"></span><span id="dashboard_health"></span><span id="dashboard_health_otchyot_o_kachestve_proekta"></span><code>dashboard health</code> — Отчёт о качестве проекта<a class="heading-anchor" href="#dashboard-health" title="Link to this section">&para;</a></h3>
+<p>Показывает полную оценку качества отдельного проекта с разбивкой по разделам.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>ПРОЕКТ<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--include-sections</code></td>
+<td>выкл.</td>
+<td>Показать разбивку по разделам (аудит, соответствие, ворота выпуска, SCA, качество)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Формат вывода: <code>table</code>, <code>json</code>, <code>markdown</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>ru</code></td>
+<td>Язык отображения: <code>en</code>, <code>ru</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Примеры:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Таблица с оценкой качества</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>my-project
+
+<span class="c1"># Полная разбивка в формате Markdown</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>my-project<span class="w"> </span>--include-sections<span class="w"> </span>--format<span class="w"> </span>markdown
+
+<span class="c1"># JSON для интеграции с CI</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>health<span class="w"> </span>my-project<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-trends"><span id="dashboard-trends-trendy-kachestva"></span><span id="dashboard_trends"></span><span id="dashboard_trends_trendy_kachestva"></span><code>dashboard trends</code> — Тренды качества<a class="heading-anchor" href="#dashboard-trends" title="Link to this section">&para;</a></h3>
+<p>Выводит временны́е ряды трендов для проекта.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>ПРОЕКТ<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--period</code></td>
+<td><code>30d</code></td>
+<td>Временной диапазон: <code>7d</code>, <code>30d</code>, <code>90d</code>, <code>180d</code>, <code>1y</code></td>
+</tr>
+<tr>
+<td><code>--metrics</code></td>
+<td><code>health</code></td>
+<td>Метрики через запятую: <code>health</code>, <code>audit</code>, <code>compliance</code>, <code>sca</code>, <code>quality</code></td>
+</tr>
+<tr>
+<td><code>--granularity</code></td>
+<td><code>day</code></td>
+<td>Шаг данных: <code>day</code>, <code>week</code>, <code>month</code></td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Формат вывода: <code>table</code>, <code>json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Примеры:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Тренд качества за 30 дней</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>my-project
+
+<span class="c1"># 90-дневный тренд по нескольким метрикам</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>my-project<span class="w"> </span>--period<span class="w"> </span>90d<span class="w"> </span>--metrics<span class="w"> </span>health,audit,compliance
+
+<span class="c1"># Еженедельная детализация, JSON-вывод</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>trends<span class="w"> </span>my-project<span class="w"> </span>--period<span class="w"> </span>1y<span class="w"> </span>--granularity<span class="w"> </span>week<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-red-zone"><span id="dashboard-red-zone-monitoring-zony-riska"></span><span id="dashboard_red_zone"></span><span id="dashboard_red_zone_monitoring_zony_riska"></span><code>dashboard red-zone</code> — Мониторинг зоны риска<a class="heading-anchor" href="#dashboard-red-zone" title="Link to this section">&para;</a></h3>
+<p>Список проектов в зоне риска (высокий/критический уровень).</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--severity</code></td>
+<td><code>critical,high</code></td>
+<td>Фильтр серьёзности через запятую: <code>critical</code>, <code>high</code>, <code>medium</code></td>
+</tr>
+<tr>
+<td><code>--category</code></td>
+<td>—</td>
+<td>Категория находок: <code>security</code>, <code>compliance</code>, <code>quality</code></td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td><code>50</code></td>
+<td>Максимальное количество результатов</td>
+</tr>
+<tr>
+<td><code>--group</code></td>
+<td>—</td>
+<td>Имя или UUID группы</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Формат вывода: <code>table</code>, <code>json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Примеры:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Все проекты в зоне риска (критические + высокие)</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone
+
+<span class="c1"># Только критические проблемы безопасности, топ-10</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone<span class="w"> </span>--severity<span class="w"> </span>critical<span class="w"> </span>--category<span class="w"> </span>security<span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span>
+
+<span class="c1"># JSON для системы оповещения</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>red-zone<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-compare"><span id="dashboard-compare-sravnenie-proektov"></span><span id="dashboard_compare"></span><span id="dashboard_compare_sravnenie_proektov"></span><code>dashboard compare</code> — Сравнение проектов<a class="heading-anchor" href="#dashboard-compare" title="Link to this section">&para;</a></h3>
+<p>Сравнение нескольких проектов по измерениям качества.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>П1<span class="w"> </span>П2<span class="w"> </span><span class="o">[</span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dimensions</code></td>
+<td><code>1,2,3,4,5</code></td>
+<td>Идентификаторы измерений через запятую (1=аудит, 2=соответствие, 3=ворота выпуска, 4=SCA, 5=качество, 6=тренд, 7=риск)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>table</code></td>
+<td>Формат вывода: <code>table</code>, <code>json</code>, <code>radar</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>ru</code></td>
+<td>Язык отображения: <code>en</code>, <code>ru</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Примеры:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Сравнение двух проектов в виде таблицы</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>proj-a<span class="w"> </span>proj-b
+
+<span class="c1"># Три проекта по измерениям: аудит + соответствие + риск</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>proj-a<span class="w"> </span>proj-b<span class="w"> </span>proj-c<span class="w"> </span>--dimensions<span class="w"> </span><span class="m">1</span>,2,7
+
+<span class="c1"># JSON для визуализации в виде радарной диаграммы</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare<span class="w"> </span>proj-a<span class="w"> </span>proj-b<span class="w"> </span>--format<span class="w"> </span>radar
+</code></pre></div>
+
+<hr />
+<h3  id="dashboard-export"><span id="dashboard-export-eksport-otchyota"></span><span id="dashboard_export"></span><span id="dashboard_export_eksport_otchyota"></span><code>dashboard export</code> — Экспорт отчёта<a class="heading-anchor" href="#dashboard-export" title="Link to this section">&para;</a></h3>
+<p>Экспорт отчёта дашборда в файл.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Опция</th>
+<th>По умолчанию</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--scope</code></td>
+<td><code>portfolio</code></td>
+<td>Область экспорта: <code>portfolio</code>, <code>project</code></td>
+</tr>
+<tr>
+<td><code>--project</code></td>
+<td>—</td>
+<td>Имя проекта (обязательно при <code>--scope project</code>)</td>
+</tr>
+<tr>
+<td><code>--format</code></td>
+<td><code>json</code></td>
+<td>Формат вывода: <code>json</code>, <code>pdf</code>, <code>markdown</code></td>
+</tr>
+<tr>
+<td><code>--language</code></td>
+<td><code>ru</code></td>
+<td>Язык отчёта: <code>en</code>, <code>ru</code></td>
+</tr>
+<tr>
+<td><code>--sections</code></td>
+<td>все</td>
+<td>Разделы через запятую: <code>health,compliance,sca,trends,red_zone,cross_repo</code></td>
+</tr>
+<tr>
+<td><code>--output</code></td>
+<td>stdout</td>
+<td>Путь к файлу вывода</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Примеры:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Экспорт портфеля в JSON</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--output<span class="w"> </span>portfolio.json
+
+<span class="c1"># Отчёт по одному проекту в Markdown</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--scope<span class="w"> </span>project<span class="w"> </span>--project<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--format<span class="w"> </span>markdown<span class="w"> </span>--output<span class="w"> </span>report.md
+
+<span class="c1"># PDF-отчёт на русском языке</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--scope<span class="w"> </span>project<span class="w"> </span>--project<span class="w"> </span>my-project<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--format<span class="w"> </span>pdf<span class="w"> </span>--language<span class="w"> </span>ru<span class="w"> </span>--output<span class="w"> </span>report.pdf
+</code></pre></div>
+
+<hr />
+<h2  id="dopolnitelnoe-pokrytie-komand"><span id="dopolnitelnoe_pokrytie_komand"></span>Дополнительное покрытие команд<a class="heading-anchor" href="#dopolnitelnoe-pokrytie-komand" title="Link to this section">&para;</a></h2>
+<p>Этот appendix фиксирует более новые эксплуатационные команды, которые входят в поддерживаемый CLI surface и проверяются через <code>docs-sync</code>.</p>
+<h3 id="siem"><code>siem</code><a class="heading-anchor" href="#siem" title="Link to this section">&para;</a></h3>
+<p>Группа команд для проверки и тестирования интеграции с SIEM.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>siem<span class="w"> </span>&lt;status<span class="p">|</span>test&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="vault"><code>vault</code><a class="heading-anchor" href="#vault" title="Link to this section">&para;</a></h3>
+<p>Группа команд для проверки статуса Vault и ротации токена.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>vault<span class="w"> </span>&lt;status<span class="p">|</span>rotate&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="auth"><code>auth</code><a class="heading-anchor" href="#auth" title="Link to this section">&para;</a></h3>
+<p>Группа команд аутентификации и авторизации.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>auth<span class="w"> </span>&lt;roles<span class="p">|</span>permissions<span class="p">|</span>oauth-status<span class="p">|</span>ldap-status<span class="p">|</span>service-account&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="auth-service-account"><span id="auth_service_account"></span><code>auth service-account</code><a class="heading-anchor" href="#auth-service-account" title="Link to this section">&para;</a></h3>
+<p>Управление machine identities и credentials для доступа к API/MCP.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>&lt;create<span class="p">|</span>list<span class="p">|</span>inspect<span class="p">|</span>rotate<span class="p">|</span>revoke<span class="p">|</span>deactivate&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="llm"><code>llm</code><a class="heading-anchor" href="#llm" title="Link to this section">&para;</a></h3>
+<p>Группа команд для просмотра и проверки LLM-провайдеров.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>llm<span class="w"> </span>&lt;providers<span class="p">|</span>test&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="audit-log"><span id="audit_log"></span><code>audit-log</code><a class="heading-anchor" href="#audit-log" title="Link to this section">&para;</a></h3>
+<p>Группа команд журнала аудита.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>audit-log<span class="w"> </span>&lt;export<span class="p">|</span>stats&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="security"><code>security</code><a class="heading-anchor" href="#security" title="Link to this section">&para;</a></h3>
+<p>Группа команд расследования инцидентов безопасности.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>security<span class="w"> </span>incident<span class="w"> </span>QUERY<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="audit-progress"><span id="audit_progress"></span><code>audit progress</code><a class="heading-anchor" href="#audit-progress" title="Link to this section">&para;</a></h3>
+<p>Агрегировать прогресс аудитов за выбранный период.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>progress<span class="w"> </span>--from<span class="w"> </span><span class="m">2026</span>-01-01<span class="w"> </span>--to<span class="w"> </span><span class="m">2026</span>-01-31<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="audit-markup-status"><span id="audit_markup_status"></span><code>audit markup-status</code><a class="heading-anchor" href="#audit-markup-status" title="Link to this section">&para;</a></h3>
+<p>Показать непроверенные находки и просроченные дедлайны по разметке.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit<span class="w"> </span>markup-status<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="audit-diff"><span id="audit_diff"></span><code>audit-diff</code><a class="heading-anchor" href="#audit-diff" title="Link to this section">&para;</a></h3>
+<p>Сравнить два результата аудита и показать дельту.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>audit-diff<span class="w"> </span>--old<span class="w"> </span>old_audit.json<span class="w"> </span>--new<span class="w"> </span>new_audit.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="compliance-report-57580"><span id="compliance_report_57580"></span><code>compliance report-57580</code><a class="heading-anchor" href="#compliance-report-57580" title="Link to this section">&para;</a></h3>
+<p>Сформировать отчёт соответствия ГОСТ Р 57580.3.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>compliance<span class="w"> </span>report-57580<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="compliance-report-57580-history"><span id="compliance_report_57580_history"></span><code>compliance report-57580-history</code><a class="heading-anchor" href="#compliance-report-57580-history" title="Link to this section">&para;</a></h3>
+<p>Показать историю сохранённых отчётов ГОСТ Р 57580.3.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>compliance<span class="w"> </span>report-57580-history<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span><span class="m">10</span><span class="o">]</span>
+</code></pre></div>
+
+<h3  id="compliance-report-57580-delta"><span id="compliance_report_57580_delta"></span><code>compliance report-57580-delta</code><a class="heading-anchor" href="#compliance-report-57580-delta" title="Link to this section">&para;</a></h3>
+<p>Сравнить два сохранённых отчёта ГОСТ Р 57580.3.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>compliance<span class="w"> </span>report-57580-delta<span class="w"> </span>--old<span class="w"> </span>old-report-id<span class="w"> </span>--new<span class="w"> </span>new-report-id
+</code></pre></div>
+
+<h3  id="dashboard-compare-periods"><span id="dashboard_compare_periods"></span><code>dashboard compare-periods</code><a class="heading-anchor" href="#dashboard-compare-periods" title="Link to this section">&para;</a></h3>
+<p>Сравнить соседние периоды для одного проекта.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>compare-periods<span class="w"> </span>ПРОЕКТ<span class="w"> </span><span class="o">[</span>--baseline-period<span class="w"> </span>30d<span class="o">]</span><span class="w"> </span><span class="o">[</span>--comparison-period<span class="w"> </span>7d<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-metrics"><span id="dashboard_metrics"></span><code>dashboard metrics</code><a class="heading-anchor" href="#dashboard-metrics" title="Link to this section">&para;</a></h3>
+<p>Вывести портфельные метрики в формате, удобном для Grafana.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>metrics<span class="w"> </span><span class="o">[</span>--group<span class="w"> </span>GROUP<span class="o">]</span><span class="w"> </span><span class="o">[</span>--organization<span class="w"> </span>ORG<span class="o">]</span><span class="w"> </span><span class="o">[</span>--team<span class="w"> </span>TEAM<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-release-compare"><span id="dashboard_release_compare"></span><code>dashboard release-compare</code><a class="heading-anchor" href="#dashboard-release-compare" title="Link to this section">&para;</a></h3>
+<p>Сравнить два прогона release gate для одного проекта.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>release-compare<span class="w"> </span>ПРОЕКТ<span class="w"> </span><span class="o">[</span>--from-run<span class="w"> </span>RUN_ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--to-run<span class="w"> </span>RUN_ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-drilldown"><span id="dashboard_drilldown"></span><code>dashboard drilldown</code><a class="heading-anchor" href="#dashboard-drilldown" title="Link to this section">&para;</a></h3>
+<p>Провалиться от агрегатов до находок и исходных файлов.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>drilldown<span class="w"> </span>ПРОЕКТ<span class="w"> </span>--category<span class="w"> </span>security<span class="p">|</span>compliance<span class="p">|</span>release<span class="p">|</span>sca<span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span><span class="m">50</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot"><span id="dashboard_snapshot"></span><code>dashboard snapshot</code><a class="heading-anchor" href="#dashboard-snapshot" title="Link to this section">&para;</a></h3>
+<p>Точка входа для управления snapshots.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>&lt;create<span class="p">|</span>list<span class="p">|</span>compare<span class="p">|</span>export&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-create"><span id="dashboard_snapshot_create"></span><code>dashboard snapshot create</code><a class="heading-anchor" href="#dashboard-snapshot-create" title="Link to this section">&para;</a></h3>
+<p>Создать ручной snapshot проекта или группы.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span><span class="o">[</span>--scope<span class="w"> </span>project<span class="p">|</span>group<span class="o">]</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--group<span class="w"> </span>GROUP<span class="o">]</span><span class="w"> </span><span class="o">[</span>--reason<span class="w"> </span>ТЕКСТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--immutable<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-list"><span id="dashboard_snapshot_list"></span><code>dashboard snapshot list</code><a class="heading-anchor" href="#dashboard-snapshot-list" title="Link to this section">&para;</a></h3>
+<p>Показать сохранённые snapshots проекта или группы.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>--scope<span class="w"> </span>project<span class="p">|</span>group<span class="o">]</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--group<span class="w"> </span>GROUP<span class="o">]</span><span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span>N<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-compare"><span id="dashboard_snapshot_compare"></span><code>dashboard snapshot compare</code><a class="heading-anchor" href="#dashboard-snapshot-compare" title="Link to this section">&para;</a></h3>
+<p>Сравнить два snapshot или fallback timestamps.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>compare<span class="w"> </span><span class="o">[</span>--from-snapshot<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--to-snapshot<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--include-drilldown<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-snapshot-export"><span id="dashboard_snapshot_export"></span><code>dashboard snapshot export</code><a class="heading-anchor" href="#dashboard-snapshot-export" title="Link to this section">&para;</a></h3>
+<p>Экспортировать один snapshot или compare-report.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span><span class="nb">export</span><span class="w"> </span>SNAPSHOT_ID<span class="w"> </span><span class="o">[</span>--baseline-snapshot<span class="w"> </span>ID<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="p">|</span>pdf<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>FILE<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views"><span id="dashboard_saved_views"></span><code>dashboard saved-views</code><a class="heading-anchor" href="#dashboard-saved-views" title="Link to this section">&para;</a></h3>
+<p>Точка входа для управления сохранёнными представлениями dashboard.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>&lt;list<span class="p">|</span>save<span class="p">|</span>get<span class="p">|</span>delete&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-list"><span id="dashboard_saved_views_list"></span><code>dashboard saved-views list</code><a class="heading-anchor" href="#dashboard-saved-views-list" title="Link to this section">&para;</a></h3>
+<p>Показать список сохранённых представлений владельца.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-save"><span id="dashboard_saved_views_save"></span><code>dashboard saved-views save</code><a class="heading-anchor" href="#dashboard-saved-views-save" title="Link to this section">&para;</a></h3>
+<p>Сохранить переиспользуемое определение dashboard view.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>save<span class="w"> </span>NAME<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--scope<span class="w"> </span>portfolio<span class="p">|</span>red-zone<span class="p">|</span>compare<span class="p">|</span>compliance<span class="p">|</span>sca<span class="o">]</span><span class="w"> </span><span class="o">[</span>--filters<span class="w"> </span>JSON<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-delete"><span id="dashboard_saved_views_delete"></span><code>dashboard saved-views delete</code><a class="heading-anchor" href="#dashboard-saved-views-delete" title="Link to this section">&para;</a></h3>
+<p>Удалить сохранённое представление по ID.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>delete<span class="w"> </span>VIEW_ID<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dashboard-saved-views-get"><span id="dashboard_saved_views_get"></span><code>dashboard saved-views get</code><a class="heading-anchor" href="#dashboard-saved-views-get" title="Link to this section">&para;</a></h3>
+<p>Загрузить сохранённое представление по ID.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span>saved-views<span class="w"> </span>get<span class="w"> </span>VIEW_ID<span class="w"> </span><span class="o">[</span>--user-id<span class="w"> </span>USER<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>table<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-maintain-db"><span id="dogfood_maintain_db"></span><code>dogfood maintain-db</code><a class="heading-anchor" href="#dogfood-maintain-db" title="Link to this section">&para;</a></h3>
+<p>Выполнить обслуживание dogfood state database.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--days<span class="w"> </span><span class="m">30</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-continue"><span id="dogfood_continue"></span><code>dogfood continue</code><a class="heading-anchor" href="#dogfood-continue" title="Link to this section">&para;</a></h3>
+<p>Продолжить прерванный dogfood workflow с последнего checkpoint.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dogfood-unlock-db"><span id="dogfood_unlock_db"></span><code>dogfood unlock-db</code><a class="heading-anchor" href="#dogfood-unlock-db" title="Link to this section">&para;</a></h3>
+<p>Снять устаревший lock dogfood database после операторской проверки.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dogfood<span class="w"> </span>unlock-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-runs"><span id="dynamic_runs"></span><code>dynamic runs</code><a class="heading-anchor" href="#dynamic-runs" title="Link to this section">&para;</a></h3>
+<p>Показать импортированные прогоны динамического анализа.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>runs<span class="w"> </span><span class="o">[</span>--tool<span class="w"> </span>dast<span class="p">|</span>fuzzer<span class="p">|</span>iast<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="dynamic-findings"><span id="dynamic_findings"></span><code>dynamic findings</code><a class="heading-anchor" href="#dynamic-findings" title="Link to this section">&para;</a></h3>
+<p>Показать находки для одного прогона динамического анализа.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dynamic<span class="w"> </span>findings<span class="w"> </span>--run-id<span class="w"> </span>RUN_ID<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="hypothesis"><code>hypothesis</code><a class="heading-anchor" href="#hypothesis" title="Link to this section">&para;</a></h3>
+<p>Группа команд валидации security hypotheses.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>hypothesis<span class="w"> </span>&lt;run<span class="p">|</span>export<span class="p">|</span>list-cwes<span class="p">|</span>providers&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="hypothesis-export"><span id="hypothesis_export"></span><code>hypothesis export</code><a class="heading-anchor" href="#hypothesis-export" title="Link to this section">&para;</a></h3>
+<p>Экспортировать ранее сгенерированные результаты hypothesis validation.</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>hypothesis<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--input<span class="w"> </span>results.json<span class="w"> </span>--output<span class="w"> </span>report.md<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="qualification"><code>qualification</code><a class="heading-anchor" href="#qualification" title="Link to this section">&para;</a></h3>
+<p>Qualification workflow для benchmark runs, metrics, reports и error catalogs.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>&lt;run<span class="p">|</span>metrics<span class="p">|</span>report<span class="p">|</span>error-catalog<span class="p">|</span>coverage&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="qualification-metrics"><span id="qualification_metrics"></span><code>qualification metrics</code><a class="heading-anchor" href="#qualification-metrics" title="Link to this section">&para;</a></h3>
+<p>Показать FP/FN metrics для набора qualification results.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>metrics<span class="w"> </span>--results<span class="w"> </span>results.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="qualification-report"><span id="qualification_report"></span><code>qualification report</code><a class="heading-anchor" href="#qualification-report" title="Link to this section">&para;</a></h3>
+<p>Сформировать qualification report по собранным результатам.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>report<span class="w"> </span>--results<span class="w"> </span>results.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="p">|</span>gost<span class="o">]</span><span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>ru<span class="p">|</span>en<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="qualification-error-catalog"><span id="qualification_error_catalog"></span><code>qualification error-catalog</code><a class="heading-anchor" href="#qualification-error-catalog" title="Link to this section">&para;</a></h3>
+<p>Построить qualification error catalog для выбранного языка.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>qualification<span class="w"> </span>error-catalog<span class="w"> </span><span class="o">[</span>--language<span class="w"> </span>c<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3 id="risk"><code>risk</code><a class="heading-anchor" href="#risk" title="Link to this section">&para;</a></h3>
+<p>Верхнеуровневая точка входа для KIR/KPUR, threat-model, event и checklist операций.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>&lt;kir<span class="p">|</span>kpur<span class="p">|</span>dashboard<span class="p">|</span>history<span class="p">|</span>list-kirs<span class="p">|</span>assess<span class="p">|</span>matrix<span class="p">|</span>detail<span class="p">|</span>threat-model-57580<span class="p">|</span>events<span class="p">|</span>anomalies<span class="p">|</span>org-docs<span class="p">|</span>checklist&gt;<span class="w"> </span><span class="o">[</span>опции<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-history"><span id="risk_history"></span><code>risk history</code><a class="heading-anchor" href="#risk-history" title="Link to this section">&para;</a></h3>
+<p>Показать историю KIR для проекта.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span><span class="nb">history</span><span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--limit<span class="w"> </span><span class="m">20</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-list-kirs"><span id="risk_list_kirs"></span><code>risk list-kirs</code><a class="heading-anchor" href="#risk-list-kirs" title="Link to this section">&para;</a></h3>
+<p>Показать поддерживаемые KIR и их определения.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>list-kirs<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-threat-model-57580-diff"><span id="risk_threat_model_57580_diff"></span><code>risk threat-model-57580 diff</code><a class="heading-anchor" href="#risk-threat-model-57580-diff" title="Link to this section">&para;</a></h3>
+<p>Сравнить два snapshot модели угроз.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>threat-model-57580<span class="w"> </span>diff<span class="w"> </span>--old<span class="w"> </span>old-model.json<span class="w"> </span>--new<span class="w"> </span>new-model.json<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-threat-model-57580-review-status"><span id="risk_threat_model_57580_review_status"></span><code>risk threat-model-57580 review-status</code><a class="heading-anchor" href="#risk-threat-model-57580-review-status" title="Link to this section">&para;</a></h3>
+<p>Показать статус reviewer workflow для threat-model package.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>threat-model-57580<span class="w"> </span>review-status<span class="w"> </span><span class="o">[</span>--project<span class="w"> </span>ПРОЕКТ<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-events-classify"><span id="risk_events_classify"></span><code>risk events classify</code><a class="heading-anchor" href="#risk-events-classify" title="Link to this section">&para;</a></h3>
+<p>Классифицировать все текущие находки по risk-event категориям.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>events<span class="w"> </span>classify<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
+<h3  id="risk-checklist-export"><span id="risk_checklist_export"></span><code>risk checklist export</code><a class="heading-anchor" href="#risk-checklist-export" title="Link to this section">&para;</a></h3>
+<p>Экспортировать self-assessment checklist для аудиторов или внешней проверки.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>risk<span class="w"> </span>checklist<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span><span class="m">1</span><span class="p">|</span><span class="m">2</span><span class="p">|</span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="p">|</span>markdown<span class="o">]</span>
+</code></pre></div>
+
 <h2  id="smotrite-takzhe"><span id="smotrite_takzhe"></span>Смотрите также<a class="heading-anchor" href="#smotrite-takzhe" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="./PROJECT_IMPORT.html">Руководство по импорту проектов</a> — Подробная документация по импорту</li>
+<li><a href="./DASHBOARD_METHODOLOGY.html">Методология Health Score</a> — Формула и система оценок</li>
 <li><a href="../../api/REST_API.html">Справочник REST API</a> — Конечные точки API</li>
 <li><a href="../../reference/SECURITY.html">Документация по безопасности</a> — Функции безопасности</li>
 </ul>
@@ -4911,7 +5701,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/CLI_GUIDE.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -4956,7 +5746,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#poisk-tseli" class="level-3">Поиск цели</a></li>
 <li><a href="#predprosmotr-redaktirovaniya" class="level-3">Предпросмотр редактирования</a></li>
 <li><a href="#primenenie-redaktirovaniya" class="level-3">Применение редактирования</a></li>
-<li><a href="#pereimenovanie" class="level-3">Переименование</a></li>
 <li><a href="#otmena-i-istoriya" class="level-3">Отмена и история</a></li>
 <li><a href="#code-optimization-cli-s18" class="level-2">CLI оптимизации кода (S18)</a></li>
 <li><a href="#analiz" class="level-3">Анализ</a></li>
@@ -4965,20 +5754,17 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#primenenie-i-otmena" class="level-3">Применение и отмена</a></li>
 <li><a href="#shablony-optimizatsii" class="level-3">Шаблоны оптимизации</a></li>
 <li><a href="#standards-check-cli-s19" class="level-2">CLI проверки стандартов (S19)</a></li>
-<li><a href="#import-i-validatsiya" class="level-3">Импорт и валидация</a></li>
+<li><a href="#import-dokumentov" class="level-3">Импорт документов</a></li>
 <li><a href="#spisok-pravil" class="level-3">Список правил</a></li>
 <li><a href="#spisok-dokumentov" class="level-3">Список документов</a></li>
 <li><a href="#proverka-koda" class="level-3">Проверка кода</a></li>
-<li><a href="#otchyot-i-ochistka" class="level-3">Отчёт и очистка</a></li>
+<li><a href="#otchyot" class="level-3">Отчёт</a></li>
 <li><a href="#udalenie-dokumenta" class="level-3">Удаление документа</a></li>
 <li><a href="#dependencies-cli-s20" class="level-2">CLI зависимостей (S20)</a></li>
 <li><a href="#skanirovanie-zavisimostey" class="level-3">Сканирование зависимостей</a></li>
 <li><a href="#spisok-zavisimostey" class="level-3">Список зависимостей</a></li>
 <li><a href="#proverka-uyazvimostey" class="level-3">Проверка уязвимостей</a></li>
-<li><a href="#audit-uyazvimostey" class="level-3">Аудит уязвимостей</a></li>
-<li><a href="#ustarevshie-pakety" class="level-3">Устаревшие пакеты</a></li>
 <li><a href="#proverka-litsenziy" class="level-3">Проверка лицензий</a></li>
-<li><a href="#generatsiya-sbom" class="level-3">Генерация SBOM</a></li>
 <li><a href="#graf-zavisimostey" class="level-3">Граф зависимостей</a></li>
 <li><a href="#otsenka-zdorovya" class="level-3">Оценка здоровья</a></li>
 <li><a href="#predlozheniya-po-obnovleniyu" class="level-3">Предложения по обновлению</a></li>
@@ -5054,6 +5840,19 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#release-suppressions-upravlenie-isklyucheniyami" class="level-3">`release suppressions` — Управление исключениями</a></li>
 <li><a href="#release-history-istoriya-resheniy-vorot" class="level-3">`release history` — История решений ворот</a></li>
 <li><a href="#release-profiles-spisok-profiley-vorot" class="level-3">`release profiles` — Список профилей ворот</a></li>
+<li><a href="#risk-management-cli" class="level-2">CLI управления рисками (ГОСТ Р 57580.3)</a></li>
+<li><a href="#risk-kir" class="level-3">`risk kir` — Ключевые индикаторы риска</a></li>
+<li><a href="#risk-kpur" class="level-3">`risk kpur` — Контрольные показатели уровня риска</a></li>
+<li><a href="#risk-dashboard" class="level-3">`risk dashboard` — Дашборд рисков</a></li>
+<li><a href="#risk-assess" class="level-3">`risk assess` — Оценка рисков (СВР × СТП)</a></li>
+<li><a href="#risk-matrix" class="level-3">`risk matrix` — Матрица рисков 5×5</a></li>
+<li><a href="#risk-detail" class="level-3">`risk detail` — Детали риска находки</a></li>
+<li><a href="#risk-threat-model" class="level-3">`risk threat-model-57580` — Модель угроз ГОСТ Р 57580.3</a></li>
+<li><a href="#risk-events" class="level-3">`risk events` — Классификация событий риска</a></li>
+<li><a href="#risk-checklist" class="level-3">`risk checklist` — Чек-лист самооценки</a></li>
+<li><a href="#risk-anomalies" class="level-3">`risk anomalies` — Детекция аномалий КИР</a></li>
+<li><a href="#risk-report-fincert" class="level-3">`risk report-fincert` — Отчёт для ФинЦЕРТ</a></li>
+<li><a href="#risk-org-docs" class="level-3">`risk org-docs` — Шаблоны организационно-распорядительных документов</a></li>
 <li><a href="#sbom--sca-cli" class="level-2">CLI SBOM / SCA</a></li>
 <li><a href="#sbom-generate-generatsiya-sbom" class="level-3">`sbom generate` — Генерация SBOM</a></li>
 <li><a href="#sbom-gost-report-otchyot-po-gost-516" class="level-3">`sbom gost-report` — Отчёт по ГОСТ 5.16</a></li>
@@ -5064,11 +5863,74 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#supply-chain-trust-otsenka-doveriya" class="level-3">`supply-chain trust` — Оценка доверия</a></li>
 <li><a href="#supply-chain-typosquatting-obnaruzhenie-taypskvottinga" class="level-3">`supply-chain typosquatting` — Обнаружение тайпсквоттинга</a></li>
 <li><a href="#supply-chain-gost-report-otchyot-po-gost-5173" class="level-3">`supply-chain gost-report` — Отчёт по ГОСТ 5.17.3</a></li>
+<li><a href="#issues-cli" class="level-2">CLI трекера задач</a></li>
+<li><a href="#issues-create" class="level-3">`issues create` — Создание задачи из обнаружения</a></li>
+<li><a href="#issues-bulk-create" class="level-3">`issues bulk-create` — Массовое создание задач</a></li>
+<li><a href="#issues-update" class="level-3">`issues update` — Обновление статуса задачи</a></li>
+<li><a href="#issues-sync" class="level-3">`issues sync` — Двунаправленная синхронизация</a></li>
+<li><a href="#dynamic-analysis-cli" class="level-2">CLI динамического анализа</a></li>
+<li><a href="#dynamic-import" class="level-3">`dynamic import` — Импорт результатов</a></li>
+<li><a href="#dynamic-correlate" class="level-3">`dynamic correlate` — Корреляция статических и динамических обнаружений</a></li>
+<li><a href="#dynamic-fuzz-targets" class="level-3">`dynamic fuzz-targets` — Генерация целей фаззинга</a></li>
+<li><a href="#dynamic-report" class="level-3">`dynamic report` — Отчёт по ГОСТ 5.11.3</a></li>
 <li><a href="#threat-model-cli" class="level-2">CLI модели угроз</a></li>
 <li><a href="#threat-model-generate-generatsiya-modeli-ugroz" class="level-3">`threat-model generate` — Генерация модели угроз</a></li>
 <li><a href="#threat-model-update-inkrementalnoe-obnovlenie" class="level-3">`threat-model update` — Инкрементальное обновление</a></li>
 <li><a href="#threat-model-dfd-diagramma-potokov-dannyh" class="level-3">`threat-model dfd` — Диаграмма потоков данных</a></li>
 <li><a href="#threat-model-list-spisok-ugroz" class="level-3">`threat-model list` — Список угроз</a></li>
+<li><a href="#dashboard-cli" class="level-2">CLI дашборда</a></li>
+<li><a href="#dashboard-overview" class="level-3">`dashboard overview` — Обзор портфеля</a></li>
+<li><a href="#dashboard-health" class="level-3">`dashboard health` — Отчёт о качестве проекта</a></li>
+<li><a href="#dashboard-trends" class="level-3">`dashboard trends` — Тренды качества</a></li>
+<li><a href="#dashboard-red-zone" class="level-3">`dashboard red-zone` — Мониторинг зоны риска</a></li>
+<li><a href="#dashboard-compare" class="level-3">`dashboard compare` — Сравнение проектов</a></li>
+<li><a href="#dashboard-export" class="level-3">`dashboard export` — Экспорт отчёта</a></li>
+<li><a href="#dopolnitelnoe-pokrytie-komand" class="level-2">Дополнительное покрытие команд</a></li>
+<li><a href="#siem" class="level-3">`siem`</a></li>
+<li><a href="#vault" class="level-3">`vault`</a></li>
+<li><a href="#auth" class="level-3">`auth`</a></li>
+<li><a href="#auth-service-account" class="level-3">`auth service-account`</a></li>
+<li><a href="#llm" class="level-3">`llm`</a></li>
+<li><a href="#audit-log" class="level-3">`audit-log`</a></li>
+<li><a href="#security" class="level-3">`security`</a></li>
+<li><a href="#audit-progress" class="level-3">`audit progress`</a></li>
+<li><a href="#audit-markup-status" class="level-3">`audit markup-status`</a></li>
+<li><a href="#audit-diff" class="level-3">`audit-diff`</a></li>
+<li><a href="#compliance-report-57580" class="level-3">`compliance report-57580`</a></li>
+<li><a href="#compliance-report-57580-history" class="level-3">`compliance report-57580-history`</a></li>
+<li><a href="#compliance-report-57580-delta" class="level-3">`compliance report-57580-delta`</a></li>
+<li><a href="#dashboard-compare-periods" class="level-3">`dashboard compare-periods`</a></li>
+<li><a href="#dashboard-metrics" class="level-3">`dashboard metrics`</a></li>
+<li><a href="#dashboard-release-compare" class="level-3">`dashboard release-compare`</a></li>
+<li><a href="#dashboard-drilldown" class="level-3">`dashboard drilldown`</a></li>
+<li><a href="#dashboard-snapshot" class="level-3">`dashboard snapshot`</a></li>
+<li><a href="#dashboard-snapshot-create" class="level-3">`dashboard snapshot create`</a></li>
+<li><a href="#dashboard-snapshot-list" class="level-3">`dashboard snapshot list`</a></li>
+<li><a href="#dashboard-snapshot-compare" class="level-3">`dashboard snapshot compare`</a></li>
+<li><a href="#dashboard-snapshot-export" class="level-3">`dashboard snapshot export`</a></li>
+<li><a href="#dashboard-saved-views" class="level-3">`dashboard saved-views`</a></li>
+<li><a href="#dashboard-saved-views-list" class="level-3">`dashboard saved-views list`</a></li>
+<li><a href="#dashboard-saved-views-save" class="level-3">`dashboard saved-views save`</a></li>
+<li><a href="#dashboard-saved-views-delete" class="level-3">`dashboard saved-views delete`</a></li>
+<li><a href="#dashboard-saved-views-get" class="level-3">`dashboard saved-views get`</a></li>
+<li><a href="#dogfood-maintain-db" class="level-3">`dogfood maintain-db`</a></li>
+<li><a href="#dogfood-continue" class="level-3">`dogfood continue`</a></li>
+<li><a href="#dogfood-unlock-db" class="level-3">`dogfood unlock-db`</a></li>
+<li><a href="#dynamic-runs" class="level-3">`dynamic runs`</a></li>
+<li><a href="#dynamic-findings" class="level-3">`dynamic findings`</a></li>
+<li><a href="#hypothesis" class="level-3">`hypothesis`</a></li>
+<li><a href="#hypothesis-export" class="level-3">`hypothesis export`</a></li>
+<li><a href="#qualification" class="level-3">`qualification`</a></li>
+<li><a href="#qualification-metrics" class="level-3">`qualification metrics`</a></li>
+<li><a href="#qualification-report" class="level-3">`qualification report`</a></li>
+<li><a href="#qualification-error-catalog" class="level-3">`qualification error-catalog`</a></li>
+<li><a href="#risk" class="level-3">`risk`</a></li>
+<li><a href="#risk-history" class="level-3">`risk history`</a></li>
+<li><a href="#risk-list-kirs" class="level-3">`risk list-kirs`</a></li>
+<li><a href="#risk-threat-model-57580-diff" class="level-3">`risk threat-model-57580 diff`</a></li>
+<li><a href="#risk-threat-model-57580-review-status" class="level-3">`risk threat-model-57580 review-status`</a></li>
+<li><a href="#risk-events-classify" class="level-3">`risk events classify`</a></li>
+<li><a href="#risk-checklist-export" class="level-3">`risk checklist export`</a></li>
 <li><a href="#smotrite-takzhe" class="level-2">Смотрите также</a></li>
       </ul>
     </aside>

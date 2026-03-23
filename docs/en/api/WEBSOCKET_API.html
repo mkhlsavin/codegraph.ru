@@ -96,6 +96,11 @@
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="../guides/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -143,7 +148,7 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="DEMO_API.html">Demo API</a></li>
-        <li><a href="REST_API.html">CodeGraph REST API Documentation</a></li>
+        <li><a href="REST_API.html">REST API Reference</a></li>
         <li><a href="WEBSOCKET_API.html" class="active">WebSocket API Reference</a></li>
       </ul>
     </div>
@@ -201,6 +206,7 @@
 <li><a href="#chat-streaming">Chat Streaming</a></li>
 <li><a href="#job-status">Job Status</a></li>
 <li><a href="#notifications">Notifications</a></li>
+<li><a href="#dashboard-updates">Dashboard Updates</a></li>
 <li><a href="#message-types">Message Types</a></li>
 <li><a href="#client-to-server">Client to Server</a></li>
 <li><a href="#server-to-client">Server to Client</a></li>
@@ -227,6 +233,7 @@
 - <strong>Push notifications</strong> &ndash; system alerts and notifications</p>
 <p>Base URL: <code>ws://localhost:8000/api/v1/ws</code></p>
 <p>The WebSocket router is mounted at <code>/api/v1/ws</code> in <code>src/api/main.py</code>.</p>
+<p>Dashboard-specific real-time updates are exposed separately at <code>ws://localhost:8000/api/v2/dashboard/ws</code>.</p>
 <hr />
 <h2 id="authentication">Authentication<a class="heading-anchor" href="#authentication" title="Link to this section">&para;</a></h2>
 <p>All WebSocket connections require a JWT token passed as a query parameter.</p>
@@ -535,6 +542,41 @@
 <blockquote class="callout">
 <p><strong>Note:</strong> The <code>NotificationPayload</code> Pydantic model defines a <code>level</code> field, but the <code>NotificationHandler.send_notification()</code> method sends the value under the key <code>type</code> in the actual WebSocket message payload.</p>
 </blockquote>
+<hr />
+<h3  id="dashboard-updates"><span id="dashboard_updates"></span>Dashboard Updates<a class="heading-anchor" href="#dashboard-updates" title="Link to this section">&para;</a></h3>
+<p><strong>Endpoint:</strong> <code>ws://localhost:8000/api/v2/dashboard/ws</code></p>
+<p>Receive lightweight dashboard update events and heartbeats for the CISO/CTO frontend.</p>
+<h4 id="connection_3">Connection<a class="heading-anchor" href="#connection_3" title="Link to this section">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">ws</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span><span class="s1">&#39;ws://localhost:8000/api/v2/dashboard/ws?token=&#39;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">token</span><span class="p">);</span>
+</code></pre></div>
+
+<h4 id="messages_2">Messages<a class="heading-anchor" href="#messages_2" title="Link to this section">&para;</a></h4>
+<p><strong>Connected</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;connected&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;client_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ws-1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;heartbeat_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Project Updated</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;project_updated&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;project_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;trigger&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;release_gate&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1773326400.0</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Heartbeat</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;heartbeat&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1773326415.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;clients&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Clients may send a plain <code>ping</code> message and receive <code>{"event":"pong"}</code> in response.</p>
 <hr />
 <h2  id="message-types"><span id="message_types"></span>Message Types<a class="heading-anchor" href="#message-types" title="Link to this section">&para;</a></h2>
 <h3  id="client-to-server"><span id="client_to_server"></span>Client to Server<a class="heading-anchor" href="#client-to-server" title="Link to this section">&para;</a></h3>
@@ -1236,7 +1278,7 @@
 
       <a href="REST_API.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Previous</span>
-        <span class="doc-page-nav-title">CodeGraph REST API Documentation</span>
+        <span class="doc-page-nav-title">REST API Reference</span>
       </a>
 
       <a href="ACP_INTEGRATION.html" class="doc-page-nav-next">
@@ -1247,7 +1289,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-12</span>
+        <span>Last updated: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/api/WEBSOCKET_API.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1266,6 +1308,7 @@
 <li><a href="#chat-streaming" class="level-3">Chat Streaming</a></li>
 <li><a href="#job-status" class="level-3">Job Status</a></li>
 <li><a href="#notifications" class="level-3">Notifications</a></li>
+<li><a href="#dashboard-updates" class="level-3">Dashboard Updates</a></li>
 <li><a href="#message-types" class="level-2">Message Types</a></li>
 <li><a href="#client-to-server" class="level-3">Client to Server</a></li>
 <li><a href="#server-to-client" class="level-3">Server to Client</a></li>

@@ -22,6 +22,81 @@
     apiTimeout: 180000  // 180 seconds timeout (LLM responses can take 60+ seconds)
   };
 
+  const METRIKA_COUNTER_ID = 107046651;
+
+  const PAGE_CONTEXTS = {
+    index: {
+      sourcePage: 'index',
+      intent: 'general_demo',
+      useCase: 'general',
+      defaultCtaVariant: 'homepage_cta',
+      formTitle: 'Готовы попробовать CodeGraph?',
+      formDescription: 'Запросите демо и мы покажем, как CodeGraph работает на вашей кодовой базе',
+      formButton: 'Запросить демо',
+      contextNote: ''
+    },
+    security: {
+      sourcePage: 'security',
+      intent: 'security_demo',
+      useCase: 'security',
+      defaultCtaVariant: 'security_cta',
+      formTitle: 'Показать 3 верифицированные находки на вашем коде?',
+      formDescription: 'Покажем CodeGraph на задачах AppSec: приоритет находок, реальные потоки данных, SARIF и evidence для аудита.',
+      formButton: 'Показать 3 верифицированные находки',
+      contextNote: 'Форма открыта из vertical page «Безопасность». Сохраним контекст AppSec-запроса в лид.',
+    },
+    productivity: {
+      sourcePage: 'productivity',
+      intent: 'productivity_demo',
+      useCase: 'developer_productivity',
+      defaultCtaVariant: 'productivity_cta',
+      formTitle: 'Показать, как сократить onboarding на вашем репозитории?',
+      formDescription: 'Покажем, где команда теряет время на понимание кода, поиск зависимостей и разбор архитектуры.',
+      formButton: 'Показать, как сократить onboarding',
+      contextNote: 'Форма открыта из vertical page «Продуктивность». Сохраним контекст developer productivity в лид.',
+    },
+    compliance: {
+      sourcePage: 'compliance',
+      intent: 'compliance_migration',
+      useCase: 'compliance_and_migration',
+      defaultCtaVariant: 'compliance_cta',
+      formTitle: 'Обсудить миграцию и пакет документов?',
+      formDescription: 'Покажем целевой on-premise контур, сценарий миграции и набор evidence для требований ГОСТ и 152-ФЗ.',
+      formButton: 'Обсудить миграцию и пакет документов',
+      contextNote: 'Форма открыта из vertical page «Соответствие». Сохраним контекст migration/compliance запроса в лид.',
+    },
+    cpg: {
+      sourcePage: 'cpg',
+      intent: 'cpg_demo',
+      useCase: 'cpg_platform',
+      defaultCtaVariant: 'cpg_cta',
+      formTitle: 'Получить техническое демо CPG и анализ влияния?',
+      formDescription: 'Покажем, как единый граф свойств кода помогает с impact analysis, зависимостями и архитектурными вопросами.',
+      formButton: 'Получить демо CPG и анализ влияния',
+      contextNote: 'Форма открыта из vertical page «CPG». Сохраним технологический контекст интереса к платформе.',
+    },
+    'ai-engineering': {
+      sourcePage: 'ai-engineering',
+      intent: 'ai_engineering_demo',
+      useCase: 'ai_ml_engineering',
+      defaultCtaVariant: 'ai_engineering_cta',
+      formTitle: 'Показать анализ AI/ML-кодовой базы и конвейера данных?',
+      formDescription: 'Покажем трассировку данных, проверку AI-сгенерированного кода и разбор polyglot ML-инфраструктуры.',
+      formButton: 'Показать анализ AI/ML-кодовой базы',
+      contextNote: 'Форма открыта из vertical page «AI/ML Engineering». Сохраним контекст ML/AI Engineering в лид.',
+    },
+    whitepaper: {
+      sourcePage: 'whitepaper',
+      intent: 'whitepaper_followup',
+      useCase: 'research_and_evaluation',
+      defaultCtaVariant: 'whitepaper_cta',
+      formTitle: 'Продолжить знакомство с CodeGraph?',
+      formDescription: 'Оставьте заявку, и мы проведём демо на вашей кодовой базе после изучения whitepaper.',
+      formButton: 'Запросить демо',
+      contextNote: 'Форма открыта после перехода из whitepaper. Сохраним контекст research/evaluation в лид.',
+    }
+  };
+
   // ============================================
   // Mock Responses (fallback when API unavailable)
   // ============================================
@@ -49,6 +124,213 @@
   // ============================================
   const DOM = {};
 
+  function getCurrentPageName() {
+    const pathname = window.location.pathname || '';
+    const lastSegment = pathname.split('/').filter(Boolean).pop() || 'index.html';
+    return lastSegment.replace(/\.html$/u, '') || 'index';
+  }
+
+  function getPageContextBySource(sourcePage) {
+    const normalizedSource = (sourcePage || 'index').replace(/\.html$/u, '');
+    return PAGE_CONTEXTS[normalizedSource] || PAGE_CONTEXTS.index;
+  }
+
+  function inferCtaVariant(element, fallbackSource) {
+    const sourcePage = (fallbackSource || getCurrentPageName() || 'index').replace(/\.html$/u, '');
+
+    if (!element) {
+      return `${sourcePage}_cta`;
+    }
+
+    if (element.closest('.hero-actions')) {
+      return `${sourcePage}_hero`;
+    }
+
+    if (element.closest('.cta-content')) {
+      return `${sourcePage}_cta`;
+    }
+
+    if (element.closest('.nav')) {
+      return `${sourcePage}_header`;
+    }
+
+    if (element.closest('.mobile-nav')) {
+      return `${sourcePage}_mobile_nav`;
+    }
+
+    if (element.closest('.footer')) {
+      return `${sourcePage}_footer`;
+    }
+
+    return `${sourcePage}_cta`;
+  }
+
+  function buildDemoHref(pageContext, ctaVariant) {
+    const params = new URLSearchParams({
+      source_page: pageContext.sourcePage,
+      intent: pageContext.intent,
+      use_case: pageContext.useCase,
+      cta_variant: ctaVariant || pageContext.defaultCtaVariant
+    });
+
+    return `index.html?${params.toString()}#demo`;
+  }
+
+  function getLeadContext() {
+    const params = new URLSearchParams(window.location.search);
+    const sourcePage = (
+      DOM.sourcePageInput?.value
+      || params.get('source_page')
+      || getCurrentPageName()
+      || 'index'
+    ).replace(/\.html$/u, '');
+    const pageContext = getPageContextBySource(sourcePage);
+
+    return {
+      sourcePage,
+      intent: DOM.intentInput?.value || params.get('intent') || pageContext.intent,
+      useCase: DOM.useCaseInput?.value || params.get('use_case') || pageContext.useCase,
+      ctaVariant: DOM.ctaVariantInput?.value || params.get('cta_variant') || pageContext.defaultCtaVariant,
+      pageContext
+    };
+  }
+
+  function trackGoal(goalName, params = {}) {
+    if (typeof window.ym !== 'function') {
+      return;
+    }
+
+    try {
+      window.ym(METRIKA_COUNTER_ID, 'reachGoal', goalName, params);
+    } catch (error) {
+      console.warn('Metrika tracking error:', error);
+    }
+  }
+
+  function applyContextAwareDemoLinks() {
+    const currentPageName = getCurrentPageName();
+
+    if (currentPageName === 'index') {
+      return;
+    }
+
+    const pageContext = getPageContextBySource(currentPageName);
+    const demoLinks = document.querySelectorAll('a[href="index.html#demo"], a[href^="index.html#demo"]');
+
+    demoLinks.forEach(link => {
+      const ctaVariant = inferCtaVariant(link, pageContext.sourcePage);
+      link.href = buildDemoHref(pageContext, ctaVariant);
+      link.dataset.sourcePage = pageContext.sourcePage;
+      link.dataset.intent = pageContext.intent;
+      link.dataset.useCase = pageContext.useCase;
+      link.dataset.ctaVariant = ctaVariant;
+    });
+  }
+
+  function applyLeadContextToForm() {
+    if (!DOM.demoForm) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const leadContext = getLeadContext();
+    const { pageContext } = leadContext;
+    const hasContext = params.has('source_page') && leadContext.sourcePage !== 'index';
+
+    if (DOM.demoHeading && !DOM.demoHeading.dataset.defaultText) {
+      DOM.demoHeading.dataset.defaultText = DOM.demoHeading.textContent.trim();
+    }
+
+    if (DOM.demoDescription && !DOM.demoDescription.dataset.defaultText) {
+      DOM.demoDescription.dataset.defaultText = DOM.demoDescription.textContent.trim();
+    }
+
+    if (DOM.demoSubmitBtn && !DOM.demoSubmitBtn.dataset.defaultText) {
+      DOM.demoSubmitBtn.dataset.defaultText = DOM.demoSubmitBtn.textContent.trim();
+    }
+
+    if (DOM.sourcePageInput) {
+      DOM.sourcePageInput.value = leadContext.sourcePage;
+    }
+
+    if (DOM.intentInput) {
+      DOM.intentInput.value = leadContext.intent;
+    }
+
+    if (DOM.ctaVariantInput) {
+      DOM.ctaVariantInput.value = leadContext.ctaVariant;
+    }
+
+    if (DOM.useCaseInput) {
+      DOM.useCaseInput.value = leadContext.useCase;
+    }
+
+    if (!hasContext) {
+      if (DOM.demoHeading?.dataset.defaultText) {
+        DOM.demoHeading.textContent = DOM.demoHeading.dataset.defaultText;
+      }
+
+      if (DOM.demoDescription?.dataset.defaultText) {
+        DOM.demoDescription.textContent = DOM.demoDescription.dataset.defaultText;
+      }
+
+      if (DOM.demoSubmitBtn?.dataset.defaultText) {
+        DOM.demoSubmitBtn.textContent = DOM.demoSubmitBtn.dataset.defaultText;
+      }
+
+      if (DOM.demoContextNote) {
+        DOM.demoContextNote.textContent = '';
+        DOM.demoContextNote.hidden = true;
+      }
+
+      return;
+    }
+
+    if (DOM.demoHeading) {
+      DOM.demoHeading.textContent = pageContext.formTitle;
+    }
+
+    if (DOM.demoDescription) {
+      DOM.demoDescription.textContent = pageContext.formDescription;
+    }
+
+    if (DOM.demoSubmitBtn) {
+      DOM.demoSubmitBtn.textContent = pageContext.formButton;
+    }
+
+    if (DOM.demoContextNote) {
+      DOM.demoContextNote.textContent = pageContext.contextNote;
+      DOM.demoContextNote.hidden = !pageContext.contextNote;
+    }
+  }
+
+  function initCtaTracking() {
+    const trackedLinks = document.querySelectorAll('a[href*="#demo"], a[href*="whitepaper.html"]');
+    const currentPageName = getCurrentPageName();
+    const pageContext = getPageContextBySource(currentPageName);
+
+    trackedLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        const href = link.getAttribute('href') || '';
+        const ctaVariant = link.dataset.ctaVariant || inferCtaVariant(link, pageContext.sourcePage);
+
+        if (href.includes('whitepaper.html')) {
+          trackGoal('whitepaper_click', {
+            source_page: pageContext.sourcePage,
+            cta_variant: ctaVariant
+          });
+        }
+
+        if (href.includes('#demo')) {
+          trackGoal(currentPageName === 'index' ? 'cta_click' : 'vertical_cta_click', {
+            source_page: link.dataset.sourcePage || pageContext.sourcePage,
+            intent: link.dataset.intent || pageContext.intent,
+            use_case: link.dataset.useCase || pageContext.useCase,
+            cta_variant: ctaVariant
+          });
+        }
+      });
+    });
+  }
+
   function cacheDOM() {
     DOM.html = document.documentElement;
     DOM.body = document.body;
@@ -74,6 +356,14 @@
     DOM.progressBars = document.querySelectorAll('.quality-metric-bar-fill');
     DOM.animatedElements = document.querySelectorAll('[data-animate]');
     DOM.demoForm = document.getElementById('demo-form');
+    DOM.demoHeading = document.getElementById('demo-heading');
+    DOM.demoDescription = document.getElementById('demo-description');
+    DOM.demoContextNote = document.getElementById('demo-context-note');
+    DOM.demoSubmitBtn = document.getElementById('demo-submit-btn');
+    DOM.sourcePageInput = document.getElementById('source-page');
+    DOM.intentInput = document.getElementById('intent');
+    DOM.ctaVariantInput = document.getElementById('cta-variant');
+    DOM.useCaseInput = document.getElementById('use-case');
     // Solution section demo
     DOM.questionInput = document.getElementById('question-input');
     DOM.askBtn = document.getElementById('ask-btn');
@@ -680,6 +970,8 @@
 
   function animateCounter(element) {
     const target = parseInt(element.getAttribute('data-count'), 10);
+    const initialValue = parseInt((element.textContent || '0').replace(/[^\d]/gu, ''), 10);
+    const startValue = Number.isNaN(initialValue) ? 0 : Math.min(initialValue, target);
     const suffix = element.getAttribute('data-suffix') || '';
     const prefix = element.getAttribute('data-prefix') || '';
     const duration = CONFIG.counterDuration;
@@ -691,7 +983,7 @@
 
       // Easing function (ease-out)
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      const current = Math.floor(easeOut * target);
+      const current = Math.floor(startValue + ((target - startValue) * easeOut));
 
       element.textContent = prefix + current + suffix;
 
@@ -828,9 +1120,16 @@
         if (!submitBtn) return;
 
         const originalText = submitBtn.textContent;
+        const leadContext = getLeadContext();
 
         submitBtn.textContent = 'Отправка...';
         submitBtn.disabled = true;
+        trackGoal('demo_form_submit', {
+          source_page: leadContext.sourcePage,
+          intent: leadContext.intent,
+          use_case: leadContext.useCase,
+          cta_variant: leadContext.ctaVariant
+        });
 
         // Collect form data
         const formData = {
@@ -840,6 +1139,10 @@
           position: DOM.demoForm.querySelector('#position')?.value.trim() || null,
           team_size: DOM.demoForm.querySelector('#team-size')?.value || null,
           language: DOM.demoForm.querySelector('#language')?.value || null,
+          source_page: leadContext.sourcePage,
+          intent: leadContext.intent,
+          cta_variant: leadContext.ctaVariant,
+          use_case: leadContext.useCase,
         };
 
         // Determine API URL based on environment
@@ -859,9 +1162,16 @@
           });
 
           if (response.ok) {
+            trackGoal('demo_form_success', {
+              source_page: leadContext.sourcePage,
+              intent: leadContext.intent,
+              use_case: leadContext.useCase,
+              cta_variant: leadContext.ctaVariant
+            });
             submitBtn.textContent = 'Заявка отправлена!';
             submitBtn.style.background = '#10B981';
             DOM.demoForm.reset();
+            applyLeadContextToForm();
 
             setTimeout(() => {
               submitBtn.textContent = originalText;
@@ -1022,6 +1332,8 @@
   // ============================================
   function init() {
     cacheDOM();
+    applyContextAwareDemoLinks();
+    applyLeadContextToForm();
     initTheme();
     initMobileNav();
     initHeaderScroll();
@@ -1040,6 +1352,7 @@
     initKeyboardNavigation();
     initPerformanceOptimizations();
     initAccessibility();
+    initCtaTracking();
 
     console.log('CodeGraph Landing Page initialized');
   }

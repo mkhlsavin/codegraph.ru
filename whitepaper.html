@@ -29,7 +29,7 @@
     "description": "ИИ-копилот для анализа кода с гибридным RAG и графом свойств кода (CPG). 11 языков, 21 сценарий, 4 LLM-провайдера.",
     "url": "https://codegraph.ru/whitepaper.html",
     "datePublished": "2026-01-31",
-    "dateModified": "2026-03-10",
+    "dateModified": "2026-03-23",
     "author": {"@type": "Organization", "name": "CodeGraph", "url": "https://codegraph.ru"},
     "publisher": {"@type": "Organization", "name": "CodeGraph", "url": "https://codegraph.ru"}
   }
@@ -1311,53 +1311,74 @@
       </div>
 
       <h3>7.3 Квалификационный бенчмарк ГОСТ Р 71207-2024</h3>
-      <p>В Phase 6 CodeGraph закрыл certification-ready workflow для ГОСТ Р 71207-2024: parser и runner для Juliet, function-scoped matching, профили анализа, analysis scopes и расчёт FP/FN по формулам ГОСТ. Дополнительно подтверждён проходной результат не только для C, но и для C++, Java и C# на официальных Juliet subset `_01` по покрытым CWE.</p>
+      <p>На 23 марта 2026 года `sa-tests-db` был заново прогнан на текущем `HEAD` изолированно по каждому языку. Критерий соответствия строгий: для каждого типа ошибок отдельно требуется <strong>FP &lt; 50%</strong> и <strong>FN &lt; 50%</strong>; aggregate FP/FN в таблице ниже приведены только как справочные. В текущем снимке корпуса реально представлены `c`, `cs`, `go`, `java`, `js`, `python`; `cpp` в `sa-tests-db` пока не содержит `manifest.toml` и не участвует в оценке.</p>
 
       <div class="table-wrapper">
         <table class="data-table">
         <thead>
           <tr>
             <th>Язык</th>
-            <th>Выборка</th>
-            <th>FP rate</th>
-            <th>FN rate</th>
+            <th>Тестов</th>
+            <th>Aggregate FP/FN</th>
             <th>Статус</th>
+            <th>Комментарий</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><strong>C</strong></td>
-            <td>24 кейса</td>
-            <td><strong>33.33%</strong></td>
-            <td><strong>0.00%</strong></td>
+            <td>11 511</td>
+            <td><strong>44.07% / 29.82%</strong></td>
             <td><strong>PASS</strong></td>
-          </tr>
-          <tr>
-            <td><strong>C++</strong></td>
-            <td>4 кейса</td>
-            <td><strong>0.00%</strong></td>
-            <td><strong>0.00%</strong></td>
-            <td><strong>PASS</strong></td>
-          </tr>
-          <tr>
-            <td><strong>Java</strong></td>
-            <td>853 кейса</td>
-            <td><strong>1.86%</strong></td>
-            <td><strong>26.17%</strong></td>
-            <td><strong>PASS</strong></td>
+            <td>Все 10 типов ошибок проходят по строгому критерию</td>
           </tr>
           <tr>
             <td><strong>C#</strong></td>
-            <td>685 кейсов</td>
-            <td><strong>16.09%</strong></td>
-            <td><strong>15.12%</strong></td>
+            <td>15 155</td>
+            <td><strong>37.65% / 41.54%</strong></td>
             <td><strong>PASS</strong></td>
+            <td>Все 6 представленных в корпусе типов ошибок проходят</td>
+          </tr>
+          <tr>
+            <td><strong>Java</strong></td>
+            <td>21 429</td>
+            <td><strong>45.90% / 29.95%</strong></td>
+            <td><strong>PASS</strong></td>
+            <td>Все 8 представленных в корпусе типов ошибок проходят</td>
+          </tr>
+          <tr>
+            <td><strong>Go</strong></td>
+            <td>7 123</td>
+            <td><strong>38.44% / 26.75%</strong></td>
+            <td><strong>PASS</strong></td>
+            <td>После честного full re-run все 8 представленных в корпусе типов ошибок проходят</td>
+          </tr>
+          <tr>
+            <td><strong>JavaScript</strong></td>
+            <td>84</td>
+            <td><strong>35.56% / 30.95%</strong></td>
+            <td><strong>PASS</strong></td>
+            <td>Оба типа корпуса (`taint_interpreted`, `security_api_interpreted`) проходят</td>
+          </tr>
+          <tr>
+            <td><strong>Python</strong></td>
+            <td>747</td>
+            <td><strong>41.83% / 35.76%</strong></td>
+            <td><strong>PASS</strong></td>
+            <td>Все 3 представленных в корпусе типа ошибок проходят</td>
+          </tr>
+          <tr>
+            <td><strong>C++</strong></td>
+            <td>0</td>
+            <td><strong>N/A</strong></td>
+            <td><strong>N/A</strong></td>
+            <td>В текущем `sa-tests-db` нет тестов C++</td>
           </tr>
         </tbody>
         </table>
       </div>
 
-      <p>Разбивка по subtype: <strong>C</strong> — `integer_overflow` FP 0.00% / FN 0.00%, `null_deref` FP 50.00% / FN 0.00%; <strong>C++</strong> — `null_deref` FP 0.00% / FN 0.00%; <strong>Java</strong> — `integer_overflow` FP 0.65% / FN 26.57%, `null_deref` FP 25.00% / FN 14.29%; <strong>C#</strong> — `integer_overflow` FP 16.67% / FN 15.15%, `null_deref` FP 0.00% / FN 14.29%.</p>
+      <p>Итог по свежему снимку корпуса: все шесть реально представленных языков `sa-tests-db` на текущем `HEAD` теперь соответствуют требованиям ГОСТ по строгому правилу <strong>FP &lt; 50%</strong> и <strong>FN &lt; 50%</strong> для каждого `error_type` отдельно: <strong>C</strong>, <strong>C#</strong>, <strong>Go</strong>, <strong>Java</strong>, <strong>JavaScript</strong> и <strong>Python</strong>. Это важно, потому что решение о прохождении определяется не aggregate-метрикой по языку, а отдельной проверкой каждого типа ошибок.</p>
 
       <h3>7.4 Бизнес-эффект</h3>
       <p>Измеримые результаты внедрения CodeGraph:</p>

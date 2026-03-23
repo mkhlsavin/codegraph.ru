@@ -96,6 +96,11 @@
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="../guides/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -143,7 +148,7 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DEMO_API.html">Demo API</a></li>
-        <li><a href="../api/REST_API.html">CodeGraph REST API Documentation</a></li>
+        <li><a href="../api/REST_API.html">REST API Reference</a></li>
         <li><a href="../api/WEBSOCKET_API.html">WebSocket API Reference</a></li>
       </ul>
     </div>
@@ -179,6 +184,7 @@
         <li><a href="../reference/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../reference/SCHEMA.html">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="../reference/SECURITY.html">Enterprise Security Module</a></li>
+        <li><a href="../reference/SNAPSHOT_STORE.html">Snapshot Store Reference</a></li>
         <li><a href="../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook for DuckDB CPG</a></li>
         <li><a href="../reference/SYMBOLIC_EXECUTION.html">Symbolic Execution (Z3 SMT Solver)</a></li>
         <li><a href="../reference/WORKFLOWS.html">Workflows Reference</a></li>
@@ -240,6 +246,7 @@
 <li><a href="#authentication-methods">Authentication Methods</a></li>
 <li><a href="#1-jwt-bearer-token">1. JWT Bearer Token</a></li>
 <li><a href="#2-api-keys">2. API Keys</a></li>
+<li><a href="#service-accounts-and-machine-access">Service Accounts and Machine Access</a></li>
 <li><a href="#3-oauth2oidc">3. OAuth2/OIDC</a></li>
 <li><a href="#4-ldapactive-directory">4. LDAP/Active Directory</a></li>
 <li><a href="#5-iam-yandex-cloud">5. IAM (Yandex Cloud)</a></li>
@@ -267,12 +274,13 @@
 <li><a href="#related-documents">Related Documents</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>CodeGraph implements a comprehensive Role-Based Access Control (RBAC) system with support for multiple authentication methods. The system provides granular access control to platform features.</p>
+<p>CodeGraph implements a comprehensive Role-Based Access Control (RBAC) system with support for multiple authentication modes. The system provides granular access control to platform features.</p>
 <h3  id="key-capabilities"><span id="key_capabilities"></span>Key Capabilities<a class="heading-anchor" href="#key-capabilities" title="Link to this section">&para;</a></h3>
 <ul>
 <li><strong>4 role levels</strong> with hierarchical inheritance</li>
 <li><strong>21 granular permissions</strong> across functional categories</li>
-<li><strong>6 authentication methods</strong>: JWT, API keys, OAuth2, LDAP, IAM (Yandex Cloud), none</li>
+<li><strong>Authentication modes</strong>: JWT, API keys, OAuth2, LDAP, IAM (Yandex Cloud), and unauthenticated access where explicitly allowed</li>
+<li><strong>Service-account lifecycle</strong> for non-human machine identities</li>
 <li><strong>Token blacklisting</strong> for instant access revocation</li>
 <li><strong>Webhook signature verification</strong> with replay attack protection</li>
 <li><strong>Scope enforcement</strong> for fine-grained API key access control</li>
@@ -662,7 +670,7 @@
 </table></div>
 <hr />
 <h2  id="authentication-methods"><span id="authentication_methods"></span>Authentication Methods<a class="heading-anchor" href="#authentication-methods" title="Link to this section">&para;</a></h2>
-<p>CodeGraph supports 6 authentication methods. The <code>auth_method</code> field in <code>AuthContext</code> indicates which method was used:</p>
+<p>CodeGraph supports several authentication modes. The <code>auth_method</code> field in <code>AuthContext</code> indicates which mode was used:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -859,6 +867,45 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-API-Key: rag_a1b2c3d4_e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8&quot;</span>
 </code></pre></div>
 
+<hr />
+<h3  id="service-accounts-and-machine-access"><span id="service_accounts_and_machine_access"></span>Service Accounts and Machine Access<a class="heading-anchor" href="#service-accounts-and-machine-access" title="Link to this section">&para;</a></h3>
+<p>Service accounts build on the <code>X-API-Key</code> transport but introduce a separate machine-identity lifecycle.</p>
+<p>Implemented capabilities:</p>
+<ul>
+<li>dedicated <code>ServiceAccount</code> and <code>ServiceAccountCredential</code> records</li>
+<li>project/group scoping</li>
+<li>interface allowlists (<code>api</code>, <code>mcp</code>)</li>
+<li>rotate/revoke/deactivate flows</li>
+<li>unified audit metadata across API and MCP</li>
+<li>per-service-account rate limiting</li>
+<li>machine contract version validation through <code>X-CodeGraph-Machine-Contract</code></li>
+</ul>
+<p>Admin API:</p>
+<ul>
+<li><code>GET /api/v1/auth/service-accounts/action-catalog</code></li>
+<li><code>POST /api/v1/auth/service-accounts</code></li>
+<li><code>GET /api/v1/auth/service-accounts</code></li>
+<li><code>GET /api/v1/auth/service-accounts/{id}</code></li>
+<li><code>POST /api/v1/auth/service-accounts/{id}/rotate</code></li>
+<li><code>POST /api/v1/auth/service-accounts/{id}/credentials/{credential_id}/revoke</code></li>
+<li><code>POST /api/v1/auth/service-accounts/{id}/deactivate</code></li>
+</ul>
+<p>CLI:</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>create<span class="w"> </span>--owner<span class="w"> </span>admin<span class="w"> </span>--name<span class="w"> </span>ci-bot<span class="w"> </span>--template<span class="w"> </span>ci<span class="w"> </span>--interface<span class="w"> </span>api
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>list
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>inspect<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>rotate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>revoke<span class="w"> </span>--id<span class="w"> </span>&lt;credential-id&gt;
+codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>deactivate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
+</code></pre></div>
+
+<p>Operational notes:</p>
+<ul>
+<li>use service accounts for CI, bots, portals, and MCP/API automation</li>
+<li>roll out rotated credentials before revoking the old credential</li>
+<li>API and MCP use the same scope and interface enforcement logic</li>
+<li>current hardening gap is mTLS-based machine auth; API-key-based machine auth is already implemented</li>
+</ul>
 <hr />
 <h3  id="3-oauth2oidc"><span id="3_oauth2oidc"></span>3. OAuth2/OIDC<a class="heading-anchor" href="#3-oauth2oidc" title="Link to this section">&para;</a></h3>
 <p>Support for enterprise identity providers. See <a href="OAUTH_LDAP.html">OAuth2/OIDC &amp; LDAP/AD Integration</a> for full configuration guide.</p>
@@ -1748,7 +1795,7 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-12</span>
+        <span>Last updated: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/enterprise/RBAC.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1769,6 +1816,7 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
 <li><a href="#authentication-methods" class="level-2">Authentication Methods</a></li>
 <li><a href="#1-jwt-bearer-token" class="level-3">1. JWT Bearer Token</a></li>
 <li><a href="#2-api-keys" class="level-3">2. API Keys</a></li>
+<li><a href="#service-accounts-and-machine-access" class="level-3">Service Accounts and Machine Access</a></li>
 <li><a href="#3-oauth2oidc" class="level-3">3. OAuth2/OIDC</a></li>
 <li><a href="#4-ldapactive-directory" class="level-3">4. LDAP/Active Directory</a></li>
 <li><a href="#5-iam-yandex-cloud" class="level-3">5. IAM (Yandex Cloud)</a></li>

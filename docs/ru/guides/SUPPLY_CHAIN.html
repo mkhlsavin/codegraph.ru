@@ -96,6 +96,11 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -496,6 +501,72 @@
 </tr>
 </tbody>
 </table></div>
+<h2  id="signature-verification"><span id="signature_verification"></span><span id="verifikatsiya-podpisey"></span><span id="verifikatsiya_podpisey"></span>Верификация подписей<a class="heading-anchor" href="#signature-verification" title="Link to this section">&para;</a></h2>
+<p>IntegrityChecker выполняет верификацию подписей и хэшей для каждого компонента в процессе сканирования:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Экосистема</th>
+<th>Метод</th>
+<th>Источник</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pypi</td>
+<td><code>pip-hash</code></td>
+<td><code>--hash=sha256:...</code> в <code>requirements.txt</code></td>
+</tr>
+<tr>
+<td>npm</td>
+<td><code>npm-integrity</code></td>
+<td>Поле <code>integrity</code> в <code>package-lock.json</code></td>
+</tr>
+<tr>
+<td>go</td>
+<td><code>go-sum</code></td>
+<td>Хэш-записи в <code>go.sum</code></td>
+</tr>
+<tr>
+<td>crates.io</td>
+<td><code>cargo-checksum</code></td>
+<td>Поле <code>checksum</code> в <code>Cargo.lock</code></td>
+</tr>
+<tr>
+<td>sigstore</td>
+<td><code>cosign verify-blob</code></td>
+<td>Sigstore/cosign (при наличии)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Определение установленного хэша:</strong></p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Экосистема</th>
+<th>Метод</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pypi</td>
+<td>Файл RECORD из <code>importlib.metadata</code> (SHA256)</td>
+</tr>
+<tr>
+<td>npm</td>
+<td><code>integrity</code> из <code>package-lock.json</code></td>
+</tr>
+<tr>
+<td>go</td>
+<td>Хэш из <code>go.sum</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Поле <code>IntegrityResult.signature_valid</code> заполняется для каждого компонента:
+- <code>True</code> — хэш или подпись найдены и валидны
+- <code>False</code> — верификация подписи не пройдена
+- <code>None</code> — данные подписи для этой экосистемы недоступны</p>
+<p>Поддержка <strong>Sigstore/cosign</strong> доступна для верификации артефактов. Требуется <code>cosign</code> в PATH; доступность кэшируется на сессию.</p>
 <h2  id="configuration"><span id="konfiguratsiya"></span>Конфигурация<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
 <span class="nt">supply_chain</span><span class="p">:</span>
@@ -514,6 +585,12 @@
 <span class="w">  </span><span class="nt">integrity</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">check_checksums</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">    </span><span class="nt">check_lockfiles</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">signatures</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">verify_pip</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">verify_npm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">verify_go</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">verify_cargo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">cosign_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="w">  </span><span class="nt">detector</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">scan_post_install</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">  </span><span class="nt">ci</span><span class="p">:</span>
@@ -539,19 +616,20 @@
 
 <h2  id="module-structure"><span id="module_structure"></span><span id="struktura-modulya"></span><span id="struktura_modulya"></span>Структура модуля<a class="heading-anchor" href="#module-structure" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">src</span><span class="o">/</span><span class="n">supply_chain</span><span class="o">/</span>
-<span class="w">    </span><span class="n">__init__</span><span class="p">.</span><span class="n">py</span><span class="w">          </span><span class="err">—</span><span class="w"> </span><span class="err">экспорты</span>
+<span class="w">    </span><span class="n">__init__</span><span class="p">.</span><span class="n">py</span><span class="w">          </span><span class="err">—</span><span class="w"> </span><span class="n">экспорты</span>
 <span class="w">    </span><span class="n">models</span><span class="p">.</span><span class="n">py</span><span class="w">            </span><span class="err">—</span><span class="w"> </span><span class="n">ComponentType</span><span class="p">,</span><span class="w"> </span><span class="n">RiskLevel</span><span class="p">,</span><span class="w"> </span><span class="n">FindingType</span><span class="p">,</span><span class="w"> </span><span class="n">TrustScore</span><span class="p">,</span>
 <span class="w">                           </span><span class="n">SupplyChainComponent</span><span class="p">,</span><span class="w"> </span><span class="n">IntegrityResult</span><span class="p">,</span><span class="w"> </span><span class="n">SCFinding</span><span class="p">,</span>
 <span class="w">                           </span><span class="n">SupplyChainReport</span>
-<span class="w">    </span><span class="n">registry</span><span class="p">.</span><span class="n">py</span><span class="w">          </span><span class="err">—</span><span class="w"> </span><span class="n">ComponentRegistry</span><span class="w"> </span><span class="p">(</span><span class="n">DependencyGraph</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">компоненты</span><span class="p">)</span>
+<span class="w">    </span><span class="n">registry</span><span class="p">.</span><span class="n">py</span><span class="w">          </span><span class="err">—</span><span class="w"> </span><span class="n">ComponentRegistry</span><span class="w"> </span><span class="p">(</span><span class="n">DependencyGraph</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">компоненты</span><span class="p">)</span>
 <span class="w">    </span><span class="n">scorecard</span><span class="p">.</span><span class="n">py</span><span class="w">         </span><span class="err">—</span><span class="w"> </span><span class="n">ScorecardClient</span><span class="w"> </span><span class="p">(</span><span class="n">OpenSSF</span><span class="w"> </span><span class="n">Scorecard</span><span class="w"> </span><span class="n">API</span><span class="p">)</span>
-<span class="w">    </span><span class="n">trust_scorer</span><span class="p">.</span><span class="n">py</span><span class="w">      </span><span class="err">—</span><span class="w"> </span><span class="n">TrustScorer</span><span class="w"> </span><span class="p">(</span><span class="mh">6</span><span class="w"> </span><span class="err">факторов</span><span class="p">,</span><span class="w"> </span><span class="err">взвешенное</span><span class="w"> </span><span class="err">среднее</span><span class="p">)</span>
-<span class="w">    </span><span class="n">typosquatting</span><span class="p">.</span><span class="n">py</span><span class="w">     </span><span class="err">—</span><span class="w"> </span><span class="n">TyposquattingDetector</span><span class="w"> </span><span class="p">(</span><span class="err">Левенштейн</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">база</span><span class="w"> </span><span class="err">популярных</span><span class="p">)</span>
-<span class="w">    </span><span class="n">integrity</span><span class="p">.</span><span class="n">py</span><span class="w">         </span><span class="err">—</span><span class="w"> </span><span class="n">IntegrityChecker</span><span class="w"> </span><span class="p">(</span><span class="mh">8</span><span class="w"> </span><span class="err">парсеров</span><span class="w"> </span><span class="n">lockfile</span><span class="p">,</span><span class="w"> </span><span class="err">контрольные</span><span class="w"> </span><span class="err">суммы</span><span class="p">)</span>
-<span class="w">    </span><span class="n">detector</span><span class="p">.</span><span class="n">py</span><span class="w">          </span><span class="err">—</span><span class="w"> </span><span class="n">MaliciousCodeDetector</span><span class="w"> </span><span class="p">(</span><span class="mh">10</span><span class="o">+</span><span class="w"> </span><span class="err">паттернов</span><span class="p">,</span><span class="w"> </span><span class="n">npm</span><span class="o">-</span><span class="err">хуки</span><span class="p">)</span>
+<span class="w">    </span><span class="n">trust_scorer</span><span class="p">.</span><span class="n">py</span><span class="w">      </span><span class="err">—</span><span class="w"> </span><span class="n">TrustScorer</span><span class="w"> </span><span class="p">(</span><span class="mi">6</span><span class="w"> </span><span class="n">факторов</span><span class="p">,</span><span class="w"> </span><span class="n">взвешенное</span><span class="w"> </span><span class="n">среднее</span><span class="p">)</span>
+<span class="w">    </span><span class="n">typosquatting</span><span class="p">.</span><span class="n">py</span><span class="w">     </span><span class="err">—</span><span class="w"> </span><span class="n">TyposquattingDetector</span><span class="w"> </span><span class="p">(</span><span class="n">Левенштейн</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">база</span><span class="w"> </span><span class="n">популярных</span><span class="p">)</span>
+<span class="w">    </span><span class="n">integrity</span><span class="p">.</span><span class="n">py</span><span class="w">         </span><span class="err">—</span><span class="w"> </span><span class="n">IntegrityChecker</span><span class="w"> </span><span class="p">(</span><span class="mi">8</span><span class="w"> </span><span class="n">парсеров</span><span class="w"> </span><span class="n">lockfile</span><span class="p">,</span><span class="w"> </span><span class="n">контрольные</span><span class="w"> </span><span class="n">суммы</span><span class="p">,</span><span class="w"> </span><span class="n">интеграция</span><span class="w"> </span><span class="n">подписей</span><span class="p">)</span>
+<span class="w">    </span><span class="n">signature</span><span class="p">.</span><span class="n">py</span><span class="w">         </span><span class="err">—</span><span class="w"> </span><span class="n">SignatureVerifier</span><span class="w"> </span><span class="p">(</span><span class="n">pip</span><span class="o">-</span><span class="n">hash</span><span class="p">,</span><span class="w"> </span><span class="n">npm</span><span class="o">-</span><span class="n">integrity</span><span class="p">,</span><span class="w"> </span><span class="k">go</span><span class="o">-</span><span class="nf">sum</span><span class="p">,</span><span class="w"> </span><span class="n">cargo</span><span class="p">,</span><span class="w"> </span><span class="n">cosign</span><span class="p">)</span>
+<span class="w">    </span><span class="n">detector</span><span class="p">.</span><span class="n">py</span><span class="w">          </span><span class="err">—</span><span class="w"> </span><span class="n">MaliciousCodeDetector</span><span class="w"> </span><span class="p">(</span><span class="mi">10</span><span class="o">+</span><span class="w"> </span><span class="n">паттернов</span><span class="p">,</span><span class="w"> </span><span class="n">npm</span><span class="o">-</span><span class="n">хуки</span><span class="p">)</span>
 <span class="w">    </span><span class="n">report</span><span class="p">.</span><span class="n">py</span><span class="w">            </span><span class="err">—</span><span class="w"> </span><span class="n">SupplyChainReportRenderer</span><span class="w"> </span><span class="p">(</span><span class="n">JSON</span><span class="p">,</span><span class="w"> </span><span class="n">Markdown</span><span class="p">,</span><span class="w"> </span><span class="n">SARIF</span><span class="p">)</span>
-<span class="w">    </span><span class="n">gost_report</span><span class="p">.</span><span class="n">py</span><span class="w">       </span><span class="err">—</span><span class="w"> </span><span class="n">SupplyChainGostReport</span><span class="w"> </span><span class="p">(</span><span class="err">разделы</span><span class="w"> </span><span class="err">ГОСТ</span><span class="w"> </span><span class="mf">5.17.3</span><span class="p">)</span>
-<span class="w">    </span><span class="n">scanner</span><span class="p">.</span><span class="n">py</span><span class="w">           </span><span class="err">—</span><span class="w"> </span><span class="n">SupplyChainScanner</span><span class="w"> </span><span class="p">(</span><span class="err">оркестратор</span><span class="p">)</span>
+<span class="w">    </span><span class="n">gost_report</span><span class="p">.</span><span class="n">py</span><span class="w">       </span><span class="err">—</span><span class="w"> </span><span class="n">SupplyChainGostReport</span><span class="w"> </span><span class="p">(</span><span class="n">разделы</span><span class="w"> </span><span class="n">ГОСТ</span><span class="w"> </span><span class="mf">5.17.3</span><span class="p">)</span>
+<span class="w">    </span><span class="n">scanner</span><span class="p">.</span><span class="n">py</span><span class="w">           </span><span class="err">—</span><span class="w"> </span><span class="n">SupplyChainScanner</span><span class="w"> </span><span class="p">(</span><span class="n">оркестратор</span><span class="p">)</span>
 </code></pre></div>
 
 <h2  id="related-documents"><span id="related_documents"></span><span id="svyazannye-dokumenty"></span><span id="svyazannye_dokumenty"></span>Связанные документы<a class="heading-anchor" href="#related-documents" title="Link to this section">&para;</a></h2>
@@ -578,7 +656,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/SUPPLY_CHAIN.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -605,6 +683,7 @@
 <li><a href="#mcp-trust" class="level-3">codegraph_supply_chain_trust</a></li>
 <li><a href="#trust-scoring" class="level-2">Оценка доверия</a></li>
 <li><a href="#finding-types" class="level-2">Типы проблем</a></li>
+<li><a href="#signature-verification" class="level-2">Верификация подписей</a></li>
 <li><a href="#configuration" class="level-2">Конфигурация</a></li>
 <li><a href="#ci-integration" class="level-2">Интеграция с CI</a></li>
 <li><a href="#github-actions" class="level-3">GitHub Actions</a></li>

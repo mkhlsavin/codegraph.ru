@@ -96,6 +96,11 @@
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="../guides/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -143,7 +148,7 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DEMO_API.html">Demo API</a></li>
-        <li><a href="../api/REST_API.html">CodeGraph REST API Documentation</a></li>
+        <li><a href="../api/REST_API.html">REST API Reference</a></li>
         <li><a href="../api/WEBSOCKET_API.html">WebSocket API Reference</a></li>
       </ul>
     </div>
@@ -179,6 +184,7 @@
         <li><a href="MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="SCHEMA.html">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Enterprise Security Module</a></li>
+        <li><a href="SNAPSHOT_STORE.html">Snapshot Store Reference</a></li>
         <li><a href="SQL_QUERY_COOKBOOK.html">SQL Query Cookbook for DuckDB CPG</a></li>
         <li><a href="SYMBOLIC_EXECUTION.html">Symbolic Execution (Z3 SMT Solver)</a></li>
         <li><a href="WORKFLOWS.html">Workflows Reference</a></li>
@@ -213,8 +219,8 @@
       <!-- Content -->
       <article class="doc-content">
         <h1  id="grpc-api-reference"><span id="grpc_api_reference"></span>gRPC API Reference<a class="heading-anchor" href="#grpc-api-reference" title="Link to this section">&para;</a></h1>
-<p>GoCPG exposes a gRPC interface for CPG operations, queries, navigation, and pattern scanning. The Python client (<code>GrpcTransport</code> in <code>src/services/gocpg/grpc_transport.py</code>) wraps all RPCs into async methods that return the same Pydantic models as the subprocess transport.</p>
-<p>Four gRPC services are used: <code>CPGService</code> (parse/update/indexes), <code>QueryService</code> (query/stats/branches/submodules/frontends), <code>PatternService</code> (search/scan/validate), and <code>NavigationService</code> (nav_* methods).</p>
+<p>GoCPG exposes a gRPC interface for CPG operations, queries, navigation, lifecycle status, and pattern scanning. The Python client (<code>GrpcTransport</code> in <code>src/services/gocpg/grpc_transport.py</code>) wraps all RPCs into async methods that return the same Pydantic models as the subprocess transport.</p>
+<p>Five gRPC services are used: <code>CPGService</code> (parse/update/indexes), <code>QueryService</code> (query/stats/branches/submodules/frontends), <code>PatternService</code> (search/scan/validate), <code>NavigationService</code> (nav_* methods), and <code>LifecycleService</code> (status/freshness/maintenance).</p>
 <h2 id="connection">Connection<a class="heading-anchor" href="#connection" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
 <thead>
@@ -629,6 +635,179 @@
 </tbody>
 </table></div>
 <p>Returns: <code>GoCPGQualityStatsResult</code></p>
+<h2  id="lifecycle-maintenance"><span id="lifecycle-amp-maintenance"></span><span id="lifecycle_amp_maintenance"></span><span id="lifecycle_maintenance"></span>Lifecycle &amp; Maintenance<a class="heading-anchor" href="#lifecycle-maintenance" title="Link to this section">&para;</a></h2>
+<h3  id="lifecycle-status"><span id="lifecycle_status"></span>lifecycle_status<a class="heading-anchor" href="#lifecycle-status" title="Link to this section">&para;</a></h3>
+<p>Get the current lifecycle snapshot for a database. Maps to <code>LifecycleService.GetDatabaseStatus</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Target DuckDB file path</td>
+</tr>
+<tr>
+<td><code>repo_path</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Repository root used for freshness checks</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>30</code></td>
+<td>RPC timeout (seconds)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Returns: <code>GoCPGLifecycleStatusResult</code></p>
+<p>Fields include <code>state</code>, <code>read_available</code>, <code>active_operation</code>, <code>progress_percent</code>, <code>started_at</code>, <code>last_successful_update_at</code>, <code>last_successful_maintenance_at</code>, lock metadata, and freshness details.</p>
+<h3  id="watch-database-status"><span id="watch_database_status"></span>watch_database_status<a class="heading-anchor" href="#watch-database-status" title="Link to this section">&para;</a></h3>
+<p>Stream status snapshots for a database. Maps to <code>LifecycleService.WatchDatabaseStatus</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Target DuckDB file path</td>
+</tr>
+<tr>
+<td><code>repo_path</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Repository root used for freshness checks</td>
+</tr>
+<tr>
+<td><code>max_events</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Maximum streamed events (0 = until cancel)</td>
+</tr>
+<tr>
+<td><code>poll_interval_ms</code></td>
+<td><code>int</code></td>
+<td><code>0</code></td>
+<td>Poll interval override in milliseconds</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>60</code></td>
+<td>RPC timeout (seconds)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Returns: <code>AsyncIterator[GoCPGLifecycleStatusResult]</code></p>
+<h3  id="freshness-status"><span id="freshness_status"></span>freshness_status<a class="heading-anchor" href="#freshness-status" title="Link to this section">&para;</a></h3>
+<p>Get the freshness-only projection for a database. Maps to <code>LifecycleService.GetFreshnessStatus</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Target DuckDB file path</td>
+</tr>
+<tr>
+<td><code>repo_path</code></td>
+<td><code>str \| None</code></td>
+<td><code>None</code></td>
+<td>Repository root used for freshness checks</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>30</code></td>
+<td>RPC timeout (seconds)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Returns: <code>GoCPGFreshnessStatusResult</code></p>
+<h3  id="run-maintenance"><span id="run_maintenance"></span>run_maintenance<a class="heading-anchor" href="#run-maintenance" title="Link to this section">&para;</a></h3>
+<p>Run explicit DuckDB maintenance inside GoCPG. Maps to <code>LifecycleService.RunMaintenance</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Target DuckDB file path</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td><code>checkpoint_vacuum</code> or <code>copy_from_database_rewrite</code></td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>300</code></td>
+<td>RPC timeout (seconds)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Returns: <code>GoCPGMaintenanceResult</code></p>
+<h3  id="maintenance-plan"><span id="maintenance_plan"></span>maintenance_plan<a class="heading-anchor" href="#maintenance-plan" title="Link to this section">&para;</a></h3>
+<p>Get the current maintenance recommendation for a database. Maps to <code>LifecycleService.GetMaintenancePlan</code>.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db_path</code></td>
+<td><code>str</code></td>
+<td>required</td>
+<td>Target DuckDB file path</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td><code>int \| None</code></td>
+<td><code>30</code></td>
+<td>RPC timeout (seconds)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Returns: <code>GoCPGMaintenancePlanResult</code></p>
 <h2 id="navigation">Navigation<a class="heading-anchor" href="#navigation" title="Link to this section">&para;</a></h2>
 <h3  id="nav-symbols"><span id="nav_symbols"></span>nav_symbols<a class="heading-anchor" href="#nav-symbols" title="Link to this section">&para;</a></h3>
 <p>Find symbols by name in the CPG. Supports exact and prefix matching.</p>
@@ -1310,11 +1489,8 @@
 </tbody>
 </table></div>
 <p>Returns: <code>dict[str, Any]</code></p>
-<h2 id="health">Health<a class="heading-anchor" href="#health" title="Link to this section">&para;</a></h2>
-<h3  id="check-health"><span id="check_health"></span>check_health<a class="heading-anchor" href="#check-health" title="Link to this section">&para;</a></h3>
-<p>Check if the gRPC server is reachable. Uses <code>ListFrontends</code> with a 2-second timeout as a lightweight probe.</p>
-<p>No parameters (besides the implicit connection configuration).</p>
-<p>Returns: <code>bool</code> (<code>True</code> if the server responded, <code>False</code> otherwise)</p>
+<h2  id="transport-notes"><span id="transport_notes"></span>Transport Notes<a class="heading-anchor" href="#transport-notes" title="Link to this section">&para;</a></h2>
+<p><code>GrpcTransport.check_health()</code> is a client-side connectivity helper, not a public gRPC RPC. It uses <code>ListFrontends</code> as a lightweight probe and therefore is intentionally excluded from the RPC surface tracked by <code>docs-sync</code>.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -1333,7 +1509,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-12</span>
+        <span>Last updated: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/GRPC_API.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1354,6 +1530,12 @@
 <li><a href="#search" class="level-3">search</a></li>
 <li><a href="#stats" class="level-3">stats</a></li>
 <li><a href="#quality-stats" class="level-3">quality_stats</a></li>
+<li><a href="#lifecycle-maintenance" class="level-2">Lifecycle & Maintenance</a></li>
+<li><a href="#lifecycle-status" class="level-3">lifecycle_status</a></li>
+<li><a href="#watch-database-status" class="level-3">watch_database_status</a></li>
+<li><a href="#freshness-status" class="level-3">freshness_status</a></li>
+<li><a href="#run-maintenance" class="level-3">run_maintenance</a></li>
+<li><a href="#maintenance-plan" class="level-3">maintenance_plan</a></li>
 <li><a href="#navigation" class="level-2">Navigation</a></li>
 <li><a href="#nav-symbols" class="level-3">nav_symbols</a></li>
 <li><a href="#nav-callers" class="level-3">nav_callers</a></li>
@@ -1373,8 +1555,7 @@
 <li><a href="#pattern-engine" class="level-2">Pattern Engine</a></li>
 <li><a href="#scan" class="level-3">scan</a></li>
 <li><a href="#validate-rule" class="level-3">validate_rule</a></li>
-<li><a href="#health" class="level-2">Health</a></li>
-<li><a href="#check-health" class="level-3">check_health</a></li>
+<li><a href="#transport-notes" class="level-2">Transport Notes</a></li>
       </ul>
     </aside>
   </div>

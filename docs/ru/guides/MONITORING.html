@@ -96,6 +96,11 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
         <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
@@ -225,6 +230,9 @@
 <li><a href="#konfiguracija-razvertyvanija">Конфигурация развертывания</a></li>
 <li><a href="#servicemonitor-dlja-prometheus">ServiceMonitor для Prometheus</a></li>
 <li><a href="#rekomendacii">Рекомендации</a></li>
+<li><a href="#ciso-grafana-dashboard">Grafana-дашборд CISO/CTO</a></li>
+<li><a href="#dashboard-alert-rules">Правила оповещений дашборда</a></li>
+<li><a href="#dashboard-v2-metrics">Метрики дашборда V2</a></li>
 <li><a href="#sm-takzhe">См. также</a></li>
 </ul>
 <h2 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h2>
@@ -951,7 +959,7 @@
 </code></pre></div>
 
 <h3  id="pravila-opoveshchenij"><span id="pravila-opovescheniy"></span><span id="pravila_opovescheniy"></span><span id="pravila_opoveshchenij"></span>Правила оповещений<a class="heading-anchor" href="#pravila-opoveshchenij" title="Link to this section">&para;</a></h3>
-<p>Реальные правила оповещений из <code>monitoring/rules/alerts.yml</code> (4 группы, 7 правил):</p>
+<p>Реальные правила оповещений из <code>monitoring/rules/alerts.yml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">groups</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_availability</span>
 <span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
@@ -1087,9 +1095,531 @@
 <li><strong>Используйте <code>MetricsCollector</code></strong> для агрегации метрик в памяти, когда Prometheus не развёрнут</li>
 </ol>
 <hr />
+<h2  id="ciso-grafana-dashboard"><span id="ciso_grafana_dashboard"></span><span id="grafana-dashbord-cisocto"></span><span id="grafana_dashbord_cisocto"></span>Grafana-дашборд CISO/CTO<a class="heading-anchor" href="#ciso-grafana-dashboard" title="Link to this section">&para;</a></h2>
+<p>Дашборд CISO/CTO обеспечивает обзор состояния безопасности и качества кода всех зарегистрированных проектов на уровне руководства. Поставляется в виде готовой JSON-модели Grafana: <code>grafana/dashboard_ciso.json</code>.</p>
+<h3  id="ciso-grafana-import"><span id="ciso_grafana_import"></span><span id="import"></span>Импорт<a class="heading-anchor" href="#ciso-grafana-import" title="Link to this section">&para;</a></h3>
+<ol>
+<li>Откройте Grafana и перейдите в <strong>Dashboards &gt; Import</strong>.</li>
+<li>Загрузите <code>grafana/dashboard_ciso.json</code> или вставьте его содержимое.</li>
+<li>Выберите источник данных Prometheus, настроенный для метрик CodeGraph.</li>
+<li>Нажмите <strong>Import</strong>. Дашборд появится в папке <strong>CodeGraph</strong>.</li>
+</ol>
+<h3  id="ciso-grafana-datasource"><span id="ciso_grafana_datasource"></span><span id="istochnik-dannyh"></span><span id="istochnik_dannyh"></span>Источник данных<a class="heading-anchor" href="#ciso-grafana-datasource" title="Link to this section">&para;</a></h3>
+<p>Дашборд требует источник данных <strong>Prometheus</strong>, направленный на стандартную конечную точку метрик CodeGraph:</p>
+<div class="highlight"><pre><span></span><code>/api/v1/metrics
+</code></pre></div>
+
+<p>Автообновление по умолчанию установлено на <strong>5 минут</strong>. При необходимости измените в <strong>Dashboard Settings &gt; Time Options</strong>.</p>
+<h3  id="ciso-grafana-variables"><span id="ciso_grafana_variables"></span><span id="peremennye"></span>Переменные<a class="heading-anchor" href="#ciso-grafana-variables" title="Link to this section">&para;</a></h3>
+<p>В заголовке дашборда доступны две шаблонные переменные для фильтрации:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Переменная</th>
+<th>Описание</th>
+<th>По умолчанию</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>$group</code></td>
+<td>Имя группы проектов. Фильтрует все панели, показывая только проекты выбранной группы.</td>
+<td><code>All</code></td>
+</tr>
+<tr>
+<td><code>$project</code></td>
+<td>Имя конкретного проекта. При выборе панели показывают данные только по этому проекту.</td>
+<td><code>All</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="ciso-grafana-panels"><span id="ciso_grafana_panels"></span><span id="paneli-12"></span><span id="paneli_12"></span>Панели (12)<a class="heading-anchor" href="#ciso-grafana-panels" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>№</th>
+<th>Панель</th>
+<th>Тип</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Работоспособность портфеля</td>
+<td>Stat</td>
+<td>Среднее значение <code>codegraph_project_health_score</code> по всем проектам (с фильтром <code>$group</code>). Пороги цвета: зелёный &gt;=70, жёлтый &gt;=50, красный &lt;50.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Распределение рисков</td>
+<td>Pie chart</td>
+<td>Распределение проектов по уровню риска (критический, высокий, средний, низкий) на основе диапазонов оценки работоспособности.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Количество в красной зоне</td>
+<td>Stat</td>
+<td>Число проектов с <code>codegraph_project_health_score &lt; 50</code>. Отображается красным, если count &gt; 0.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>SCA-уязвимости</td>
+<td>Stat</td>
+<td>Сумма <code>codegraph_project_sca_vulnerabilities</code> по всем проектам. Пороги: зелёный 0, жёлтый &gt;=1, красный &gt;=5.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Оценка аудита</td>
+<td>Bar gauge</td>
+<td><code>codegraph_project_audit_score</code> по каждому проекту в виде горизонтальных столбцов, отсортированных по возрастанию.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Оценка соответствия</td>
+<td>Bar gauge</td>
+<td><code>codegraph_project_compliance_score</code> по каждому проекту в виде горизонтальных столбцов, отсортированных по возрастанию.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Готовность к релизу</td>
+<td>Pie chart</td>
+<td>Распределение значений <code>codegraph_project_release_status</code>: готов (1), заблокирован (0), неизвестно (-1).</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Красная зона по категориям</td>
+<td>Table / bar</td>
+<td>Использует <code>codegraph_red_zone_items_count</code> с группировкой по <code>project</code> и <code>category</code>, чтобы показать, где именно портфель деградирует.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Тренд работоспособности</td>
+<td>Time series</td>
+<td><code>codegraph_project_health_score</code> во времени для выбранного <code>$project</code> или усреднённое по <code>$group</code>.</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Тренд соответствия</td>
+<td>Time series</td>
+<td><code>codegraph_project_compliance_score</code> во времени для выбранного <code>$project</code> или усреднённое по <code>$group</code>.</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Топ-5 худших проектов</td>
+<td>Table</td>
+<td>Пять проектов с наименьшим <code>codegraph_project_health_score</code>. Столбцы: имя проекта, оценка работоспособности, оценка аудита, оценка соответствия, уровень риска.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Топ-5 лучших проектов</td>
+<td>Table</td>
+<td>Пять проектов с наибольшим <code>codegraph_project_health_score</code>. Столбцы аналогичны панели «Топ-5 худших».</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="ciso-grafana-themes"><span id="ciso_grafana_themes"></span><span id="sovmestimost-s-temami"></span><span id="sovmestimost_s_temami"></span>Совместимость с темами<a class="heading-anchor" href="#ciso-grafana-themes" title="Link to this section">&para;</a></h3>
+<p>Все панели используют пороговые цвета, корректно отображающиеся как в тёмной, так и в светлой теме Grafana. Пользовательские CSS-переопределения не требуются.</p>
+<hr />
+<h2  id="dashboard-alert-rules"><span id="dashboard_alert_rules"></span><span id="pravila-opovescheniy-dashborda"></span><span id="pravila_opovescheniy_dashborda"></span>Правила оповещений дашборда<a class="heading-anchor" href="#dashboard-alert-rules" title="Link to this section">&para;</a></h2>
+<p>Пять правил оповещений Prometheus определены в <code>monitoring/rules/dashboard_alerts.yml</code> для уведомления о превышении проектами пороговых значений риска. Эти правила дополняют существующие оповещения о доступности и задержках CodeGraph.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Имя оповещения</th>
+<th>Условие (PromQL)</th>
+<th>Длительность (<code>for</code>)</th>
+<th>Критичность</th>
+<th>Рекомендованное действие</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DashboardProjectRiskCritical</code></td>
+<td><code>codegraph_project_health_score &lt; 30</code></td>
+<td>10m</td>
+<td>critical</td>
+<td>Немедленно проверить проект. Исследовать критические SCA-уязвимости, неуспешные проверки контроля релизов и пробелы в соответствии. Эскалировать ответственному руководителю группы.</td>
+</tr>
+<tr>
+<td><code>DashboardProjectRiskHigh</code></td>
+<td><code>codegraph_project_health_score &lt; 50</code></td>
+<td>30m</td>
+<td>warning</td>
+<td>Запланировать проверку по устранению замечаний в течение 48 часов. Проверить находки аудита по критичности и устранить приоритетные в первую очередь.</td>
+</tr>
+<tr>
+<td><code>DashboardComplianceGap</code></td>
+<td><code>codegraph_project_compliance_score &lt; 40</code></td>
+<td>1h</td>
+<td>warning</td>
+<td>Запустить полную оценку соответствия ГОСТ Р 56939 (<code>codegraph_compliance_gost</code>). Сосредоточиться на несоответствующих процессах, показанных в тепловой карте соответствия.</td>
+</tr>
+<tr>
+<td><code>DashboardReleaseGateFail</code></td>
+<td><code>codegraph_project_release_status == 0</code></td>
+<td>15m</td>
+<td>warning</td>
+<td>Проверить причины блокировки контроля релизов через <code>codegraph_release_gate_check</code>. Устранить блокирующие проверки до следующего окна релиза.</td>
+</tr>
+<tr>
+<td><code>DashboardScaCriticalVuln</code></td>
+<td><code>codegraph_project_sca_vulnerabilities{severity="critical"} &gt; 0</code></td>
+<td>5m</td>
+<td>critical</td>
+<td>Немедленно исправить критические CVE. Запустить <code>codegraph_sbom_audit</code> для выявления затронутых зависимостей. Рассмотреть экстренный релиз, если затронуто рабочее окружение.</td>
+</tr>
+</tbody>
+</table></div>
+<h3  id="dashboard-alert-rules-example"><span id="dashboard_alert_rules_example"></span><span id="primer-konfiguratsii-pravil"></span><span id="primer_konfiguratsii_pravil"></span>Пример конфигурации правил<a class="heading-anchor" href="#dashboard-alert-rules-example" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">groups</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_dashboard</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DashboardProjectRiskCritical</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_project_health_score &lt; 30</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.project</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">health</span><span class="nv"> </span><span class="s">score</span><span class="nv"> </span><span class="s">critically</span><span class="nv"> </span><span class="s">low</span><span class="nv"> </span><span class="s">({{</span><span class="nv"> </span><span class="s">$value</span><span class="nv"> </span><span class="s">}})&quot;</span>
+<span class="w">          </span><span class="nt">runbook</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Check</span><span class="nv"> </span><span class="s">audit,</span><span class="nv"> </span><span class="s">SCA,</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">compliance</span><span class="nv"> </span><span class="s">status.</span><span class="nv"> </span><span class="s">Escalate</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">team</span><span class="nv"> </span><span class="s">lead.&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DashboardProjectRiskHigh</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_project_health_score &lt; 50</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.project</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">red</span><span class="nv"> </span><span class="s">zone</span><span class="nv"> </span><span class="s">(health</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$value</span><span class="nv"> </span><span class="s">}})&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DashboardComplianceGap</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_project_compliance_score &lt; 40</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1h</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.project</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">compliance</span><span class="nv"> </span><span class="s">score</span><span class="nv"> </span><span class="s">below</span><span class="nv"> </span><span class="s">40%</span><span class="nv"> </span><span class="s">({{</span><span class="nv"> </span><span class="s">$value</span><span class="nv"> </span><span class="s">}})&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DashboardReleaseGateFail</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_project_release_status == 0</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.project</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">release</span><span class="nv"> </span><span class="s">gate</span><span class="nv"> </span><span class="s">blocked&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DashboardScaCriticalVuln</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_project_sca_vulnerabilities{severity=&quot;critical&quot;} &gt; 0</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$labels.project</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">has</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">$value</span><span class="nv"> </span><span class="s">}}</span><span class="nv"> </span><span class="s">critical</span><span class="nv"> </span><span class="s">SCA</span><span class="nv"> </span><span class="s">vulnerabilities&quot;</span>
+</code></pre></div>
+
+<hr />
+<h2  id="dashboard-v2-metrics"><span id="dashboard_v2_metrics"></span><span id="metriki-dashborda-v2"></span><span id="metriki_dashborda_v2"></span>Метрики дашборда V2<a class="heading-anchor" href="#dashboard-v2-metrics" title="Link to this section">&para;</a></h2>
+<p>Восемь dashboard-gauge публикуются через стандартную Prometheus scrape endpoint. Все метрики имеют тип <strong>Gauge</strong> и обновляются при выполнении dashboard aggregation logic.</p>
+<h3  id="metric-health-score"><span id="codegraph-project-health-score"></span><span id="codegraph_project_health_score"></span><span id="metric_health_score"></span>codegraph_project_health_score<a class="heading-anchor" href="#metric-health-score" title="Link to this section">&para;</a></h3>
+<p>Составная оценка работоспособности проекта, агрегированная из подоценок аудита, соответствия, контроля релизов и SCA.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>project</code>, <code>group</code>, <code>language</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>процент</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0.0 &ndash; 100.0</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Проекты с оценкой ниже 50 (красная зона)</span>
+<span class="nv">codegraph_project_health_score</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">50</span>
+
+<span class="c1"># Средняя оценка по всем проектам в группе</span>
+<span class="k">avg</span><span class="o">(</span><span class="nv">codegraph_project_health_score</span><span class="p">{</span><span class="nl">group</span><span class="o">=</span><span class="p">&quot;</span><span class="s">backend</span><span class="p">&quot;}</span><span class="o">)</span>
+</code></pre></div>
+
+<h3  id="metric-audit-score"><span id="codegraph-project-audit-score"></span><span id="codegraph_project_audit_score"></span><span id="metric_audit_score"></span>codegraph_project_audit_score<a class="heading-anchor" href="#metric-audit-score" title="Link to this section">&para;</a></h3>
+<p>Последняя оценка аудита проекта, основанная на 12-мерной оценке аудита.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>project</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>score</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0.0 &ndash; 10.0</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># 5 худших проектов по оценке аудита</span>
+<span class="k">bottomk</span><span class="o">(</span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="nv">codegraph_project_audit_score</span><span class="o">)</span>
+</code></pre></div>
+
+<h3  id="metric-compliance-score"><span id="codegraph-project-compliance-score"></span><span id="codegraph_project_compliance_score"></span><span id="metric_compliance_score"></span>codegraph_project_compliance_score<a class="heading-anchor" href="#metric-compliance-score" title="Link to this section">&para;</a></h3>
+<p>Оценка соответствия ГОСТ Р 56939 для проекта, выраженная как процент пройденных процессов.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>project</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>процент</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0.0 &ndash; 100.0</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Проекты с соответствием ниже 40%</span>
+<span class="nv">codegraph_project_compliance_score</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">40</span>
+</code></pre></div>
+
+<h3  id="metric-release-status"><span id="codegraph-project-release-status"></span><span id="codegraph_project_release_status"></span><span id="metric_release_status"></span>codegraph_project_release_status<a class="heading-anchor" href="#metric-release-status" title="Link to this section">&para;</a></h3>
+<p>Статус release gate проекта. Числовое значение: <code>1.0</code> = pass, <code>0.5</code> = warn, <code>0.0</code> = fail.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>project</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>перечисление (1.0/0.5/0.0)</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0.0 &ndash; 1.0</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Количество проектов со статусом fail</span>
+<span class="k">count</span><span class="o">(</span><span class="nv">codegraph_project_release_status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="o">)</span>
+</code></pre></div>
+
+<h3  id="metric-sca-health"><span id="codegraph-project-sca-health"></span><span id="codegraph_project_sca_health"></span><span id="metric_sca_health"></span>codegraph_project_sca_health<a class="heading-anchor" href="#metric-sca-health" title="Link to this section">&para;</a></h3>
+<p>Оценка работоспособности SCA (композиционный анализ) проекта, основанная на анализе уязвимостей зависимостей.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>project</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>процент</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0.0 &ndash; 100.0</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Проекты с SCA-оценкой ниже 70</span>
+<span class="nv">codegraph_project_sca_health</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">70</span>
+</code></pre></div>
+
+<h3  id="metric-sca-vulnerabilities"><span id="codegraph-project-sca-vulnerabilities"></span><span id="codegraph_project_sca_vulnerabilities"></span><span id="metric_sca_vulnerabilities"></span>codegraph_project_sca_vulnerabilities<a class="heading-anchor" href="#metric-sca-vulnerabilities" title="Link to this section">&para;</a></h3>
+<p>Количество SCA-уязвимостей проекта с разбивкой по критичности.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>project</code>, <code>severity</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>количество</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0 &ndash; не ограничен</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Общее количество критических уязвимостей по всем проектам</span>
+<span class="k">sum</span><span class="o">(</span><span class="nv">codegraph_project_sca_vulnerabilities</span><span class="p">{</span><span class="nl">severity</span><span class="o">=</span><span class="p">&quot;</span><span class="s">critical</span><span class="p">&quot;}</span><span class="o">)</span>
+
+<span class="c1"># Количество уязвимостей по каждому проекту</span>
+<span class="k">sum</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">project</span><span class="o">)</span><span class="w"> </span><span class="o">(</span><span class="nv">codegraph_project_sca_vulnerabilities</span><span class="o">)</span>
+</code></pre></div>
+
+<h3  id="metric-portfolio-avg-health"><span id="codegraph-portfolio-avg-health"></span><span id="codegraph_portfolio_avg_health"></span><span id="metric_portfolio_avg_health"></span>codegraph_portfolio_avg_health<a class="heading-anchor" href="#metric-portfolio-avg-health" title="Link to this section">&para;</a></h3>
+<p>Средняя оценка работоспособности по всем зарегистрированным проектам с возможностью фильтрации по группе. Предварительно агрегированная метрика для удобства.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>group</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>процент</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0.0 &ndash; 100.0</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Работоспособность портфеля по всем группам</span>
+<span class="nv">codegraph_portfolio_avg_health</span><span class="p">{</span><span class="nl">group</span><span class="o">=</span><span class="p">&quot;&quot;}</span>
+
+<span class="c1"># Работоспособность по группе</span>
+<span class="nv">codegraph_portfolio_avg_health</span><span class="p">{</span><span class="nl">group</span><span class="o">=</span><span class="p">&quot;</span><span class="s">backend</span><span class="p">&quot;}</span>
+</code></pre></div>
+
+<h3  id="metric-red-zone-count"><span id="codegraph-red-zone-items-count"></span><span id="codegraph_red_zone_items_count"></span><span id="metric_red_zone_count"></span>codegraph_red_zone_items_count<a class="heading-anchor" href="#metric-red-zone-count" title="Link to this section">&para;</a></h3>
+<p>Количество red-zone items с группировкой по проекту и категории.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Свойство</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Тип</strong></td>
+<td>Gauge</td>
+</tr>
+<tr>
+<td><strong>Метки</strong></td>
+<td><code>project</code>, <code>category</code></td>
+</tr>
+<tr>
+<td><strong>Единица</strong></td>
+<td>количество</td>
+</tr>
+<tr>
+<td><strong>Диапазон</strong></td>
+<td>0 &ndash; не ограничен</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># Оповещение при наличии release-related red-zone items</span>
+<span class="k">sum</span><span class="o">(</span><span class="nv">codegraph_red_zone_items_count</span><span class="p">{</span><span class="nl">category</span><span class="o">=</span><span class="p">&quot;</span><span class="s">release</span><span class="p">&quot;}</span><span class="o">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+</code></pre></div>
+
+<h3  id="dashboard-metrics-endpoint"><span id="dashboard_metrics_endpoint"></span><span id="konechnaya-tochka-metrik"></span><span id="konechnaya_tochka_metrik"></span>Конечная точка метрик<a class="heading-anchor" href="#dashboard-metrics-endpoint" title="Link to this section">&para;</a></h3>
+<p>Dashboard gauges доступны через стандартную Prometheus endpoint:</p>
+<div class="highlight"><pre><span></span><code>GET /api/v1/metrics
+</code></pre></div>
+
+<p>Ответ использует текстовый формат Prometheus:</p>
+<div class="highlight"><pre><span></span><code><span class="gh">#</span> HELP codegraph_project_health_score Composite health score for a project
+<span class="gh">#</span> TYPE codegraph_project_health_score gauge
+codegraph_project_health_score{project=&quot;payments-api&quot;,group=&quot;backend&quot;} 85.0
+codegraph_project_health_score{project=&quot;legacy-auth&quot;,group=&quot;backend&quot;} 35.0
+
+<span class="gh">#</span> HELP codegraph_portfolio_avg_health Average health score across all projects
+<span class="gh">#</span> TYPE codegraph_portfolio_avg_health gauge
+codegraph_portfolio_avg_health{group=&quot;&quot;} 72.5
+codegraph_portfolio_avg_health{group=&quot;backend&quot;} 60.0
+
+<span class="gh">#</span> HELP codegraph_red_zone_items_count Number of red zone items by project and category
+<span class="gh">#</span> TYPE codegraph_red_zone_items_count gauge
+codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;release&quot;} 2
+</code></pre></div>
+
+<p>Добавьте эту конечную точку в конфигурацию сбора Prometheus:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">scrape_configs</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph-dashboard</span>
+<span class="w">    </span><span class="nt">scrape_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/metrics</span>
+<span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;localhost:8000&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+
+<hr />
 <h2  id="sm-takzhe"><span id="sm_takzhe"></span>См. также<a class="heading-anchor" href="#sm-takzhe" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="../../api/REST_API.html">Справочник по REST API</a> — конечные точки API, включая проверку работоспособности и метрики</li>
+<li><a href="../../reference/MCP_TOOLS.html">Справочник по MCP-инструментам</a> — MCP-инструменты дашборда V2</li>
 <li><a href="https://prometheus.io/docs/">Документация Prometheus</a></li>
 <li><a href="https://grafana.com/docs/">Документация Grafana</a></li>
 </ul>
@@ -1111,7 +1641,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-12</span>
+        <span>Обновлено: 2026-03-23</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/MONITORING.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1158,6 +1688,24 @@
 <li><a href="#konfiguracija-razvertyvanija" class="level-3">Конфигурация развертывания</a></li>
 <li><a href="#servicemonitor-dlja-prometheus" class="level-3">ServiceMonitor для Prometheus</a></li>
 <li><a href="#rekomendacii" class="level-2">Рекомендации</a></li>
+<li><a href="#ciso-grafana-dashboard" class="level-2">Grafana-дашборд CISO/CTO</a></li>
+<li><a href="#ciso-grafana-import" class="level-3">Импорт</a></li>
+<li><a href="#ciso-grafana-datasource" class="level-3">Источник данных</a></li>
+<li><a href="#ciso-grafana-variables" class="level-3">Переменные</a></li>
+<li><a href="#ciso-grafana-panels" class="level-3">Панели (12)</a></li>
+<li><a href="#ciso-grafana-themes" class="level-3">Совместимость с темами</a></li>
+<li><a href="#dashboard-alert-rules" class="level-2">Правила оповещений дашборда</a></li>
+<li><a href="#dashboard-alert-rules-example" class="level-3">Пример конфигурации правил</a></li>
+<li><a href="#dashboard-v2-metrics" class="level-2">Метрики дашборда V2</a></li>
+<li><a href="#metric-health-score" class="level-3">codegraph_project_health_score</a></li>
+<li><a href="#metric-audit-score" class="level-3">codegraph_project_audit_score</a></li>
+<li><a href="#metric-compliance-score" class="level-3">codegraph_project_compliance_score</a></li>
+<li><a href="#metric-release-status" class="level-3">codegraph_project_release_status</a></li>
+<li><a href="#metric-sca-health" class="level-3">codegraph_project_sca_health</a></li>
+<li><a href="#metric-sca-vulnerabilities" class="level-3">codegraph_project_sca_vulnerabilities</a></li>
+<li><a href="#metric-portfolio-avg-health" class="level-3">codegraph_portfolio_avg_health</a></li>
+<li><a href="#metric-red-zone-count" class="level-3">codegraph_red_zone_items_count</a></li>
+<li><a href="#dashboard-metrics-endpoint" class="level-3">Конечная точка метрик</a></li>
 <li><a href="#sm-takzhe" class="level-2">См. также</a></li>
       </ul>
     </aside>
