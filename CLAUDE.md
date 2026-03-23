@@ -128,17 +128,13 @@ Terms that must be translated (not left in English) on landing pages:
 - data pipeline → конвейер данных
 - on-premise — keep as-is (accepted IT term in Russian)
 
-## Blog
-
-`blog/` contains Habr article drafts (markdown, `habr-NN-slug.md`). 10 articles: CPG vs SAST, onboarding, dogfooding, parser design, taint analysis, DuckDB for CPG, handler-formatter, meta-audit, vibe-coding pipeline, business value. `blog/archive/` has superseded drafts. Disallowed in `robots.txt` — not indexed by search engines.
-
 ## SEO & Deployment
 
 - `CNAME` → `codegraph.ru` (GitHub Pages custom domain)
 - `index.html` contains JSON-LD structured data (Organization, SoftwareApplication, FAQPage)
 - Vertical pages have their own FAQPage JSON-LD in `<head>`
 - `sitemap.xml` — 15 public URLs with priorities
-- `robots.txt` — allows crawling, disallows `/admin/`, `/api/`, `/templates/`, `/blog/`, `/.claude/`, `*.json`
+- `robots.txt` — allows crawling, disallows `/admin/`, `/api/`, `/templates/`, `/.claude/`, `*.json`
 - `.nojekyll` — disables Jekyll processing on GitHub Pages
 - `yandex_76c03f1a56dcfce0.html` — Yandex Webmaster verification
 - `BingSiteAuth.xml` — Bing Webmaster verification
