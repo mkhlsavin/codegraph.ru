@@ -268,7 +268,7 @@ Report / REST API / CLI
 </tr>
 </tbody>
 </table></div>
-<p>3 language parsers (<code>src/dependencies/parsers/</code>):</p>
+<p>7 parser modules (<code>src/dependencies/parsers/</code>):</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -288,6 +288,22 @@ Report / REST API / CLI
 <tr>
 <td>Go</td>
 <td><code>go.mod</code>, <code>go.sum</code></td>
+</tr>
+<tr>
+<td>Java</td>
+<td><code>pom.xml</code>, <code>build.gradle</code>, <code>build.gradle.kts</code></td>
+</tr>
+<tr>
+<td>C#</td>
+<td><code>*.csproj</code>, <code>packages.config</code>, <code>Directory.Packages.props</code></td>
+</tr>
+<tr>
+<td>PHP</td>
+<td><code>composer.json</code>, <code>composer.lock</code></td>
+</tr>
+<tr>
+<td>C/C++</td>
+<td><code>conanfile.txt</code>, <code>conanfile.py</code>, <code>vcpkg.json</code>, <code>CMakeLists.txt</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -997,7 +1013,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<p>8 endpoints in <code>src/api/routers/dependencies.py</code>:</p>
+<p>Primary project-scoped endpoints in <code>src/api/routers/dependencies.py</code>:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -1008,60 +1024,49 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </thead>
 <tbody>
 <tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/summary</code></td>
+<td>Registered-project SCA summary</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/dependencies</code></td>
+<td>List project dependencies</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/vulnerabilities</code></td>
+<td>Project vulnerability results</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/sbom</code></td>
+<td>Export project SBOM</td>
+</tr>
+<tr>
 <td><code>POST</code></td>
-<td><code>/api/v1/dependencies/scan</code></td>
-<td>Scan project for dependencies</td>
+<td><code>/api/v1/deps/projects/{project_name}/audit</code></td>
+<td>Audit project dependencies</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
-<td><code>/api/v1/dependencies/list</code></td>
-<td>List all dependencies</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/graph</code></td>
-<td>Get dependency graph</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/dependencies/check-vulnerabilities</code></td>
-<td>Check for vulnerabilities</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/outdated</code></td>
-<td>List outdated packages</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/licenses</code></td>
-<td>Get license information</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/health-score</code></td>
-<td>Get health score</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/sbom</code></td>
-<td>Export SBOM</td>
+<td><code>/api/v1/deps/projects/{project_name}/gost-report</code></td>
+<td>Generate project GOST 5.16.3 report</td>
 </tr>
 </tbody>
 </table></div>
+<p>Legacy compatibility endpoints under <code>/api/v1/deps/scan</code>, <code>/list</code>, <code>/graph</code>, <code>/check-vulnerabilities</code>,
+<code>/licenses</code>, <code>/health-score</code>, <code>/sbom</code>, <code>/audit</code>, and <code>/sync-cache</code> are still available for
+explicit scan-first workflows, but the Web product path uses the project-scoped routes above.</p>
 <p>Example:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Scan for dependencies</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/dependencies/scan<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;project_path&quot;: &quot;.&quot;, &quot;include_dev&quot;: true}&#39;</span>
+curl<span class="w"> </span>http://localhost:8000/api/v1/deps/projects/codegraph/summary
 
-<span class="c1"># Check vulnerabilities</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/dependencies/check-vulnerabilities<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;severity_threshold&quot;: &quot;medium&quot;}&#39;</span>
+<span class="c1"># List dependencies</span>
+curl<span class="w"> </span>http://localhost:8000/api/v1/deps/projects/codegraph/dependencies
 
-<span class="c1"># Get health score</span>
-curl<span class="w"> </span>http://localhost:8000/api/v1/dependencies/health-score
+<span class="c1"># Export SBOM</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/deps/projects/codegraph/sbom?format=spdx&quot;</span>
 </code></pre></div>
 
 <h2  id="use-cases"><span id="use_cases"></span>Use Cases<a class="heading-anchor" href="#use-cases" title="Link to this section">&para;</a></h2>
@@ -1150,7 +1155,7 @@ Breakdown:
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-24</span>
+        <span>Last updated: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/20-dependencies.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1159,8 +1164,7 @@ Breakdown:
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#scenario-20-dependency-analysis" class="level-1">Scenario 20: Dependency Analysis</a></li>
-<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
+        <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
 <li><a href="#how-it-works" class="level-2">How It Works</a></li>
 <li><a href="#architecture" class="level-3">Architecture</a></li>

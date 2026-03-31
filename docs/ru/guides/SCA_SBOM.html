@@ -194,8 +194,8 @@
 <p>Конвейер композиционного анализа:</p>
 <div class="highlight"><pre><span></span><code>Парсеры зависимостей → Генератор SBOM → Проверка уязвимостей → Отчёт
          ↓                    ↓                    ↓                ↓
-    7 парсеров          CycloneDX 1.5        4 источника      SARIF/ГОСТ/JSON
-    10 языков            SPDX 2.3         SQLite-кэш          Коды возврата CI
+   7 модулей парсеров   CycloneDX 1.5       4 источника       SARIF/ГОСТ/JSON
+   7 экосистем          SPDX 2.3            SQLite-кэш        Коды возврата CI
 </code></pre></div>
 
 <h3  id="supported-languages"><span id="podderzhivaemye-yazyki"></span><span id="podderzhivaemye_yazyki"></span><span id="supported_languages"></span>Поддерживаемые языки<a class="heading-anchor" href="#supported-languages" title="Link to this section">&para;</a></h3>
@@ -245,7 +245,9 @@
 </tr>
 </tbody>
 </table></div>
-<p>TypeScript использует парсер JavaScript. Kotlin использует парсер Java (<code>build.gradle.kts</code>). 1С:Предприятие не имеет стандартного менеджера пакетов.</p>
+<p>Текущая реализация содержит 7 модулей парсеров и покрывает Python, JavaScript/TypeScript, Go,
+Java/Kotlin, C#, PHP и C/C++. TypeScript использует парсер JavaScript. Kotlin использует парсер
+Java (<code>build.gradle.kts</code>). 1С:Предприятие не имеет стандартного менеджера пакетов.</p>
 <h3  id="vulnerability-sources"><span id="istochniki-uyazvimostey"></span><span id="istochniki_uyazvimostey"></span><span id="vulnerability_sources"></span>Источники уязвимостей<a class="heading-anchor" href="#vulnerability-sources" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -318,7 +320,55 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 - 5.16.3.4 — Результаты проверки на уязвимости
 - 5.16.3.5 — Рекомендации по обновлению</p>
 <h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<h3  id="existing-endpoints"><span id="existing_endpoints"></span><span id="suschestvuyuschie-konechnye-tochki-bez-izmeneniy"></span><span id="suschestvuyuschie_konechnye_tochki_bez_izmeneniy"></span>Существующие конечные точки (без изменений)<a class="heading-anchor" href="#existing-endpoints" title="Link to this section">&para;</a></h3>
+<p>Все маршруты SCA смонтированы под <code>/api/v1/deps</code>.</p>
+<h3  id="existing-endpoints"><span id="existing_endpoints"></span><span id="project-scoped-konechnye-tochki-osnovnoy-kontrakt"></span><span id="project_scoped_konechnye_tochki_osnovnoy_kontrakt"></span>Project-scoped конечные точки (основной контракт)<a class="heading-anchor" href="#existing-endpoints" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Метод</th>
+<th>Путь</th>
+<th>Описание</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/summary</code></td>
+<td>SCA summary зарегистрированного проекта: <code>scan_status</code>, инвентарь, лицензии и счётчики уязвимостей</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/dependencies</code></td>
+<td>Инвентарь зависимостей зарегистрированного проекта</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/vulnerabilities</code></td>
+<td>Результаты проверки уязвимостей по зарегистрированному проекту</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/sbom</code></td>
+<td>Экспорт SBOM проекта в формате <code>spdx</code> или <code>cyclonedx</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/projects/{project_name}/audit</code></td>
+<td>Project-scoped аудит уязвимостей (<code>json</code> или <code>sarif</code>)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/gost-report</code></td>
+<td>Project-scoped Markdown-отчёт ГОСТ 5.16.3</td>
+</tr>
+</tbody>
+</table></div>
+<p>Web-экраны <code>SCA / SBOM</code> используют именно project-scoped endpoints выше. Портфельный агрегат
+<code>/api/v2/dashboard/sca/overview</code> остаётся доступным, но не является основным источником данных
+для проектного SCA-экрана.</p>
+<h3  id="new-endpoints"><span id="legacy-scan-scoped-endpoints-compatibility"></span><span id="legacy_scan_scoped_endpoints_compatibility"></span><span id="new_endpoints"></span>Legacy scan-scoped endpoints (compatibility)<a class="heading-anchor" href="#new-endpoints" title="Link to this section">&para;</a></h3>
+<p>Эти маршруты сохранены для CLI/manual workflow, где временный граф сначала загружается через
+<code>/scan</code>, но они не являются каноническим multi-project контрактом:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -330,48 +380,62 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <tbody>
 <tr>
 <td>POST</td>
-<td><code>/api/v1/dependencies/scan</code></td>
-<td>Сканирование проекта</td>
+<td><code>/api/v1/deps/scan</code></td>
+<td>Сканирование произвольного пути в legacy in-memory graph</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/list</code></td>
-<td>Перечень зависимостей</td>
+<td><code>/api/v1/deps/list</code></td>
+<td>Чтение зависимостей из последнего legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/graph</code></td>
-<td>Граф зависимостей</td>
+<td><code>/api/v1/deps/graph</code></td>
+<td>Чтение графа зависимостей из последнего legacy scan</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/check-vulnerabilities</code></td>
+<td>Проверка уязвимостей для последнего legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/vulnerabilities</code></td>
-<td>Проверка уязвимостей</td>
+<td><code>/api/v1/deps/outdated</code></td>
+<td>Устаревшие пакеты для последнего legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/outdated</code></td>
-<td>Устаревшие пакеты</td>
+<td><code>/api/v1/deps/licenses</code></td>
+<td>Сводка лицензий для последнего legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/licenses</code></td>
-<td>Лицензии</td>
+<td><code>/api/v1/deps/health-score</code></td>
+<td>Health score для последнего legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/health-score</code></td>
-<td>Показатель здоровья</td>
+<td><code>/api/v1/deps/sbom</code></td>
+<td>Экспорт SBOM для последнего legacy scan</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/audit</code></td>
+<td>Аудит последнего legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/sbom</code></td>
-<td>Экспорт SBOM</td>
+<td><code>/api/v1/deps/gost-report</code></td>
+<td>ГОСТ-отчёт для последнего legacy scan</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/sync-cache</code></td>
+<td>Синхронизация общего кэша уязвимостей</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="new-endpoints"><span id="new_endpoints"></span><span id="novye-konechnye-tochki"></span><span id="novye_konechnye_tochki"></span>Новые конечные точки<a class="heading-anchor" href="#new-endpoints" title="Link to this section">&para;</a></h3>
-<h4  id="post-audit"><span id="post-apiv1dependenciesaudit"></span><span id="post_apiv1dependenciesaudit"></span><span id="post_audit"></span>POST /api/v1/dependencies/audit<a class="heading-anchor" href="#post-audit" title="Link to this section">&para;</a></h4>
+<h4  id="post-audit"><span id="post-apiv1depsprojectsproject-nameaudit"></span><span id="post_apiv1depsprojectsproject_nameaudit"></span><span id="post_audit"></span>POST /api/v1/deps/projects/{project_name}/audit<a class="heading-anchor" href="#post-audit" title="Link to this section">&para;</a></h4>
 <p>Аудит зависимостей с настраиваемыми источниками и порогом серьёзности.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
@@ -381,13 +445,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <p>Ответ содержит <code>threshold_breached: true</code> при превышении порога.</p>
-<h4  id="get-gost-report"><span id="get-apiv1dependenciesgost-report"></span><span id="get_apiv1dependenciesgost_report"></span><span id="get_gost_report"></span>GET /api/v1/dependencies/gost-report<a class="heading-anchor" href="#get-gost-report" title="Link to this section">&para;</a></h4>
+<h4  id="get-gost-report"><span id="get-apiv1depsprojectsproject-namegost-report"></span><span id="get_apiv1depsprojectsproject_namegost_report"></span><span id="get_gost_report"></span>GET /api/v1/deps/projects/{project_name}/gost-report<a class="heading-anchor" href="#get-gost-report" title="Link to this section">&para;</a></h4>
 <p>Формирование отчёта ГОСТ 5.16.3.</p>
-<div class="highlight"><pre><span></span><code>GET /api/v1/dependencies/gost-report?language=ru
+<div class="highlight"><pre><span></span><code>GET /api/v1/deps/projects/codegraph/gost-report?language=ru
 </code></pre></div>
 
 <p>Возвращает <code>{"format": "markdown", "language": "ru", "content": "..."}</code>.</p>
-<h4  id="post-sync-cache"><span id="post-apiv1dependenciessync-cache"></span><span id="post_apiv1dependenciessync_cache"></span><span id="post_sync_cache"></span>POST /api/v1/dependencies/sync-cache<a class="heading-anchor" href="#post-sync-cache" title="Link to this section">&para;</a></h4>
+<h4  id="post-sync-cache"><span id="post-apiv1depssync-cache"></span><span id="post_apiv1depssync_cache"></span><span id="post_sync_cache"></span>POST /api/v1/deps/sync-cache<a class="heading-anchor" href="#post-sync-cache" title="Link to this section">&para;</a></h4>
 <p>Синхронизация локального кэша уязвимостей.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
@@ -517,7 +581,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="w">    </span><span class="n">graph</span><span class="o">.</span><span class="n">py</span><span class="w">            </span><span class="c1"># DependencyGraphBuilder (NetworkX)</span>
 <span class="w">    </span><span class="n">analyzer</span><span class="o">.</span><span class="n">py</span><span class="w">         </span><span class="c1"># Устаревшие, неиспользуемые, показатель здоровья</span>
 <span class="n">src</span><span class="o">/</span><span class="n">cli</span><span class="o">/</span><span class="n">sbom_commands</span><span class="o">.</span><span class="n">py</span><span class="w">    </span><span class="c1"># CLI: sbom generate/audit/sync/gost-report</span>
-<span class="n">src</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">routers</span><span class="o">/</span><span class="n">dependencies</span><span class="o">.</span><span class="n">py</span><span class="w">  </span><span class="c1"># REST API (8 + 3 новых конечных точки)</span>
+<span class="n">src</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">routers</span><span class="o">/</span><span class="n">dependencies</span><span class="o">.</span><span class="n">py</span><span class="w">  </span><span class="c1"># REST API (project-scoped + legacy compatibility)</span>
 <span class="n">src</span><span class="o">/</span><span class="n">mcp</span><span class="o">/</span><span class="n">tools</span><span class="o">/</span><span class="n">sca</span><span class="o">.</span><span class="n">py</span><span class="w">       </span><span class="c1"># Инструменты MCP (3)</span>
 <span class="n">src</span><span class="o">/</span><span class="n">compliance</span><span class="o">/</span><span class="n">gost_56939</span><span class="o">/</span><span class="n">evaluators</span><span class="o">/</span><span class="n">automated</span><span class="o">.</span><span class="n">py</span><span class="w">  </span><span class="c1"># SCAEvaluator</span>
 </code></pre></div>
@@ -539,7 +603,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-24</span>
+        <span>Обновлено: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/SCA_SBOM.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -548,8 +612,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
     <aside class="doc-toc">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#software-composition-analysis-sca--sbom" class="level-1">Композиционный анализ (КА) и SBOM</a></li>
-<li><a href="#overview" class="level-2">Обзор</a></li>
+        <li><a href="#overview" class="level-2">Обзор</a></li>
 <li><a href="#supported-languages" class="level-3">Поддерживаемые языки</a></li>
 <li><a href="#vulnerability-sources" class="level-3">Источники уязвимостей</a></li>
 <li><a href="#cli-commands" class="level-2">Команды CLI</a></li>
@@ -558,8 +621,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#sync-vulnerability-cache" class="level-3">Синхронизация кэша уязвимостей</a></li>
 <li><a href="#generate-gost-report" class="level-3">Формирование отчёта ГОСТ</a></li>
 <li><a href="#rest-api" class="level-2">REST API</a></li>
-<li><a href="#existing-endpoints" class="level-3">Существующие конечные точки (без изменений)</a></li>
-<li><a href="#new-endpoints" class="level-3">Новые конечные точки</a></li>
+<li><a href="#existing-endpoints" class="level-3">Project-scoped конечные точки (основной контракт)</a></li>
+<li><a href="#new-endpoints" class="level-3">Legacy scan-scoped endpoints (compatibility)</a></li>
 <li><a href="#mcp-tools" class="level-2">Инструменты MCP</a></li>
 <li><a href="#configuration" class="level-2">Конфигурация</a></li>
 <li><a href="#ci-integration" class="level-2">Интеграция с CI</a></li>

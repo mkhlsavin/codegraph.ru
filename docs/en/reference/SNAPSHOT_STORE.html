@@ -233,7 +233,7 @@
 <p>Core identity fields:</p>
 <ul>
 <li><code>id</code></li>
-<li><code>scope</code> — <code>project</code> or <code>group</code></li>
+<li><code>scope</code> — <code>project</code>, <code>group</code>, or <code>portfolio</code></li>
 <li><code>scope_ref</code> — canonical target reference</li>
 <li><code>project_name</code> / <code>group_id</code> when applicable</li>
 <li><code>timestamp</code></li>
@@ -275,7 +275,7 @@
 <p>All endpoints live under <code>/api/v2/dashboard</code>.</p>
 <h3  id="create-manual-snapshot"><span id="create_manual_snapshot"></span>Create Manual Snapshot<a class="heading-anchor" href="#create-manual-snapshot" title="Link to this section">&para;</a></h3>
 <p><code>POST /snapshots</code></p>
-<p>Use this to capture a manual baseline for a <code>project</code> or <code>group</code>.</p>
+<p>Use this to capture a manual baseline for a <code>project</code>, <code>group</code>, or <code>portfolio</code>.</p>
 <p>Request fields include:</p>
 <ul>
 <li><code>scope</code></li>
@@ -299,6 +299,15 @@
 <li><code>limit</code></li>
 </ul>
 <p>The maximum returned count is bounded by <code>dashboard.snapshot_list_limit</code>.</p>
+<h3  id="snapshot-governance-policy"><span id="snapshot_governance_policy"></span>Snapshot Governance Policy<a class="heading-anchor" href="#snapshot-governance-policy" title="Link to this section">&para;</a></h3>
+<p><code>GET /snapshots/policy</code></p>
+<p>Returns the live immutable-governance contract. Current runtime mode is:</p>
+<ul>
+<li><code>immutable_governance_mode = no_delete_policy</code></li>
+<li><code>delete_supported = false</code></li>
+<li><code>archival_supported = false</code></li>
+<li>ordinary cleanup still respects <code>immutable = true</code></li>
+</ul>
 <h3  id="compare-snapshots"><span id="compare_snapshots"></span>Compare Snapshots<a class="heading-anchor" href="#compare-snapshots" title="Link to this section">&para;</a></h3>
 <p><code>POST /snapshots/compare</code></p>
 <p>Supported modes:</p>
@@ -337,12 +346,16 @@
 <ul>
 <li><code>dashboard snapshot create</code></li>
 <li><code>dashboard snapshot list</code></li>
+<li><code>dashboard snapshot show</code></li>
+<li><code>dashboard snapshot policy</code></li>
 <li><code>dashboard snapshot compare</code></li>
 <li><code>dashboard snapshot export</code></li>
 </ul>
 <p>Examples:</p>
 <div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>--scope<span class="w"> </span>project<span class="w"> </span>--project<span class="w"> </span>my-service<span class="w"> </span>--reason<span class="w"> </span><span class="s2">&quot;pre-hardening&quot;</span>
-codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>list<span class="w"> </span>--scope<span class="w"> </span>group<span class="w"> </span>--group<span class="w"> </span>team-a<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>list<span class="w"> </span>--scope<span class="w"> </span>portfolio<span class="w"> </span>--group<span class="w"> </span>team-a<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>show<span class="w"> </span>&lt;snapshot_id&gt;<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>policy<span class="w"> </span>--format<span class="w"> </span>json
 codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>compare<span class="w"> </span>--from-snapshot<span class="w"> </span>&lt;id1&gt;<span class="w"> </span>--to-snapshot<span class="w"> </span>&lt;id2&gt;<span class="w"> </span>--include-drilldown
 codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span><span class="nb">export</span><span class="w"> </span>&lt;snapshot_id&gt;<span class="w"> </span>--baseline-snapshot<span class="w"> </span>&lt;older_id&gt;<span class="w"> </span>--format<span class="w"> </span>markdown
 </code></pre></div>
@@ -392,7 +405,7 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 <li>The store uses SQLite and is created automatically on first use.</li>
 <li>One active scheduler instance is recommended for steady-state writes.</li>
 <li>Manual snapshots and compare/export flows are safe to run without enabling the background scheduler.</li>
-<li><code>immutable</code> currently protects snapshots from ordinary cleanup; it is not a full policy engine for privileged delete/update workflows.</li>
+<li><code>immutable</code> currently uses explicit <code>no_delete_policy</code>: runtime does not expose delete or mutation endpoints, and ordinary cleanup skips immutable records.</li>
 </ul>
 <h2  id="source-files"><span id="source_files"></span>Source Files<a class="heading-anchor" href="#source-files" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
@@ -455,7 +468,7 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-24</span>
+        <span>Last updated: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SNAPSHOT_STORE.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -464,13 +477,13 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#snapshot-store-reference" class="level-1">Snapshot Store Reference</a></li>
-<li><a href="#scope" class="level-2">Scope</a></li>
+        <li><a href="#scope" class="level-2">Scope</a></li>
 <li><a href="#snapshot-model" class="level-2">Snapshot Model</a></li>
 <li><a href="#lifecycle" class="level-2">Lifecycle</a></li>
 <li><a href="#api-surfaces" class="level-2">API Surfaces</a></li>
 <li><a href="#create-manual-snapshot" class="level-3">Create Manual Snapshot</a></li>
 <li><a href="#list-snapshots" class="level-3">List Snapshots</a></li>
+<li><a href="#snapshot-governance-policy" class="level-3">Snapshot Governance Policy</a></li>
 <li><a href="#compare-snapshots" class="level-3">Compare Snapshots</a></li>
 <li><a href="#export-snapshot-or-compare-report" class="level-3">Export Snapshot or Compare Report</a></li>
 <li><a href="#trend-endpoints" class="level-3">Trend Endpoints</a></li>

@@ -419,7 +419,7 @@
 <tr>
 <td><code>Portfolio</code></td>
 <td><code>/</code> (index)</td>
-<td>Main dashboard. KPI cards, filterable project cards, risk donut, release readiness, red zone panel.</td>
+<td>Main dashboard. KPI cards, filterable project cards, historical compare, red zone panel, saved views, portfolio alerts, and reproducible export context.</td>
 </tr>
 <tr>
 <td><code>RedZone</code></td>
@@ -454,12 +454,12 @@
 <tr>
 <td><code>ScaCenter</code></td>
 <td><code>/sca</code></td>
-<td>SCA/SBOM overview with vulnerability and license views.</td>
+<td>Project selector plus project-scoped SCA/SBOM view with scan status, dependency inventory, vulnerabilities, and SBOM preview.</td>
 </tr>
 <tr>
 <td><code>Notifications</code></td>
 <td><code>/notifications</code></td>
-<td>Persistent notification management: subscriptions, test-send, event catalog, delivery audit, pending queue processing.</td>
+<td>Persistent notification management with truthful runtime status, test-send preview, live-vs-test delivery filters, event catalog, bootstrap action, delivery audit, and pending queue processing.</td>
 </tr>
 </tbody>
 </table></div>
@@ -586,10 +586,40 @@
 <td><code>CrossRepoResponse</code></td>
 </tr>
 <tr>
+<td><code>projectCatalog()</code></td>
+<td>GET</td>
+<td><code>/projects</code></td>
+<td><code>ProjectCatalogResponse</code></td>
+</tr>
+<tr>
 <td><code>scaOverview(severity?)</code></td>
 <td>GET</td>
 <td><code>/sca/overview</code></td>
-<td><code>ScaPortfolioResponse</code></td>
+<td><code>ScaPortfolioResponse</code> (portfolio-only SCA aggregate)</td>
+</tr>
+<tr>
+<td><code>projectScaSummary(name)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/summary</code></td>
+<td><code>ScaProjectSummary</code></td>
+</tr>
+<tr>
+<td><code>projectScaDependencies(name, opts?)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/dependencies</code></td>
+<td><code>ScaProjectDependency[]</code></td>
+</tr>
+<tr>
+<td><code>projectScaVulnerabilities(name, opts?)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/vulnerabilities</code></td>
+<td><code>ScaProjectVulnerabilityResponse</code></td>
+</tr>
+<tr>
+<td><code>projectScaSbom(name, format)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/sbom</code></td>
+<td><code>ScaSbomDocument</code></td>
 </tr>
 <tr>
 <td><code>exportDashboard(body)</code></td>
@@ -641,6 +671,12 @@
 <td><code>NotificationSubscriptionTestResponse</code></td>
 </tr>
 <tr>
+<td><code>bootstrapNotificationRuntime(body)</code></td>
+<td>POST</td>
+<td><code>/subscriptions/bootstrap</code></td>
+<td><code>NotificationBootstrapResponse</code></td>
+</tr>
+<tr>
 <td><code>notificationDeliveries(params?)</code></td>
 <td>GET</td>
 <td><code>/deliveries</code></td>
@@ -673,6 +709,26 @@
 </tbody>
 </table></div>
 <p>The internal <code>fetchJSON&lt;T&gt;()</code> helper adds <code>Content-Type: application/json</code> and throws on non-2xx responses.</p>
+<p>Notification runtime semantics:</p>
+<ul>
+<li>the page is not pre-populated by default</li>
+<li><code>notificationDeliverySummary()</code> drives the <code>Runtime status</code> panel</li>
+<li>live and test deliveries are intentionally split in the UI</li>
+<li><code>bootstrapNotificationRuntime(body)</code> is the fastest product path to the first live notification records for a real project</li>
+</ul>
+<p>Portfolio runtime semantics:</p>
+<ul>
+<li><code>portfolio(params)</code> and <code>projectCatalog(params)</code> share the same filtered portfolio scope and period semantics</li>
+<li><code>portfolioComparePeriods({ baseline_period, comparison_period, group_id? })</code> is the canonical Web path for Portfolio History</li>
+<li>saved views persist current filters, compare set, baseline period, and preferred export format through <code>savedViews()</code>, <code>createSavedView(...)</code>, and <code>deleteSavedView(...)</code></li>
+<li>portfolio alerts reuse notification contracts through <code>createNotificationSubscription(...)</code> with <code>scope: "portfolio"</code> or <code>scope: "saved_view"</code></li>
+<li><code>exportDashboard(...)</code> carries reproducible export context through <code>filters</code>, <code>compare_projects</code>, <code>saved_view_id</code>, and <code>saved_view_name</code></li>
+</ul>
+<p>Demo fixture note:</p>
+<ul>
+<li><code>frontend/scripts/capture_sales_deck_ui.mjs</code> uses mocked notification payloads for sales-deck screenshots</li>
+<li>that script is not evidence that the live notification runtime is already populated</li>
+</ul>
 <h2  id="build-instructions"><span id="build_instructions"></span>Build Instructions<a class="heading-anchor" href="#build-instructions" title="Link to this section">&para;</a></h2>
 <h3 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h3>
 <ul>
@@ -1349,7 +1405,7 @@ npx<span class="w"> </span>playwright<span class="w"> </span><span class="nb">te
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-24</span>
+        <span>Last updated: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DASHBOARD_FRONTEND.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1358,8 +1414,7 @@ npx<span class="w"> </span>playwright<span class="w"> </span><span class="nb">te
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#dashboard-frontend-developer-guide" class="level-1">Dashboard Frontend Developer Guide</a></li>
-<li><a href="#architecture-overview" class="level-2">Architecture Overview</a></li>
+        <li><a href="#architecture-overview" class="level-2">Architecture Overview</a></li>
 <li><a href="#technology-stack" class="level-3">Technology Stack</a></li>
 <li><a href="#directory-structure" class="level-3">Directory Structure</a></li>
 <li><a href="#component-catalog" class="level-3">Component Catalog</a></li>

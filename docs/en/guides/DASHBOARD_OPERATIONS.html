@@ -346,6 +346,7 @@ INFO Snapshot scheduler stopped
 <li><code>GET /api/v2/dashboard/snapshots</code></li>
 <li><code>POST /api/v2/dashboard/snapshots/compare</code></li>
 <li><code>POST /api/v2/dashboard/snapshots/{snapshot_id}/export</code></li>
+<li><code>GET /api/v2/dashboard/portfolio/compare-periods</code></li>
 </ul>
 <p>CLI:</p>
 <div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>--scope<span class="w"> </span>project<span class="w"> </span>--project<span class="w"> </span>my-service<span class="w"> </span>--reason<span class="w"> </span><span class="s2">&quot;before patch&quot;</span>
@@ -369,6 +370,33 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 <li><code>post_snapshot_id</code></li>
 <li><code>snapshot_diff</code></li>
 </ul>
+<h2  id="portfolio-runtime-operations"><span id="portfolio_runtime_operations"></span>Portfolio Runtime Operations<a class="heading-anchor" href="#portfolio-runtime-operations" title="Link to this section">&para;</a></h2>
+<p>Portfolio runtime reuses the same filtered scope across overview, history, saved views, alerts, and export.</p>
+<p>Primary portfolio endpoints:</p>
+<ul>
+<li><code>GET /api/v2/dashboard/portfolio</code></li>
+<li><code>GET /api/v2/dashboard/projects</code></li>
+<li><code>GET /api/v2/dashboard/red-zone</code></li>
+<li><code>GET /api/v2/dashboard/compliance/heatmap</code></li>
+<li><code>GET /api/v2/dashboard/sca/overview</code></li>
+<li><code>GET /api/v2/dashboard/metrics/mapping</code></li>
+<li><code>GET /api/v2/dashboard/portfolio/compare-periods</code></li>
+<li><code>POST /api/v2/dashboard/export</code></li>
+</ul>
+<p>Saved views and portfolio alerts:</p>
+<ul>
+<li><code>GET /api/v2/dashboard/saved-views</code></li>
+<li><code>POST /api/v2/dashboard/saved-views</code></li>
+<li><code>GET /api/v2/dashboard/saved-views/{view_id}</code></li>
+<li><code>DELETE /api/v2/dashboard/saved-views/{view_id}</code></li>
+<li><code>POST /api/v2/dashboard/subscriptions</code></li>
+</ul>
+<p>Operator expectation:</p>
+<ul>
+<li>saved views must preserve the same filters and compare set used by the portfolio screen</li>
+<li>portfolio alerts may target either <code>scope=portfolio</code> or <code>scope=saved_view</code></li>
+<li>export payloads should include the same filters, compare set, and saved-view identity shown in Web</li>
+</ul>
 <h2  id="notification-operations"><span id="notification_operations"></span>Notification Operations<a class="heading-anchor" href="#notification-operations" title="Link to this section">&para;</a></h2>
 <h3  id="user-facing-endpoints"><span id="user_facing_endpoints"></span>User-Facing Endpoints<a class="heading-anchor" href="#user-facing-endpoints" title="Link to this section">&para;</a></h3>
 <ul>
@@ -377,6 +405,7 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 <li><code>PATCH /api/v2/dashboard/subscriptions/{id}</code></li>
 <li><code>DELETE /api/v2/dashboard/subscriptions/{id}</code></li>
 <li><code>POST /api/v2/dashboard/subscriptions/test</code></li>
+<li><code>POST /api/v2/dashboard/subscriptions/bootstrap</code></li>
 <li><code>GET /api/v2/dashboard/event-catalog</code></li>
 </ul>
 <h3  id="operator-endpoints"><span id="operator_endpoints"></span>Operator Endpoints<a class="heading-anchor" href="#operator-endpoints" title="Link to this section">&para;</a></h3>
@@ -386,6 +415,19 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 <li><code>GET /api/v2/dashboard/deliveries/pending</code></li>
 <li><code>POST /api/v2/dashboard/deliveries/process-pending</code></li>
 </ul>
+<h3  id="bootstrap-and-first-live-data"><span id="bootstrap_and_first_live_data"></span>Bootstrap and First Live Data<a class="heading-anchor" href="#bootstrap-and-first-live-data" title="Link to this section">&para;</a></h3>
+<p><code>/dashboard/notifications</code> may legitimately start empty for a new user. The productized path for first live data is:</p>
+<ol>
+<li>configure at least one delivery channel or accept failed/pending local audit records</li>
+<li>create a project-scoped subscription or call bootstrap directly</li>
+<li>run <code>POST /api/v2/dashboard/subscriptions/bootstrap</code></li>
+<li>confirm <code>GET /api/v2/dashboard/deliveries/summary</code> reports non-zero <code>live_total</code> or <code>pending</code></li>
+</ol>
+<p>CLI equivalents:</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dashboard<span class="w"> </span>notifications<span class="w"> </span>summary<span class="w"> </span>--user-id<span class="w"> </span>acceptance-r4<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>dashboard<span class="w"> </span>notifications<span class="w"> </span>bootstrap<span class="w"> </span>--user-id<span class="w"> </span>acceptance-r4<span class="w"> </span>--project<span class="w"> </span>codegraph<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+
 <h3  id="delivery-policies"><span id="delivery_policies"></span>Delivery Policies<a class="heading-anchor" href="#delivery-policies" title="Link to this section">&para;</a></h3>
 <p>Implemented behavior:</p>
 <ul>
@@ -403,6 +445,11 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 <li>pending queue depth</li>
 <li>channel-specific error concentration</li>
 <li>test vs real delivery ratios</li>
+</ul>
+<p>Truthful runtime rule:</p>
+<ul>
+<li>test deliveries are not equivalent to live pipeline evidence</li>
+<li>sales-deck screenshots captured by <code>frontend/scripts/capture_sales_deck_ui.mjs</code> use demo fixtures only</li>
 </ul>
 <h2  id="machine-access-for-automation"><span id="machine_access_for_automation"></span>Machine Access for Automation<a class="heading-anchor" href="#machine-access-for-automation" title="Link to this section">&para;</a></h2>
 <p>Dashboard automation should use service accounts, not personal tokens.</p>
@@ -512,6 +559,7 @@ sqlite3<span class="w"> </span>data/dashboard_subscriptions.sqlite<span class="w
 <li><code>/api/v2/dashboard/portfolio</code> returns data</li>
 <li>snapshots can be created, listed, compared, and exported</li>
 <li><code>subscriptions/test</code> succeeds for at least one configured channel</li>
+<li><code>subscriptions/bootstrap</code> creates or reuses a real project-scoped subscription</li>
 <li><code>deliveries/summary</code> and <code>deliveries/pending</code> return sane values</li>
 <li>release-gate responses include snapshot evidence when enabled</li>
 <li>service-account create/rotate/revoke path works for automation users</li>
@@ -534,7 +582,7 @@ sqlite3<span class="w"> </span>data/dashboard_subscriptions.sqlite<span class="w
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-24</span>
+        <span>Last updated: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DASHBOARD_OPERATIONS.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -543,8 +591,7 @@ sqlite3<span class="w"> </span>data/dashboard_subscriptions.sqlite<span class="w
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#dashboard-operations-runbook" class="level-1">Dashboard Operations Runbook</a></li>
-<li><a href="#deployment" class="level-2">Deployment</a></li>
+        <li><a href="#deployment" class="level-2">Deployment</a></li>
 <li><a href="#api-process" class="level-3">API Process</a></li>
 <li><a href="#minimum-dashboard-config" class="level-3">Minimum Dashboard Config</a></li>
 <li><a href="#channel-secrets" class="level-3">Channel Secrets</a></li>
@@ -556,9 +603,11 @@ sqlite3<span class="w"> </span>data/dashboard_subscriptions.sqlite<span class="w
 <li><a href="#snapshot-operations" class="level-2">Snapshot Operations</a></li>
 <li><a href="#manual-baselines" class="level-3">Manual Baselines</a></li>
 <li><a href="#release-gate-snapshots" class="level-3">Release-Gate Snapshots</a></li>
+<li><a href="#portfolio-runtime-operations" class="level-2">Portfolio Runtime Operations</a></li>
 <li><a href="#notification-operations" class="level-2">Notification Operations</a></li>
 <li><a href="#user-facing-endpoints" class="level-3">User-Facing Endpoints</a></li>
 <li><a href="#operator-endpoints" class="level-3">Operator Endpoints</a></li>
+<li><a href="#bootstrap-and-first-live-data" class="level-3">Bootstrap and First Live Data</a></li>
 <li><a href="#delivery-policies" class="level-3">Delivery Policies</a></li>
 <li><a href="#routine-checks" class="level-3">Routine Checks</a></li>
 <li><a href="#machine-access-for-automation" class="level-2">Machine Access for Automation</a></li>

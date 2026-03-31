@@ -233,7 +233,7 @@
 <p>Базовые поля идентификации:</p>
 <ul>
 <li><code>id</code></li>
-<li><code>scope</code> — <code>project</code> или <code>group</code></li>
+<li><code>scope</code> — <code>project</code>, <code>group</code> или <code>portfolio</code></li>
 <li><code>scope_ref</code> — каноническая ссылка на объект</li>
 <li><code>project_name</code> / <code>group_id</code> при необходимости</li>
 <li><code>timestamp</code></li>
@@ -275,7 +275,7 @@
 <p>Все endpoint&rsquo;ы находятся под <code>/api/v2/dashboard</code>.</p>
 <h3  id="sozdanie-ruchnogo-snimka"><span id="sozdanie_ruchnogo_snimka"></span>Создание ручного снимка<a class="heading-anchor" href="#sozdanie-ruchnogo-snimka" title="Link to this section">&para;</a></h3>
 <p><code>POST /snapshots</code></p>
-<p>Используется для ручного сохранения baseline для <code>project</code> или <code>group</code>.</p>
+<p>Используется для ручного сохранения baseline для <code>project</code>, <code>group</code> или <code>portfolio</code>.</p>
 <p>Основные поля запроса:</p>
 <ul>
 <li><code>scope</code></li>
@@ -299,6 +299,15 @@
 <li><code>limit</code></li>
 </ul>
 <p>Максимум записей ограничивается <code>dashboard.snapshot_list_limit</code>.</p>
+<h3  id="policy-immutable-snapshots"><span id="policy_immutable_snapshots"></span>Policy immutable snapshots<a class="heading-anchor" href="#policy-immutable-snapshots" title="Link to this section">&para;</a></h3>
+<p><code>GET /snapshots/policy</code></p>
+<p>Возвращает live-контракт immutable-governance. Текущий runtime mode:</p>
+<ul>
+<li><code>immutable_governance_mode = no_delete_policy</code></li>
+<li><code>delete_supported = false</code></li>
+<li><code>archival_supported = false</code></li>
+<li>обычный cleanup по-прежнему уважает <code>immutable = true</code></li>
+</ul>
 <h3  id="sravnenie-snimkov"><span id="sravnenie_snimkov"></span>Сравнение снимков<a class="heading-anchor" href="#sravnenie-snimkov" title="Link to this section">&para;</a></h3>
 <p><code>POST /snapshots/compare</code></p>
 <p>Поддерживаемые режимы:</p>
@@ -337,12 +346,16 @@
 <ul>
 <li><code>dashboard snapshot create</code></li>
 <li><code>dashboard snapshot list</code></li>
+<li><code>dashboard snapshot show</code></li>
+<li><code>dashboard snapshot policy</code></li>
 <li><code>dashboard snapshot compare</code></li>
 <li><code>dashboard snapshot export</code></li>
 </ul>
 <p>Примеры:</p>
 <div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>create<span class="w"> </span>--scope<span class="w"> </span>project<span class="w"> </span>--project<span class="w"> </span>my-service<span class="w"> </span>--reason<span class="w"> </span><span class="s2">&quot;pre-hardening&quot;</span>
-codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>list<span class="w"> </span>--scope<span class="w"> </span>group<span class="w"> </span>--group<span class="w"> </span>team-a<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>list<span class="w"> </span>--scope<span class="w"> </span>portfolio<span class="w"> </span>--group<span class="w"> </span>team-a<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>show<span class="w"> </span>&lt;snapshot_id&gt;<span class="w"> </span>--format<span class="w"> </span>json
+codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>policy<span class="w"> </span>--format<span class="w"> </span>json
 codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span>compare<span class="w"> </span>--from-snapshot<span class="w"> </span>&lt;id1&gt;<span class="w"> </span>--to-snapshot<span class="w"> </span>&lt;id2&gt;<span class="w"> </span>--include-drilldown
 codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span class="w"> </span><span class="nb">export</span><span class="w"> </span>&lt;snapshot_id&gt;<span class="w"> </span>--baseline-snapshot<span class="w"> </span>&lt;older_id&gt;<span class="w"> </span>--format<span class="w"> </span>markdown
 </code></pre></div>
@@ -392,7 +405,7 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 <li>Хранилище использует SQLite и создаётся автоматически при первом обращении.</li>
 <li>Для фоновой записи рекомендуется один активный экземпляр scheduler.</li>
 <li>Ручные snapshots и compare/export можно использовать и без включённого фонового scheduler.</li>
-<li><code>immutable</code> сейчас защищает снимки от обычного cleanup, но это ещё не полноценный policy engine для привилегированного delete/update workflow.</li>
+<li><code>immutable</code> теперь оформлен как явный <code>no_delete_policy</code>: runtime не экспонирует delete или mutate endpoints, а обычный cleanup пропускает immutable records.</li>
 </ul>
 <h2  id="osnovnye-fayly"><span id="osnovnye_fayly"></span>Основные файлы<a class="heading-anchor" href="#osnovnye-fayly" title="Link to this section">&para;</a></h2>
 <div class="table-wrapper"><table>
@@ -455,7 +468,7 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-24</span>
+        <span>Обновлено: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/SNAPSHOT_STORE.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -464,13 +477,13 @@ codegraph<span class="w"> </span>dashboard<span class="w"> </span>snapshot<span 
     <aside class="doc-toc">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#spravochnik-po-hranilischu-snimkov" class="level-1">Справочник по хранилищу снимков</a></li>
-<li><a href="#naznachenie" class="level-2">Назначение</a></li>
+        <li><a href="#naznachenie" class="level-2">Назначение</a></li>
 <li><a href="#model-snimka" class="level-2">Модель снимка</a></li>
 <li><a href="#zhiznennyy-tsikl" class="level-2">Жизненный цикл</a></li>
 <li><a href="#api" class="level-2">API</a></li>
 <li><a href="#sozdanie-ruchnogo-snimka" class="level-3">Создание ручного снимка</a></li>
 <li><a href="#spisok-snimkov" class="level-3">Список снимков</a></li>
+<li><a href="#policy-immutable-snapshots" class="level-3">Policy immutable snapshots</a></li>
 <li><a href="#sravnenie-snimkov" class="level-3">Сравнение снимков</a></li>
 <li><a href="#eksport-snimka-ili-compare-otchyota" class="level-3">Экспорт снимка или compare-отчёта</a></li>
 <li><a href="#endpointy-trendov" class="level-3">Endpoint'ы трендов</a></li>

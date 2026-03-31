@@ -268,7 +268,7 @@ DependencyGraph (файлы + зависимости + уязвимости)
 </tr>
 </tbody>
 </table></div>
-<p>3 языковых парсера (<code>src/dependencies/parsers/</code>):</p>
+<p>7 модулей парсеров (<code>src/dependencies/parsers/</code>):</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -288,6 +288,22 @@ DependencyGraph (файлы + зависимости + уязвимости)
 <tr>
 <td>Go</td>
 <td><code>go.mod</code>, <code>go.sum</code></td>
+</tr>
+<tr>
+<td>Java</td>
+<td><code>pom.xml</code>, <code>build.gradle</code>, <code>build.gradle.kts</code></td>
+</tr>
+<tr>
+<td>C#</td>
+<td><code>*.csproj</code>, <code>packages.config</code>, <code>Directory.Packages.props</code></td>
+</tr>
+<tr>
+<td>PHP</td>
+<td><code>composer.json</code>, <code>composer.lock</code></td>
+</tr>
+<tr>
+<td>C/C++</td>
+<td><code>conanfile.txt</code>, <code>conanfile.py</code>, <code>vcpkg.json</code>, <code>CMakeLists.txt</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -997,7 +1013,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </code></pre></div>
 
 <h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<p>8 эндпоинтов в <code>src/api/routers/dependencies.py</code>:</p>
+<p>Основные project-scoped endpoints в <code>src/api/routers/dependencies.py</code>:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -1008,60 +1024,49 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 </thead>
 <tbody>
 <tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/summary</code></td>
+<td>SCA summary зарегистрированного проекта</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/dependencies</code></td>
+<td>Список зависимостей проекта</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/vulnerabilities</code></td>
+<td>Результаты проверки уязвимостей проекта</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/deps/projects/{project_name}/sbom</code></td>
+<td>Экспорт SBOM проекта</td>
+</tr>
+<tr>
 <td><code>POST</code></td>
-<td><code>/api/v1/dependencies/scan</code></td>
-<td>Сканирование проекта на зависимости</td>
+<td><code>/api/v1/deps/projects/{project_name}/audit</code></td>
+<td>Аудит зависимостей проекта</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
-<td><code>/api/v1/dependencies/list</code></td>
-<td>Список всех зависимостей</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/graph</code></td>
-<td>Получение графа зависимостей</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/dependencies/check-vulnerabilities</code></td>
-<td>Проверка уязвимостей</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/outdated</code></td>
-<td>Список устаревших пакетов</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/licenses</code></td>
-<td>Информация о лицензиях</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/health-score</code></td>
-<td>Оценка состояния</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/dependencies/sbom</code></td>
-<td>Экспорт SBOM</td>
+<td><code>/api/v1/deps/projects/{project_name}/gost-report</code></td>
+<td>Формирование project-scoped ГОСТ-отчёта 5.16.3</td>
 </tr>
 </tbody>
 </table></div>
+<p>Legacy compatibility endpoints под <code>/api/v1/deps/scan</code>, <code>/list</code>, <code>/graph</code>, <code>/check-vulnerabilities</code>,
+<code>/licenses</code>, <code>/health-score</code>, <code>/sbom</code>, <code>/audit</code> и <code>/sync-cache</code> сохранены для scan-first workflow,
+но Web-продукт использует project-scoped endpoints выше.</p>
 <p>Пример:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Сканирование зависимостей</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/dependencies/scan<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;project_path&quot;: &quot;.&quot;, &quot;include_dev&quot;: true}&#39;</span>
+curl<span class="w"> </span>http://localhost:8000/api/v1/deps/projects/codegraph/summary
 
-<span class="c1"># Проверка уязвимостей</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/dependencies/check-vulnerabilities<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;severity_threshold&quot;: &quot;medium&quot;}&#39;</span>
+<span class="c1"># Список зависимостей</span>
+curl<span class="w"> </span>http://localhost:8000/api/v1/deps/projects/codegraph/dependencies
 
-<span class="c1"># Оценка состояния</span>
-curl<span class="w"> </span>http://localhost:8000/api/v1/dependencies/health-score
+<span class="c1"># Экспорт SBOM</span>
+curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/deps/projects/codegraph/sbom?format=spdx&quot;</span>
 </code></pre></div>
 
 <h2  id="use-cases"><span id="stsenarii-ispolzovaniya"></span><span id="stsenarii_ispolzovaniya"></span><span id="use_cases"></span>Сценарии использования<a class="heading-anchor" href="#use-cases" title="Link to this section">&para;</a></h2>
@@ -1150,7 +1155,7 @@ curl<span class="w"> </span>http://localhost:8000/api/v1/dependencies/health-sco
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-24</span>
+        <span>Обновлено: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/20-dependencies.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1159,8 +1164,7 @@ curl<span class="w"> </span>http://localhost:8000/api/v1/dependencies/health-sco
     <aside class="doc-toc">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#stsenariy-20-analiz-zavisimostey" class="level-1">Сценарий 20: Анализ зависимостей</a></li>
-<li><a href="#soderzhanie" class="level-2">Содержание</a></li>
+        <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#quick-start" class="level-2">Быстрый старт</a></li>
 <li><a href="#how-it-works" class="level-2">Как это работает</a></li>
 <li><a href="#architecture" class="level-3">Архитектура</a></li>

@@ -369,6 +369,9 @@
 <li><strong>Risk filter</strong> — select a minimum risk level (critical, high, medium, low) to narrow results.</li>
 </ol>
 <p>Filters are applied immediately. Clearing a filter (selecting &ldquo;All languages&rdquo; or &ldquo;All risks&rdquo;) shows all projects again.</p>
+<p>Portfolio History is available directly on the Portfolio screen when you switch from <code>live</code> to a historical period and choose a baseline window.</p>
+<p>Saved Views let you persist the current portfolio filters, compare set, baseline period, and preferred export format as a reusable executive view.</p>
+<p>Portfolio Alerts can be created from the same screen for either the whole filtered portfolio or the active saved view.</p>
 <h3  id="risk-distribution-donut"><span id="risk_distribution_donut"></span>Risk Distribution Donut<a class="heading-anchor" href="#risk-distribution-donut" title="Link to this section">&para;</a></h3>
 <p>The right sidebar contains a donut chart that visualizes how projects are distributed across risk levels:</p>
 <ul>
@@ -1023,6 +1026,13 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 </tr>
 </tbody>
 </table></div>
+<p>For portfolio exports, the request may also include reproducible export context:</p>
+<ul>
+<li><code>period</code> and <code>filters</code> to preserve the exact filtered portfolio scope</li>
+<li><code>compare_projects</code> to pin the executive comparison set</li>
+<li><code>saved_view_id</code> and <code>saved_view_name</code> to record which saved view produced the artifact</li>
+</ul>
+<p>This export context is echoed in JSON/Markdown/PDF output so the report can be reproduced without rebuilding it manually in Excel.</p>
 <h3  id="cli-examples"><span id="cli_examples"></span>CLI Examples<a class="heading-anchor" href="#cli-examples" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Portfolio overview as JSON</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--scope<span class="w"> </span>portfolio<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--output<span class="w"> </span>portfolio.json
@@ -1061,9 +1071,17 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li>subscription CRUD</li>
 <li>event catalog browsing</li>
 <li>test-send</li>
+<li>runtime status with live/test split</li>
+<li>bootstrap for first live records</li>
 <li>delivery audit</li>
 <li>pending queue inspection</li>
 <li>manual processing of due pending deliveries</li>
+</ul>
+<p>Important runtime note:</p>
+<ul>
+<li>the page is not pre-populated by default</li>
+<li>if the live pipeline is still empty, the <code>Runtime status</code> block explains whether channels are missing, only test records exist, or the scheduler is still disabled</li>
+<li>test-send requires a real project context and renders a dry-run preview before you save anything</li>
 </ul>
 <h3  id="event-types"><span id="event_types"></span>Event Types<a class="heading-anchor" href="#event-types" title="Link to this section">&para;</a></h3>
 <p>The event catalog is versioned and available through <code>GET /api/v2/dashboard/event-catalog</code>.</p>
@@ -1099,6 +1117,18 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <tr>
 <td><code>suppression_expiring</code></td>
 <td>Release suppression is approaching expiry</td>
+</tr>
+<tr>
+<td><code>critical_finding</code></td>
+<td>New critical or high findings appeared</td>
+</tr>
+<tr>
+<td><code>severity_change</code></td>
+<td>Severity distribution regressed</td>
+</tr>
+<tr>
+<td><code>tech_debt_growth</code></td>
+<td>Dead code / complexity indicators worsened</td>
 </tr>
 </tbody>
 </table></div>
@@ -1191,7 +1221,13 @@ curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </sp
 curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v2/dashboard/subscriptions/test<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;channel&quot;: &quot;slack&quot;, &quot;events&quot;: [&quot;release_gate_fail&quot;], &quot;sample_event_type&quot;: &quot;release_gate_fail&quot;}&#39;</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;channel&quot;: &quot;slack&quot;, &quot;events&quot;: [&quot;release_gate_fail&quot;], &quot;sample_event_type&quot;: &quot;release_gate_fail&quot;, &quot;project_name&quot;: &quot;codegraph&quot;}&#39;</span>
+
+<span class="c1"># Bootstrap the first live notification records for a real project</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v2/dashboard/subscriptions/bootstrap<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;project_name&quot;: &quot;codegraph&quot;, &quot;channel&quot;: &quot;webhook&quot;, &quot;delivery_mode&quot;: &quot;immediate&quot;}&#39;</span>
 </code></pre></div>
 
 <p>Operator APIs:</p>
@@ -1200,7 +1236,22 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li><code>GET /api/v2/dashboard/deliveries/summary</code></li>
 <li><code>GET /api/v2/dashboard/deliveries/pending</code></li>
 <li><code>POST /api/v2/dashboard/deliveries/process-pending</code></li>
+<li><code>POST /api/v2/dashboard/subscriptions/bootstrap</code></li>
 </ul>
+<p>CLI / MCP parity:</p>
+<ul>
+<li><code>codegraph dashboard notifications summary --user-id &lt;user&gt;</code></li>
+<li><code>codegraph dashboard notifications bootstrap --user-id &lt;user&gt; --project &lt;project&gt;</code></li>
+<li><code>codegraph_dashboard_notifications_summary</code></li>
+<li><code>codegraph_dashboard_notifications_bootstrap</code></li>
+</ul>
+<p>First live data path:</p>
+<ol>
+<li>Configure at least one real channel or accept that failed/pending live records will be written locally.</li>
+<li>Create a project-scoped subscription or use runtime bootstrap.</li>
+<li>Run <code>POST /api/v2/dashboard/subscriptions/bootstrap</code> or the equivalent CLI command.</li>
+<li>Re-open <code>/dashboard/notifications</code> and verify that <code>Live deliveries</code> is no longer zero.</li>
+</ol>
 <h3  id="notification-configuration"><span id="notification_configuration"></span>Notification Configuration<a class="heading-anchor" href="#notification-configuration" title="Link to this section">&para;</a></h3>
 <p>Relevant <code>dashboard</code> config keys:</p>
 <div class="table-wrapper"><table>
@@ -1262,6 +1313,11 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li>normal events can be deferred by quiet hours or digest mode</li>
 <li>critical events bypass quiet hours and digest</li>
 <li>due pending deliveries can be flushed by scheduler or manually</li>
+</ul>
+<p>Demo fixture warning:</p>
+<ul>
+<li><code>frontend/scripts/capture_sales_deck_ui.mjs</code> uses mocked notification payloads for sales-deck screenshots</li>
+<li>that script is not product evidence for a populated live runtime</li>
 </ul>
 <hr />
 <h2  id="snapshot-store-trends"><span id="snapshot-store-amp-trends"></span><span id="snapshot_store_amp_trends"></span><span id="snapshot_store_trends"></span>Snapshot Store &amp; Trends<a class="heading-anchor" href="#snapshot-store-trends" title="Link to this section">&para;</a></h2>
@@ -1602,7 +1658,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-24</span>
+        <span>Last updated: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DASHBOARD_USER_GUIDE.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1611,8 +1667,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#cisocto-dashboard-user-guide" class="level-1">CISO/CTO Dashboard User Guide</a></li>
-<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
+        <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#getting-started" class="level-2">Getting Started</a></li>
 <li><a href="#accessing-the-dashboard" class="level-3">Accessing the Dashboard</a></li>
 <li><a href="#url-structure" class="level-3">URL Structure</a></li>

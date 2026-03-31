@@ -224,7 +224,8 @@
 <ul>
 <li><strong>CI/CD Pipeline</strong> &ndash; CodeGraph as a step in <code>.gitverse/workflows/</code></li>
 <li><strong>Webhook-driven</strong> &ndash; push/PR events trigger CPG updates and reviews automatically</li>
-<li><strong>Standalone</strong> &ndash; deployed alongside GitVerse, accessed via REST API / CLI / MCP</li>
+<li><strong>Standalone</strong> &ndash; deployed alongside GitVerse, accessed via REST API / CLI / MCP
+  and the dedicated Web route <code>/dashboard/gitverse</code></li>
 </ul>
 <p>GitVerse uses GitHub-compatible webhook payloads (<code>pull_request</code>, <code>head_commit</code>). CodeGraph normalizes these automatically.</p>
 <h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h2>
@@ -356,7 +357,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <span class="w">            </span><span class="no">-H &quot;Authorization: Bearer ${CODEGRAPH_TOKEN}&quot; \</span>
 <span class="w">            </span><span class="no">-H &quot;X-GitVerse-Token: ${{ secrets.GITVERSE_TOKEN }}&quot; \</span>
 <span class="w">            </span><span class="no">-H &quot;Content-Type: application/json&quot; \</span>
-<span class="w">            </span><span class="no">-d &#39;{&quot;project_id&quot;: &quot;${{ github.repository }}&quot;, &quot;pr_number&quot;: ${{ github.event.pull_request.number }}}&#39; \</span>
+<span class="w">            </span><span class="no">-d &#39;{&quot;project_id&quot;: &quot;${{ github.repository }}&quot;, &quot;pr_number&quot;: ${{ github.event.pull_request.number }}, &quot;publish_review&quot;: true}&#39; \</span>
 <span class="w">            </span><span class="no">-o review-results.json</span>
 </code></pre></div>
 
@@ -411,10 +412,8 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 </table></div>
 <p>For GitVerse, use <code>provider=gitverse</code>:
 - Start: <code>GET /api/v1/auth/oauth/gitverse</code>
-- Callback: <code>GET /api/v1/auth/oauth/gitverse/callback</code></p>
-<blockquote class="callout">
-<p><strong>Note:</strong> The <code>/api/v1/auth/oauth/providers</code> endpoint currently lists only github, google, gitlab, keycloak. GitVerse OAuth works via direct URL but is not advertised in the providers list.</p>
-</blockquote>
+- Callback: <code>GET /api/v1/auth/oauth/gitverse/callback</code>
+ - Discoverability: <code>GET /api/v1/auth/oauth/providers</code> includes <code>gitverse</code> when configured</p>
 <h3  id="oauth-url-construction"><span id="oauth_url_construction"></span>OAuth URL Construction<a class="heading-anchor" href="#oauth-url-construction" title="Link to this section">&para;</a></h3>
 <p>OAuth is auto-enabled when <code>OAUTH_GITVERSE_CLIENT_ID</code> is set. The provider constructs URLs from the server URL:</p>
 <ul>
@@ -436,6 +435,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;pr_number&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;gitverse_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://gitverse.ru/api/v1&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;publish_review&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;task_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional context&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;dod_items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Tests pass&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;No security issues&quot;</span><span class="p">]</span>
 <span class="p">}</span>
@@ -469,6 +469,12 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 </code></pre></div>
 
 <p><code>dod_validation</code> is optional &ndash; returned only when <code>dod_items</code> are provided in the request, otherwise <code>null</code>.</p>
+<h2  id="operator-surfaces"><span id="operator_surfaces"></span>Operator Surfaces<a class="heading-anchor" href="#operator-surfaces" title="Link to this section">&para;</a></h2>
+<ul>
+<li><strong>Web</strong>: <code>/dashboard/gitverse</code> productizes onboarding, project health, and audit drill-downs</li>
+<li><strong>CLI</strong>: <code>codegraph gitverse status|bindings|template|review-dry-run</code></li>
+<li><strong>MCP</strong>: <code>codegraph_gv_review</code>, <code>codegraph_gv_pr_info</code>, <code>codegraph_gv_commit_status</code>, <code>codegraph_gv_summary</code></li>
+</ul>
 <p>Recommendation values: <code>APPROVE</code>, <code>REQUEST_CHANGES</code>, <code>COMMENT</code>, <code>BLOCK</code>.</p>
 <h3  id="post-apiv1webhooksgitverse-webhook-receiver"><span id="post-apiv1webhooksgitverse-ndash-webhook-receiver"></span><span id="post_apiv1webhooksgitverse_ndash_webhook_receiver"></span><span id="post_apiv1webhooksgitverse_webhook_receiver"></span><code>POST /api/v1/webhooks/gitverse</code> &ndash; Webhook Receiver<a class="heading-anchor" href="#post-apiv1webhooksgitverse-webhook-receiver" title="Link to this section">&para;</a></h3>
 <p>See <a href="#webhook-configuration">Webhook Configuration</a>.</p>
@@ -487,7 +493,10 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>codegraph<span class="w"> </span>./deploy/helm/codegraph<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-f<span class="w"> </span>deploy/helm/codegraph/values-gitverse.yaml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>secrets.gigachatAuthKey<span class="o">=</span><span class="s2">&quot;your-gigachat-key&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>secrets.gitverseWebhookSecret<span class="o">=</span><span class="s2">&quot;your-webhook-secret&quot;</span>
+<span class="w">  </span>--set<span class="w"> </span>secrets.gitverseWebhookSecret<span class="o">=</span><span class="s2">&quot;your-webhook-secret&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>gitverse.oauthClientId<span class="o">=</span><span class="s2">&quot;your-oauth-client-id&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>secrets.gitverseOauthClientSecret<span class="o">=</span><span class="s2">&quot;your-oauth-client-secret&quot;</span>
+python<span class="w"> </span>scripts/validate_gitverse_deployment.py
 </code></pre></div>
 
 <p>The <code>values-gitverse.yaml</code> overlay configures:</p>
@@ -502,17 +511,36 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 
 <span class="nt">gitverse</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">apiUrl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://gitverse.ru/api/v1</span>
+<span class="w">  </span><span class="nt">oauthClientId</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">  </span><span class="nt">oauthServerUrl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://gitverse.ru</span>
 
 <span class="nt">secrets</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">jwtSecret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
 <span class="w">  </span><span class="nt">gigachatAuthKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
 <span class="w">  </span><span class="nt">gitverseWebhookSecret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">  </span><span class="nt">gitverseOauthClientSecret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+</code></pre></div>
+
+<p>Supported topology for this profile:</p>
+<ul>
+<li><code>service.type=ClusterIP</code> behind ingress</li>
+<li>ingress route for <code>/api</code> and <code>/dashboard</code></li>
+<li>persistent PVCs for both CPG data and ChromaDB</li>
+<li>GitVerse webhook secret and GitVerse OAuth client secret injected via Kubernetes Secret</li>
+<li>GitVerse OAuth client ID and server URL injected via ConfigMap</li>
+</ul>
+<p>Before rollout, validate the profile and chart/runtime wiring:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/validate_gitverse_deployment.py<span class="w"> </span>--strict
 </code></pre></div>
 
 <p>For on-premise GitVerse (air-gapped), override the API URL and image registry:</p>
 <div class="highlight"><pre><span></span><code>--set<span class="w"> </span>gitverse.apiUrl<span class="o">=</span><span class="s2">&quot;https://gitverse.internal.company.ru/api/v1&quot;</span>
+--set<span class="w"> </span>gitverse.oauthServerUrl<span class="o">=</span><span class="s2">&quot;https://gitverse.internal.company.ru&quot;</span>
 --set<span class="w"> </span>image.registry<span class="o">=</span><span class="s2">&quot;registry.internal.company.ru&quot;</span>
 </code></pre></div>
 
+<h2  id="deferred-unsupported"><span id="deferred_unsupported"></span>Deferred / Unsupported<a class="heading-anchor" href="#deferred-unsupported" title="Link to this section">&para;</a></h2>
+<p><code>G-10 / GigaCode context provider</code> remains <strong>deferred</strong>. CodeGraph does not currently integrate with GigaCode as an external context provider because that depends on future GitVerse / GigaCode extension APIs. The accepted GitVerse integration scope is CI/CD, webhook, review publication, OAuth, Web/CLI/MCP surface, and on-prem deployment profile.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
 <h3  id="webhook-signature-error-401403"><span id="webhook_signature_error_401403"></span>Webhook Signature Error (401/403)<a class="heading-anchor" href="#webhook-signature-error-401403" title="Link to this section">&para;</a></h3>
 <p><strong>401 Unauthorized</strong> &ndash; signature header is missing:
@@ -570,7 +598,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-24</span>
+        <span>Last updated: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/GITVERSE.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -579,8 +607,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#gitverse-integration-guide" class="level-1">GitVerse Integration Guide</a></li>
-<li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
+        <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#prerequisites" class="level-2">Prerequisites</a></li>
 <li><a href="#docker-image-setup" class="level-2">Docker Image Setup</a></li>
@@ -597,9 +624,11 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <li><a href="#sber-id-support" class="level-3">Sber ID Support</a></li>
 <li><a href="#rest-api-endpoints" class="level-2">REST API Endpoints</a></li>
 <li><a href="#post-apiv1reviewgitverse-review-pr" class="level-3">`POST /api/v1/review/gitverse` -- Review PR</a></li>
+<li><a href="#operator-surfaces" class="level-2">Operator Surfaces</a></li>
 <li><a href="#post-apiv1webhooksgitverse-webhook-receiver" class="level-3">`POST /api/v1/webhooks/gitverse` -- Webhook Receiver</a></li>
 <li><a href="#post-apiv1reviewsummary-mr-summary" class="level-3">`POST /api/v1/review/summary` -- MR Summary</a></li>
 <li><a href="#helm-deployment" class="level-2">Helm Deployment</a></li>
+<li><a href="#deferred-unsupported" class="level-2">Deferred / Unsupported</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
 <li><a href="#webhook-signature-error-401403" class="level-3">Webhook Signature Error (401/403)</a></li>
 <li><a href="#oauth-redirect-fails" class="level-3">OAuth Redirect Fails</a></li>

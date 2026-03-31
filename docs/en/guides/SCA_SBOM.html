@@ -194,8 +194,8 @@
 <p>The SCA pipeline:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">Dependency</span><span class="w"> </span><span class="nv">Parsers</span><span class="w"> </span>→<span class="w"> </span><span class="nv">SBOM</span><span class="w"> </span><span class="nv">Generator</span><span class="w"> </span>→<span class="w"> </span><span class="nv">Vulnerability</span><span class="w"> </span><span class="nv">Checker</span><span class="w"> </span>→<span class="w"> </span><span class="nv">Report</span>
 <span class="w">       </span>↓<span class="w">                   </span>↓<span class="w">                    </span>↓<span class="w">                </span>↓
-<span class="w">  </span><span class="mi">7</span><span class="w"> </span><span class="nv">parsers</span><span class="w">         </span><span class="nv">CycloneDX</span><span class="w"> </span><span class="mi">1</span>.<span class="mi">5</span><span class="w">        </span><span class="mi">4</span><span class="w"> </span><span class="nv">sources</span><span class="w">         </span><span class="nv">SARIF</span><span class="o">/</span><span class="nv">GOST</span><span class="o">/</span><span class="nv">JSON</span>
-<span class="w">  </span><span class="mi">10</span><span class="w"> </span><span class="nv">languages</span><span class="w">       </span><span class="nv">SPDX</span><span class="w"> </span><span class="mi">2</span>.<span class="mi">3</span><span class="w">         </span><span class="nv">SQLite</span><span class="w"> </span><span class="nv">cache</span><span class="w">         </span><span class="nv">CI</span><span class="w"> </span><span class="k">exit</span><span class="w"> </span><span class="nv">codes</span>
+<span class="w">  </span><span class="mi">7</span><span class="w"> </span><span class="nv">parser</span><span class="w"> </span><span class="nv">modules</span><span class="w">   </span><span class="nv">CycloneDX</span><span class="w"> </span><span class="mi">1</span>.<span class="mi">5</span><span class="w">       </span><span class="mi">4</span><span class="w"> </span><span class="nv">sources</span><span class="w">         </span><span class="nv">SARIF</span><span class="o">/</span><span class="nv">GOST</span><span class="o">/</span><span class="nv">JSON</span>
+<span class="w">  </span><span class="mi">7</span><span class="w"> </span><span class="nv">ecosystems</span><span class="w">       </span><span class="nv">SPDX</span><span class="w"> </span><span class="mi">2</span>.<span class="mi">3</span><span class="w">            </span><span class="nv">SQLite</span><span class="w"> </span><span class="nv">cache</span><span class="w">      </span><span class="nv">CI</span><span class="w"> </span><span class="k">exit</span><span class="w"> </span><span class="nv">codes</span>
 </code></pre></div>
 
 <h3  id="supported-languages"><span id="supported_languages"></span>Supported Languages<a class="heading-anchor" href="#supported-languages" title="Link to this section">&para;</a></h3>
@@ -245,7 +245,9 @@
 </tr>
 </tbody>
 </table></div>
-<p>TypeScript uses the JavaScript parser. Kotlin uses the Java parser (<code>build.gradle.kts</code>). 1C:Enterprise has no standard package manager.</p>
+<p>Current implementation ships 7 parser modules covering Python, JavaScript/TypeScript, Go,
+Java/Kotlin, C#, PHP, and C/C++. TypeScript uses the JavaScript parser. Kotlin uses the Java
+parser (<code>build.gradle.kts</code>). 1C:Enterprise has no standard package manager.</p>
 <h3  id="vulnerability-sources"><span id="vulnerability_sources"></span>Vulnerability Sources<a class="heading-anchor" href="#vulnerability-sources" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -318,7 +320,55 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 - 5.16.3.4 — Vulnerability results
 - 5.16.3.5 — Update recommendations</p>
 <h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<h3  id="existing-endpoints-unchanged"><span id="existing_endpoints_unchanged"></span>Existing Endpoints (unchanged)<a class="heading-anchor" href="#existing-endpoints-unchanged" title="Link to this section">&para;</a></h3>
+<p>All SCA routes are mounted under <code>/api/v1/deps</code>.</p>
+<h3  id="project-scoped-endpoints-primary-contract"><span id="project_scoped_endpoints_primary_contract"></span>Project-Scoped Endpoints (primary contract)<a class="heading-anchor" href="#project-scoped-endpoints-primary-contract" title="Link to this section">&para;</a></h3>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/summary</code></td>
+<td>Registered-project SCA summary with <code>scan_status</code>, inventory counts, and license/vulnerability counters</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/dependencies</code></td>
+<td>Dependency inventory for the registered project</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/vulnerabilities</code></td>
+<td>Live vulnerability results for the registered project</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/sbom</code></td>
+<td>Export project SBOM in <code>spdx</code> or <code>cyclonedx</code></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/projects/{project_name}/audit</code></td>
+<td>Project-scoped vulnerability audit (<code>json</code> or <code>sarif</code>)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{project_name}/gost-report</code></td>
+<td>Project-scoped GOST 5.16.3 Markdown report</td>
+</tr>
+</tbody>
+</table></div>
+<p>The Web <code>SCA / SBOM</code> screens use the project-scoped endpoints above. The dashboard portfolio
+aggregate <code>/api/v2/dashboard/sca/overview</code> is still available, but it is not the primary source
+for the project SCA page.</p>
+<h3  id="legacy-scan-scoped-compatibility-endpoints"><span id="legacy_scan_scoped_compatibility_endpoints"></span>Legacy Scan-Scoped Compatibility Endpoints<a class="heading-anchor" href="#legacy-scan-scoped-compatibility-endpoints" title="Link to this section">&para;</a></h3>
+<p>These endpoints are still available for CLI/manual workflows that explicitly seed a temporary
+graph via <code>/scan</code>, but they are not the canonical multi-project product contract:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -330,48 +380,62 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <tbody>
 <tr>
 <td>POST</td>
-<td><code>/api/v1/dependencies/scan</code></td>
-<td>Scan project</td>
+<td><code>/api/v1/deps/scan</code></td>
+<td>Scan an arbitrary path into the legacy in-memory graph</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/list</code></td>
-<td>List dependencies</td>
+<td><code>/api/v1/deps/list</code></td>
+<td>Read dependencies from the last legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/graph</code></td>
-<td>Dependency graph</td>
+<td><code>/api/v1/deps/graph</code></td>
+<td>Read the dependency graph from the last legacy scan</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/check-vulnerabilities</code></td>
+<td>Check vulnerabilities for the last legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/vulnerabilities</code></td>
-<td>Check vulnerabilities</td>
+<td><code>/api/v1/deps/outdated</code></td>
+<td>Outdated packages for the last legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/outdated</code></td>
-<td>Outdated packages</td>
+<td><code>/api/v1/deps/licenses</code></td>
+<td>License summary for the last legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/licenses</code></td>
-<td>License info</td>
+<td><code>/api/v1/deps/health-score</code></td>
+<td>Health score for the last legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/health-score</code></td>
-<td>Health score</td>
+<td><code>/api/v1/deps/sbom</code></td>
+<td>Export SBOM for the last legacy scan</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/audit</code></td>
+<td>Audit the last legacy scan</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/dependencies/sbom</code></td>
-<td>Export SBOM</td>
+<td><code>/api/v1/deps/gost-report</code></td>
+<td>GOST report for the last legacy scan</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/deps/sync-cache</code></td>
+<td>Sync the shared vulnerability cache</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="new-endpoints"><span id="new_endpoints"></span>New Endpoints<a class="heading-anchor" href="#new-endpoints" title="Link to this section">&para;</a></h3>
-<h4  id="post-apiv1dependenciesaudit"><span id="post_apiv1dependenciesaudit"></span>POST /api/v1/dependencies/audit<a class="heading-anchor" href="#post-apiv1dependenciesaudit" title="Link to this section">&para;</a></h4>
+<h4  id="post-apiv1depsprojectsproject-nameaudit"><span id="post_apiv1depsprojectsproject_nameaudit"></span>POST /api/v1/deps/projects/{project_name}/audit<a class="heading-anchor" href="#post-apiv1depsprojectsproject-nameaudit" title="Link to this section">&para;</a></h4>
 <p>Audit dependencies for vulnerabilities with configurable sources and threshold.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
@@ -381,13 +445,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <p>Response includes <code>threshold_breached: true</code> if vulnerabilities exceed the threshold.</p>
-<h4  id="get-apiv1dependenciesgost-report"><span id="get_apiv1dependenciesgost_report"></span>GET /api/v1/dependencies/gost-report<a class="heading-anchor" href="#get-apiv1dependenciesgost-report" title="Link to this section">&para;</a></h4>
+<h4  id="get-apiv1depsprojectsproject-namegost-report"><span id="get_apiv1depsprojectsproject_namegost_report"></span>GET /api/v1/deps/projects/{project_name}/gost-report<a class="heading-anchor" href="#get-apiv1depsprojectsproject-namegost-report" title="Link to this section">&para;</a></h4>
 <p>Generate GOST 5.16.3 report.</p>
-<div class="highlight"><pre><span></span><code>GET /api/v1/dependencies/gost-report?language=ru
+<div class="highlight"><pre><span></span><code>GET /api/v1/deps/projects/codegraph/gost-report?language=ru
 </code></pre></div>
 
 <p>Returns <code>{"format": "markdown", "language": "ru", "content": "..."}</code>.</p>
-<h4  id="post-apiv1dependenciessync-cache"><span id="post_apiv1dependenciessync_cache"></span>POST /api/v1/dependencies/sync-cache<a class="heading-anchor" href="#post-apiv1dependenciessync-cache" title="Link to this section">&para;</a></h4>
+<h4  id="post-apiv1depssync-cache"><span id="post_apiv1depssync_cache"></span>POST /api/v1/deps/sync-cache<a class="heading-anchor" href="#post-apiv1depssync-cache" title="Link to this section">&para;</a></h4>
 <p>Sync local vulnerability cache.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;nvd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bdu_fstec&quot;</span><span class="p">],</span>
@@ -517,7 +581,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="w">    </span><span class="n">graph</span><span class="o">.</span><span class="n">py</span><span class="w">            </span><span class="c1"># DependencyGraphBuilder (NetworkX)</span>
 <span class="w">    </span><span class="n">analyzer</span><span class="o">.</span><span class="n">py</span><span class="w">         </span><span class="c1"># Outdated, unused, health score</span>
 <span class="n">src</span><span class="o">/</span><span class="n">cli</span><span class="o">/</span><span class="n">sbom_commands</span><span class="o">.</span><span class="n">py</span><span class="w">    </span><span class="c1"># CLI: sbom generate/audit/sync/gost-report</span>
-<span class="n">src</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">routers</span><span class="o">/</span><span class="n">dependencies</span><span class="o">.</span><span class="n">py</span><span class="w">  </span><span class="c1"># REST API (8 + 3 new endpoints)</span>
+<span class="n">src</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">routers</span><span class="o">/</span><span class="n">dependencies</span><span class="o">.</span><span class="n">py</span><span class="w">  </span><span class="c1"># REST API (project-scoped + legacy compatibility)</span>
 <span class="n">src</span><span class="o">/</span><span class="n">mcp</span><span class="o">/</span><span class="n">tools</span><span class="o">/</span><span class="n">sca</span><span class="o">.</span><span class="n">py</span><span class="w">       </span><span class="c1"># MCP tools (3)</span>
 <span class="n">src</span><span class="o">/</span><span class="n">compliance</span><span class="o">/</span><span class="n">gost_56939</span><span class="o">/</span><span class="n">evaluators</span><span class="o">/</span><span class="n">automated</span><span class="o">.</span><span class="n">py</span><span class="w">  </span><span class="c1"># SCAEvaluator</span>
 </code></pre></div>
@@ -539,7 +603,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-03-24</span>
+        <span>Last updated: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/SCA_SBOM.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -548,8 +612,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#software-composition-analysis-sca-sbom" class="level-1">Software Composition Analysis (SCA) & SBOM</a></li>
-<li><a href="#overview" class="level-2">Overview</a></li>
+        <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#supported-languages" class="level-3">Supported Languages</a></li>
 <li><a href="#vulnerability-sources" class="level-3">Vulnerability Sources</a></li>
 <li><a href="#cli-commands" class="level-2">CLI Commands</a></li>
@@ -558,8 +621,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#sync-vulnerability-cache" class="level-3">Sync Vulnerability Cache</a></li>
 <li><a href="#generate-gost-report" class="level-3">Generate GOST Report</a></li>
 <li><a href="#rest-api" class="level-2">REST API</a></li>
-<li><a href="#existing-endpoints-unchanged" class="level-3">Existing Endpoints (unchanged)</a></li>
-<li><a href="#new-endpoints" class="level-3">New Endpoints</a></li>
+<li><a href="#project-scoped-endpoints-primary-contract" class="level-3">Project-Scoped Endpoints (primary contract)</a></li>
+<li><a href="#legacy-scan-scoped-compatibility-endpoints" class="level-3">Legacy Scan-Scoped Compatibility Endpoints</a></li>
 <li><a href="#mcp-tools" class="level-2">MCP Tools</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
 <li><a href="#ci-integration" class="level-2">CI Integration</a></li>

@@ -422,7 +422,7 @@
 <tr>
 <td><code>Portfolio</code></td>
 <td><code>/</code> (главная)</td>
-<td>Главная панель. KPI, фильтруемые карточки проектов, risk donut, release readiness и red zone.</td>
+<td>Главная панель. KPI, фильтруемые карточки проектов, история портфеля, red zone, saved view, portfolio alerts и воспроизводимый контекст экспорта.</td>
 </tr>
 <tr>
 <td><code>RedZone</code></td>
@@ -457,12 +457,12 @@
 <tr>
 <td><code>ScaCenter</code></td>
 <td><code>/sca</code></td>
-<td>Обзор SCA/SBOM с уязвимостями и license risks.</td>
+<td>Выбор проекта и project-scoped SCA/SBOM экран со scan status, inventory зависимостей, уязвимостями и preview SBOM.</td>
 </tr>
 <tr>
 <td><code>Notifications</code></td>
 <td><code>/notifications</code></td>
-<td>Управление persistent notifications: subscriptions, test-send, event catalog, delivery audit, pending queue.</td>
+<td>Управление persistent notifications с честным runtime status, preview для test-send, разделением live/test deliveries, bootstrap action, event catalog, delivery audit и pending queue.</td>
 </tr>
 </tbody>
 </table></div>
@@ -589,10 +589,40 @@
 <td><code>CrossRepoResponse</code></td>
 </tr>
 <tr>
+<td><code>projectCatalog()</code></td>
+<td>GET</td>
+<td><code>/projects</code></td>
+<td><code>ProjectCatalogResponse</code></td>
+</tr>
+<tr>
 <td><code>scaOverview(severity?)</code></td>
 <td>GET</td>
 <td><code>/sca/overview</code></td>
-<td><code>ScaPortfolioResponse</code></td>
+<td><code>ScaPortfolioResponse</code> (только portfolio-агрегат)</td>
+</tr>
+<tr>
+<td><code>projectScaSummary(name)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/summary</code></td>
+<td><code>ScaProjectSummary</code></td>
+</tr>
+<tr>
+<td><code>projectScaDependencies(name, opts?)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/dependencies</code></td>
+<td><code>ScaProjectDependency[]</code></td>
+</tr>
+<tr>
+<td><code>projectScaVulnerabilities(name, opts?)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/vulnerabilities</code></td>
+<td><code>ScaProjectVulnerabilityResponse</code></td>
+</tr>
+<tr>
+<td><code>projectScaSbom(name, format)</code></td>
+<td>GET</td>
+<td><code>/api/v1/deps/projects/{name}/sbom</code></td>
+<td><code>ScaSbomDocument</code></td>
 </tr>
 <tr>
 <td><code>exportDashboard(body)</code></td>
@@ -644,6 +674,12 @@
 <td><code>NotificationSubscriptionTestResponse</code></td>
 </tr>
 <tr>
+<td><code>bootstrapNotificationRuntime(body)</code></td>
+<td>POST</td>
+<td><code>/subscriptions/bootstrap</code></td>
+<td><code>NotificationBootstrapResponse</code></td>
+</tr>
+<tr>
 <td><code>notificationDeliveries(params?)</code></td>
 <td>GET</td>
 <td><code>/deliveries</code></td>
@@ -676,6 +712,26 @@
 </tbody>
 </table></div>
 <p>Внутренняя вспомогательная функция <code>fetchJSON&lt;T&gt;()</code> добавляет заголовок <code>Content-Type: application/json</code> и выбрасывает исключение при ответах с кодом, отличным от 2xx.</p>
+<p>Семантика notification runtime:</p>
+<ul>
+<li>страница по умолчанию не pre-populated</li>
+<li>панель <code>Состояние runtime</code> строится из <code>notificationDeliverySummary()</code></li>
+<li>live и test deliveries намеренно разделены в UI</li>
+<li><code>bootstrapNotificationRuntime(body)</code> — самый быстрый product path к первым live notification records для реального проекта</li>
+</ul>
+<p>Семантика portfolio runtime:</p>
+<ul>
+<li><code>portfolio(params)</code> и <code>projectCatalog(params)</code> используют один и тот же filtered portfolio scope и period semantics</li>
+<li><code>portfolioComparePeriods({ baseline_period, comparison_period, group_id? })</code> — канонический Web path для <code>История портфеля</code></li>
+<li>saved view сохраняет текущие filters, compare set, baseline period и preferred export format через <code>savedViews()</code>, <code>createSavedView(...)</code> и <code>deleteSavedView(...)</code></li>
+<li>portfolio alerts используют те же notification contracts через <code>createNotificationSubscription(...)</code> со <code>scope: "portfolio"</code> или <code>scope: "saved_view"</code></li>
+<li><code>exportDashboard(...)</code> передаёт воспроизводимый контекст экспорта через <code>filters</code>, <code>compare_projects</code>, <code>saved_view_id</code> и <code>saved_view_name</code></li>
+</ul>
+<p>Примечание про demo fixtures:</p>
+<ul>
+<li><code>frontend/scripts/capture_sales_deck_ui.mjs</code> использует моковые notification payload&rsquo;ы только для sales-deck screenshots</li>
+<li>этот script не является доказательством того, что live notification runtime уже заполнен</li>
+</ul>
 <h2  id="instruktsii-po-sborke"><span id="instruktsii_po_sborke"></span>Инструкции по сборке<a class="heading-anchor" href="#instruktsii-po-sborke" title="Link to this section">&para;</a></h2>
 <h3  id="predvaritelnye-trebovaniya"><span id="predvaritelnye_trebovaniya"></span>Предварительные требования<a class="heading-anchor" href="#predvaritelnye-trebovaniya" title="Link to this section">&para;</a></h3>
 <ul>
@@ -1352,7 +1408,7 @@ npx<span class="w"> </span>playwright<span class="w"> </span><span class="nb">te
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-24</span>
+        <span>Обновлено: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DASHBOARD_FRONTEND.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1361,8 +1417,7 @@ npx<span class="w"> </span>playwright<span class="w"> </span><span class="nb">te
     <aside class="doc-toc">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#rukovodstvo-po-razrabotke-interfeysa-paneli-upravleniya" class="level-1">Руководство по разработке интерфейса панели управления</a></li>
-<li><a href="#obzor-arhitektury" class="level-2">Обзор архитектуры</a></li>
+        <li><a href="#obzor-arhitektury" class="level-2">Обзор архитектуры</a></li>
 <li><a href="#stek-tehnologiy" class="level-3">Стек технологий</a></li>
 <li><a href="#struktura-katalogov" class="level-3">Структура каталогов</a></li>
 <li><a href="#katalog-komponentov" class="level-3">Каталог компонентов</a></li>

@@ -369,6 +369,9 @@
 <li><strong>Фильтр по уровню риска</strong> — выберите минимальный уровень риска (критический, высокий, средний, низкий) для сужения результатов.</li>
 </ol>
 <p>Фильтры применяются мгновенно. Сброс фильтра (выбор «Все языки» или «Все риски») возвращает отображение всех проектов.</p>
+<p>История портфеля доступна прямо на экране Portfolio, если переключиться с <code>live</code> на исторический период и выбрать базовое окно сравнения.</p>
+<p>Saved Views позволяют сохранить текущие filters, compare set, baseline period и preferred export format как повторяемое executive-представление.</p>
+<p>Portfolio Alerts можно создать из того же экрана либо для всего отфильтрованного портфеля, либо для активного saved view.</p>
 <h3  id="diagramma-raspredeleniya-riskov"><span id="diagramma_raspredeleniya_riskov"></span>Диаграмма распределения рисков<a class="heading-anchor" href="#diagramma-raspredeleniya-riskov" title="Link to this section">&para;</a></h3>
 <p>В правой боковой панели расположена кольцевая диаграмма, показывающая распределение проектов по уровням риска:</p>
 <ul>
@@ -1023,6 +1026,13 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 </tr>
 </tbody>
 </table></div>
+<p>Для portfolio export запрос также может нести воспроизводимый контекст экспорта:</p>
+<ul>
+<li><code>period</code> и <code>filters</code>, чтобы сохранить точный scope отфильтрованного портфеля</li>
+<li><code>compare_projects</code>, чтобы зафиксировать executive compare set</li>
+<li><code>saved_view_id</code> и <code>saved_view_name</code>, чтобы было видно, какой saved view породил артефакт</li>
+</ul>
+<p>Этот контекст экспорта повторно отражается в JSON/Markdown/PDF, поэтому отчёт можно воспроизвести без ручной сборки в Excel.</p>
 <h3  id="primery-ispolzovaniya-cli"><span id="primery_ispolzovaniya_cli"></span>Примеры использования CLI<a class="heading-anchor" href="#primery-ispolzovaniya-cli" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Обзор портфеля в формате JSON</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dashboard<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--scope<span class="w"> </span>portfolio<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--output<span class="w"> </span>portfolio.json
@@ -1061,9 +1071,17 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li>управление подписками</li>
 <li>просмотр versioned event catalog</li>
 <li>test-send</li>
+<li>runtime status с разделением live/test</li>
+<li>bootstrap для первых live records</li>
 <li>журнал доставок</li>
 <li>просмотр pending queue</li>
 <li>ручной flush due pending deliveries</li>
+</ul>
+<p>Важное примечание про runtime:</p>
+<ul>
+<li>страница по умолчанию не pre-populated</li>
+<li>если live pipeline ещё пустой, блок <code>Состояние runtime</code> явно показывает, не настроены ли каналы, есть ли только test-записи и включён ли scheduler</li>
+<li>test-send требует реальный project context и показывает dry-run preview до сохранения</li>
 </ul>
 <h3  id="tipy-sobytiy"><span id="tipy_sobytiy"></span>Типы событий<a class="heading-anchor" href="#tipy-sobytiy" title="Link to this section">&para;</a></h3>
 <p>Каталог событий versioned и доступен через <code>GET /api/v2/dashboard/event-catalog</code>.</p>
@@ -1099,6 +1117,18 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <tr>
 <td><code>suppression_expiring</code></td>
 <td>suppression скоро истекает</td>
+</tr>
+<tr>
+<td><code>critical_finding</code></td>
+<td>появились новые critical/high findings</td>
+</tr>
+<tr>
+<td><code>severity_change</code></td>
+<td>ухудшилось распределение findings по severity</td>
+</tr>
+<tr>
+<td><code>tech_debt_growth</code></td>
+<td>ухудшились показатели dead code / complexity</td>
 </tr>
 </tbody>
 </table></div>
@@ -1191,7 +1221,13 @@ curl<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </sp
 curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v2/dashboard/subscriptions/test<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;channel&quot;: &quot;slack&quot;, &quot;events&quot;: [&quot;release_gate_fail&quot;], &quot;sample_event_type&quot;: &quot;release_gate_fail&quot;}&#39;</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;channel&quot;: &quot;slack&quot;, &quot;events&quot;: [&quot;release_gate_fail&quot;], &quot;sample_event_type&quot;: &quot;release_gate_fail&quot;, &quot;project_name&quot;: &quot;codegraph&quot;}&#39;</span>
+
+<span class="c1"># Bootstrap первых live notification records для реального проекта</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v2/dashboard/subscriptions/bootstrap<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;project_name&quot;: &quot;codegraph&quot;, &quot;channel&quot;: &quot;webhook&quot;, &quot;delivery_mode&quot;: &quot;immediate&quot;}&#39;</span>
 </code></pre></div>
 
 <p>Operator-facing API:</p>
@@ -1200,7 +1236,22 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li><code>GET /api/v2/dashboard/deliveries/summary</code></li>
 <li><code>GET /api/v2/dashboard/deliveries/pending</code></li>
 <li><code>POST /api/v2/dashboard/deliveries/process-pending</code></li>
+<li><code>POST /api/v2/dashboard/subscriptions/bootstrap</code></li>
 </ul>
+<p>CLI / MCP parity:</p>
+<ul>
+<li><code>codegraph dashboard notifications summary --user-id &lt;user&gt;</code></li>
+<li><code>codegraph dashboard notifications bootstrap --user-id &lt;user&gt; --project &lt;project&gt;</code></li>
+<li><code>codegraph_dashboard_notifications_summary</code></li>
+<li><code>codegraph_dashboard_notifications_bootstrap</code></li>
+</ul>
+<p>Путь к первым live data:</p>
+<ol>
+<li>Настройте хотя бы один реальный канал или примите, что live records будут локально записаны как failed/pending.</li>
+<li>Создайте project-scoped subscription или используйте runtime bootstrap.</li>
+<li>Выполните <code>POST /api/v2/dashboard/subscriptions/bootstrap</code> или эквивалентную CLI-команду.</li>
+<li>Повторно откройте <code>/dashboard/notifications</code> и проверьте, что <code>Живые доставки</code> больше не равны нулю.</li>
+</ol>
 <h3  id="nastroyka-uvedomleniy"><span id="nastroyka_uvedomleniy"></span>Настройка уведомлений<a class="heading-anchor" href="#nastroyka-uvedomleniy" title="Link to this section">&para;</a></h3>
 <p>Ключевые параметры секции <code>dashboard</code>:</p>
 <div class="table-wrapper"><table>
@@ -1262,6 +1313,11 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li>обычные события могут быть отложены quiet hours или digest mode</li>
 <li>critical events обходят quiet hours и digest</li>
 <li>due pending deliveries обрабатываются scheduler&rsquo;ом или вручную</li>
+</ul>
+<p>Предупреждение про demo fixtures:</p>
+<ul>
+<li><code>frontend/scripts/capture_sales_deck_ui.mjs</code> использует моковые notification payload&rsquo;ы для sales-deck screenshots</li>
+<li>этот script не является product evidence для уже заполненного live runtime</li>
 </ul>
 <hr />
 <h2  id="hranilische-snimkov-i-tendentsii"><span id="hranilische_snimkov_i_tendentsii"></span>Хранилище снимков и тенденции<a class="heading-anchor" href="#hranilische-snimkov-i-tendentsii" title="Link to this section">&para;</a></h2>
@@ -1602,7 +1658,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-03-24</span>
+        <span>Обновлено: 2026-03-31</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DASHBOARD_USER_GUIDE.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1611,8 +1667,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
     <aside class="doc-toc">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#rukovodstvo-polzovatelya-panel-monitoringa-cisocto" class="level-1">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
-<li><a href="#soderzhanie" class="level-2">Содержание</a></li>
+        <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#nachalo-raboty" class="level-2">Начало работы</a></li>
 <li><a href="#dostup-k-paneli-monitoringa" class="level-3">Доступ к панели мониторинга</a></li>
 <li><a href="#struktura-adresov" class="level-3">Структура адресов</a></li>
