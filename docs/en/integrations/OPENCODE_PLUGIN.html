@@ -91,15 +91,15 @@
       <ul class="doc-sidebar-nav">
         <li><a href="../guides/index.html">Overview</a></li>
         <li><a href="../guides/BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
-        <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
+        <li><a href="../guides/CLI_GUIDE.html">CodeGraph CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
-        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
-        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
-        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">Dashboard User Guide</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -108,7 +108,7 @@
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
-        <li><a href="../guides/REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="../guides/REFACTORING.html">Refactoring Guide</a></li>
         <li><a href="../guides/RELEASE_GATE.html">Release Gate</a></li>
         <li><a href="../guides/SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="../guides/SCENARIOS.html">Workflow Scenarios Guide</a></li>
@@ -205,7 +205,7 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Integration of CodeGraph CPG analysis into the OpenCode AI coding assistant via MCP tools, OpenCode plugin, custom commands, custom agent, and LSP server.</p>
+        <p>Integration of CodeGraph CPG analysis into the OpenCode AI coding assistant via MCP tools, the <code>opencode-codegraph</code> plugin, scenario commands, a custom agent, and the LSP server.</p>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#overview">Overview</a></li>
@@ -222,7 +222,7 @@
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>CodeGraph integrates with OpenCode through five layers that can be used independently or together:</p>
+<p>CodeGraph integrates with OpenCode through five layers that can be used independently or together. The primary interactive path is the OpenCode plugin plus the LSP server, with MCP tools remaining available for direct inspection and scripted workflows.</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -233,14 +233,14 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>MCP Tools</strong> (93)</td>
-<td>Direct CPG queries</td>
-<td><code>codegraph_query</code>, <code>codegraph_explain</code>, etc. via stdio</td>
+<td><strong>MCP Tools</strong> (149)</td>
+<td>Direct CPG, context, and workflow queries</td>
+<td><code>codegraph_query</code>, <code>codegraph_explain</code>, <code>codegraph_context_fetch</code>, etc. via stdio</td>
 </tr>
 <tr>
 <td><strong>Plugin</strong> (<code>opencode-codegraph</code>)</td>
-<td>Auto-enrichment + 2 custom tools</td>
-<td>CPG context injection, post-commit updates, <code>codegraph_review</code>/<code>codegraph_explain_function</code></td>
+<td>Scenario-aware context layer + agent-native tools</td>
+<td>CPG/OpenViking context injection, explicit session tools, review/explain helpers, workflow follow-up, and governed multi-user session visibility</td>
 </tr>
 <tr>
 <td><strong>Custom Commands</strong> (8)</td>
@@ -277,7 +277,7 @@
 <tr>
 <td>Plugin <code>tool.execute.after</code> on <code>git commit</code></td>
 <td>Automatic</td>
-<td>Best-effort local webhook call triggers incremental CPG update</td>
+<td>Best-effort plugin-driven freshness/update flow runs after local commits</td>
 </tr>
 <tr>
 <td>LSP diagnostics (<code>opencode</code> + <code>codegraph_lsp</code>)</td>
@@ -312,11 +312,11 @@
 <tr>
 <td>Direct <code>gocpg update</code></td>
 <td>Manual</td>
-<td>Forced incremental parse outside OpenCode hooks</td>
+<td>Forced incremental parse outside OpenCode UI flows</td>
 </tr>
 </tbody>
 </table></div>
-<p>Automatic hooks are best-effort and non-blocking. For deterministic CI/headless freshness guarantees, run <code>codegraph_watch update</code> (or <code>/update</code>) explicitly.</p>
+<p>Automatic plugin hooks are best-effort and non-blocking. For deterministic CI/headless freshness guarantees, run <code>codegraph_watch update</code> (or <code>/update</code>) explicitly.</p>
 <h2 id="installation">Installation<a class="heading-anchor" href="#installation" title="Link to this section">&para;</a></h2>
 <h3  id="minimal-setup-mcp-only"><span id="minimal_setup_mcp_only"></span>Minimal setup (MCP only)<a class="heading-anchor" href="#minimal-setup-mcp-only" title="Link to this section">&para;</a></h3>
 <p>Create <code>opencode.json</code> in the project root:</p>
@@ -337,7 +337,7 @@
 </code></pre></div>
 
 <blockquote class="callout">
-<p><strong>Note</strong>: The <code>opencode-codegraph</code> plugin (<a href="https://www.npmjs.com/package/opencode-codegraph">npm</a>) provides auto-enrichment and 2 custom tools (<code>codegraph_review</code>, <code>codegraph_explain_function</code>). It requires CodeGraph API running (<code>uvicorn src.api.main:app --port 8000</code>). If the API is not available, the plugin degrades gracefully — MCP tools still work via stdio.</p>
+<p><strong>Note</strong>: The <code>opencode-codegraph</code> plugin (<a href="https://www.npmjs.com/package/opencode-codegraph">npm</a>) is the primary OpenCode integration layer. It provides auto-enrichment, explicit CodeGraph/OpenViking session tools, scenario-aware command support, review/explain helpers, and visibility into shared or handed-off explicit sessions. It requires the CodeGraph API running (<code>uvicorn src.api.main:app --port 8000</code>). If the API is not available, the plugin degrades gracefully and MCP tools still work via stdio.</p>
 </blockquote>
 <h3  id="full-setup-mcp-lsp"><span id="full_setup_mcp_lsp"></span>Full setup (MCP + LSP)<a class="heading-anchor" href="#full-setup-mcp-lsp" title="Link to this section">&para;</a></h3>
 <p>Add LSP server for real-time editor diagnostics:</p>
@@ -382,8 +382,9 @@
 <ol>
 <li><code>opencode.json</code> contains <code>mcp.codegraph</code>, <code>lsp.codegraph</code>, plugin <code>opencode-codegraph</code>, and instructions.</li>
 <li>Plugin dependencies in <code>.opencode/</code> are installed (runs <code>npm install</code> only when needed).</li>
-<li>CodeGraph API is auto-started if unavailable (required by plugin hooks/tools).</li>
+<li>CodeGraph API is auto-started if unavailable (required by plugin tools and scenario flows).</li>
 <li>OpenCode starts with <code>--agent codegraph</code> by default.</li>
+<li>When <code>CODEGRAPH_OPENCODE_PLUGIN_SOURCE=local</code>, the launcher also syncs the workspace <code>opencode-codegraph</code> into OpenCode runtime cache directories under <code>%USERPROFILE%\\.cache\\opencode\\...</code>, so headless <code>opencode run</code> uses the current local plugin code.</li>
 </ol>
 <p>Headless example:</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/run_opencode_codegraph.py<span class="w"> </span>--run<span class="w"> </span><span class="s2">&quot;Use codegraph_project_context and summarize top risks&quot;</span>
@@ -435,8 +436,8 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 <li><code>--db</code> in OpenCode and LSP config is a target database identifier, not permission for those clients to open DuckDB directly.</li>
 </ul>
 <h2 id="features">Features<a class="heading-anchor" href="#features" title="Link to this section">&para;</a></h2>
-<h3  id="1-mcp-tools-93-tools"><span id="1_mcp_tools_93_tools"></span>1. MCP Tools (93 tools)<a class="heading-anchor" href="#1-mcp-tools-93-tools" title="Link to this section">&para;</a></h3>
-<p>All 93 CodeGraph MCP tools are available in OpenCode chat. Key tool groups:</p>
+<h3  id="1-mcp-tools-149-tools"><span id="1_mcp_tools_149_tools"></span>1. MCP Tools (149 tools)<a class="heading-anchor" href="#1-mcp-tools-149-tools" title="Link to this section">&para;</a></h3>
+<p>All 149 CodeGraph MCP tools are available in OpenCode chat. Key tool groups:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -486,24 +487,17 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 <li>Intent-to-scenario mapping (when to use S02 vs S09 vs S18, etc.)</li>
 <li>Clarification that structural pattern search is a tool/CLI feature, not a numbered scenario</li>
 </ul>
-<h3  id="3-post-commit-cpg-updates-via-webhooks"><span id="3_post_commit_cpg_updates_via_webhooks"></span>3. Post-Commit CPG Updates (via webhooks)<a class="heading-anchor" href="#3-post-commit-cpg-updates-via-webhooks" title="Link to this section">&para;</a></h3>
-<p>When CodeGraph API is running, webhooks can trigger incremental CPG updates after code changes:</p>
+<h3  id="3-freshness-and-incremental-updates"><span id="3_freshness_and_incremental_updates"></span>3. Freshness and Incremental Updates<a class="heading-anchor" href="#3-freshness-and-incremental-updates" title="Link to this section">&para;</a></h3>
+<p>The supported freshness path for OpenCode users is now plugin- and command-driven:</p>
 <ol>
-<li>Git push triggers webhook (<code>POST /api/v1/webhooks/github</code> or <code>/gitlab</code>)</li>
-<li>GoCPG re-parses changed files</li>
-<li>ChromaDB vector store syncs</li>
-<li>MCP tools automatically reflect new data</li>
+<li>the plugin can run a best-effort post-commit refresh after local <code>git commit</code>;</li>
+<li><code>/update</code> runs an explicit freshness check and incremental update through <code>codegraph_watch</code>;</li>
+<li><code>/status</code> and <code>/next</code> surface the current workflow state and the recommended follow-up action;</li>
+<li>LSP diagnostics reflect the refreshed CPG state in the editor.</li>
 </ol>
-<p>For local workflows without push/webhooks (or when <code>data/projects/codegraph.duckdb</code> is stale), use <code>/update</code> to run a manual freshness check and incremental update through <code>codegraph_watch</code>.</p>
-<p>In headless OpenCode, this is the recommended control point because it returns structured freshness diagnostics (<code>cpg_commit</code>, <code>head_commit</code>, <code>commits_behind</code>, <code>commits_behind_strict</code>, <code>is_fresh</code>, <code>is_fresh_strict</code>, <code>has_relevant_changes_since_cpg</code>, <code>freshness_reason</code>, <code>needs_update</code>) and update diagnostics (<code>failure_kind</code>, <code>auto_unlock_attempted</code>, <code>auto_unlock_killed_pids</code>, <code>auto_unlock_errors</code>, <code>next_step</code>, <code>next_command</code>).</p>
-<p>For local git-driven workflows, GoCPG hooks can now persist a traced post-commit review in <code>data/reviews/</code>. This path is complementary to the plugin webhook trigger:</p>
-<div class="highlight"><pre><span></span><code>gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>install<span class="w"> </span>--repo<span class="o">=</span>.<span class="w"> </span>--db<span class="o">=</span>data/projects/codegraph.duckdb<span class="w"> </span>--review-trace
-python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </span>&lt;commit-sha&gt;<span class="w"> </span>--watch
-</code></pre></div>
-
-<p>Each commit writes <code>.log</code>, <code>.status.json</code>, <code>.meta.json</code>, <code>.json</code>, and <code>.md</code> artifacts. The trace captures whether <code>gocpg update</code> succeeded, whether DuckDB was unlocked immediately after the update, and what review scope was used.</p>
+<p>In headless OpenCode, <code>/update</code> is the recommended control point because it returns structured freshness diagnostics (<code>cpg_commit</code>, <code>head_commit</code>, <code>commits_behind</code>, <code>commits_behind_strict</code>, <code>is_fresh</code>, <code>is_fresh_strict</code>, <code>has_relevant_changes_since_cpg</code>, <code>freshness_reason</code>, <code>needs_update</code>) and update diagnostics (<code>failure_kind</code>, <code>auto_unlock_attempted</code>, <code>auto_unlock_killed_pids</code>, <code>auto_unlock_errors</code>, <code>next_step</code>, <code>next_command</code>).</p>
 <h2 id="plugin">Plugin<a class="heading-anchor" href="#plugin" title="Link to this section">&para;</a></h2>
-<p>The <a href="https://www.npmjs.com/package/opencode-codegraph"><code>opencode-codegraph</code></a> npm plugin (v0.1.33) adds auto-enrichment on top of MCP tools. Source code: <code>opencode-codegraph/</code> directory.</p>
+<p>The <a href="https://www.npmjs.com/package/opencode-codegraph"><code>opencode-codegraph</code></a> npm plugin (v0.1.37) is the main OpenCode integration surface. It adds auto-enrichment, explicit agent-native context operations, scenario-aware command support, workflow continuity, and lifecycle-aware OpenViking guidance on top of MCP tools. Source code: <code>opencode-codegraph/</code> directory.</p>
 <h3  id="plugin-features"><span id="plugin_features"></span>Plugin Features<a class="heading-anchor" href="#plugin-features" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -526,8 +520,16 @@ python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </s
 <td>Adds pre-edit warnings when the message looks like a modification request (<code>refactor</code>, <code>fix</code>, <code>update</code>, etc.)</td>
 </tr>
 <tr>
+<td><code>experimental.session.compacting</code></td>
+<td>Preserves workflow and explicit context-session continuity across long sessions</td>
+</tr>
+<tr>
+<td><code>command.execute.before</code></td>
+<td>Adds scenario-aware readiness, skill hints, resume guidance, session follow-up, and shared-session wording for <code>/onboard</code>, <code>/review</code>, <code>/continue</code>, <code>/next</code>, <code>/explain</code>, <code>/status</code>, and <code>/update</code></td>
+</tr>
+<tr>
 <td><code>tool.execute.after</code></td>
-<td>Detects <code>git commit</code>, triggers incremental CPG update via <code>POST /api/v1/webhooks/local</code>, and appends either a ready review summary or a pending summary with the next follow-up action</td>
+<td>Detects <code>git commit</code>, runs the best-effort post-commit CodeGraph refresh flow, and appends either a ready review summary or a pending summary with the next follow-up action. When the refresh finishes, OpenCode also receives a short notification title so the user sees the result immediately.</td>
 </tr>
 <tr>
 <td><code>permission.ask</code></td>
@@ -535,9 +537,17 @@ python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </s
 </tr>
 </tbody>
 </table></div>
-<p>The plugin hook is best-effort and conversational. If you also need a durable per-commit audit trail, enable GoCPG <code>--review-trace</code>; the git hook writes artifacts even outside OpenCode TUI sessions.</p>
+<p>The plugin automation is best-effort and conversational. The supported developer workflow is centered on the OpenCode plugin, scenario commands, and the LSP server.</p>
+<p>Current plugin-facing OpenViking session model:</p>
+<ul>
+<li>explicit session open or reconnect is the default path for scenario commands</li>
+<li><code>/continue</code>, <code>/status</code>, and <code>/review</code> preserve the same evidence chain when a reusable session exists</li>
+<li><code>read_only</code> shared sessions are visible and reopenable for review or testing, but not writable</li>
+<li>ownership transfer is authoritative in CodeGraph; the plugin surfaces the resulting access mode and follow-up wording</li>
+<li>default skill guidance is lifecycle-aware: <code>current</code> only by default, <code>needs_review</code> only by explicit opt-in, <code>deprecated</code> excluded</li>
+</ul>
 <h3  id="plugin-tools"><span id="plugin_tools"></span>Plugin Tools<a class="heading-anchor" href="#plugin-tools" title="Link to this section">&para;</a></h3>
-<p>Two additional tools (implemented in TypeScript, calling CodeGraph REST API):</p>
+<p>The plugin adds explicit CodeGraph/OpenViking tools implemented in TypeScript on top of MCP:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -547,6 +557,56 @@ python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </s
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>codegraph_context_open_session</code></td>
+<td><code>session_id</code> (optional)</td>
+<td>Open or reconnect an explicit CodeGraph/OpenViking context session</td>
+</tr>
+<tr>
+<td><code>codegraph_context_fetch</code></td>
+<td><code>query</code>, <code>target_uri</code> (optional), <code>limit</code> (optional), <code>session_id</code> (optional), <code>include_needs_review</code> (optional)</td>
+<td>Fetch semantic context candidates for the active OpenCode session</td>
+</tr>
+<tr>
+<td><code>codegraph_context_read</code></td>
+<td><code>uri</code>, <code>level</code> (optional), <code>session_id</code> (optional)</td>
+<td>Read a specific OpenViking <code>viking://</code> resource</td>
+</tr>
+<tr>
+<td><code>codegraph_context_browse</code></td>
+<td><code>uri</code>, <code>level_limit</code> (optional), <code>node_limit</code> (optional), <code>session_id</code> (optional)</td>
+<td>Browse an OpenViking resource tree</td>
+</tr>
+<tr>
+<td><code>codegraph_context_record_used_context</code></td>
+<td><code>items_json</code>, <code>session_id</code> (optional)</td>
+<td>Persist used-context trace before background commit</td>
+</tr>
+<tr>
+<td><code>codegraph_context_commit</code></td>
+<td><code>session_id</code> (optional)</td>
+<td>Trigger background commit for an explicit context session</td>
+</tr>
+<tr>
+<td><code>codegraph_context_status</code></td>
+<td><code>session_id</code> (optional)</td>
+<td>Check background commit status</td>
+</tr>
+<tr>
+<td><code>codegraph_context_sync_status</code></td>
+<td>none</td>
+<td>Read project-level context readiness and sync status</td>
+</tr>
+<tr>
+<td><code>codegraph_fused_search</code></td>
+<td><code>query</code>, <code>target_uri</code> (optional), <code>limit</code> (optional), <code>include_graph</code> (optional), <code>session_id</code> (optional), <code>include_needs_review</code> (optional)</td>
+<td>Return one fused payload of OpenViking context hits and graph evidence</td>
+</tr>
+<tr>
+<td><code>codegraph_skill_list</code></td>
+<td><code>category</code> (optional), <code>include_needs_review</code> (optional)</td>
+<td>List curated agent-visible CodeGraph skills</td>
+</tr>
 <tr>
 <td><code>codegraph_review</code></td>
 <td><code>base_ref</code> (optional, default <code>HEAD~1</code>)</td>
@@ -561,9 +621,10 @@ python<span class="w"> </span>scripts/review_trace_status.py<span class="w"> </s
 </table></div>
 <p><code>codegraph_review</code> first tries the standard review workflow; if it returns empty output, the API now falls back to deterministic CPG-based analysis (changed files from diff, impacted methods/callers, and per-file security pattern findings).</p>
 <h3 id="requirements">Requirements<a class="heading-anchor" href="#requirements" title="Link to this section">&para;</a></h3>
-<p>The plugin requires CodeGraph REST API running (<code>uvicorn src.api.main:app --port 8000</code>). If the API is not available, the plugin degrades gracefully — all hooks silently skip, MCP tools continue working via stdio.</p>
+<p>The plugin requires CodeGraph REST API running (<code>uvicorn src.api.main:app --port 8000</code>). If the API is not available, the plugin degrades gracefully — plugin-side automation skips cleanly and MCP tools continue working via stdio.</p>
+<p><code>opencode-codegraph</code> is built against <code>@opencode-ai/plugin &gt;=1.2.0</code>.</p>
 <h2  id="custom-commands"><span id="custom_commands"></span>Custom Commands<a class="heading-anchor" href="#custom-commands" title="Link to this section">&para;</a></h2>
-<p>Ten commands are available via <code>/command</code> in OpenCode TUI:</p>
+<p>Eight commands are available via <code>/command</code> in OpenCode TUI:</p>
 <p>For headless CLI runs, use <code>opencode run --command &lt;name&gt; [args...]</code> (not a literal <code>/name</code> message).</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -737,7 +798,7 @@ opencode<span class="w"> </span>run<span class="w"> </span>--command<span class=
 <span class="w">  </span><span class="n">SCENARIO_PLAYBOOK</span><span class="p">.</span><span class="n">md</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="n">Scenario</span><span class="w"> </span><span class="n">routing</span><span class="w"> </span><span class="n">hints</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="n">context</span>
 
 <span class="n">opencode</span><span class="p">.</span><span class="n">json</span><span class="w">           </span><span class="err">#</span><span class="w"> </span><span class="n">MCP</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">plugin</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">instructions</span><span class="w"> </span><span class="n">config</span>
-<span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="o">/</span><span class="w">     </span><span class="err">#</span><span class="w"> </span><span class="n">Plugin</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="p">(</span><span class="n">npm</span><span class="o">:</span><span class="w"> </span><span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="mf">@0.1.33</span><span class="p">)</span>
+<span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="o">/</span><span class="w">     </span><span class="err">#</span><span class="w"> </span><span class="n">Plugin</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="p">(</span><span class="n">npm</span><span class="o">:</span><span class="w"> </span><span class="n">opencode</span><span class="o">-</span><span class="n">codegraph</span><span class="mf">@0.1.37</span><span class="p">)</span>
 </code></pre></div>
 
 <h2 id="architecture">Architecture<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h2>
@@ -751,7 +812,7 @@ opencode<span class="w"> </span>run<span class="w"> </span>--command<span class=
 <span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="n">custom</span><span class="w"> </span><span class="n">tools</span><span class="w">                               </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">CodeGraph</span><span class="w"> </span><span class="n">REST</span><span class="w"> </span><span class="n">API</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">review</span><span class="o">/</span><span class="n">explain</span>
 <span class="w">  </span><span class="o">|</span>
 <span class="w">  </span><span class="o">+--</span><span class="w"> </span><span class="n">MCP</span><span class="w"> </span><span class="n">Server</span><span class="w"> </span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">mcp</span><span class="p">,</span><span class="w"> </span><span class="n">stdio</span><span class="p">)</span>
-<span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="mi">93</span><span class="w"> </span><span class="n">tools</span><span class="w">             </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">CPG</span><span class="w"> </span><span class="n">queries</span><span class="p">,</span><span class="w"> </span><span class="n">taint</span><span class="p">,</span><span class="w"> </span><span class="n">patterns</span><span class="p">,</span><span class="w"> </span><span class="n">compose</span>
+<span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="mi">149</span><span class="w"> </span><span class="n">tools</span><span class="w">            </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">CPG</span><span class="p">,</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="n">taint</span><span class="p">,</span><span class="w"> </span><span class="n">patterns</span><span class="p">,</span><span class="w"> </span><span class="n">compose</span>
 <span class="w">  </span><span class="o">|</span>
 <span class="w">  </span><span class="o">+--</span><span class="w"> </span><span class="n">Custom</span><span class="w"> </span><span class="n">Commands</span><span class="w"> </span><span class="p">(</span><span class="o">.</span><span class="n">opencode</span><span class="o">/</span><span class="n">commands</span><span class="o">/</span><span class="p">)</span>
 <span class="w">  </span><span class="o">|</span><span class="w">     </span><span class="o">+--</span><span class="w"> </span><span class="o">/</span><span class="n">review</span><span class="p">,</span><span class="w"> </span><span class="o">/</span><span class="n">audit</span><span class="w">      </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">Prompt</span><span class="w"> </span><span class="n">templates</span><span class="w"> </span><span class="n">using</span><span class="w"> </span><span class="n">MCP</span><span class="w"> </span><span class="n">tools</span>
@@ -835,7 +896,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-06</span>
+        <span>Last updated: 2026-04-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/OPENCODE_PLUGIN.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -857,9 +918,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#stdio-vs-tcp" class="level-3">Stdio vs TCP</a></li>
 <li><a href="#ownership-model" class="level-3">Ownership model</a></li>
 <li><a href="#features" class="level-2">Features</a></li>
-<li><a href="#1-mcp-tools-93-tools" class="level-3">1. MCP Tools (93 tools)</a></li>
+<li><a href="#1-mcp-tools-149-tools" class="level-3">1. MCP Tools (149 tools)</a></li>
 <li><a href="#2-instructions-files" class="level-3">2. Instructions Files</a></li>
-<li><a href="#3-post-commit-cpg-updates-via-webhooks" class="level-3">3. Post-Commit CPG Updates (via webhooks)</a></li>
+<li><a href="#3-freshness-and-incremental-updates" class="level-3">3. Freshness and Incremental Updates</a></li>
 <li><a href="#plugin" class="level-2">Plugin</a></li>
 <li><a href="#plugin-features" class="level-3">Plugin Features</a></li>
 <li><a href="#plugin-tools" class="level-3">Plugin Tools</a></li>

@@ -91,15 +91,15 @@
       <ul class="doc-sidebar-nav">
         <li><a href="index.html">Overview</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
-        <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
+        <li><a href="CLI_GUIDE.html">CodeGraph CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
-        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
-        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
-        <li><a href="DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Dashboard User Guide</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html" class="active">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -108,7 +108,7 @@
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
-        <li><a href="REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="REFACTORING.html">Refactoring Guide</a></li>
         <li><a href="RELEASE_GATE.html">Release Gate</a></li>
         <li><a href="SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="SCENARIOS.html">Workflow Scenarios Guide</a></li>
@@ -223,6 +223,10 @@
 <li><a href="#dogfood-trend">dogfood trend</a></li>
 <li><a href="#dogfood-hooks-status">dogfood hooks-status</a></li>
 <li><a href="#dogfood-validate-stories">dogfood validate-stories</a></li>
+<li><a href="#dogfood-config-check">dogfood config-check</a></li>
+<li><a href="#dogfood-maintain-db">dogfood maintain-db</a></li>
+<li><a href="#dogfood-continue">dogfood continue</a></li>
+<li><a href="#dogfood-unlock-db">dogfood unlock-db</a></li>
 <li><a href="#configuration">Configuration</a></li>
 <li><a href="#commitreport">CommitReport</a></li>
 <li><a href="#report-format">Report Format</a></li>
@@ -796,6 +800,102 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 </tbody>
 </table></div>
 <p>Detects 6 orphan types: <code>yaml_unused</code>, <code>yaml_missing</code>, <code>code_orphan</code>, <code>path_mismatch</code>, <code>orphaned_dataclass</code>, <code>unused_default</code>. Uses <code>ConfigOrphanAnalyzer</code> from <code>src/analysis/config_analyzer.py</code>.</p>
+<h3  id="dogfood-maintain-db"><span id="dogfood_maintain_db"></span>dogfood maintain-db<a class="heading-anchor" href="#dogfood-maintain-db" title="Link to this section">&para;</a></h3>
+<p>Perform routine CPG maintenance and cleanup:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--vacuum<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--db</code></td>
+<td>auto-detected</td>
+<td>DuckDB database path</td>
+</tr>
+<tr>
+<td><code>--vacuum</code></td>
+<td>off</td>
+<td>Run DuckDB <code>VACUUM</code> after maintenance</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>off</td>
+<td>Continue even when the command detects a risky state</td>
+</tr>
+</tbody>
+</table></div>
+<p>Use this command when quality history tables, review traces, or stale maintenance markers need a controlled cleanup step.</p>
+<h3  id="dogfood-continue"><span id="dogfood_continue"></span>dogfood continue<a class="heading-anchor" href="#dogfood-continue" title="Link to this section">&para;</a></h3>
+<p>Resume an interrupted dogfooding workflow from the stored review state:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--db</code></td>
+<td>auto-detected</td>
+<td>DuckDB database path</td>
+</tr>
+<tr>
+<td><code>--review-dir</code></td>
+<td><code>data/reviews</code></td>
+<td>Directory with persisted review state</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>off</td>
+<td>Return machine-readable status for automation</td>
+</tr>
+</tbody>
+</table></div>
+<p>This is the recovery path when a post-commit review was interrupted and you want to continue from the last saved checkpoint instead of starting over.</p>
+<h3  id="dogfood-unlock-db"><span id="dogfood_unlock_db"></span>dogfood unlock-db<a class="heading-anchor" href="#dogfood-unlock-db" title="Link to this section">&para;</a></h3>
+<p>Release a blocked DuckDB database after lock contention diagnostics:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>unlock-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+</code></pre></div>
+
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--db</code></td>
+<td>auto-detected</td>
+<td>DuckDB database path</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>off</td>
+<td>Attempt the unlock flow even when the detector is not fully certain</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>off</td>
+<td>Return machine-readable diagnostics</td>
+</tr>
+</tbody>
+</table></div>
+<p>Use this when <code>dogfood status</code>, <code>dogfood analyze</code>, or the post-commit hook report DuckDB lock contention and recommend an explicit unlock step.</p>
 <h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h2>
 <p>In <code>config.yaml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">dogfooding</span><span class="p">:</span>
@@ -809,6 +909,13 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 <span class="w">  </span><span class="nt">max_files_per_commit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">       </span><span class="c1"># Max files to analyze per commit</span>
 <span class="w">  </span><span class="nt">report_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">markdown</span><span class="w">        </span><span class="c1"># markdown or json</span>
 <span class="w">  </span><span class="nt">record_quality_history</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">   </span><span class="c1"># Record QualitySnapshot per commit</span>
+<span class="w">  </span><span class="nt">quality_history_db_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/quality_history.duckdb</span><span class="w">  </span><span class="c1"># Optional separate DB for snapshots</span>
+<span class="w">  </span><span class="nt">include_paths</span><span class="p">:</span><span class="w">                 </span><span class="c1"># Limit dogfooding to selected source roots</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tests</span>
+<span class="w">  </span><span class="nt">exclude_paths</span><span class="p">:</span><span class="w">                 </span><span class="c1"># Skip generated or third-party code</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.venv</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node_modules</span>
 <span class="w">  </span><span class="nt">claims_validation</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span><span class="w">                 </span><span class="c1"># Seconds per claim query</span>
@@ -991,7 +1098,7 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-06</span>
+        <span>Last updated: 2026-04-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/DOGFOODING.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1037,6 +1144,9 @@ PostToolUse hook fires (.claude/hooks/commit_analysis.py, 58s timeout)
 <li><a href="#dogfood-hooks-status" class="level-3">dogfood hooks-status</a></li>
 <li><a href="#dogfood-validate-stories" class="level-3">dogfood validate-stories</a></li>
 <li><a href="#dogfood-config-check" class="level-3">dogfood config-check</a></li>
+<li><a href="#dogfood-maintain-db" class="level-3">dogfood maintain-db</a></li>
+<li><a href="#dogfood-continue" class="level-3">dogfood continue</a></li>
+<li><a href="#dogfood-unlock-db" class="level-3">dogfood unlock-db</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
 <li><a href="#commitreport" class="level-2">CommitReport</a></li>
 <li><a href="#report-format" class="level-2">Report Format</a></li>

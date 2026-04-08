@@ -91,15 +91,15 @@
       <ul class="doc-sidebar-nav">
         <li><a href="index.html">Overview</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
-        <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
+        <li><a href="CLI_GUIDE.html">CodeGraph CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
-        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
-        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
-        <li><a href="DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Dashboard User Guide</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -108,7 +108,7 @@
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
-        <li><a href="REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="REFACTORING.html">Refactoring Guide</a></li>
         <li><a href="RELEASE_GATE.html">Release Gate</a></li>
         <li><a href="SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="SCENARIOS.html">Workflow Scenarios Guide</a></li>
@@ -198,14 +198,7 @@
 <li><a href="#how-it-works">How It Works</a></li>
 <li><a href="#intent-classification">Intent Classification</a></li>
 <li><a href="#two-phase-architecture">Two-Phase Architecture</a></li>
-<li><a href="#deterministic-semantic-graph">Deterministic Semantic Graph</a></li>
-<li><a href="#freshness-preflight">Freshness Preflight</a></li>
-<li><a href="#input-sources">Input Sources</a></li>
-<li><a href="#graph-coverage-and-gaps">Graph Coverage And Gaps</a></li>
-<li><a href="#consistency-checks">Consistency Checks</a></li>
-<li><a href="#domain-extension-points">Domain Extension Points</a></li>
 <li><a href="#eight-documentation-handlers">Eight Documentation Handlers</a></li>
-<li><a href="#when-s03-stays-deterministic">When S03 Stays Deterministic</a></li>
 <li><a href="#cpg-retrieval-pipeline">CPG Retrieval Pipeline</a></li>
 <li><a href="#phase-1-direct-function-lookup">Phase 1: Direct Function Lookup</a></li>
 <li><a href="#phase-2-pattern-based-search">Phase 2: Pattern-Based Search</a></li>
@@ -218,12 +211,10 @@
 <li><a href="#mvd-minimum-viable-documentation">MVD (Minimum Viable Documentation)</a></li>
 <li><a href="#coverage-report">Coverage Report</a></li>
 <li><a href="#diagrams">Diagrams</a></li>
-<li><a href="#architecture-views">Architecture Views</a></li>
 <li><a href="#pipeline-documentation">Pipeline Documentation</a></li>
 <li><a href="#business-logic-extraction">Business Logic Extraction</a></li>
 <li><a href="#type-documentation">Type Documentation</a></li>
 <li><a href="#export-formats">Export Formats</a></li>
-<li><a href="#generated-package-structure">Generated Package Structure</a></li>
 <li><a href="#cli-usage">CLI Usage</a></li>
 <li><a href="#example-questions">Example Questions</a></li>
 <li><a href="#related-scenarios">Related Scenarios</a></li>
@@ -301,105 +292,20 @@
 <p>The detector also extracts:
 - <strong><code>target</code></strong> — function or module name from the query (via regex patterns and semantic mappings)
 - <strong><code>format</code></strong> — output format: markdown (default), html, rst, latex
-- <strong><code>diagram_type</code></strong> — for <code>diagram_doc</code>: <code>callgraph</code>, <code>component</code>, <code>dependency</code>, <code>system_architecture</code>, <code>tech_stack</code>, or <code>deployment_view</code></p>
+- <strong><code>diagram_type</code></strong> — for diagram_doc: component, dependency, or callgraph</p>
 <h3  id="two-phase-architecture"><span id="two_phase_architecture"></span>Two-Phase Architecture<a class="heading-anchor" href="#two-phase-architecture" title="Link to this section">&para;</a></h3>
 <p>S03 uses a two-phase approach:</p>
-<p><strong>Phase 1: Handler-based (no LLM).</strong> The <code>integrate_handlers()</code> function tries 8 registered template-based handlers. For documentation diagrams, Phase 1 now starts by building a deterministic semantic graph from repository evidence. Handlers then produce structured reports and Mermaid views directly from CPG data plus repo artifacts through <code>DocumentationReportFormatter</code>. If a handler matches and finds enough evidence, the response is returned without calling the LLM.</p>
+<p><strong>Phase 1: Handler-based (no LLM).</strong> The <code>integrate_handlers()</code> function tries 8 registered template-based handlers. Each handler produces structured documentation directly from CPG data using <code>DocumentationReportFormatter</code>. If a handler matches the detected intent and finds results, the response is returned without calling the LLM.</p>
 <p><strong>Phase 2: LLM fallback.</strong> If no handler matched, the full pipeline runs: 4-phase CPG retrieval collects methods, <code>CallGraphAnalyzer</code> enriches with usage patterns, then LLM generates documentation with graph context.</p>
 <div class="highlight"><pre><span></span><code>Query -&gt; DocumentationIntentDetector -&gt; integrate_handlers()
   |                                          |
-  |  Phase 1: Deterministic graph + handlers? Yes -&gt; Structured report (no LLM)
+  |  Phase 1: Handler matched?      Yes -&gt; Structured report (no LLM)
   |                                 No  -&gt; Phase 2: Full pipeline
   |
   Phase 2: CPG Retrieval (4 phases) -&gt; CallGraphAnalyzer
            -&gt; LLM with graph context -&gt; Documentation
 </code></pre></div>
 
-<h3  id="deterministic-semantic-graph"><span id="deterministic_semantic_graph"></span>Deterministic Semantic Graph<a class="heading-anchor" href="#deterministic-semantic-graph" title="Link to this section">&para;</a></h3>
-<p>For system-level documentation requests, S03 builds a typed documentation graph before rendering the output. This graph is deterministic and does not depend on LLM prompting.</p>
-<p>The graph stores:</p>
-<ul>
-<li><strong>Entities</strong> such as <code>project</code>, <code>subsystem</code>, <code>language</code>, <code>framework</code>, <code>database</code>, <code>platform</code>, and <code>deployment_target</code></li>
-<li><strong>Relations</strong> such as <code>part_of</code>, <code>uses</code>, and <code>runs_on</code></li>
-<li><strong>Source attribution</strong> for every fact: <code>source_kind</code>, <code>source_path</code>, <code>confidence</code>, and <code>extraction_method=deterministic</code></li>
-</ul>
-<p>This gives S03 a stable intermediate model that can be reused by diagrams and future documentation outputs instead of generating each artifact from unrelated one-off queries.</p>
-<h3  id="freshness-preflight"><span id="freshness_preflight"></span>Freshness Preflight<a class="heading-anchor" href="#freshness-preflight" title="Link to this section">&para;</a></h3>
-<p>Before S03 enters either the deterministic handler path or the LLM fallback path, it now runs a mandatory CPG freshness preflight.</p>
-<p>The preflight does three things:</p>
-<ol>
-<li>resolves the active <code>db_path</code> and repository <code>source_path</code>;</li>
-<li>checks whether the current CPG is fresh relative to repository <code>HEAD</code>;</li>
-<li>if the CPG is stale, runs <code>gocpg update</code> first and only then continues with documentation generation.</li>
-</ol>
-<p>If refresh fails, S03 does not proceed with documentation handlers or LLM fallback. This is the same operational rule already used by the freshness-orchestrated audit flow: documentation should not be generated from a stale graph.</p>
-<p>The freshness outcome is also stored in <code>metadata.cpg_freshness</code>, including whether refresh was required, whether it succeeded, and why the workflow was blocked when it could not continue.</p>
-<h3  id="input-sources"><span id="input_sources"></span>Input Sources<a class="heading-anchor" href="#input-sources" title="Link to this section">&para;</a></h3>
-<p>Phase 1 documentation graph extraction combines three deterministic evidence sources:</p>
-<ol>
-<li><strong>CPG facts</strong>: subsystems and project structure from the active CPG</li>
-<li><strong>Repo manifests and config</strong>: <code>pyproject.toml</code>, <code>requirements*.txt</code>, <code>package.json</code>, <code>go.mod</code>, <code>Dockerfile*</code>, <code>docker-compose*.yml</code>, Kubernetes YAML, Helm, Terraform</li>
-<li><strong>Repository docs</strong>: <code>README.md</code> and <code>docs/**/*.md</code></li>
-</ol>
-<h3  id="graph-coverage-and-gaps"><span id="graph_coverage_and_gaps"></span>Graph Coverage And Gaps<a class="heading-anchor" href="#graph-coverage-and-gaps" title="Link to this section">&para;</a></h3>
-<p>Phase 3 adds graph-based documentation coverage summaries on top of the same semantic graph. Coverage is evaluated as deterministic documentation evidence for three buckets:</p>
-<ol>
-<li><strong>Subsystems/components</strong>: whether a discovered subsystem has any documentation facts beyond its bare CPG boundary</li>
-<li><strong>APIs/interfaces</strong>: whether subsystems expose endpoints or communicate via explicit interface/protocol facts in docs</li>
-<li><strong>Deployment/integration facts</strong>: whether subsystems have documented deployment, datastore, dependency, or integration relations</li>
-</ol>
-<p>The gap flow is now remediation-aware:</p>
-<ol>
-<li>detect candidate gaps from deterministic graph evidence;</li>
-<li>classify which expectations are actually applicable;</li>
-<li>run deterministic remediation passes before final reporting;</li>
-<li>show only residual gaps as the final unresolved set.</li>
-</ol>
-<p>Applicability gates are explicit:</p>
-<ul>
-<li><code>api_interface_gap</code> is only applicable when the subsystem has endpoint/router/boundary evidence;</li>
-<li><code>deployment_integration_gap</code> is only applicable when the subsystem has deployment target, runtime, datastore, or integration evidence;</li>
-<li>otherwise the expectation is reported as <code>Not Applicable</code>, not as a residual defect.</li>
-</ul>
-<p>Deterministic remediation passes currently cover:</p>
-<ul>
-<li>subsystem evidence synthesis from CPG metadata and graph neighbors;</li>
-<li>interface recovery from endpoints, protocols, and boundary evidence;</li>
-<li>deployment recovery from manifests and runtime relations;</li>
-<li>runtime backfill from manifests/config into generated documentation output.</li>
-</ul>
-<p>This produces explicit residual-only gap lists such as:</p>
-<ul>
-<li>subsystems with no deterministic documentation facts;</li>
-<li>subsystems with no API/interface facts;</li>
-<li>subsystems with no deployment/integration facts;</li>
-<li>runtime technologies or deployment surfaces present in manifests but absent from docs.</li>
-</ul>
-<p>Coverage output also separates:</p>
-<ul>
-<li><code>Automatically Closed Gaps</code></li>
-<li><code>Not Applicable Expectations</code></li>
-<li><code>Residual Documentation Gaps</code></li>
-<li><code>Warnings Requiring Manual Review</code></li>
-<li><code>Automatic Recovery Summary</code></li>
-</ul>
-<h3  id="consistency-checks"><span id="consistency_checks"></span>Consistency Checks<a class="heading-anchor" href="#consistency-checks" title="Link to this section">&para;</a></h3>
-<p>Phase 3 also runs deterministic consistency checks between docs claims and non-doc evidence. The checks are intentionally narrow and auditable:</p>
-<ul>
-<li>docs technologies/deployment targets that are not corroborated by manifests/config;</li>
-<li>docs dependency claims between subsystems that are not corroborated by CPG or manifest-derived relations;</li>
-<li>docs datastore claims that are not corroborated by repo runtime/config evidence.</li>
-</ul>
-<p>These checks do not replace S11. They only flag documentation mismatches between repository docs and deterministic repo evidence.</p>
-<p>If a warning cannot be strictly confirmed or disproved from deterministic evidence, it stays in <code>Warnings Requiring Manual Review</code>. It must not be promoted to <code>Automatically Closed Gaps</code>.</p>
-<h3  id="domain-extension-points"><span id="domain_extension_points"></span>Domain Extension Points<a class="heading-anchor" href="#domain-extension-points" title="Link to this section">&para;</a></h3>
-<p>Domain plugins can extend S03 semantic extraction without changing core S03 code:</p>
-<ul>
-<li><strong>Additional entity patterns</strong>: <code>get_documentation_entity_patterns()</code> adds domain-specific deterministic entities such as buses, external systems, or protocols</li>
-<li><strong>Aliases</strong>: <code>get_subsystem_aliases()</code> and <code>get_documentation_aliases()</code> let docs terms map to canonical subsystem/component names</li>
-<li><strong>Relation inference hook</strong>: <code>infer_documentation_relations(graph)</code> can add deterministic domain-specific relations after the generic passes</li>
-</ul>
-<p>This keeps domain-specific extraction logic inside <code>src/domains/</code>, while S03 stays generic.</p>
 <h3  id="eight-documentation-handlers"><span id="eight_documentation_handlers"></span>Eight Documentation Handlers<a class="heading-anchor" href="#eight-documentation-handlers" title="Link to this section">&para;</a></h3>
 <p>The 8 handlers are registered in <code>HandlerRegistry("documentation")</code>:</p>
 <div class="table-wrapper"><table>
@@ -454,17 +360,6 @@
 </tbody>
 </table></div>
 <p>All handlers inherit from <code>DocumentationHandler</code> (extends <code>BaseHandler</code>), which provides incremental documentation session tracking — <code>_get_doc_session()</code>, <code>_update_doc_session()</code>, and <code>_get_session_delta()</code> allow tracking which functions/modules have been documented across multiple queries.</p>
-<h3  id="when-s03-stays-deterministic"><span id="when_s03_stays_deterministic"></span>When S03 Stays Deterministic<a class="heading-anchor" href="#when-s03-stays-deterministic" title="Link to this section">&para;</a></h3>
-<p>S03 can answer several project-level documentation requests entirely in Phase 1 without LLM fallback when enough evidence is present:</p>
-<ul>
-<li>system architecture reconstruction</li>
-<li>tech stack layer overview</li>
-<li>data flow reconstruction</li>
-<li>dependency tree generation</li>
-<li>deployment view generation</li>
-<li>call graph, component, and dependency diagrams</li>
-<li>function docs, module overviews, coverage reports, and MVD when the relevant handlers have enough CPG evidence</li>
-</ul>
 <h2  id="cpg-retrieval-pipeline"><span id="cpg_retrieval_pipeline"></span>CPG Retrieval Pipeline<a class="heading-anchor" href="#cpg-retrieval-pipeline" title="Link to this section">&para;</a></h2>
 <p>The LLM fallback phase uses a 4-phase CPG retrieval pipeline to find relevant methods:</p>
 <h3  id="phase-1-direct-function-lookup"><span id="phase_1_direct_function_lookup"></span>Phase 1: Direct Function Lookup<a class="heading-anchor" href="#phase-1-direct-function-lookup" title="Link to this section">&para;</a></h3>
@@ -506,31 +401,13 @@
 <h3  id="mvd-minimum-viable-documentation"><span id="mvd_minimum_viable_documentation"></span>MVD (Minimum Viable Documentation)<a class="heading-anchor" href="#mvd-minimum-viable-documentation" title="Link to this section">&para;</a></h3>
 <p>Generates project-level Minimum Viable Documentation — a structured overview covering architecture, key modules, entry points, and API surface.</p>
 <h3  id="coverage-report"><span id="coverage_report"></span>Coverage Report<a class="heading-anchor" href="#coverage-report" title="Link to this section">&para;</a></h3>
-<p>Analyzes documentation coverage at two levels:</p>
-<ul>
-<li>classic comment/function coverage from CPG statistics;</li>
-<li>graph-based documentation coverage for subsystems, APIs/interfaces, and deployment/integration facts.</li>
-</ul>
-<p>Phase 3 coverage output now includes explicit documentation gaps and deterministic consistency warnings when docs claims disagree with manifest/config/CPG evidence.</p>
+<p>Analyzes documentation coverage — identifies undocumented functions, calculates comment coverage ratio, and highlights documentation gaps.</p>
 <h3 id="diagrams">Diagrams<a class="heading-anchor" href="#diagrams" title="Link to this section">&para;</a></h3>
 <p>Generates Mermaid diagrams from CPG data:
 - <strong>Call graph</strong> — function call relationships
 - <strong>Component diagram</strong> — subsystem/module architecture
 - <strong>Dependency diagram</strong> — file/module dependency graph</p>
-<p>The <code>diagram_type</code> is auto-detected from the query and now supports both the legacy CPG-only views and new semantic-graph views.</p>
-<h3  id="architecture-views"><span id="architecture_views"></span>Architecture Views<a class="heading-anchor" href="#architecture-views" title="Link to this section">&para;</a></h3>
-<p>The deterministic semantic graph powers three system-level architecture views in Phase 1:</p>
-<ul>
-<li><strong>System Architecture</strong> — high-level project + subsystems + external technologies/deployment targets</li>
-<li><strong>Tech Stack Layers</strong> — grouped technologies across frontend, backend, data, infrastructure, and tooling</li>
-<li><strong>Deployment View</strong> — deployment targets reconstructed from Docker, Compose, and Kubernetes artifacts</li>
-</ul>
-<p>Phase 2 extends this with two more graph-powered views:</p>
-<ul>
-<li><strong>Data Flow</strong> — subsystem to endpoint/protocol/datastore communication edges</li>
-<li><strong>Dependency Tree</strong> — project-level dependency structure across subsystems, technologies, and deployment surfaces</li>
-</ul>
-<p>These views are documentation artifacts. They describe structure and runtime shape, but they do not perform the architectural quality analysis that belongs to S11.</p>
+<p>The <code>diagram_type</code> is auto-detected from the query (component, dependency, or callgraph).</p>
 <h3  id="pipeline-documentation"><span id="pipeline_documentation"></span>Pipeline Documentation<a class="heading-anchor" href="#pipeline-documentation" title="Link to this section">&para;</a></h3>
 <p>Documents data processing pipelines and execution flows — traces query processing from input to output through the call graph.</p>
 <h3  id="business-logic-extraction"><span id="business_logic_extraction"></span>Business Logic Extraction<a class="heading-anchor" href="#business-logic-extraction" title="Link to this section">&para;</a></h3>
@@ -544,70 +421,6 @@
 <li><strong>Docusaurus</strong> — <code>DocusaurusExporter(output_dir)</code> generates MDX files with frontmatter and sidebar configuration</li>
 </ul>
 <p>The <code>DocumentationReportFormatter</code> provides 8 format methods matching each documentation type: <code>format_function_documentation</code>, <code>format_module_overview</code>, <code>format_pipeline_documentation</code>, <code>format_coverage_report</code>, <code>format_diagram_documentation</code>, <code>format_type_documentation</code>, <code>format_mvd_document</code>, <code>format_business_logic_report</code>.</p>
-<h2  id="generated-package-structure"><span id="generated_package_structure"></span>Generated Package Structure<a class="heading-anchor" href="#generated-package-structure" title="Link to this section">&para;</a></h2>
-<p>When S03 runs full package generation, the output directory is not just a dump of section files anymore. It is intended to be a navigable package with explicit entrypoints:</p>
-<ul>
-<li><code>documentation_&lt;lang&gt;_&lt;timestamp&gt;.md</code> — combined all-in-one document</li>
-<li><code>INDEX.md</code> — package entrypoint with section roles and suggested reading paths</li>
-<li><code>package_manifest.json</code> — machine-readable package metadata</li>
-<li><code>section_manifests/*.json</code> — machine-readable per-section manifests with selected items and next-step links</li>
-<li><code>cpg_freshness.json</code> — freshness evidence for the graph used during generation</li>
-<li><code>sections/*.md</code> — individual section documents</li>
-</ul>
-<p>Recommended reading order depends on the use case:</p>
-<ul>
-<li>repo orientation: <code>mvd_doc</code> -&gt; <code>diagram_doc</code> -&gt; <code>module_overview</code></li>
-<li>subsystem change planning: <code>mvd_doc</code> -&gt; <code>module_overview</code> -&gt; <code>function_doc</code></li>
-<li>documentation quality review: <code>coverage_doc</code> -&gt; <code>mvd_doc</code> -&gt; <code>module_overview</code></li>
-</ul>
-<p>Section files are intentionally role-specific:</p>
-<ul>
-<li><code>mvd_doc</code> is the landing page for repository understanding</li>
-<li><code>diagram_doc</code> is the visual architecture entrypoint</li>
-<li><code>module_overview</code> is the subsystem inventory</li>
-<li><code>function_doc</code> is a curated entrypoint set: a representative function sample, not a complete API reference</li>
-<li><code>coverage_doc</code> is a quality appendix, not a primary onboarding document</li>
-</ul>
-<p>The machine-readable <code>section_manifests/*.json</code> files are intended for downstream tooling and indexing. They record:</p>
-<ul>
-<li>section purpose and category;</li>
-<li>suggested next documents;</li>
-<li>selection criteria for representative outputs;</li>
-<li>selected modules/functions/diagram metadata for the generated section.</li>
-</ul>
-<p>When <code>coverage_doc</code> is included, the package now also contains package-level quality artifacts:</p>
-<ul>
-<li><code>remediation_summary.json</code> — machine-readable summary of deterministic remediation passes and counts before/after recovery</li>
-<li><code>residual_gaps.json</code> — machine-readable residual gap set for downstream tooling</li>
-</ul>
-<p>When full generation is run with opt-in patch preparation, the package additionally includes:</p>
-<ul>
-<li><code>doc_patch_plan.json</code></li>
-<li><code>doc_patch_plan.md</code></li>
-</ul>
-<p>These files are deterministic draft suggestions only. They do not modify repository docs automatically.</p>
-<h2  id="project-detail-documentation-tab"><span id="project_detail_documentation_tab"></span>Project Detail Documentation Tab<a class="heading-anchor" href="#project-detail-documentation-tab" title="Link to this section">&para;</a></h2>
-<p>The dashboard <code>Project Detail</code> page can expose the latest generated S03 package through a dedicated <code>Documentation</code> tab. The tab is intentionally read-only:</p>
-<ul>
-<li>it reads the latest generated package from the configured documentation output directory;</li>
-<li>it does not trigger package generation automatically when the page is opened;</li>
-<li>it treats markdown as the canonical storage format and renders HTML only as a derived UI representation.</li>
-</ul>
-<p>The tab entrypoint is <code>INDEX.md</code> when it exists. The same package manifest and section manifests are used to populate navigation, section roles, and suggested reading paths.</p>
-<p>The tab is freshness-aware and distinguishes these package states: <code>current</code>, <code>stale_cpg</code>, <code>missing</code>, <code>generation_failed</code>, and <code>unknown</code>.</p>
-<ul>
-<li><code>current</code> — the package freshness metadata is present and the current project CPG is still coherent with that package;</li>
-<li><code>stale_cpg</code> — the package exists, but the project CPG has moved ahead and the package must be regenerated on the fresh graph;</li>
-<li><code>missing</code> — no complete generated package is available for the project;</li>
-<li><code>generation_failed</code> — a partial package exists, but required entry artifacts are missing;</li>
-<li><code>unknown</code> — package freshness could not be proven from the available metadata.</li>
-</ul>
-<p>When the tab is not <code>current</code>, the UI should show a regeneration recommendation and the deterministic command that can be used to rebuild the package. Reader-facing documents remain separate from appendix-level quality artifacts:</p>
-<ul>
-<li><code>INDEX.md</code>, <code>mvd_doc</code>, <code>diagram_doc</code>, and other section markdown files are shown as reader docs;</li>
-<li><code>coverage_doc</code>, <code>remediation_summary.json</code>, and <code>residual_gaps.json</code> are exposed as quality appendix evidence.</li>
-</ul>
-<p>Markdown is rendered deterministically to HTML in the UI. Mermaid fenced blocks may be rendered as diagrams, but the stored source of truth remains the original markdown file in the generated package.</p>
 <h2  id="cli-usage"><span id="cli_usage"></span>CLI Usage<a class="heading-anchor" href="#cli-usage" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Generate function documentation</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>query<span class="w"> </span><span class="s2">&quot;Generate documentation for heap_insert&quot;</span>
@@ -623,7 +436,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <span class="c1"># Full documentation generation</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>en
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>en<span class="w"> </span>--prepare-doc-patches
 
 <span class="c1"># Generate specific section</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>section<span class="w"> </span>mvd_doc<span class="w"> </span>--language<span class="w"> </span>en
@@ -639,14 +451,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.export_docs<span
 <li>&ldquo;Document the [module] architecture&rdquo;</li>
 <li>&ldquo;Show documentation coverage for [subsystem]&rdquo;</li>
 <li>&ldquo;Generate call graph diagram for [module]&rdquo;</li>
-<li>&ldquo;Generate system architecture documentation for this project&rdquo;</li>
-<li>&ldquo;Show tech stack layers for the active project&rdquo;</li>
-<li>&ldquo;Generate data flow diagram for the ingestion pipeline&rdquo;</li>
-<li>&ldquo;Show dependency tree for the current repo&rdquo;</li>
-<li>&ldquo;Show deployment view for the current repo&rdquo;</li>
-<li>&ldquo;Build a deterministic knowledge graph for project documentation&rdquo;</li>
-<li>&ldquo;Show documentation gaps for the current repo&rdquo;</li>
-<li>&ldquo;Check whether repository docs match manifests and config&rdquo;</li>
 <li>&ldquo;Generate Minimum Viable Documentation for the project&rdquo;</li>
 <li>&ldquo;Extract business logic from [module]&rdquo;</li>
 <li>&ldquo;Document type conversions in [subsystem]&rdquo;</li>
@@ -660,7 +464,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.export_docs<span
 <li><a href="11-architecture.html">Architecture</a> - Deeper structural and dependency analysis</li>
 <li><a href="04-feature-development.html">Feature Development</a> - Finding integration points</li>
 </ul>
-<p><strong>S03 vs S01 vs S11:</strong> S03 generates documentation artifacts (API docs, module overviews, diagrams, coverage reports) from code and repo evidence. S01 (onboarding) helps developers explore and understand unfamiliar codebases interactively. S11 (architecture) focuses on structural analysis — dependency cycles, layer violations, coupling metrics, and architecture smells. All three use CPG data, but S03 uses it to reconstruct documentation, while S11 uses it to diagnose architecture quality problems.</p>
+<p><strong>S03 vs S01 vs S11:</strong> S03 generates documentation artifacts (API docs, module overviews, diagrams, coverage reports) from code. S01 (onboarding) helps developers explore and understand unfamiliar codebases interactively. S11 (architecture) focuses on structural analysis — dependency cycles, layer violations, coupling metrics. All three use CPG data and CallGraphAnalyzer but serve different purposes: S03 produces documentation, S01 answers exploration questions, S11 detects architectural issues.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -679,7 +483,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.export_docs<span
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-06</span>
+        <span>Last updated: 2026-04-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/03-documentation.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -693,14 +497,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.export_docs<span
 <li><a href="#how-it-works" class="level-2">How It Works</a></li>
 <li><a href="#intent-classification" class="level-3">Intent Classification</a></li>
 <li><a href="#two-phase-architecture" class="level-3">Two-Phase Architecture</a></li>
-<li><a href="#deterministic-semantic-graph" class="level-3">Deterministic Semantic Graph</a></li>
-<li><a href="#freshness-preflight" class="level-3">Freshness Preflight</a></li>
-<li><a href="#input-sources" class="level-3">Input Sources</a></li>
-<li><a href="#graph-coverage-and-gaps" class="level-3">Graph Coverage And Gaps</a></li>
-<li><a href="#consistency-checks" class="level-3">Consistency Checks</a></li>
-<li><a href="#domain-extension-points" class="level-3">Domain Extension Points</a></li>
 <li><a href="#eight-documentation-handlers" class="level-3">Eight Documentation Handlers</a></li>
-<li><a href="#when-s03-stays-deterministic" class="level-3">When S03 Stays Deterministic</a></li>
 <li><a href="#cpg-retrieval-pipeline" class="level-2">CPG Retrieval Pipeline</a></li>
 <li><a href="#phase-1-direct-function-lookup" class="level-3">Phase 1: Direct Function Lookup</a></li>
 <li><a href="#phase-2-pattern-based-search" class="level-3">Phase 2: Pattern-Based Search</a></li>
@@ -713,13 +510,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.export_docs<span
 <li><a href="#mvd-minimum-viable-documentation" class="level-3">MVD (Minimum Viable Documentation)</a></li>
 <li><a href="#coverage-report" class="level-3">Coverage Report</a></li>
 <li><a href="#diagrams" class="level-3">Diagrams</a></li>
-<li><a href="#architecture-views" class="level-3">Architecture Views</a></li>
 <li><a href="#pipeline-documentation" class="level-3">Pipeline Documentation</a></li>
 <li><a href="#business-logic-extraction" class="level-3">Business Logic Extraction</a></li>
 <li><a href="#type-documentation" class="level-3">Type Documentation</a></li>
 <li><a href="#export-formats" class="level-2">Export Formats</a></li>
-<li><a href="#generated-package-structure" class="level-2">Generated Package Structure</a></li>
-<li><a href="#project-detail-documentation-tab" class="level-2">Project Detail Documentation Tab</a></li>
 <li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>

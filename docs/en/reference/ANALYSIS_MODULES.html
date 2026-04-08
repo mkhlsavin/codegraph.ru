@@ -91,15 +91,15 @@
       <ul class="doc-sidebar-nav">
         <li><a href="../guides/index.html">Overview</a></li>
         <li><a href="../guides/BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
-        <li><a href="../guides/CLI_GUIDE.html">CLI Guide</a></li>
+        <li><a href="../guides/CLI_GUIDE.html">CodeGraph CLI Guide</a></li>
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
-        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
-        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
-        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
+        <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
+        <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
+        <li><a href="../guides/DASHBOARD_USER_GUIDE.html">Dashboard User Guide</a></li>
         <li><a href="../guides/DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="../guides/DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="../guides/LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -108,7 +108,7 @@
         <li><a href="../guides/PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="../guides/PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="../guides/QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
-        <li><a href="../guides/REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="../guides/REFACTORING.html">Refactoring Guide</a></li>
         <li><a href="../guides/RELEASE_GATE.html">Release Gate</a></li>
         <li><a href="../guides/SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="../guides/SCENARIOS.html">Workflow Scenarios Guide</a></li>
@@ -182,6 +182,7 @@
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="FAQ.html">Frequently Asked Questions (FAQ)</a></li>
         <li><a href="HYPOTHESIS_SYSTEM.html">Hypothesis System Reference</a></li>
+        <li><a href="MCP_TOOLS.html">MCP Tools Reference</a></li>
         <li><a href="SCHEMA.html">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Enterprise Security Module</a></li>
         <li><a href="SNAPSHOT_STORE.html">Snapshot Store Reference</a></li>
@@ -291,6 +292,9 @@
 <li><a href="#yamlextractor">YAMLExtractor</a></li>
 <li><a href="#astextractor">ASTExtractor</a></li>
 <li><a href="#codescanner">CodeScanner</a></li>
+<li><a href="#scoped-analysis-configuration">Scoped Analysis Configuration</a></li>
+<li><a href="#analysisscope">AnalysisScope</a></li>
+<li><a href="#scopeconfig">ScopeConfig</a></li>
 <li><a href="#see-also">See Also</a></li>
 </ul>
 <hr />
@@ -2368,6 +2372,133 @@
 </tbody>
 </table></div>
 <hr />
+<h2  id="scoped-analysis-configuration"><span id="scoped_analysis_configuration"></span>Scoped Analysis Configuration<a class="heading-anchor" href="#scoped-analysis-configuration" title="Link to this section">&para;</a></h2>
+<p>Module: <code>src/analysis/scope_config.py</code></p>
+<p>Provides path-aware analysis policy selection so one project can apply different rules to <code>main</code>, <code>tests</code>, <code>vendor</code>, or other file groups.</p>
+<h3 id="analysisscope">AnalysisScope<a class="heading-anchor" href="#analysisscope" title="Link to this section">&para;</a></h3>
+<p>Dataclass representing one named analysis scope.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>str</code></td>
+<td>Scope name</td>
+</tr>
+<tr>
+<td><code>paths</code></td>
+<td><code>list[str]</code></td>
+<td>Glob patterns matched against normalized file paths</td>
+</tr>
+<tr>
+<td><code>rules</code></td>
+<td><code>str \| list[str]</code></td>
+<td>Rule mode such as <code>all</code>, <code>critical_only</code>, <code>taint_only</code>, or explicit rule IDs</td>
+</tr>
+<tr>
+<td><code>severity_threshold</code></td>
+<td><code>str</code></td>
+<td>Minimum severity accepted in this scope</td>
+</tr>
+<tr>
+<td><code>suppress_policy</code></td>
+<td><code>str</code></td>
+<td>Suppression policy identifier</td>
+</tr>
+<tr>
+<td><code>enabled</code></td>
+<td><code>bool</code></td>
+<td>Whether the scope is active</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>matches(file_path)</code></td>
+<td><code>bool</code></td>
+<td>Check whether a file belongs to this scope</td>
+</tr>
+<tr>
+<td><code>to_dict()</code></td>
+<td><code>dict</code></td>
+<td>Serialize the scope</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="scopeconfig">ScopeConfig<a class="heading-anchor" href="#scopeconfig" title="Link to this section">&para;</a></h3>
+<p>Dataclass storing all configured scopes for a project.</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scopes</code></td>
+<td><code>list[AnalysisScope]</code></td>
+<td>Ordered list of configured scopes</td>
+</tr>
+<tr>
+<td><code>default_scope</code></td>
+<td><code>str</code></td>
+<td>Fallback scope name</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>from_yaml(path)</code></td>
+<td><code>ScopeConfig</code></td>
+<td>Load scope rules from YAML</td>
+</tr>
+<tr>
+<td><code>from_config_dict(config_dict)</code></td>
+<td><code>ScopeConfig</code></td>
+<td>Build config from a nested dict</td>
+</tr>
+<tr>
+<td><code>resolve_scope(file_path)</code></td>
+<td><code>AnalysisScope \| None</code></td>
+<td>Resolve the effective scope for a file</td>
+</tr>
+<tr>
+<td><code>should_report(file_path, severity, rule_id)</code></td>
+<td><code>bool</code></td>
+<td>Decide whether a finding should be reported</td>
+</tr>
+<tr>
+<td><code>to_dict()</code></td>
+<td><code>dict</code></td>
+<td>Serialize the full config</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
 <h2  id="see-also"><span id="see_also"></span>See Also<a class="heading-anchor" href="#see-also" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="SCHEMA.html">Schema Reference</a> — Complete database schema</li>
@@ -2393,7 +2524,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-06</span>
+        <span>Last updated: 2026-04-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/ANALYSIS_MODULES.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -2472,6 +2603,9 @@
 <li><a href="#yamlextractor" class="level-3">YAMLExtractor</a></li>
 <li><a href="#astextractor" class="level-3">ASTExtractor</a></li>
 <li><a href="#codescanner" class="level-3">CodeScanner</a></li>
+<li><a href="#scoped-analysis-configuration" class="level-2">Scoped Analysis Configuration</a></li>
+<li><a href="#analysisscope" class="level-3">AnalysisScope</a></li>
+<li><a href="#scopeconfig" class="level-3">ScopeConfig</a></li>
 <li><a href="#see-also" class="level-2">See Also</a></li>
       </ul>
     </aside>

@@ -91,15 +91,15 @@
       <ul class="doc-sidebar-nav">
         <li><a href="index.html">Overview</a></li>
         <li><a href="BENCHMARK_GUIDE.html">Benchmark Framework Guide</a></li>
-        <li><a href="CLI_GUIDE.html">CLI Guide</a></li>
+        <li><a href="CLI_GUIDE.html">CodeGraph CLI Guide</a></li>
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
-        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Developer Guide</a></li>
-        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard V2 Health Score Methodology</a></li>
-        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Runbook</a></li>
-        <li><a href="DASHBOARD_USER_GUIDE.html">CISO/CTO Dashboard User Guide</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Dashboard User Guide</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Dataflow Analysis User Guide</a></li>
         <li><a href="DOGFOODING.html">Dogfooding Guide: CPG-Powered Commit Analysis</a></li>
         <li><a href="LSP_SERVER.html">CodeGraph LSP Server</a></li>
@@ -108,7 +108,7 @@
         <li><a href="PROGRAMMATIC_GUIDE.html">User Guide</a></li>
         <li><a href="PROJECT_IMPORT.html">Importing a New Codebase</a></li>
         <li><a href="QUICK_REFERENCE.html">CodeGraph Quick Reference</a></li>
-        <li><a href="REFACTORING.html">Refactoring Analysis Guide</a></li>
+        <li><a href="REFACTORING.html">Refactoring Guide</a></li>
         <li><a href="RELEASE_GATE.html">Release Gate</a></li>
         <li><a href="SCA_SBOM.html">Software Composition Analysis (SCA) & SBOM</a></li>
         <li><a href="SCENARIOS.html">Workflow Scenarios Guide</a></li>
@@ -189,176 +189,295 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>This guide shows how to connect <a href="https://opencode.ai">OpenCode</a> to CodeGraph&rsquo;s CPG (Code Property Graph) analysis tools.</p>
-<h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h2>
+        <p>This guide is the shortest honest path to a useful setup.</p>
+<p>If you are new to the stack, think about it like this:</p>
 <ul>
-<li>Python 3.11+ with CodeGraph installed (<code>pip install -r requirements.txt</code>)</li>
-<li>A parsed CPG database (<code>.duckdb</code> file) for your project</li>
-<li>OpenCode v1.2+ installed (<code>npm install -g opencode-ai</code>)</li>
+<li><code>GoCPG</code> keeps the code graph fresh.</li>
+<li><code>OpenViking</code> keeps project memory and session context.</li>
+<li><code>PostgreSQL</code> keeps the rules: who owns a session, who can read it, who can take it over, and which saved knowledge is still safe to trust.</li>
+<li><code>OpenCode</code> is the place where you ask questions, review changes, continue work, or hand context to another person.</li>
 </ul>
-<h2  id="setup-2-minutes"><span id="setup_2_minutes"></span>Setup (2 minutes)<a class="heading-anchor" href="#setup-2-minutes" title="Link to this section">&para;</a></h2>
-<h3  id="1-create-opencodejson"><span id="1_create_opencodejson"></span>1. Create opencode.json<a class="heading-anchor" href="#1-create-opencodejson" title="Link to this section">&para;</a></h3>
-<p>In your project root, create <code>opencode.json</code>:</p>
+<p>You do not need to learn every moving part on day one. You only need to know what to start, what OpenCode can do, and what the normal daily flow looks like.</p>
+<h2  id="what-you-get"><span id="what_you_get"></span>What You Get<a class="heading-anchor" href="#what-you-get" title="Link to this section">&para;</a></h2>
+<p>After setup, OpenCode can:</p>
+<ul>
+<li>understand the code graph of the current project;</li>
+<li>use OpenViking-backed project memory when it needs wider context;</li>
+<li>keep an explicit work session instead of starting from zero every time;</li>
+<li>continue the same context after a restart or compaction;</li>
+<li>let one person hand the same AI-backed session to another person for testing or review;</li>
+<li>avoid trusting stale saved knowledge by treating it as <code>current</code>, <code>needs_review</code>, or <code>deprecated</code>.</li>
+<li>access all 149 CodeGraph MCP tools, including focused tools such as <code>codegraph_hypothesis</code> for security hypothesis generation.</li>
+</ul>
+<h2  id="the-simple-mental-model"><span id="the_simple_mental_model"></span>The Simple Mental Model<a class="heading-anchor" href="#the-simple-mental-model" title="Link to this section">&para;</a></h2>
+<p>CodeGraph gives OpenCode three kinds of understanding:</p>
+<ol>
+<li>
+<p><strong>Live code structure</strong>
+   - functions, callers, callees, impact, complexity, data flow
+   - source of truth: <code>GoCPG</code></p>
+</li>
+<li>
+<p><strong>Project memory</strong>
+   - curated skills, synced repository context, useful session-derived memory
+   - source of truth: <code>OpenViking</code></p>
+</li>
+<li>
+<p><strong>Rules and ownership</strong>
+   - who opened a context session
+   - who can read it
+   - who can write to it
+   - who accepted a handoff
+   - whether saved knowledge is still trusted
+   - source of truth: <code>PostgreSQL</code></p>
+</li>
+</ol>
+<h2  id="before-you-start"><span id="before_you_start"></span>Before You Start<a class="heading-anchor" href="#before-you-start" title="Link to this section">&para;</a></h2>
+<p>Make sure you have:</p>
+<ul>
+<li><code>CodeGraph</code> installed;</li>
+<li>a parsed project graph (<code>.duckdb</code>) managed by <code>GoCPG</code>;</li>
+<li>the <code>CodeGraph</code> API running;</li>
+<li><code>OpenCode</code> installed;</li>
+<li>the <code>opencode-codegraph</code> extension enabled.</li>
+</ul>
+<p>Recommended local services:</p>
+<ul>
+<li><code>GoCPG</code></li>
+<li><code>CodeGraph API</code></li>
+<li><code>OpenViking</code></li>
+<li><code>PostgreSQL</code></li>
+</ul>
+<h2  id="fast-setup"><span id="fast_setup"></span>Fast Setup<a class="heading-anchor" href="#fast-setup" title="Link to this section">&para;</a></h2>
+<p>Create <code>opencode.json</code> in the project root:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;$schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://opencode.ai/config.json&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;mcp&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;codegraph&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;local&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src.mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--transport&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;src.mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--transport&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--db&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;data/projects/codegraph.duckdb&quot;</span><span class="p">],</span>
 <span class="w">      </span><span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;CODEGRAPH_PROJECT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your_project_name&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CODEGRAPH_PROJECT&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;.codegraph/AGENTS.md&quot;</span>
-<span class="w">  </span><span class="p">]</span>
+<span class="w">  </span><span class="nt">&quot;lsp&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;codegraph&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;codegraph_lsp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;--db&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;data/projects/codegraph.duckdb&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;extensions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.go&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.js&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.ts&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.java&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.cpp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.cs&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.kt&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.php&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.rb&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;plugin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;opencode-codegraph&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.codegraph/AGENTS.md&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.codegraph/SCENARIO_PLAYBOOK.md&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Replace <code>your_project_name</code> with the name registered in CodeGraph&rsquo;s <code>config.yaml</code>.</p>
-<h3  id="2-copy-agentsmd"><span id="2_copy_agentsmd"></span>2. Copy AGENTS.md<a class="heading-anchor" href="#2-copy-agentsmd" title="Link to this section">&para;</a></h3>
-<p>Copy the <code>.codegraph/AGENTS.md</code> file from the CodeGraph repository to your project&rsquo;s <code>.codegraph/</code> directory. This file tells OpenCode&rsquo;s AI agents how and when to use CPG tools.</p>
-<h3  id="3-verify"><span id="3_verify"></span>3. Verify<a class="heading-anchor" href="#3-verify" title="Link to this section">&para;</a></h3>
-<p>Launch OpenCode in your project directory:</p>
+<p>Then start OpenCode:</p>
 <div class="highlight"><pre><span></span><code>opencode
 </code></pre></div>
 
-<p>Type <code>/tools</code> to confirm CodeGraph tools are loaded. You should see tools like <code>codegraph_project_context</code>, <code>codegraph_query</code>, <code>codegraph_find_callers</code>, etc.</p>
-<h2  id="first-steps"><span id="first_steps"></span>First Steps<a class="heading-anchor" href="#first-steps" title="Link to this section">&para;</a></h2>
-<h3  id="explore-the-project"><span id="explore_the_project"></span>Explore the project<a class="heading-anchor" href="#explore-the-project" title="Link to this section">&para;</a></h3>
-<p>Ask the AI agent:</p>
-<div class="highlight"><pre><span></span><code>What does this project look like from a CPG perspective?
+<p>Or use the repository launcher:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/run_opencode_codegraph.py<span class="w"> </span>--model<span class="w"> </span>openai/gpt-5.3-codex
 </code></pre></div>
 
-<p>The agent will call <code>codegraph_project_context</code> and show you method counts, file counts, top complexity hotspots, and security findings.</p>
-<h3  id="understand-a-file-before-editing"><span id="understand_a_file_before_editing"></span>Understand a file before editing<a class="heading-anchor" href="#understand-a-file-before-editing" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">Show</span><span class="w"> </span><span class="nv">me</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">CPG</span><span class="w"> </span><span class="nv">context</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">src</span><span class="o">/</span><span class="nv">api</span><span class="o">/</span><span class="nv">main</span>.<span class="nv">py</span>
+<h2  id="quick-check"><span id="quick_check"></span>Quick Check<a class="heading-anchor" href="#quick-check" title="Link to this section">&para;</a></h2>
+<p>Run these checks:</p>
+<div class="highlight"><pre><span></span><code>opencode<span class="w"> </span>mcp<span class="w"> </span>list
+opencode<span class="w"> </span>agent<span class="w"> </span>list
+opencode<span class="w"> </span>debug<span class="w"> </span>config
 </code></pre></div>
 
-<p>The agent calls <code>codegraph_file_context</code> and returns all methods with metrics, callers, dead code flags, and security findings.</p>
-<h3  id="review-changes-before-committing"><span id="review_changes_before_committing"></span>Review changes before committing<a class="heading-anchor" href="#review-changes-before-committing" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>What&#39;s the impact of my current changes?
+<p>Good signs:</p>
+<ul>
+<li><code>codegraph</code> MCP is connected;</li>
+<li>the <code>codegraph</code> agent is visible;</li>
+<li>the extension <code>opencode-codegraph</code> is loaded;</li>
+<li>the LSP section points to the correct <code>.duckdb</code> file.</li>
+</ul>
+<h2  id="your-first-10-minutes"><span id="your_first_10_minutes"></span>Your First 10 Minutes<a class="heading-anchor" href="#your-first-10-minutes" title="Link to this section">&para;</a></h2>
+<h3  id="1-understand-the-project"><span id="1_understand_the_project"></span>1. Understand the project<a class="heading-anchor" href="#1-understand-the-project" title="Link to this section">&para;</a></h3>
+<p>In OpenCode:</p>
+<div class="highlight"><pre><span></span><code>/onboard how does this repository work?
 </code></pre></div>
 
-<p>The agent calls <code>codegraph_diff_context</code> to analyze which methods changed, who calls them (blast radius), and whether there are security findings in the diff.</p>
-<h3  id="navigate-the-call-graph"><span id="navigate_the_call_graph"></span>Navigate the call graph<a class="heading-anchor" href="#navigate-the-call-graph" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>Who calls the process_request function?
+<p>What happens:</p>
+<ul>
+<li>OpenCode checks whether project memory is ready;</li>
+<li>opens or reconnects an explicit context session;</li>
+<li>loads the right onboarding skill;</li>
+<li>pulls only the relevant context instead of dumping everything.</li>
+</ul>
+<h3  id="2-understand-one-function"><span id="2_understand_one_function"></span>2. Understand one function<a class="heading-anchor" href="#2-understand-one-function" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>/explain create_app
 </code></pre></div>
 
-<div class="highlight"><pre><span></span><code>What would break if I change authenticate_user?
+<p>What happens:</p>
+<ul>
+<li>OpenCode uses graph evidence first;</li>
+<li>widens into project memory only when needed;</li>
+<li>keeps the explanation inside the same investigation context.</li>
+</ul>
+<h3  id="3-review-your-changes"><span id="3_review_your_changes"></span>3. Review your changes<a class="heading-anchor" href="#3-review-your-changes" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>/review
 </code></pre></div>
 
-<h3  id="run-security-analysis"><span id="run_security_analysis"></span>Run security analysis<a class="heading-anchor" href="#run-security-analysis" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">Check</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">SQL</span><span class="w"> </span><span class="nv">injection</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">database</span><span class="w"> </span><span class="nv">module</span>
+<p>What happens:</p>
+<ul>
+<li>OpenCode reuses the active context session when possible;</li>
+<li>checks impact and security evidence from the graph;</li>
+<li>adds wider memory context when it helps;</li>
+<li>keeps the review trace connected to the same work session.</li>
+</ul>
+<h3  id="4-check-what-to-do-next"><span id="4_check_what_to_do_next"></span>4. Check what to do next<a class="heading-anchor" href="#4-check-what-to-do-next" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>/status
 </code></pre></div>
 
-<div class="highlight"><pre><span></span><code><span class="n">Run</span><span class="w"> </span><span class="n">taint</span><span class="w"> </span><span class="n">analysis</span><span class="w"> </span><span class="n">on</span><span class="w"> </span><span class="n">handle_upload</span>
+<p>or</p>
+<div class="highlight"><pre><span></span><code>/next
 </code></pre></div>
 
-<h3  id="write-custom-sql-queries"><span id="write_custom_sql_queries"></span>Write custom SQL queries<a class="heading-anchor" href="#write-custom-sql-queries" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">Show</span><span class="w"> </span><span class="nv">me</span><span class="w"> </span><span class="nv">all</span><span class="w"> </span><span class="nv">methods</span><span class="w"> </span><span class="nv">with</span><span class="w"> </span><span class="nv">cyclomatic</span><span class="w"> </span><span class="nv">complexity</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">20</span>
-</code></pre></div>
-
-<p>The agent generates and runs:</p>
-<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="p">,</span><span class="w"> </span><span class="n">fan_in</span><span class="p">,</span><span class="w"> </span><span class="n">fan_out</span>
-<span class="k">FROM</span><span class="w"> </span><span class="n">nodes_method</span>
-<span class="k">WHERE</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">20</span>
-<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="w"> </span><span class="k">DESC</span>
-</code></pre></div>
-
-<h2  id="available-tools-reference"><span id="available_tools_reference"></span>Available Tools Reference<a class="heading-anchor" href="#available-tools-reference" title="Link to this section">&para;</a></h2>
-<p>CodeGraph provides 65 MCP tools. The most commonly used are listed below; the full reference is in <code>.codegraph/AGENTS.md</code>.</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Tool</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>codegraph_project_context</code></td>
-<td>Project overview: stats, tables, hotspots</td>
-</tr>
-<tr>
-<td><code>codegraph_file_context</code></td>
-<td>File analysis: methods, metrics, callers, findings</td>
-</tr>
-<tr>
-<td><code>codegraph_diff_context</code></td>
-<td>Change impact: blast radius, security delta</td>
-</tr>
-<tr>
-<td><code>codegraph_query</code></td>
-<td>Custom SQL on CPG database</td>
-</tr>
-<tr>
-<td><code>codegraph_find_callers</code></td>
-<td>Call graph: who calls a method</td>
-</tr>
-<tr>
-<td><code>codegraph_find_callees</code></td>
-<td>Call graph: what a method calls</td>
-</tr>
-<tr>
-<td><code>codegraph_impact</code></td>
-<td>Change impact analysis</td>
-</tr>
-<tr>
-<td><code>codegraph_taint_analysis</code></td>
-<td>Data flow: source-to-sink tracing</td>
-</tr>
-<tr>
-<td><code>codegraph_search</code></td>
-<td>Hybrid semantic + structural search</td>
-</tr>
-<tr>
-<td><code>codegraph_explain</code></td>
-<td>Deep method analysis</td>
-</tr>
-<tr>
-<td><code>codegraph_hotspots</code></td>
-<td>Complexity/PageRank/centrality hotspots</td>
-</tr>
-<tr>
-<td><code>codegraph_pattern_search</code></td>
-<td>190+ structural pattern rules</td>
-</tr>
-<tr>
-<td><code>codegraph_hypothesis</code></td>
-<td>Security hypothesis testing (58 CWE, 27 CAPEC)</td>
-</tr>
-<tr>
-<td><code>codegraph_project_list</code></td>
-<td>List registered projects</td>
-</tr>
-<tr>
-<td><code>codegraph_project_switch</code></td>
-<td>Switch active project</td>
-</tr>
-</tbody>
-</table></div>
+<p>Use these when you want one clear answer instead of guessing whether to review, update, continue, or push.</p>
+<h2  id="daily-workflow"><span id="daily_workflow"></span>Daily Workflow<a class="heading-anchor" href="#daily-workflow" title="Link to this section">&para;</a></h2>
+<p>Here is the normal single-person flow:</p>
+<ol>
+<li>Start with <code>/onboard</code> or <code>/explain</code>.</li>
+<li>Work inside one explicit context session.</li>
+<li>Use <code>/review</code> before shipping meaningful changes.</li>
+<li>Use <code>/status</code> or <code>/next</code> when you are unsure.</li>
+<li>Use <code>/continue</code> after a pause, restart, or compaction.</li>
+<li>Use <code>/update</code> when the graph or project memory needs a refresh.</li>
+</ol>
+<p>The important idea is this: OpenCode should not behave like it forgot everything after every pause. The system now tries to keep the same context thread alive across real work.</p>
+<h2  id="team-workflow"><span id="team_workflow"></span>Team Workflow<a class="heading-anchor" href="#team-workflow" title="Link to this section">&para;</a></h2>
+<p>The system now supports shared AI-backed work sessions inside the same project.</p>
+<p>That means one person can start the investigation, and another person can continue from the same evidence trail.</p>
+<p>Typical examples:</p>
+<ul>
+<li>developer -&gt; reviewer</li>
+<li>developer -&gt; tester</li>
+<li>reviewer -&gt; developer</li>
+</ul>
+<p>What is supported:</p>
+<ul>
+<li>a session can be opened explicitly;</li>
+<li>a session can be shared read-only;</li>
+<li>a session can be handed off to a new owner;</li>
+<li>a session can be reopened later;</li>
+<li>a session can be closed or archived when work is done.</li>
+</ul>
+<p>Why this matters:</p>
+<ul>
+<li>the second person does not need to rebuild context from scratch;</li>
+<li>the same project memory and evidence chain stay attached to the same project;</li>
+<li>ownership and access are recorded instead of being implicit or fragile.</li>
+</ul>
+<h2  id="how-memory-works"><span id="how_memory_works"></span>How Memory Works<a class="heading-anchor" href="#how-memory-works" title="Link to this section">&para;</a></h2>
+<p>Not all saved knowledge is equally safe.</p>
+<p>CodeGraph now treats OpenViking-backed knowledge with a lifecycle:</p>
+<ul>
+<li><code>current</code> — safe to use by default</li>
+<li><code>needs_review</code> — maybe still useful, but potentially stale</li>
+<li><code>deprecated</code> — should stay out of default retrieval</li>
+</ul>
+<p>Why this matters:</p>
+<ul>
+<li>old memory can actively damage answer quality;</li>
+<li>a saved note that was correct two weeks ago may now be misleading;</li>
+<li>the assistant should not quietly mix trusted and stale context.</li>
+</ul>
+<p>Default behavior:</p>
+<ul>
+<li>OpenCode prefers <code>current</code>;</li>
+<li><code>needs_review</code> is included only when explicitly requested;</li>
+<li><code>deprecated</code> is excluded from normal guidance.</li>
+</ul>
+<h2  id="what-opencode-does-automatically"><span id="what_opencode_does_automatically"></span>What OpenCode Does Automatically<a class="heading-anchor" href="#what-opencode-does-automatically" title="Link to this section">&para;</a></h2>
+<p>The extension already handles a lot for you:</p>
+<ul>
+<li>adds code graph context when file names or change intent appear in chat;</li>
+<li>keeps a lightweight summary of project state in the conversation;</li>
+<li>tries to preserve explicit context continuity across long sessions;</li>
+<li>adds scenario-aware guidance to commands like <code>/onboard</code>, <code>/review</code>, <code>/continue</code>, <code>/status</code>, <code>/next</code>, and <code>/update</code>;</li>
+<li>runs best-effort post-commit follow-up when appropriate.</li>
+</ul>
+<p>This means you usually do <strong>not</strong> need to manually call low-level memory operations.</p>
+<h2  id="what-you-can-still-control-explicitly"><span id="what_you_can_still_control_explicitly"></span>What You Can Still Control Explicitly<a class="heading-anchor" href="#what-you-can-still-control-explicitly" title="Link to this section">&para;</a></h2>
+<p>If you want full control, the extension and API also support explicit operations:</p>
+<ul>
+<li>open session</li>
+<li>list sessions</li>
+<li>inspect session metadata</li>
+<li>share session</li>
+<li>accept or reject handoff</li>
+<li>revoke access</li>
+<li>close session</li>
+<li>archive session</li>
+<li>fetch context</li>
+<li>read a specific resource</li>
+<li>browse a namespace</li>
+<li>record used context</li>
+<li>start background commit</li>
+<li>check commit status</li>
+</ul>
+<p>Most users should stay on scenario commands first and use explicit tools only when they need precision.</p>
+<h2  id="when-things-fall-back"><span id="when_things_fall_back"></span>When Things Fall Back<a class="heading-anchor" href="#when-things-fall-back" title="Link to this section">&para;</a></h2>
+<p>OpenCode can work in three practical modes:</p>
+<ol>
+<li>
+<p><strong>Full context</strong>
+   - graph + project memory are both ready</p>
+</li>
+<li>
+<p><strong>Sync pending</strong>
+   - memory is configured but not ready yet
+   - OpenCode stays more narrow and careful</p>
+</li>
+<li>
+<p><strong>Graph-only fallback</strong>
+   - OpenViking is unavailable or degraded
+   - graph-backed understanding still works</p>
+</li>
+</ol>
+<p>This matters because the assistant should tell you the truth about what it can see right now.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
-<h3  id="tools-not-showing-up"><span id="tools_not_showing_up"></span>Tools not showing up<a class="heading-anchor" href="#tools-not-showing-up" title="Link to this section">&para;</a></h3>
+<h3  id="i-do-not-see-codegraph-tools"><span id="i_do_not_see_codegraph_tools"></span>I do not see CodeGraph tools<a class="heading-anchor" href="#i-do-not-see-codegraph-tools" title="Link to this section">&para;</a></h3>
+<p>Check:</p>
+<div class="highlight"><pre><span></span><code>opencode<span class="w"> </span>mcp<span class="w"> </span>list
+python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>stdio<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
+</code></pre></div>
+
+<h3  id="onboard-or-continue-feels-too-shallow"><span id="onboard_or_continue_feels_too_shallow"></span><code>/onboard</code> or <code>/continue</code> feels too shallow<a class="heading-anchor" href="#onboard-or-continue-feels-too-shallow" title="Link to this section">&para;</a></h3>
+<p>Check:</p>
+<div class="highlight"><pre><span></span><code>/status
+</code></pre></div>
+
+<p>If project memory is still syncing, OpenCode will stay bounded on purpose.</p>
+<h3  id="the-assistant-seems-to-ignore-saved-memory"><span id="the_assistant_seems_to_ignore_saved_memory"></span>The assistant seems to ignore saved memory<a class="heading-anchor" href="#the-assistant-seems-to-ignore-saved-memory" title="Link to this section">&para;</a></h3>
+<p>Possible reasons:</p>
 <ul>
-<li>Check that <code>python -m src.mcp --transport stdio</code> works from your project root</li>
-<li>Verify the Python environment has CodeGraph dependencies installed</li>
-<li>Check <code>opencode.json</code> syntax (valid JSON, correct command path)</li>
+<li>the memory is still syncing;</li>
+<li>the relevant item is marked <code>needs_review</code>;</li>
+<li>the item is <code>deprecated</code>;</li>
+<li>the system is in graph-only fallback mode.</li>
 </ul>
-<h3  id="no-database-connection-errors"><span id="ldquono-database-connectionrdquo-errors"></span><span id="ldquono_database_connectionrdquo_errors"></span><span id="no_database_connection_errors"></span>&ldquo;No database connection&rdquo; errors<a class="heading-anchor" href="#no-database-connection-errors" title="Link to this section">&para;</a></h3>
+<h3  id="another-teammate-cannot-continue-my-ai-context"><span id="another_teammate_cannot_continue_my_ai_context"></span>Another teammate cannot continue my AI context<a class="heading-anchor" href="#another-teammate-cannot-continue-my-ai-context" title="Link to this section">&para;</a></h3>
+<p>Check whether the session was:</p>
 <ul>
-<li>Ensure a CPG database exists. Parse your project first:
-  <code>bash
-  cd gocpg &amp;&amp; ./gocpg parse --input=/path/to/source --output=cpg.duckdb --lang=python</code></li>
-<li>Set the correct project in <code>config.yaml</code> or via <code>CODEGRAPH_PROJECT</code> env var</li>
+<li>shared read-only;</li>
+<li>handed off explicitly;</li>
+<li>closed or archived too early.</li>
 </ul>
-<h3  id="slow-responses"><span id="slow_responses"></span>Slow responses<a class="heading-anchor" href="#slow-responses" title="Link to this section">&para;</a></h3>
+<h2  id="recommended-first-habits"><span id="recommended_first_habits"></span>Recommended First Habits<a class="heading-anchor" href="#recommended-first-habits" title="Link to this section">&para;</a></h2>
+<p>If you want the shortest path to value, build these habits:</p>
 <ul>
-<li>Large CPG databases (&gt;100K methods) may take a few seconds for complex queries</li>
-<li>Use <code>LIMIT</code> in custom SQL queries</li>
-<li>The <code>codegraph_file_context</code> tool is scoped to a single file and is fast</li>
+<li>use <code>/onboard</code> when entering unfamiliar code;</li>
+<li>use <code>/explain</code> before changing risky functions;</li>
+<li>use <code>/review</code> before you call work done;</li>
+<li>use <code>/status</code> when you feel unsure;</li>
+<li>use <code>/continue</code> instead of rebuilding context manually;</li>
+<li>hand off the session explicitly when another person takes over.</li>
 </ul>
+<p>That is enough to get real value from the new architecture without learning every internal detail.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -377,7 +496,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-06</span>
+        <span>Last updated: 2026-04-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/OPENCODE_QUICK_START.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -386,23 +505,28 @@
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#prerequisites" class="level-2">Prerequisites</a></li>
-<li><a href="#setup-2-minutes" class="level-2">Setup (2 minutes)</a></li>
-<li><a href="#1-create-opencodejson" class="level-3">1. Create opencode.json</a></li>
-<li><a href="#2-copy-agentsmd" class="level-3">2. Copy AGENTS.md</a></li>
-<li><a href="#3-verify" class="level-3">3. Verify</a></li>
-<li><a href="#first-steps" class="level-2">First Steps</a></li>
-<li><a href="#explore-the-project" class="level-3">Explore the project</a></li>
-<li><a href="#understand-a-file-before-editing" class="level-3">Understand a file before editing</a></li>
-<li><a href="#review-changes-before-committing" class="level-3">Review changes before committing</a></li>
-<li><a href="#navigate-the-call-graph" class="level-3">Navigate the call graph</a></li>
-<li><a href="#run-security-analysis" class="level-3">Run security analysis</a></li>
-<li><a href="#write-custom-sql-queries" class="level-3">Write custom SQL queries</a></li>
-<li><a href="#available-tools-reference" class="level-2">Available Tools Reference</a></li>
+        <li><a href="#what-you-get" class="level-2">What You Get</a></li>
+<li><a href="#the-simple-mental-model" class="level-2">The Simple Mental Model</a></li>
+<li><a href="#before-you-start" class="level-2">Before You Start</a></li>
+<li><a href="#fast-setup" class="level-2">Fast Setup</a></li>
+<li><a href="#quick-check" class="level-2">Quick Check</a></li>
+<li><a href="#your-first-10-minutes" class="level-2">Your First 10 Minutes</a></li>
+<li><a href="#1-understand-the-project" class="level-3">1. Understand the project</a></li>
+<li><a href="#2-understand-one-function" class="level-3">2. Understand one function</a></li>
+<li><a href="#3-review-your-changes" class="level-3">3. Review your changes</a></li>
+<li><a href="#4-check-what-to-do-next" class="level-3">4. Check what to do next</a></li>
+<li><a href="#daily-workflow" class="level-2">Daily Workflow</a></li>
+<li><a href="#team-workflow" class="level-2">Team Workflow</a></li>
+<li><a href="#how-memory-works" class="level-2">How Memory Works</a></li>
+<li><a href="#what-opencode-does-automatically" class="level-2">What OpenCode Does Automatically</a></li>
+<li><a href="#what-you-can-still-control-explicitly" class="level-2">What You Can Still Control Explicitly</a></li>
+<li><a href="#when-things-fall-back" class="level-2">When Things Fall Back</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
-<li><a href="#tools-not-showing-up" class="level-3">Tools not showing up</a></li>
-<li><a href="#no-database-connection-errors" class="level-3">"No database connection" errors</a></li>
-<li><a href="#slow-responses" class="level-3">Slow responses</a></li>
+<li><a href="#i-do-not-see-codegraph-tools" class="level-3">I do not see CodeGraph tools</a></li>
+<li><a href="#onboard-or-continue-feels-too-shallow" class="level-3">`/onboard` or `/continue` feels too shallow</a></li>
+<li><a href="#the-assistant-seems-to-ignore-saved-memory" class="level-3">The assistant seems to ignore saved memory</a></li>
+<li><a href="#another-teammate-cannot-continue-my-ai-context" class="level-3">Another teammate cannot continue my AI context</a></li>
+<li><a href="#recommended-first-habits" class="level-2">Recommended First Habits</a></li>
       </ul>
     </aside>
   </div>

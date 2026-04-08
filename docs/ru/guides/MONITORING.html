@@ -96,19 +96,19 @@
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
         <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
-        <li><a href="DASHBOARD_FRONTEND.html">Руководство по разработке интерфейса панели управления</a></li>
-        <li><a href="DASHBOARD_METHODOLOGY.html">Методология Health Score дашборда V2</a></li>
-        <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации Dashboard</a></li>
-        <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя: панель мониторинга CISO/CTO</a></li>
+        <li><a href="DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
+        <li><a href="DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
+        <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
+        <li><a href="DASHBOARD_USER_GUIDE.html">Руководство пользователя по дашборду</a></li>
         <li><a href="DATAFLOW_ANALYSIS_GUIDE.html">Руководство пользователя по анализу потоков данных</a></li>
-        <li><a href="DOGFOODING.html">Самоанализ репозитория: проверка коммитов на базе CPG</a></li>
+        <li><a href="DOGFOODING.html">Руководство по самоанализу: анализ коммитов на базе CPG</a></li>
         <li><a href="LSP_SERVER.html">LSP-сервер CodeGraph</a></li>
         <li><a href="MONITORING.html" class="active">Руководство по мониторингу</a></li>
         <li><a href="OPENCODE_QUICK_START.html">CodeGraph + OpenCode: быстрый старт</a></li>
         <li><a href="PROGRAMMATIC_GUIDE.html">Руководство пользователя</a></li>
         <li><a href="PROJECT_IMPORT.html">Импорт новой кодовой базы</a></li>
         <li><a href="QUICK_REFERENCE.html">Краткий справочник по CodeGraph</a></li>
-        <li><a href="REFACTORING.html">Руководство по анализу рефакторинга</a></li>
+        <li><a href="REFACTORING.html">Руководство по рефакторингу</a></li>
         <li><a href="RELEASE_GATE.html">Проверка готовности к выпуску</a></li>
         <li><a href="SCA_SBOM.html">Композиционный анализ (КА) и SBOM</a></li>
         <li><a href="SCENARIOS.html">Руководство по сценариям анализа</a></li>
@@ -189,7 +189,7 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Этот документ описывает, как наблюдать за состоянием CodeGraph в рабочей среде: какие метрики собирать, как проверять доступность компонентов и как организовать базовую эксплуатационную диагностику.</p>
+        <p>В этом руководстве рассматриваются вопросы мониторинга, сбора метрик и проверки работоспособности CodeGraph в производственных средах.</p>
 <h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#obzor">Обзор</a></li>
@@ -211,8 +211,8 @@
 <li><a href="#status-rabotosposobnosti">Статус работоспособности</a></li>
 <li><a href="#rabotosposobnost-komponentov">Работоспособность компонентов</a></li>
 <li><a href="#polzovatelskie-proverki">Пользовательские проверки</a></li>
-<li><a href="#endpointy-standalone">Конечные точки — отдельное приложение</a></li>
-<li><a href="#endpointy-api-router">Конечные точки — роутер API</a></li>
+<li><a href="#endpointy-standalone">Конечные точки — Standalone-приложение</a></li>
+<li><a href="#endpointy-api-router">Конечные точки — API Router</a></li>
 <li><a href="#avtonomnye-funkcii">Автономные функции</a></li>
 <li><a href="#strukturirovannoe-logirovanie">Структурированное логирование</a></li>
 <li><a href="#structured-logger">StructuredLogger</a></li>
@@ -234,10 +234,10 @@
 <li><a href="#sm-takzhe">См. также</a></li>
 </ul>
 <h2 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h2>
-<p>Модуль мониторинга (<code>src/monitoring/</code>) даёт базовый набор средств для эксплуатации:
+<p>Модуль мониторинга (<code>src/monitoring/</code>) предоставляет:
 - <strong>Метрики Prometheus</strong> — 20 метрик для отслеживания состояния системы
 - <strong>Структурированное JSON-логирование</strong> — <code>StructuredLogger</code> с контекстным менеджером <code>timed_operation()</code>
-- <strong>Проверки работоспособности</strong> — отдельное FastAPI-приложение и API-роутер
+- <strong>Конечные точки проверки работоспособности</strong> — standalone FastAPI-приложение и API-роутер
 - <strong>Декораторы мониторинга</strong> — <code>monitor_scenario</code>, <code>monitor_agent</code>, <code>monitor_cache</code>
 - <strong>Функции записи</strong> — <code>record_llm_call</code>, <code>record_cpg_query</code>, <code>record_retrieval</code>
 - <strong>MetricsCollector</strong> — синглтон для агрегации метрик в памяти
@@ -271,7 +271,7 @@
 <h3  id="prilozhenie-proverki-rabotosposobnosti"><span id="prilozhenie_proverki_rabotosposobnosti"></span>Приложение проверки работоспособности<a class="heading-anchor" href="#prilozhenie-proverki-rabotosposobnosti" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring.health</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_health_app</span>
 
-<span class="c1"># Создание отдельного FastAPI-приложения для проверки работоспособности</span>
+<span class="c1"># Создание standalone FastAPI-приложения для проверки работоспособности</span>
 <span class="n">app</span> <span class="o">=</span> <span class="n">create_health_app</span><span class="p">()</span>
 
 <span class="c1"># Доступные конечные точки:</span>
@@ -730,7 +730,7 @@
 <span class="n">checker</span><span class="o">.</span><span class="n">register_check</span><span class="p">(</span><span class="s2">&quot;custom_service&quot;</span><span class="p">,</span> <span class="n">check_custom_service</span><span class="p">)</span>
 </code></pre></div>
 
-<h3  id="endpointy-standalone"><span id="endpointy_standalone"></span><span id="konechnye-tochki-otdelnoe-prilozhenie"></span><span id="konechnye_tochki_otdelnoe_prilozhenie"></span>Конечные точки — отдельное приложение<a class="heading-anchor" href="#endpointy-standalone" title="Link to this section">&para;</a></h3>
+<h3  id="endpointy-standalone"><span id="endpointy_standalone"></span><span id="konechnye-tochki-standalone-prilozhenie"></span><span id="konechnye_tochki_standalone_prilozhenie"></span>Конечные точки — Standalone-приложение<a class="heading-anchor" href="#endpointy-standalone" title="Link to this section">&para;</a></h3>
 <p>Создаётся через <code>create_health_app()</code> из <code>src/monitoring/health</code>:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -804,7 +804,7 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<h3  id="endpointy-api-router"><span id="endpointy_api_router"></span><span id="konechnye-tochki-router-api"></span><span id="konechnye_tochki_router_api"></span>Конечные точки — роутер API<a class="heading-anchor" href="#endpointy-api-router" title="Link to this section">&para;</a></h3>
+<h3  id="endpointy-api-router"><span id="endpointy_api_router"></span><span id="konechnye-tochki-api-router"></span><span id="konechnye_tochki_api_router"></span>Конечные точки — API Router<a class="heading-anchor" href="#endpointy-api-router" title="Link to this section">&para;</a></h3>
 <p>Подключены к <code>/api/v1/health</code> в основном FastAPI-приложении:</p>
 <div class="table-wrapper"><table>
 <thead>
@@ -1589,18 +1589,18 @@
 </code></pre></div>
 
 <p>Ответ использует текстовый формат Prometheus:</p>
-<div class="highlight"><pre><span></span><code><span class="gh">#</span> HELP codegraph_project_health_score Composite health score for a project
-<span class="gh">#</span> TYPE codegraph_project_health_score gauge
+<div class="highlight"><pre><span></span><code># HELP codegraph_project_health_score Composite health score for a project
+# TYPE codegraph_project_health_score gauge
 codegraph_project_health_score{project=&quot;payments-api&quot;,group=&quot;backend&quot;} 85.0
 codegraph_project_health_score{project=&quot;legacy-auth&quot;,group=&quot;backend&quot;} 35.0
 
-<span class="gh">#</span> HELP codegraph_portfolio_avg_health Average health score across all projects
-<span class="gh">#</span> TYPE codegraph_portfolio_avg_health gauge
+# HELP codegraph_portfolio_avg_health Average health score across all projects
+# TYPE codegraph_portfolio_avg_health gauge
 codegraph_portfolio_avg_health{group=&quot;&quot;} 72.5
 codegraph_portfolio_avg_health{group=&quot;backend&quot;} 60.0
 
-<span class="gh">#</span> HELP codegraph_red_zone_items_count Number of red zone items by project and category
-<span class="gh">#</span> TYPE codegraph_red_zone_items_count gauge
+# HELP codegraph_red_zone_items_count Number of red zone items by project and category
+# TYPE codegraph_red_zone_items_count gauge
 codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;release&quot;} 2
 </code></pre></div>
 
@@ -1639,7 +1639,7 @@ codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;re
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-04-06</span>
+        <span>Обновлено: 2026-04-08</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/MONITORING.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1668,8 +1668,8 @@ codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;re
 <li><a href="#status-rabotosposobnosti" class="level-3">Статус работоспособности</a></li>
 <li><a href="#rabotosposobnost-komponentov" class="level-3">Работоспособность компонентов</a></li>
 <li><a href="#polzovatelskie-proverki" class="level-3">Пользовательские проверки</a></li>
-<li><a href="#endpointy-standalone" class="level-3">Конечные точки — отдельное приложение</a></li>
-<li><a href="#endpointy-api-router" class="level-3">Конечные точки — роутер API</a></li>
+<li><a href="#endpointy-standalone" class="level-3">Конечные точки — Standalone-приложение</a></li>
+<li><a href="#endpointy-api-router" class="level-3">Конечные точки — API Router</a></li>
 <li><a href="#avtonomnye-funkcii" class="level-3">Автономные функции</a></li>
 <li><a href="#strukturirovannoe-logirovanie" class="level-2">Структурированное логирование</a></li>
 <li><a href="#structured-logger" class="level-3">StructuredLogger</a></li>
