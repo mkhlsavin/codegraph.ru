@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="CodeGraph documentation: GitLab Integration Guide">
+  <meta name="description" content="CodeGraph documentation: GitLab CE Integration Guide">
   <meta name="keywords" content="CodeGraph, Documentation, integrations">
 
-  <meta property="og:title" content="GitLab Integration Guide — CodeGraph">
-  <meta property="og:description" content="CodeGraph documentation: GitLab Integration Guide">
+  <meta property="og:title" content="GitLab CE Integration Guide — CodeGraph">
+  <meta property="og:description" content="CodeGraph documentation: GitLab CE Integration Guide">
   <meta property="og:type" content="article">
 
-  <title>GitLab Integration Guide — Documentation</title>
+  <title>GitLab CE Integration Guide — Documentation</title>
 
   <link rel="icon" type="image/svg+xml" href="../../../assets/svg/logo-compact.svg">
   <link rel="stylesheet" href="../../../css/styles.css?v=2">
@@ -163,7 +163,7 @@
         <li><a href="EXTERNAL_CONTEXT.html">External Context Integration Guide</a></li>
         <li><a href="GIGACHAT.html">GigaChat Integration Guide</a></li>
         <li><a href="GITHUB.html">GitHub Integration Guide</a></li>
-        <li><a href="GITLAB.html" class="active">GitLab Integration Guide</a></li>
+        <li><a href="GITLAB.html" class="active">GitLab CE Integration Guide</a></li>
         <li><a href="GITVERSE.html">GitVerse Integration Guide</a></li>
         <li><a href="OPENCODE_PLUGIN.html">CodeGraph OpenCode Integration</a></li>
         <li><a href="SOURCECRAFT.html">SourceCraft Integration Guide</a></li>
@@ -194,504 +194,317 @@
         <span>/</span>
         <a href="index.html">Integrations</a>
         <span>/</span>
-        <span>GitLab Integration Guide</span>
+        <span>GitLab CE Integration Guide</span>
       </nav>
 
       <!-- Hero -->
       <div class="doc-hero">
-        <h1>GitLab Integration Guide</h1>
+        <h1>GitLab CE Integration Guide</h1>
         
       </div>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Integration guide for connecting CodeGraph with GitLab (self-managed or GitLab.com) for automated code review, security scanning, and incremental CPG updates.</p>
+        <p>Production guide for running CodeGraph against self-managed GitLab Community Edition in a local contour with internal DNS, private CA, local runners, and no mandatory internet egress.</p>
 <h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#overview">Overview</a></li>
-<li><a href="#prerequisites">Prerequisites</a></li>
-<li><a href="#webhook-configuration">Webhook Configuration</a></li>
-<li><a href="#ci-pipeline-gitlab-ciyml">CI Pipeline (.gitlab-ci.yml)</a></li>
-<li><a href="#rest-api-endpoints">REST API Endpoints</a></li>
-<li><a href="#mcp-tools">MCP Tools</a></li>
-<li><a href="#incremental-cpg-updates">Incremental CPG Updates</a></li>
-<li><a href="#docker-image-setup">Docker Image Setup</a></li>
+<li><a href="#local-contour-profile">Local Contour Profile</a></li>
+<li><a href="#provider-connection-and-trust">Provider Connection and Trust</a></li>
+<li><a href="#webhook-setup-and-recovery">Webhook Setup and Recovery</a></li>
+<li><a href="#ci-template-for-local-runners">CI Template for Local Runners</a></li>
+<li><a href="#rest-cli-and-mcp-surfaces">REST, CLI, and MCP Surfaces</a></li>
+<li><a href="#rotation-workflows">Rotation Workflows</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
-<li><a href="#next-steps">Next Steps</a></li>
+<li><a href="#acceptance-artifacts">Acceptance Artifacts</a></li>
 </ul>
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>CodeGraph integrates with GitLab for automated code review, security scanning, and technical debt tracking. Three integration paths:</p>
+<p>CodeGraph supports GitLab CE through the canonical provider-connection and repository-binding model. The production-ready path for a local contour now covers:</p>
 <ul>
-<li><strong>CI/CD Pipeline</strong> &ndash; CodeGraph as a step in <code>.gitlab-ci.yml</code></li>
-<li><strong>Webhook-driven</strong> &ndash; push/MR events trigger incremental CPG updates and reviews automatically</li>
-<li><strong>Standalone</strong> &ndash; deployed alongside GitLab, accessed via REST API / CLI / MCP</li>
+<li>host-aware provider connections for self-managed GitLab CE;</li>
+<li>custom CA bundle metadata and authenticated health checks;</li>
+<li>webhook ingestion for push and merge request events with delivery diagnostics;</li>
+<li>reconcile and replay workflows for missed events and degraded sync;</li>
+<li>merge request review snapshots with native publication back to GitLab notes;</li>
+<li>operator-visible status for webhook freshness, repository head, CPG head, and review publication;</li>
+<li>a local-runner <code>.gitlab-ci.yml</code> template that writes JSON, Markdown, and SARIF artifacts without depending on GHCR at runtime.</li>
 </ul>
-<p>GitLab webhook payloads use GitLab-specific format (<code>object_attributes</code> for MR, <code>project</code> for repository info). CodeGraph normalizes these into unified models shared across all 4 supported platforms.</p>
-<h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h2>
+<p>This guide is intentionally GitLab CE-first. It does not assume GitLab.com, GitLab EE-only features, or public registry access.</p>
+<h2  id="local-contour-profile"><span id="local_contour_profile"></span>Local Contour Profile<a class="heading-anchor" href="#local-contour-profile" title="Link to this section">&para;</a></h2>
+<p>Recommended deployment topology:</p>
+<ol>
+<li>GitLab CE is exposed on an internal hostname such as <code>gitlab.internal</code>.</li>
+<li>CodeGraph API is exposed on an internal hostname such as <code>codegraph.internal</code>.</li>
+<li>A reverse proxy forwards <code>POST /api/v1/webhooks/gitlab</code> to CodeGraph without rewriting the body or dropping <code>X-Gitlab-*</code> headers.</li>
+<li>GitLab runners pull a preloaded CodeGraph image from an internal container registry such as <code>registry.internal/platform/codegraph-runner:stable</code>.</li>
+<li>CodeGraph containers trust the same private CA bundle that signs the GitLab CE and reverse-proxy certificates.</li>
+</ol>
+<p>Reverse proxy requirements:</p>
 <ul>
-<li>CodeGraph instance (Docker or standalone) accessible from GitLab CI runners</li>
-<li>GitLab project with Maintainer or Owner permissions (for webhook setup)</li>
-<li>Docker (for CI pipeline steps)</li>
-<li>LLM API key: <code>YANDEX_API_KEY</code>, <code>GIGACHAT_AUTH_KEY</code>, or <code>OPENAI_API_KEY</code></li>
+<li>preserve <code>X-Forwarded-Proto</code>, <code>Host</code>, and <code>X-Gitlab-*</code> headers;</li>
+<li>allow request bodies large enough for merge request payloads;</li>
+<li>do not buffer or rewrite webhook JSON;</li>
+<li>permit fast <code>202 Accepted</code> responses while background work continues asynchronously.</li>
 </ul>
-<h2  id="webhook-configuration"><span id="webhook_configuration"></span>Webhook Configuration<a class="heading-anchor" href="#webhook-configuration" title="Link to this section">&para;</a></h2>
-<p><strong>Endpoint:</strong> <code>POST /api/v1/webhooks/gitlab</code> (returns <code>202 Accepted</code>)</p>
-<p><strong>GitLab setup:</strong> Project <strong>Settings &gt; Webhooks &gt; Add new webhook</strong>:
-1. URL: <code>https://&lt;codegraph-host&gt;/api/v1/webhooks/gitlab</code>
-2. Secret token: any string (plain token verification, not HMAC)
-3. Trigger: check <strong>Push events</strong> and <strong>Merge request events</strong>
-4. SSL verification: enable if CodeGraph uses a valid certificate</p>
-<h3  id="token-verification"><span id="token_verification"></span>Token Verification<a class="heading-anchor" href="#token-verification" title="Link to this section">&para;</a></h3>
-<p>GitLab uses plain secret token verification (not HMAC-SHA256). CodeGraph compares the <code>X-Gitlab-Token</code> header against the configured secret using constant-time comparison.</p>
-<p>Error codes:
-- <strong>401 Unauthorized</strong> &ndash; missing <code>X-Gitlab-Token</code> header
-- <strong>403 Forbidden</strong> &ndash; token does not match configured secret</p>
-<blockquote class="callout">
-<p><strong>Note:</strong> Unlike GitHub which uses HMAC-SHA256 over the request body, GitLab sends the secret token directly in the <code>X-Gitlab-Token</code> header. This means the request body is not signed and there is no timestamp header for replay attack protection. For additional security, use IP allowlisting or a reverse proxy with mTLS.</p>
-</blockquote>
-<h3  id="supported-events"><span id="supported_events"></span>Supported Events<a class="heading-anchor" href="#supported-events" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Event Header (<code>X-Gitlab-Event</code>)</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Push Hook</code> / <code>push</code></td>
-<td>Incremental CPG update via <code>CPGUpdateQueue</code></td>
-</tr>
-<tr>
-<td><code>Merge Request Hook</code> / <code>merge_request</code></td>
-<td>Code review workflow</td>
-</tr>
-</tbody>
-</table></div>
-<p>Events not matching these types are returned with <code>{"status": "skipped"}</code>.</p>
-<h3 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h3>
-<p>Section <code>gitlab</code> in <code>config.yaml</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gitlab</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">webhook_secret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-gitlab-webhook-token&quot;</span>
-<span class="w">  </span><span class="nt">auto_update_on_push</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># trigger incremental CPG update on push events</span>
-<span class="w">  </span><span class="nt">api_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://gitlab.com&quot;</span><span class="w">   </span><span class="c1"># or your self-managed instance URL</span>
-</code></pre></div>
-
-<h3  id="event-type-detection"><span id="event_type_detection"></span>Event Type Detection<a class="heading-anchor" href="#event-type-detection" title="Link to this section">&para;</a></h3>
-<p>CodeGraph detects event type from the <code>X-Gitlab-Event</code> header. If the header is missing, it falls back to payload structure detection:</p>
+<p>Minimum machine credential expectation:</p>
 <ul>
-<li><code>object_attributes</code> or <code>merge_request</code> key present → <code>merge_request</code> event</li>
-<li><code>commits</code> or (<code>before</code> + <code>after</code>) present → <code>push</code> event</li>
+<li>use a service account or PAT, not a human browser session;</li>
+<li>for read-only provider diagnostics and MR fetch, <code>read_api</code> is acceptable where available;</li>
+<li>for native merge-request comment publication, use a token with <code>api</code> scope.</li>
 </ul>
-<h3  id="payload-structure"><span id="payload_structure"></span>Payload Structure<a class="heading-anchor" href="#payload-structure" title="Link to this section">&para;</a></h3>
-<p><strong>Push Hook payload</strong> (key fields used by CodeGraph):</p>
+<h2  id="provider-connection-and-trust"><span id="provider_connection_and_trust"></span>Provider Connection and Trust<a class="heading-anchor" href="#provider-connection-and-trust" title="Link to this section">&para;</a></h2>
+<p>Create a GitLab CE provider connection with explicit host, API version, and CA bundle metadata:</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph</span> <span class="n">repos</span> <span class="nb">connect-provider</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-name</span> <span class="n">gitlab-ce-local</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-provider</span> <span class="n">gitlab</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-host</span> <span class="n">gitlab</span><span class="p">.</span><span class="n">internal</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-base-url</span> <span class="n">https</span><span class="p">://</span><span class="n">gitlab</span><span class="p">.</span><span class="n">internal</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-api-version</span> <span class="n">v4</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-ca-bundle-path</span> <span class="n">C</span><span class="p">:\</span><span class="n">certs</span><span class="p">\</span><span class="n">gitlab-root-ca</span><span class="p">.</span><span class="n">pem</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-token</span> <span class="nv">$env:GITLAB_TOKEN</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-webhook-secret</span> <span class="nv">$env:GITLAB_WEBHOOK_SECRET</span>
+</code></pre></div>
+
+<p>What this persists:</p>
+<ul>
+<li><code>provider_host</code></li>
+<li><code>base_url</code></li>
+<li><code>metadata.api_version</code></li>
+<li><code>metadata.ca_bundle_path</code></li>
+<li>service credential and webhook secret</li>
+</ul>
+<p>Run the operator health check immediately after connection creation:</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph</span> <span class="n">repos</span> <span class="n">provider-health</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-connection</span> <span class="n">gitlab-ce-local</span>
+</code></pre></div>
+
+<p>The health check verifies:</p>
+<ul>
+<li>hostname reachability;</li>
+<li>TLS trust using the configured CA bundle;</li>
+<li>GitLab API v4 <code>version</code> endpoint reachability;</li>
+<li>authenticated <code>/user</code> access when a token is configured.</li>
+</ul>
+<p>Typical degraded classifications are surfaced as operator-facing categories and reasons:</p>
+<ul>
+<li><code>dns_error:host_resolution_failed</code></li>
+<li><code>tls_error:tls_verification_failed</code></li>
+<li><code>auth_error:auth_rejected</code></li>
+<li><code>provider_http_error:endpoint_not_found</code></li>
+<li><code>version_mismatch</code></li>
+<li><code>provider_outage</code></li>
+</ul>
+<p>Repository onboarding remains stable across namespace/path rename as long as the external repository ID stays constant:</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph</span> <span class="n">repos</span> <span class="n">import</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-connection</span> <span class="n">gitlab-ce-local</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-repo</span> <span class="n">platform</span><span class="p">/</span><span class="n">api</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-sync-mode</span> <span class="n">webhook</span>
+</code></pre></div>
+
+<h2  id="webhook-setup-and-recovery"><span id="webhook_setup_and_recovery"></span>Webhook Setup and Recovery<a class="heading-anchor" href="#webhook-setup-and-recovery" title="Link to this section">&para;</a></h2>
+<p>Webhook endpoint:</p>
+<ul>
+<li><code>POST /api/v1/webhooks/gitlab</code></li>
+</ul>
+<p>GitLab project setup:</p>
+<ol>
+<li>Open <code>Settings &gt; Webhooks</code>.</li>
+<li>Configure <code>https://codegraph.internal/api/v1/webhooks/gitlab</code>.</li>
+<li>Set the same secret token used in the provider connection.</li>
+<li>Enable <code>Push events</code> and <code>Merge request events</code>.</li>
+<li>Keep SSL verification enabled. Do not disable TLS verification to work around a missing CA bundle.</li>
+</ol>
+<p>Webhook behavior:</p>
+<ul>
+<li>CodeGraph returns <code>202 Accepted</code> quickly and enqueues durable sync/review work asynchronously.</li>
+<li>Push events are deduplicated by binding and event identity.</li>
+<li>Merge request events participate in review-snapshot lifecycle and deduplication.</li>
+<li>Delivery diagnostics are stored on the repository binding and surfaced back to operators.</li>
+</ul>
+<p>Operational recovery flow:</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph</span> <span class="n">repos</span> <span class="n">status</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-project</span> <span class="n">api</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">reconcile</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-project</span> <span class="n">api</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">jobs</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-project</span> <span class="n">api</span> <span class="p">-</span><span class="n">-status</span> <span class="n">failed</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">replay</span> <span class="p">-</span><span class="n">-job-id</span> <span class="p">&lt;</span><span class="n">failed-sync-job-uuid</span><span class="p">&gt;</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">review-snapshots</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-project</span> <span class="n">api</span> <span class="p">-</span><span class="n">-status</span> <span class="n">failed</span>
+</code></pre></div>
+
+<p><code>GET /api/v1/webhooks/status/{project_id}</code> now returns both legacy update-pipeline state and GitLab binding diagnostics. <code>project_id</code> may be a project name or a project UUID.</p>
+<p>Example response:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;ref&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;refs/heads/main&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;before&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;old_commit_sha&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;after&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;new_commit_sha&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;git_http_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://gitlab.com/org/repo.git&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;path_with_namespace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;org/repo&quot;</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;user_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;developer&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;commits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;new_commit_sha&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;feat: add feature&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;author&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Developer&quot;</span><span class="p">},</span>
-<span class="w">      </span><span class="nt">&quot;added&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/new.py&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;modified&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/existing.py&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;removed&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Merge Request Hook payload</strong> (key fields):</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;object_attributes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;iid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;open&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;source_branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;feature-x&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;target_branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Add feature X&quot;</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;user&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;developer&quot;</span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;git_http_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://gitlab.com/org/repo.git&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;path_with_namespace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;org/repo&quot;</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p>Action mapping: <code>open</code> → <code>opened</code>, <code>update</code> → <code>updated</code>, <code>close</code> → <code>closed</code>, <code>merge</code> → <code>merged</code>, <code>reopen</code> → <code>reopened</code>.</p>
-<h2  id="ci-pipeline-gitlab-ciyml"><span id="ci_pipeline_gitlab_ciyml"></span>CI Pipeline (.gitlab-ci.yml)<a class="heading-anchor" href="#ci-pipeline-gitlab-ciyml" title="Link to this section">&para;</a></h2>
-<h3  id="basic-pipeline"><span id="basic_pipeline"></span>Basic Pipeline<a class="heading-anchor" href="#basic-pipeline" title="Link to this section">&para;</a></h3>
-<p>Create <code>.gitlab-ci.yml</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">stages</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analyze</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report</span>
-
-<span class="nt">variables</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">PROJECT_LANGUAGE</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
-
-<span class="nt">cpg-update</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analyze</span>
-<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/mkhlsavin/codegraph:latest</span>
-<span class="w">  </span><span class="nt">script</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gocpg parse --input=. --output=/tmp/cpg.duckdb --lang=${PROJECT_LANGUAGE}</span>
-<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/tmp/cpg.duckdb</span>
-<span class="w">    </span><span class="nt">expire_in</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1 hour</span>
-<span class="w">  </span><span class="nt">only</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge_requests</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
-
-<span class="nt">security-scan</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review</span>
-<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/mkhlsavin/codegraph:latest</span>
-<span class="w">  </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cpg-update</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">script</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">      </span><span class="no">DIFF=$(git diff ${CI_MERGE_REQUEST_DIFF_BASE_SHA}...HEAD)</span>
-<span class="w">      </span><span class="no">curl -sf -X POST &quot;${CODEGRAPH_URL}/api/v1/security/scan-diff&quot; \</span>
-<span class="w">        </span><span class="no">-H &quot;Authorization: Bearer ${CODEGRAPH_TOKEN}&quot; \</span>
-<span class="w">        </span><span class="no">-H &quot;Content-Type: application/json&quot; \</span>
-<span class="w">        </span><span class="no">-d &quot;{\&quot;diff_content\&quot;: $(echo &quot;$DIFF&quot; | python3 -c &#39;import sys,json; print(json.dumps(sys.stdin.read()))&#39;), \&quot;output_format\&quot;: \&quot;sarif\&quot;}&quot; \</span>
-<span class="w">        </span><span class="no">-o gl-sast-report.json</span>
-<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">reports</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">sast</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gl-sast-report.json</span>
-<span class="w">  </span><span class="nt">only</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge_requests</span>
-
-<span class="nt">mr-review</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review</span>
-<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/mkhlsavin/codegraph:latest</span>
-<span class="w">  </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cpg-update</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">script</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">      </span><span class="no">DIFF=$(git diff ${CI_MERGE_REQUEST_DIFF_BASE_SHA}...HEAD)</span>
-<span class="w">      </span><span class="no">curl -sf -X POST &quot;${CODEGRAPH_URL}/api/v1/review/summary&quot; \</span>
-<span class="w">        </span><span class="no">-H &quot;Authorization: Bearer ${CODEGRAPH_TOKEN}&quot; \</span>
-<span class="w">        </span><span class="no">-H &quot;Content-Type: application/json&quot; \</span>
-<span class="w">        </span><span class="no">-d &quot;{\&quot;diff_content\&quot;: $(echo &quot;$DIFF&quot; | python3 -c &#39;import sys,json; print(json.dumps(sys.stdin.read()))&#39;), \&quot;title\&quot;: \&quot;${CI_MERGE_REQUEST_TITLE}\&quot;}&quot; \</span>
-<span class="w">        </span><span class="no">-o review-results.json</span>
-<span class="w">      </span><span class="no">cat review-results.json</span>
-<span class="w">  </span><span class="nt">only</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge_requests</span>
-
-<span class="nt">report</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report</span>
-<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/mkhlsavin/codegraph:latest</span>
-<span class="w">  </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">security-scan</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">mr-review</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">script</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo &quot;Security scan and review completed&quot;</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;[</span><span class="nv"> </span><span class="s">-f</span><span class="nv"> </span><span class="s">gl-sast-report.json</span><span class="nv"> </span><span class="s">]</span><span class="nv"> </span><span class="s">&amp;&amp;</span><span class="nv"> </span><span class="s">cat</span><span class="nv"> </span><span class="s">gl-sast-report.json</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">python3</span><span class="nv"> </span><span class="s">-c</span><span class="nv"> </span><span class="s">\&quot;import</span><span class="nv"> </span><span class="s">sys,json;</span><span class="nv"> </span><span class="s">r=json.load(sys.stdin);</span><span class="nv"> </span><span class="s">print(f&#39;Findings:</span><span class="nv"> </span><span class="s">{r.get(\\\&quot;total_count\\\&quot;,</span><span class="nv"> </span><span class="s">0)}&#39;)\&quot;&quot;</span>
-<span class="w">  </span><span class="nt">only</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">merge_requests</span>
-</code></pre></div>
-
-<h3  id="required-cicd-variables"><span id="required_cicd_variables"></span>Required CI/CD Variables<a class="heading-anchor" href="#required-cicd-variables" title="Link to this section">&para;</a></h3>
-<p>Configure in <strong>Settings &gt; CI/CD &gt; Variables</strong>:</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>CODEGRAPH_URL</code></td>
-<td>Variable</td>
-<td>CodeGraph API endpoint (e.g. <code>https://codegraph.example.com</code>)</td>
-</tr>
-<tr>
-<td><code>CODEGRAPH_TOKEN</code></td>
-<td>Secret (masked)</td>
-<td>CodeGraph API authentication token</td>
-</tr>
-<tr>
-<td><code>PROJECT_LANGUAGE</code></td>
-<td>Variable</td>
-<td>Source language (default: <code>python</code>)</td>
-</tr>
-</tbody>
-</table></div>
-<h3  id="sast-integration"><span id="sast_integration"></span>SAST Integration<a class="heading-anchor" href="#sast-integration" title="Link to this section">&para;</a></h3>
-<p>CodeGraph&rsquo;s SARIF output integrates with GitLab Security Dashboard. Use the <code>artifacts:reports:sast</code> key to upload findings:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">artifacts</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">reports</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">sast</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gl-sast-report.json</span>
-</code></pre></div>
-
-<p>Findings appear in <strong>Security &amp; Compliance &gt; Vulnerability Report</strong> (GitLab Ultimate) or in the MR widget (all tiers for SAST).</p>
-<h2  id="rest-api-endpoints"><span id="rest_api_endpoints"></span>REST API Endpoints<a class="heading-anchor" href="#rest-api-endpoints" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1webhooksgitlab-webhook-receiver"><span id="post-apiv1webhooksgitlab-ndash-webhook-receiver"></span><span id="post_apiv1webhooksgitlab_ndash_webhook_receiver"></span><span id="post_apiv1webhooksgitlab_webhook_receiver"></span><code>POST /api/v1/webhooks/gitlab</code> &ndash; Webhook Receiver<a class="heading-anchor" href="#post-apiv1webhooksgitlab-webhook-receiver" title="Link to this section">&para;</a></h3>
-<p>See <a href="#webhook-configuration">Webhook Configuration</a>.</p>
-<h3  id="post-apiv1securityscan-diff-security-scan"><span id="post-apiv1securityscan-diff-ndash-security-scan"></span><span id="post_apiv1securityscan_diff_ndash_security_scan"></span><span id="post_apiv1securityscan_diff_security_scan"></span><code>POST /api/v1/security/scan-diff</code> &ndash; Security Scan<a class="heading-anchor" href="#post-apiv1securityscan-diff-security-scan" title="Link to this section">&para;</a></h3>
-<p>Scans a raw unified diff for security vulnerabilities.</p>
-<p><strong>Request</strong> (<code>ScanDiffRequest</code>):</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;diff_content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unified diff string&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;output_format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sarif&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>diff_content</code></td>
-<td>string</td>
-<td>&ndash;</td>
-<td>Raw unified diff (required)</td>
-</tr>
-<tr>
-<td><code>output_format</code></td>
-<td>string</td>
-<td><code>"json"</code></td>
-<td><code>"json"</code> or <code>"sarif"</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response</strong> (<code>ScanDiffResponse</code>):</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;finding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;f-001&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;pattern_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CWE-89&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;pattern_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SQL Injection&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;category&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;security&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;method_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;execute_query&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;filename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;src/db.py&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;line_number&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;User input concatenated into SQL query&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;cwe_ids&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;CWE-89&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;confidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.92</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;sarif&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-<span class="w">  </span><span class="nt">&quot;new_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;fixed_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;total_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;critical_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;high_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;medium_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;low_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="post-apiv1reviewsummary-mr-summary"><span id="post-apiv1reviewsummary-ndash-mr-summary"></span><span id="post_apiv1reviewsummary_mr_summary"></span><span id="post_apiv1reviewsummary_ndash_mr_summary"></span><code>POST /api/v1/review/summary</code> &ndash; MR Summary<a class="heading-anchor" href="#post-apiv1reviewsummary-mr-summary" title="Link to this section">&para;</a></h3>
-<p>Generates a structured summary from any unified diff (platform-agnostic).</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;diff_content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unified diff string&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional MR title&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional MR description&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Response:</strong> <code>summary</code>, <code>changed_files</code>, <code>additions</code>, <code>deletions</code>, <code>changed_methods</code>, <code>risk_areas</code>.</p>
-<h3  id="post-apiv1reviewcommit-message-commit-message"><span id="post-apiv1reviewcommit-message-ndash-commit-message"></span><span id="post_apiv1reviewcommit_message_commit_message"></span><span id="post_apiv1reviewcommit_message_ndash_commit_message"></span><code>POST /api/v1/review/commit-message</code> &ndash; Commit Message<a class="heading-anchor" href="#post-apiv1reviewcommit-message-commit-message" title="Link to this section">&para;</a></h3>
-<p>Generates a conventional commit message from a diff.</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;diff_content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unified diff string&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Response:</strong> <code>message</code>, <code>type</code>, <code>scope</code>, <code>files_changed</code>.</p>
-<h3  id="post-apiv1reviewmr-gitlab-mr-review"><span id="post-apiv1reviewmr-ndash-gitlab-mr-review"></span><span id="post_apiv1reviewmr_gitlab_mr_review"></span><span id="post_apiv1reviewmr_ndash_gitlab_mr_review"></span><code>POST /api/v1/review/mr</code> &ndash; GitLab MR Review<a class="heading-anchor" href="#post-apiv1reviewmr-gitlab-mr-review" title="Link to this section">&para;</a></h3>
-<p>Reviews a GitLab MR directly by fetching the diff from GitLab API (no need to pass raw diff).</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;org/repo&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;mr_iid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;gitlab_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://gitlab.com&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;task_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional review focus&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;dod_items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;No security issues&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Tests pass&quot;</span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Response:</strong> <code>recommendation</code>, <code>score</code>, <code>findings[]</code>, <code>dod_validation[]</code>, <code>summary</code>, <code>processing_time_ms</code>, <code>request_id</code>.</p>
-<h3  id="get-apiv1webhooksstatusproject-id-update-status"><span id="get-apiv1webhooksstatusproject-id-ndash-update-status"></span><span id="get_apiv1webhooksstatusproject_id_ndash_update_status"></span><span id="get_apiv1webhooksstatusproject_id_update_status"></span><code>GET /api/v1/webhooks/status/{project_id}</code> &ndash; Update Status<a class="heading-anchor" href="#get-apiv1webhooksstatusproject-id-update-status" title="Link to this section">&para;</a></h3>
-<p>Returns the latest CPG update pipeline status for a project.</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;org/repo&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;last_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-09T12:00:00+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_update&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-04-19T12:05:00+00:00&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ddd444&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2345</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;9f21f4e&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2310</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;gocpg_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;chromadb_synced&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_webhook_received_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-04-19T12:03:10+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_webhook_delivery_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-04-19T12:03:10+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_webhook_delivery_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;accepted&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_webhook_delivery_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;event_accepted&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_webhook_delivery_event_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;merge_request&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_webhook_delivery_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2ea7b29d-d418-4cf9-86d6-1d86f32a4488&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_reconcile_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-04-19T11:48:02+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;webhook_health_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reconcile_health_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;repository_head_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;9f21f4e&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cpg_head_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;9f21f4e&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_review_publish_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-04-19T12:04:13+00:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_review_publish_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;published&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_review_publish_reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;published&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_review_publish_category&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;last_review_publish_error&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
 
+<h2  id="ci-template-for-local-runners"><span id="ci_template_for_local_runners"></span>CI Template for Local Runners<a class="heading-anchor" href="#ci-template-for-local-runners" title="Link to this section">&para;</a></h2>
+<p>Reference template:</p>
+<ul>
+<li><code>docs/integrations/examples/gitlab_ce_local_contour.gitlab-ci.yml</code></li>
+</ul>
+<p>What the template assumes:</p>
+<ul>
+<li><code>CODEGRAPH_RUNNER_IMAGE</code> points to an internal registry image already mirrored into the local contour;</li>
+<li><code>CODEGRAPH_TOKEN</code> is a masked GitLab CI variable;</li>
+<li><code>INTERNAL_CA_BUNDLE_PATH</code> points to the CA bundle mounted into the runner image or shell executor;</li>
+<li>merge request and default-branch pipelines have access to full git history with <code>GIT_DEPTH: "0"</code>.</li>
+</ul>
+<p>The template produces:</p>
+<ul>
+<li><code>codegraph-artifacts/security/findings.json</code></li>
+<li><code>codegraph-artifacts/security/findings.sarif</code></li>
+<li><code>codegraph-artifacts/review/review-summary.json</code></li>
+<li><code>codegraph-artifacts/review/review-summary.md</code></li>
+<li><code>codegraph-artifacts/artifact-index.json</code></li>
+</ul>
+<p>These artifacts give a stable production contour for:</p>
+<ul>
+<li>machine-readable JSON findings;</li>
+<li>SARIF export for downstream security tooling;</li>
+<li>Markdown review summaries that can be attached to MR discussions or retained as operator evidence.</li>
+</ul>
+<p>Required GitLab CI/CD variables:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Type</th>
-<th>Description</th>
+<th>Variable</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>status</code></td>
-<td>string</td>
-<td><code>completed</code>, <code>failed</code>, <code>in_progress</code>, or <code>unknown</code></td>
+<td><code>CODEGRAPH_TOKEN</code></td>
+<td>Bearer token used to call the CodeGraph API</td>
 </tr>
 <tr>
-<td><code>last_update</code></td>
-<td>string</td>
-<td>ISO 8601 timestamp of last completed update</td>
+<td><code>CODEGRAPH_API_URL</code></td>
+<td>Internal CodeGraph API origin, for example <code>https://codegraph.internal</code></td>
 </tr>
 <tr>
-<td><code>duration_ms</code></td>
-<td>int</td>
-<td>Pipeline execution time in milliseconds</td>
+<td><code>CODEGRAPH_RUNNER_IMAGE</code></td>
+<td>Internal registry image used by local runners</td>
 </tr>
 <tr>
-<td><code>gocpg_status</code></td>
-<td>string</td>
-<td>GoCPG incremental update status</td>
-</tr>
-<tr>
-<td><code>chromadb_synced</code></td>
-<td>int</td>
-<td>Number of ChromaDB collections updated</td>
+<td><code>INTERNAL_CA_BUNDLE_PATH</code></td>
+<td>Mounted path to the private CA bundle inside the runner environment</td>
 </tr>
 </tbody>
 </table></div>
-<h2  id="mcp-tools"><span id="mcp_tools"></span>MCP Tools<a class="heading-anchor" href="#mcp-tools" title="Link to this section">&para;</a></h2>
-<p>When CodeGraph runs as an MCP server (<code>python -m src.mcp</code>), AI agents can use CPG-aware tools:</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Tool</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>codegraph_project_context</code></td>
-<td>Project overview: CPG stats, languages, hotspots, security findings</td>
-</tr>
-<tr>
-<td><code>codegraph_file_context</code></td>
-<td>Per-file methods, metrics, callers, callees, dead code, security</td>
-</tr>
-<tr>
-<td><code>codegraph_diff_context</code></td>
-<td>Blast radius analysis for changed files</td>
-</tr>
-<tr>
-<td><code>codegraph_query</code></td>
-<td>Execute raw SQL against CPG DuckDB</td>
-</tr>
-<tr>
-<td><code>codegraph_find_callers</code></td>
-<td>Find all callers of a function</td>
-</tr>
-<tr>
-<td><code>codegraph_find_callees</code></td>
-<td>Find all functions called by a function</td>
-</tr>
-<tr>
-<td><code>codegraph_taint_analysis</code></td>
-<td>Trace data flows from sources to sinks</td>
-</tr>
-</tbody>
-</table></div>
-<p>These tools are available when CodeGraph runs as an MCP server (<code>python -m src.mcp</code>).</p>
-<h2  id="incremental-cpg-updates"><span id="incremental_cpg_updates"></span>Incremental CPG Updates<a class="heading-anchor" href="#incremental-cpg-updates" title="Link to this section">&para;</a></h2>
-<p>When a push event is received via webhook, CodeGraph runs the full incremental update pipeline:</p>
+<h2  id="rest-cli-and-mcp-surfaces"><span id="rest_cli_and_mcp_surfaces"></span>REST, CLI, and MCP Surfaces<a class="heading-anchor" href="#rest-cli-and-mcp-surfaces" title="Link to this section">&para;</a></h2>
+<p>REST surfaces:</p>
+<ul>
+<li><code>POST /api/v1/webhooks/gitlab</code></li>
+<li><code>GET /api/v1/webhooks/status/{project_id}</code></li>
+<li><code>POST /api/v1/review/mr</code></li>
+<li><code>POST /api/v1/security/scan-diff</code></li>
+<li><code>GET /api/v1/repositories/bindings</code></li>
+<li><code>POST /api/v1/repositories/provider-connections/{connection_id}/health-check</code></li>
+</ul>
+<p>CLI surfaces:</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph</span> <span class="n">repos</span> <span class="n">provider-health</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-connection</span> <span class="n">gitlab-ce-local</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">status</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-project</span> <span class="n">api</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">reconcile</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-project</span> <span class="n">api</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">replay</span> <span class="p">-</span><span class="n">-job-id</span> <span class="p">&lt;</span><span class="nb">sync-job</span><span class="n">-uuid</span><span class="p">&gt;</span>
+<span class="n">codegraph</span> <span class="n">repos</span> <span class="n">review-rerun</span> <span class="p">-</span><span class="n">-snapshot-id</span> <span class="p">&lt;</span><span class="n">snapshot-uuid</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-publish-review</span>
+</code></pre></div>
+
+<p>MCP surfaces that remain relevant for GitLab-bound repositories:</p>
+<ul>
+<li><code>codegraph_repository_reconcile</code></li>
+<li><code>codegraph_repository_status</code></li>
+<li><code>codegraph_repository_sync_jobs</code></li>
+<li><code>codegraph_review_snapshots</code></li>
+<li><code>codegraph_review_snapshot_rerun</code></li>
+</ul>
+<h2  id="rotation-workflows"><span id="rotation_workflows"></span>Rotation Workflows<a class="heading-anchor" href="#rotation-workflows" title="Link to this section">&para;</a></h2>
+<p>Rotate a GitLab service credential without re-importing the bound repository:</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph</span> <span class="n">repos</span> <span class="n">rotate-provider-token</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-connection</span> <span class="n">gitlab-ce-local</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-token</span> <span class="nv">$env:GITLAB_TOKEN_V2</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-webhook-secret</span> <span class="nv">$env:GITLAB_WEBHOOK_SECRET_V2</span>
+</code></pre></div>
+
+<p>Rotate the CA bundle path or API metadata in place:</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph</span> <span class="n">repos</span> <span class="nb">update-provider</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-connection</span> <span class="n">gitlab-ce-local</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-ca-bundle-path</span> <span class="n">C</span><span class="p">:\</span><span class="n">certs</span><span class="p">\</span><span class="n">gitlab-root-ca-v2</span><span class="p">.</span><span class="n">pem</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-api-version</span> <span class="n">v4</span>
+</code></pre></div>
+
+<p>Recommended post-rotation flow:</p>
 <ol>
-<li><strong>Resolve project</strong> &ndash; match by <code>project_id</code>, repository URL (<code>git_http_url</code>), or active project</li>
-<li><strong>GoCPG Update</strong> &ndash; incremental CPG update via gRPC/subprocess (<code>from_commit</code> → <code>to_commit</code>)</li>
-<li><strong>ChromaDB Sync</strong> &ndash; update vector store collections for changed files</li>
-<li><strong>WebSocket Notification</strong> &ndash; broadcast <code>cpg.update.complete</code> event to connected clients</li>
+<li>Rotate token or webhook secret.</li>
+<li>Run <code>codegraph repos provider-health</code>.</li>
+<li>Check <code>codegraph repos status</code> for webhook and publication diagnostics.</li>
+<li>Trigger <code>codegraph repos reconcile</code> if repository freshness is behind the provider head.</li>
 </ol>
-<p>Pipeline behavior:
-- Duplicate push events (same project + commit SHA) are deduplicated
-- Rapid pushes to the same project are coalesced (merged changed files, latest commit)
-- GoCPG failure triggers automatic retry after 60 seconds
-- ChromaDB sync continues even if GoCPG update fails
-- Webhook always returns <code>202 Accepted</code> immediately (processing is asynchronous)</p>
-<p>Monitor pipeline status via <code>GET /api/v1/webhooks/status/{project_id}</code>.</p>
-<h2  id="docker-image-setup"><span id="docker_image_setup"></span>Docker Image Setup<a class="heading-anchor" href="#docker-image-setup" title="Link to this section">&para;</a></h2>
-<p>Images published to GHCR via <code>.github/workflows/publish-ghcr.yml</code>, tagged on version tags (<code>v*</code>) and <code>latest</code>.</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/mkhlsavin/codegraph:latest
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>ghcr.io/mkhlsavin/codegraph:latest<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>health
-</code></pre></div>
-
-<p>Includes GoCPG binary and supports 11 languages (C, C++, C#, Go, Java, JavaScript, Kotlin, PHP, Python, Ruby, TypeScript).</p>
-<p>For self-managed GitLab with private container registry:</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>tag<span class="w"> </span>ghcr.io/mkhlsavin/codegraph:latest<span class="w"> </span>registry.company.com/codegraph:latest
-docker<span class="w"> </span>push<span class="w"> </span>registry.company.com/codegraph:latest
-</code></pre></div>
-
-<p>Then reference <code>registry.company.com/codegraph:latest</code> in <code>.gitlab-ci.yml</code>.</p>
+<p>Human OAuth remains optional for machine workflows. Self-managed GitLab OAuth custom server URL support already exists, but webhook, sync, reconcile, and MR publication do not require a browser login.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" title="Link to this section">&para;</a></h2>
-<h3  id="webhook-token-error-401403"><span id="webhook_token_error_401403"></span>Webhook Token Error (401/403)<a class="heading-anchor" href="#webhook-token-error-401403" title="Link to this section">&para;</a></h3>
-<p><strong>401 Unauthorized</strong> &ndash; <code>X-Gitlab-Token</code> header is missing:
-- Verify the secret token is configured in GitLab webhook settings
-- Ensure the webhook URL is correct (<code>/api/v1/webhooks/gitlab</code>, not <code>/api/v1/webhooks/github</code>)</p>
-<p><strong>403 Forbidden</strong> &ndash; token does not match:
-- Verify the token in GitLab matches <code>config.yaml</code> &gt; <code>gitlab.webhook_secret</code>
-- Tokens are compared using constant-time comparison; check for trailing whitespace or newlines</p>
-<h3  id="webhook-returns-400"><span id="webhook_returns_400"></span>Webhook Returns 400<a class="heading-anchor" href="#webhook-returns-400" title="Link to this section">&para;</a></h3>
+<h3  id="auth-errorauth-rejected"><span id="auth_errorauth_rejected"></span><code>auth_error:auth_rejected</code><a class="heading-anchor" href="#auth-errorauth-rejected" title="Link to this section">&para;</a></h3>
 <ul>
-<li>Check that the payload is valid JSON</li>
-<li>Ensure Content-Type is <code>application/json</code> (GitLab sets this by default)</li>
+<li>verify the PAT/service token is still valid;</li>
+<li>verify the token has the scope needed for the current workflow;</li>
+<li>rotate the token with <code>codegraph repos rotate-provider-token</code>, then rerun <code>codegraph repos provider-health</code>.</li>
 </ul>
-<h3  id="ci-pipeline-cannot-reach-codegraph"><span id="ci_pipeline_cannot_reach_codegraph"></span>CI Pipeline Cannot Reach CodeGraph<a class="heading-anchor" href="#ci-pipeline-cannot-reach-codegraph" title="Link to this section">&para;</a></h3>
+<h3  id="tls-errortls-verification-failed"><span id="tls_errortls_verification_failed"></span><code>tls_error:tls_verification_failed</code><a class="heading-anchor" href="#tls-errortls-verification-failed" title="Link to this section">&para;</a></h3>
 <ul>
-<li><code>CODEGRAPH_URL</code> must be reachable from GitLab CI runners</li>
-<li>Verify: <code>curl -sf ${CODEGRAPH_URL}/api/v1/health</code></li>
-<li>For self-managed GitLab: check network rules between runner and CodeGraph</li>
-<li>For shared runners (GitLab.com): CodeGraph must be publicly accessible or use a tunnel</li>
+<li>verify the CA bundle path stored on the provider connection;</li>
+<li>ensure the runner and CodeGraph containers mount the same updated CA bundle;</li>
+<li>do not switch to insecure TLS as a workaround.</li>
 </ul>
-<h3  id="sast-report-not-appearing"><span id="sast_report_not_appearing"></span>SAST Report Not Appearing<a class="heading-anchor" href="#sast-report-not-appearing" title="Link to this section">&para;</a></h3>
+<h3  id="dns-errorhost-resolution-failed"><span id="dns_errorhost_resolution_failed"></span><code>dns_error:host_resolution_failed</code><a class="heading-anchor" href="#dns-errorhost-resolution-failed" title="Link to this section">&para;</a></h3>
 <ul>
-<li>Verify the artifact path matches: <code>artifacts:reports:sast: gl-sast-report.json</code></li>
-<li>Use <code>output_format: "sarif"</code> in the scan-diff request</li>
-<li>SAST reports require the MR to be open (not merged)</li>
+<li>verify the GitLab CE hostname resolves from the CodeGraph runtime and from local runners;</li>
+<li>check internal DNS and reverse-proxy upstream mapping.</li>
 </ul>
-<h3  id="mr-review-returns-empty-results"><span id="mr_review_returns_empty_results"></span>MR Review Returns Empty Results<a class="heading-anchor" href="#mr-review-returns-empty-results" title="Link to this section">&para;</a></h3>
+<h3  id="last-webhook-delivery-statusdeduplicated"><span id="last_webhook_delivery_statusdeduplicated"></span><code>last_webhook_delivery_status=deduplicated</code><a class="heading-anchor" href="#last-webhook-delivery-statusdeduplicated" title="Link to this section">&para;</a></h3>
 <ul>
-<li>Verify <code>CI_MERGE_REQUEST_DIFF_BASE_SHA</code> is available (requires <code>merge_requests</code> trigger)</li>
-<li>Check that <code>GIT_DEPTH: "0"</code> is set in <code>variables:</code> for full git history (GitLab CI equivalent of <code>fetch-depth: 0</code>)</li>
-<li>Test API token: <code>curl -sf ${CODEGRAPH_URL}/api/v1/health -H "Authorization: Bearer ${CODEGRAPH_TOKEN}"</code></li>
+<li>this is normally healthy and indicates an already-seen delivery identity or review snapshot key;</li>
+<li>only investigate if the repository head and CPG head diverge afterward.</li>
 </ul>
-<h3  id="self-managed-gitlab-certificate-issues"><span id="self_managed_gitlab_certificate_issues"></span>Self-Managed GitLab Certificate Issues<a class="heading-anchor" href="#self-managed-gitlab-certificate-issues" title="Link to this section">&para;</a></h3>
-<p>If CodeGraph cannot reach a self-managed GitLab instance with a self-signed certificate:
-- Mount the CA certificate into the CodeGraph container
-- Set <code>SSL_CERT_FILE</code> environment variable to the CA bundle path</p>
-<h3  id="incremental-update-shows-unavailable"><span id="incremental-update-shows-ldquounavailablerdquo"></span><span id="incremental_update_shows_ldquounavailablerdquo"></span><span id="incremental_update_shows_unavailable"></span>Incremental Update Shows &ldquo;unavailable&rdquo;<a class="heading-anchor" href="#incremental-update-shows-unavailable" title="Link to this section">&para;</a></h3>
+<h3  id="last-review-publish-statusfailed"><span id="last_review_publish_statusfailed"></span><code>last_review_publish_status=failed</code><a class="heading-anchor" href="#last-review-publish-statusfailed" title="Link to this section">&para;</a></h3>
 <ul>
-<li>Verify GoCPG is installed and accessible: <code>gocpg --version</code></li>
-<li>Check that <code>GOCPG_PATH</code> environment variable points to the GoCPG binary</li>
-<li>Review logs: <code>grep "GoCPG" /var/log/codegraph/*.log</code></li>
+<li>inspect <code>last_review_publish_reason</code>, <code>last_review_publish_category</code>, and <code>last_review_publish_error</code>;</li>
+<li>if credentials were rotated recently, rerun provider health;</li>
+<li>rerun the failed review snapshot with <code>codegraph repos review-rerun --publish-review</code>.</li>
 </ul>
-<h2  id="next-steps"><span id="next_steps"></span>Next Steps<a class="heading-anchor" href="#next-steps" title="Link to this section">&para;</a></h2>
+<h3  id="repository-head-is-ahead-of-cpg-head"><span id="repository_head_is_ahead_of_cpg_head"></span>Repository head is ahead of CPG head<a class="heading-anchor" href="#repository-head-is-ahead-of-cpg-head" title="Link to this section">&para;</a></h3>
 <ul>
-<li><a href="./GITHUB.html">GitHub Integration</a> &ndash; GitHub webhook and CI integration</li>
-<li><a href="./SOURCECRAFT.html">SourceCraft Integration</a> &ndash; Yandex SourceCraft integration</li>
-<li><a href="./GITVERSE.html">GitVerse Integration</a> &ndash; SberTech GitVerse integration</li>
-<li><a href="../getting-started/CONFIGURATION.html">Configuration</a> &ndash; Full configuration reference</li>
-<li><a href="../api/REST_API.html">REST API docs</a> &ndash; Complete API documentation</li>
+<li>run <code>codegraph repos status --project &lt;project&gt;</code>;</li>
+<li>if webhook delivery is stale or skipped, run <code>codegraph repos reconcile --project &lt;project&gt;</code>;</li>
+<li>inspect failed sync jobs and replay them if the root cause is already fixed.</li>
+</ul>
+<h2  id="acceptance-artifacts"><span id="acceptance_artifacts"></span>Acceptance Artifacts<a class="heading-anchor" href="#acceptance-artifacts" title="Link to this section">&para;</a></h2>
+<p>The GitLab CE production-readiness rollout is tracked by:</p>
+<ul>
+<li><code>docs/development/PRD_GITLAB_CE_PRODUCTION_READINESS.md</code></li>
+<li><code>docs/development/GITLAB_CE_PRODUCTION_READINESS_ACCEPTANCE_CHECKLIST.md</code></li>
+<li><code>docs/development/GITLAB_CE_PRODUCTION_READINESS_ACCEPTANCE_REPORT.md</code></li>
 </ul>
       </article>
 
@@ -711,7 +524,7 @@ docker<span class="w"> </span>push<span class="w"> </span>registry.company.com/c
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-08</span>
+        <span>Last updated: 2026-05-11</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/GITLAB.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -722,36 +535,20 @@ docker<span class="w"> </span>push<span class="w"> </span>registry.company.com/c
       <ul class="doc-toc-list">
         <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#overview" class="level-2">Overview</a></li>
-<li><a href="#prerequisites" class="level-2">Prerequisites</a></li>
-<li><a href="#webhook-configuration" class="level-2">Webhook Configuration</a></li>
-<li><a href="#token-verification" class="level-3">Token Verification</a></li>
-<li><a href="#supported-events" class="level-3">Supported Events</a></li>
-<li><a href="#configuration" class="level-3">Configuration</a></li>
-<li><a href="#event-type-detection" class="level-3">Event Type Detection</a></li>
-<li><a href="#payload-structure" class="level-3">Payload Structure</a></li>
-<li><a href="#ci-pipeline-gitlab-ciyml" class="level-2">CI Pipeline (.gitlab-ci.yml)</a></li>
-<li><a href="#basic-pipeline" class="level-3">Basic Pipeline</a></li>
-<li><a href="#required-cicd-variables" class="level-3">Required CI/CD Variables</a></li>
-<li><a href="#sast-integration" class="level-3">SAST Integration</a></li>
-<li><a href="#rest-api-endpoints" class="level-2">REST API Endpoints</a></li>
-<li><a href="#post-apiv1webhooksgitlab-webhook-receiver" class="level-3">`POST /api/v1/webhooks/gitlab` -- Webhook Receiver</a></li>
-<li><a href="#post-apiv1securityscan-diff-security-scan" class="level-3">`POST /api/v1/security/scan-diff` -- Security Scan</a></li>
-<li><a href="#post-apiv1reviewsummary-mr-summary" class="level-3">`POST /api/v1/review/summary` -- MR Summary</a></li>
-<li><a href="#post-apiv1reviewcommit-message-commit-message" class="level-3">`POST /api/v1/review/commit-message` -- Commit Message</a></li>
-<li><a href="#post-apiv1reviewmr-gitlab-mr-review" class="level-3">`POST /api/v1/review/mr` -- GitLab MR Review</a></li>
-<li><a href="#get-apiv1webhooksstatusproject-id-update-status" class="level-3">`GET /api/v1/webhooks/status/{project_id}` -- Update Status</a></li>
-<li><a href="#mcp-tools" class="level-2">MCP Tools</a></li>
-<li><a href="#incremental-cpg-updates" class="level-2">Incremental CPG Updates</a></li>
-<li><a href="#docker-image-setup" class="level-2">Docker Image Setup</a></li>
+<li><a href="#local-contour-profile" class="level-2">Local Contour Profile</a></li>
+<li><a href="#provider-connection-and-trust" class="level-2">Provider Connection and Trust</a></li>
+<li><a href="#webhook-setup-and-recovery" class="level-2">Webhook Setup and Recovery</a></li>
+<li><a href="#ci-template-for-local-runners" class="level-2">CI Template for Local Runners</a></li>
+<li><a href="#rest-cli-and-mcp-surfaces" class="level-2">REST, CLI, and MCP Surfaces</a></li>
+<li><a href="#rotation-workflows" class="level-2">Rotation Workflows</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
-<li><a href="#webhook-token-error-401403" class="level-3">Webhook Token Error (401/403)</a></li>
-<li><a href="#webhook-returns-400" class="level-3">Webhook Returns 400</a></li>
-<li><a href="#ci-pipeline-cannot-reach-codegraph" class="level-3">CI Pipeline Cannot Reach CodeGraph</a></li>
-<li><a href="#sast-report-not-appearing" class="level-3">SAST Report Not Appearing</a></li>
-<li><a href="#mr-review-returns-empty-results" class="level-3">MR Review Returns Empty Results</a></li>
-<li><a href="#self-managed-gitlab-certificate-issues" class="level-3">Self-Managed GitLab Certificate Issues</a></li>
-<li><a href="#incremental-update-shows-unavailable" class="level-3">Incremental Update Shows "unavailable"</a></li>
-<li><a href="#next-steps" class="level-2">Next Steps</a></li>
+<li><a href="#auth-errorauth-rejected" class="level-3">`auth_error:auth_rejected`</a></li>
+<li><a href="#tls-errortls-verification-failed" class="level-3">`tls_error:tls_verification_failed`</a></li>
+<li><a href="#dns-errorhost-resolution-failed" class="level-3">`dns_error:host_resolution_failed`</a></li>
+<li><a href="#last-webhook-delivery-statusdeduplicated" class="level-3">`last_webhook_delivery_status=deduplicated`</a></li>
+<li><a href="#last-review-publish-statusfailed" class="level-3">`last_review_publish_status=failed`</a></li>
+<li><a href="#repository-head-is-ahead-of-cpg-head" class="level-3">Repository head is ahead of CPG head</a></li>
+<li><a href="#acceptance-artifacts" class="level-2">Acceptance Artifacts</a></li>
       </ul>
     </aside>
   </div>

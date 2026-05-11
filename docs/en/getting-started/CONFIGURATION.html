@@ -430,13 +430,59 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 - <code>yandexgpt/rc</code> - Release Candidate with reasoning
 - <code>yandexgpt-32k/latest</code> - Extended context (32K tokens)</p>
 <h2  id="domain-configuration"><span id="domain_configuration"></span>Domain Configuration<a class="heading-anchor" href="#domain-configuration" title="Link to this section">&para;</a></h2>
-<p>Switch between different codebases for analysis:</p>
+<p>Use domain settings as the default/fallback analysis profile, not as the complete description of a multilingual project.</p>
+<p>For single-language projects, <code>domain.name</code> is usually enough.</p>
+<p>For multilingual projects, CodeGraph is moving to project-level routing based on project metadata:</p>
+<ul>
+<li><code>project.domain</code> remains the fallback/default domain;</li>
+<li><code>project.metadata.code_slices</code> is the target routing mechanism for per-path domain selection;</li>
+<li>top-level <code>domain.name</code> should be treated as a default domain and import-time fallback, not as the only source of truth for the whole repository.</li>
+</ul>
+<p>Minimal target shape for multilingual project metadata:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">projects</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">registry</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">codegraph</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">source_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">D:/work/codegraph</span>
+<span class="w">      </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python_generic</span>
+<span class="w">      </span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">code_slices</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">backend_py</span>
+<span class="w">            </span><span class="nt">path_globs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;src/**&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;tests/**&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;scripts/**&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;python&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python_generic</span>
+<span class="w">            </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gocpg_go</span>
+<span class="w">            </span><span class="nt">path_globs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;gocpg/**&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;go&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">go</span>
+<span class="w">            </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">90</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frontend_ts</span>
+<span class="w">            </span><span class="nt">path_globs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;frontend/**&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;typescript&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;javascript&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">            </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">javascript</span>
+<span class="w">            </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
+<span class="w">        </span><span class="nt">code_slice_exclude_paths</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;codegraph_lsp/**&quot;</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;integrations/opencode/codegraph_lsp/**&quot;</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;services/leads/**&quot;</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;integrations/opencode/opencode-codegraph/src/**&quot;</span>
+</code></pre></div>
+
+<p>Top-level default domain example:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
 <span class="nt">domain</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql_v2</span><span class="w">  </span><span class="c1"># postgresql_v2, generic_cpp, go, java, python_django, etc.</span>
 <span class="w">  </span><span class="nt">auto_activate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
 
+<p>Operational notes:</p>
+<ul>
+<li><code>domain.name</code> can still be useful as the default active domain and as a fallback when project metadata has no <code>code_slices</code>;</li>
+<li><code>project.metadata.code_slice_exclude_paths</code> is useful when one repository also contains adjacent subprojects or tool-only roots that should stay out of the auto-generated slice profile;</li>
+<li>current GoCPG <code>parse</code> / <code>update</code> runtime is still single-language in Phase 1, even if the project itself is multilingual;</li>
+<li>domain routing for analysis and mixed-language CPG storage are separate concerns.</li>
+</ul>
 <p>Available domains (12):
 - <code>postgresql_v2</code> — PostgreSQL 17.6 database
 - <code>generic_cpp</code> — Generic C/C++ codebase
@@ -460,6 +506,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 
 <blockquote class="callout">
 <p><strong>Note:</strong> The <code>type</code> field specifies the analysis domain (e.g., <code>postgresql_v2</code>, <code>go</code>, <code>java</code>), not the storage backend. CPG data is always stored in DuckDB.</p>
+<p>For multilingual repositories, keep in mind that Phase 1 routing can choose a more precise domain for a specific file or slice, but GoCPG parse/update still works with one language at a time. <code>project.language</code> and <code>project.domain</code> therefore remain the truthful parse/update fallback until shard-aware CPG support exists.</p>
 </blockquote>
 <h2  id="retrieval-settings"><span id="retrieval_settings"></span>Retrieval Settings<a class="heading-anchor" href="#retrieval-settings" title="Link to this section">&para;</a></h2>
 <p>Configure semantic search and retrieval:</p>
@@ -1014,7 +1061,7 @@ curl<span class="w"> </span>http://localhost:8000/api/v1/health
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-08</span>
+        <span>Last updated: 2026-05-11</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/getting-started/CONFIGURATION.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>

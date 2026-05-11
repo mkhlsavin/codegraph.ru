@@ -163,7 +163,7 @@
         <li><a href="../integrations/EXTERNAL_CONTEXT.html">External Context Integration Guide</a></li>
         <li><a href="../integrations/GIGACHAT.html">GigaChat Integration Guide</a></li>
         <li><a href="../integrations/GITHUB.html">GitHub Integration Guide</a></li>
-        <li><a href="../integrations/GITLAB.html">GitLab Integration Guide</a></li>
+        <li><a href="../integrations/GITLAB.html">GitLab CE Integration Guide</a></li>
         <li><a href="../integrations/GITVERSE.html">GitVerse Integration Guide</a></li>
         <li><a href="../integrations/OPENCODE_PLUGIN.html">CodeGraph OpenCode Integration</a></li>
         <li><a href="../integrations/SOURCECRAFT.html">SourceCraft Integration Guide</a></li>
@@ -1620,6 +1620,35 @@ is_token_blacklisted()              _blacklisted_tokens (set)
 - Set &ndash; restricts project resolution to that group only</p>
 <h3  id="audit-context"><span id="audit_context"></span>Audit Context<a class="heading-anchor" href="#audit-context" title="Link to this section">&para;</a></h3>
 <p>When multi-tenant is enabled, audit log entries include <code>project_id</code> and <code>group_id</code> fields for tenant-aware audit trails.</p>
+<h3  id="effective-active-project-resolution"><span id="effective_active_project_resolution"></span>Effective Active Project Resolution<a class="heading-anchor" href="#effective-active-project-resolution" title="Link to this section">&para;</a></h3>
+<p>Multi-tenant routing now distinguishes three different concepts:</p>
+<ul>
+<li><code>group default active project</code> &ndash; the tenant-wide default stored on <code>Project.is_active</code></li>
+<li><code>user-selected active project</code> &ndash; a per-user preference inside one group</li>
+<li><code>effective active project</code> &ndash; the final runtime result after precedence and access checks</li>
+</ul>
+<p>Resolution precedence for user-facing runtime surfaces is:</p>
+<ol>
+<li>explicit project hint</li>
+<li>workspace-derived match</li>
+<li>persisted user preference</li>
+<li>group default project</li>
+<li>global fallback for local single-project compatibility only</li>
+</ol>
+<p>If the workspace matches a project the user cannot access, CodeGraph returns a structured denied state instead of silently opening the wrong project. The denied payload includes a remediation path:</p>
+<ul>
+<li><code>workspace_admin_remediation</code> &ndash; same-tenant admin should adjust project scope</li>
+<li><code>platform_admin_override</code> &ndash; platform admin must handle cross-tenant or guarded cases</li>
+<li><code>explicit_project_selection_required</code> &ndash; caller must disambiguate multiple valid matches</li>
+</ul>
+<p>Tenant-scoped remediation surfaces:</p>
+<ul>
+<li><code>GET/PUT /api/v1/groups/{group_id}/users/{user_id}/project-access</code></li>
+</ul>
+<p>Platform-scoped remediation surface:</p>
+<ul>
+<li><code>GET/PUT /api/v1/auth/users/{user_id}/access</code></li>
+</ul>
 <h3  id="implementation-status"><span id="implementation_status"></span>Implementation Status<a class="heading-anchor" href="#implementation-status" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
@@ -1800,7 +1829,7 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-08</span>
+        <span>Last updated: 2026-05-11</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/enterprise/RBAC.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1846,6 +1875,7 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
 <li><a href="#how-it-works" class="level-3">How It Works</a></li>
 <li><a href="#api-key-group-scoping" class="level-3">API Key Group Scoping</a></li>
 <li><a href="#audit-context" class="level-3">Audit Context</a></li>
+<li><a href="#effective-active-project-resolution" class="level-3">Effective Active Project Resolution</a></li>
 <li><a href="#implementation-status" class="level-3">Implementation Status</a></li>
 <li><a href="#group-rbac-configuration" class="level-3">Group RBAC Configuration</a></li>
 <li><a href="#migration" class="level-3">Migration</a></li>

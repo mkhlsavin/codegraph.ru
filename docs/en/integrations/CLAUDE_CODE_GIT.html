@@ -163,7 +163,7 @@
         <li><a href="EXTERNAL_CONTEXT.html">External Context Integration Guide</a></li>
         <li><a href="GIGACHAT.html">GigaChat Integration Guide</a></li>
         <li><a href="GITHUB.html">GitHub Integration Guide</a></li>
-        <li><a href="GITLAB.html">GitLab Integration Guide</a></li>
+        <li><a href="GITLAB.html">GitLab CE Integration Guide</a></li>
         <li><a href="GITVERSE.html">GitVerse Integration Guide</a></li>
         <li><a href="OPENCODE_PLUGIN.html">CodeGraph OpenCode Integration</a></li>
         <li><a href="SOURCECRAFT.html">SourceCraft Integration Guide</a></li>
@@ -575,13 +575,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-06T12:00:00Z&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;hook&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commit_analysis&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1234.5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;codegraph&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ok&quot;</span><span class="p">}</span>
 </code></pre></div>
 
-<p>View statistics with the dogfood CLI:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span>--last<span class="w"> </span><span class="m">50</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>hooks-status<span class="w"> </span>--hook<span class="w"> </span>commit_analysis
+<p>Inspect current runtime readiness with the dogfood CLI:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>status<span class="w"> </span>--json
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span>--format<span class="w"> </span>json
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span>--json
 </code></pre></div>
 
-<p>The dashboard shows per-hook aggregates: runs, ok/error/warning counts, failure rate, average and max duration, total findings.</p>
+<p>The legacy <code>hooks-status</code> command was removed. Use <code>dogfood status</code> for runtime health and inspect <code>data/hook_metrics.jsonl</code> directly when raw telemetry is needed.</p>
 <h2  id="graceful-degradation"><span id="graceful_degradation"></span>Graceful Degradation<a class="heading-anchor" href="#graceful-degradation" title="Link to this section">&para;</a></h2>
 <p>All hooks follow fail-open design:
 - Missing gocpg binary: skip CPG queries, output empty context
@@ -749,11 +749,12 @@ Durable local trace              Report injected into conversation
 <p><strong>Note:</strong> The <code>cc_threshold</code> in <code>dogfooding</code> (10) differs from <code>CC_THRESHOLD</code> in <code>pre_tool_use.py</code> (15). The commit analysis hook uses the config value; the pre-tool-use hook uses its hardcoded constant.</p>
 </blockquote>
 <h2 id="setup">Setup<a class="heading-anchor" href="#setup" title="Link to this section">&para;</a></h2>
-<h3  id="one-command-setup"><span id="one_command_setup"></span>One-command setup<a class="heading-anchor" href="#one-command-setup" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>setup<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
+<h3  id="one-command-readiness-check"><span id="one_command_readiness_check"></span>One-command readiness check<a class="heading-anchor" href="#one-command-readiness-check" title="Link to this section">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status
+python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~1
 </code></pre></div>
 
-<p>This installs GoCPG git hooks and verifies the Claude Code hook configuration.</p>
+<p>This verifies CPG freshness, local runtime readiness, and that the review pipeline can analyze the latest commit diff without relying on local hooks.</p>
 <h3  id="manual-setup"><span id="manual_setup"></span>Manual setup<a class="heading-anchor" href="#manual-setup" title="Link to this section">&para;</a></h3>
 <ol>
 <li>
@@ -830,7 +831,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-04-08</span>
+        <span>Last updated: 2026-05-11</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/CLAUDE_CODE_GIT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -865,7 +866,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 <li><a href="#review-pipeline" class="level-3">Review pipeline</a></li>
 <li><a href="#dogfooding" class="level-3">Dogfooding</a></li>
 <li><a href="#setup" class="level-2">Setup</a></li>
-<li><a href="#one-command-setup" class="level-3">One-command setup</a></li>
+<li><a href="#one-command-readiness-check" class="level-3">One-command readiness check</a></li>
 <li><a href="#manual-setup" class="level-3">Manual setup</a></li>
 <li><a href="#verify" class="level-3">Verify</a></li>
 <li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
