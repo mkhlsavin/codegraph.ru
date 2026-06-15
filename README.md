@@ -1,3 +1,22 @@
+---
+type: Directory Index
+title: Readme
+description: Directory Index for Readme.
+tags:
+- directory_index
+timestamp: '2026-06-14T13:13:53Z'
+doc_kind: directory_index
+language: mixed
+source_path: docs/landing/README.md
+status: active
+owner: engineering
+audience:
+- engineering
+memory_policy: repo_only
+topic: documentation
+public_projection: internal
+section: docs/landing
+---
 # CodeGraph Landing Page
 
 Статический сайт [codegraph.ru](https://codegraph.ru) — маркетинговый лендинг и документация продукта CodeGraph. Деплоится на GitHub Pages при пуше в `main`.
@@ -18,7 +37,7 @@ python -m http.server 8000
 ### Лендинг
 
 ```bash
-python scripts/build_landing.py              # Обновить header/footer во всех 7 HTML-страницах
+python scripts/build_landing.py              # Обновить header/footer во всех HTML-страницах
 python scripts/build_landing.py --sections   # Пересобрать index.html из модульных секций
 python scripts/build_landing.py --assets     # Минификация CSS/JS (styles.min.css, main.min.js)
 python scripts/build_landing.py --all        # Всё вместе
@@ -48,6 +67,7 @@ landing/
 ├── compliance.html         # Вертикаль: 152-ФЗ, ГОСТ, ФСТЭК
 ├── cpg.html                # Вертикаль: технология CPG
 ├── ai-engineering.html     # Вертикаль: ML-инфраструктура, верификация AI-кода
+├── business-efficiency.html # Вертикаль: CEO/CFO, стоимость разработки, ФОТ, выручка на сотрудника
 │
 ├── css/
 │   ├── styles.css          # Точка входа (@import партиалов)
@@ -75,7 +95,7 @@ landing/
 
 ## Страницы и FAQ
 
-Все 7 HTML-страниц используют общий header/footer из шаблонов. При изменении навигации или футера — обновить все страницы через `build_landing.py` или вручную.
+Все root HTML-страницы используют общий header/footer из шаблонов. При изменении навигации или футера — обновить все страницы через `build_landing.py` или вручную.
 
 Каждая вертикальная страница имеет уникальный FAQ (вопросы не пересекаются между страницами) и JSON-LD FAQPage в `<head>`:
 
@@ -87,6 +107,7 @@ landing/
 | `compliance.html` | Тендеры, госреференсы, русская документация | 8 |
 | `cpg.html` | CGO/FFI, масштабируемость, глубина анализа, CI/CD | 8 |
 | `ai-engineering.html` | ML-инфраструктура, верификация AI-кода, эксперименты | 8 |
+| `business-efficiency.html` | Стоимость разработки, ФОТ, пилотная экономика, цифровая команда | 8 |
 
 ## Дизайн-система
 

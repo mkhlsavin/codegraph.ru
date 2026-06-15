@@ -1,3 +1,23 @@
+---
+type: Development Note
+title: Agents
+description: Development Note for Agents.
+tags:
+- development_note
+timestamp: '2026-06-14T13:13:53Z'
+doc_kind: development_note
+language: mixed
+source_path: docs/landing/AGENTS.md
+status: active
+owner: engineering
+audience:
+- engineering
+memory_policy: repo_only
+topic: documentation
+public_projection: internal
+reason_unclassified: fallback_classifier_rule
+migration_followup: review_for_more_specific_okf_type
+---
 # AGENTS.md — Landing
 
 Agent guide for `D:\work\codegraph\docs\landing`.
