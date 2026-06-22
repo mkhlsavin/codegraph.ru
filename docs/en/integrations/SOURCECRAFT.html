@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -215,7 +213,7 @@
 <li><a href="#ci-pipeline">CI Pipeline</a></li>
 <li><a href="#oauth-authentication">OAuth Authentication</a></li>
 <li><a href="#yandex-cloud-iam">Yandex Cloud IAM</a></li>
-<li><a href="#rest-api-endpoints">REST API Endpoints</a></li>
+<li><a href="#review-workflows">Review Workflows</a></li>
 <li><a href="#mcp-tools">MCP Tools</a></li>
 <li><a href="#helm-deployment">Helm Deployment</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
@@ -325,7 +323,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <ol>
 <li><strong>Build CPG</strong> (<code>cpg-update</code>) &ndash; <code>gocpg parse</code> in <code>cr.yandex/${YCR_REGISTRY}/codegraph:latest</code> container</li>
 <li><strong>Security Scan</strong> (<code>security-scan</code>) &ndash; diff-based security analysis via <code>/api/v1/security/scan-diff</code>, outputs SARIF for Security Dashboard</li>
-<li><strong>MR Review</strong> (<code>mr-review</code>) &ndash; structural review via <code>/api/v1/review/sourcecraft</code></li>
+<li><strong>MR Review</strong> (<code>mr-review</code>) &ndash; structural review via service, MCP or CLI workflows</li>
 <li><strong>Report</strong> (<code>report</code>) &ndash; aggregates results summary</li>
 </ol>
 <p>Key pipeline fragment (full version in <code>ci/sourcecraft/codegraph-review.yaml</code>):</p>
@@ -416,20 +414,9 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 </code></pre></div>
 
 <p>Tokens are cached with a 5-minute TTL to minimize validation API calls.</p>
-<h2  id="rest-api-endpoints"><span id="rest_api_endpoints"></span>REST API Endpoints<a class="heading-anchor" href="#rest-api-endpoints" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1reviewsourcecraft-review-mr"><span id="post-apiv1reviewsourcecraft-ndash-review-mr"></span><span id="post_apiv1reviewsourcecraft_ndash_review_mr"></span><span id="post_apiv1reviewsourcecraft_review_mr"></span><code>POST /api/v1/review/sourcecraft</code> &ndash; Review MR<a class="heading-anchor" href="#post-apiv1reviewsourcecraft-review-mr" title="Link to this section">&para;</a></h3>
-<p>Fetches MR diff from SourceCraft and runs structural code review (blast radius, complexity delta, dead code, security).</p>
-<p><strong>Headers:</strong> <code>Authorization: Bearer &lt;token&gt;</code>, <code>X-SourceCraft-Token: &lt;sourcecraft-or-iam-token&gt;</code></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;proj-123&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;mr_iid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;sourcecraft_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://api.sourcecraft.yandex.cloud&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;task_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional context&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;dod_items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Tests pass&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;No security issues&quot;</span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>Response</strong> (<code>ReviewResponse</code>):</p>
+<h2  id="review-workflows"><span id="review_workflows"></span>Review Workflows<a class="heading-anchor" href="#review-workflows" title="Link to this section">&para;</a></h2>
+<p>Direct SourceCraft review REST endpoints were retired under STORY-937. Use the review service through MCP, repository review snapshots, or CLI automation instead. The workflow still fetches MR diffs from SourceCraft and runs structural code review.</p>
+<p>The workflow returns the shared <code>ReviewResponse</code> shape:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;recommendation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;REQUEST_CHANGES&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">72.5</span><span class="p">,</span>
@@ -596,35 +583,35 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 </thead>
 <tbody>
 <tr>
-<td><code>codegraph_sc_review</code></td>
+<td><code>codegraph_integration_sourcecraft_review</code></td>
 <td>Review SourceCraft MR (runs full code review workflow)</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_suggestions</code></td>
+<td><code>codegraph_integration_sourcecraft_suggestions</code></td>
 <td>Code context suggestions at cursor position</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_completion</code></td>
+<td><code>codegraph_integration_sourcecraft_completion</code></td>
 <td>Code completion context from CPG</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_navigate</code></td>
+<td><code>codegraph_integration_sourcecraft_navigate</code></td>
 <td>Navigate to symbol definition</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_test_hints</code></td>
+<td><code>codegraph_integration_sourcecraft_test_hints</code></td>
 <td>Generate test hints for a method</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_mr_info</code></td>
+<td><code>codegraph_integration_sourcecraft_mr_info</code></td>
 <td>Get MR information and diff</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_commit_status</code></td>
+<td><code>codegraph_integration_sourcecraft_commit_status</code></td>
 <td>Update commit pipeline status</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_summary</code></td>
+<td><code>codegraph_integration_sourcecraft_summary</code></td>
 <td>Generate MR summary</td>
 </tr>
 </tbody>
@@ -714,7 +701,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/SOURCECRAFT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -736,8 +723,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <li><a href="#yandex-cloud-iam" class="level-2">Yandex Cloud IAM</a></li>
 <li><a href="#configuration" class="level-3">Configuration</a></li>
 <li><a href="#usage" class="level-3">Usage</a></li>
-<li><a href="#rest-api-endpoints" class="level-2">REST API Endpoints</a></li>
-<li><a href="#post-apiv1reviewsourcecraft-review-mr" class="level-3">`POST /api/v1/review/sourcecraft` -- Review MR</a></li>
+<li><a href="#review-workflows" class="level-2">Review Workflows</a></li>
 <li><a href="#post-apiv1securityscan-diff-security-scan" class="level-3">`POST /api/v1/security/scan-diff` -- Security Scan</a></li>
 <li><a href="#post-apiv1webhookssourcecraft-webhook-receiver" class="level-3">`POST /api/v1/webhooks/sourcecraft` -- Webhook Receiver</a></li>
 <li><a href="#post-apiv1reviewsummary-mr-summary" class="level-3">`POST /api/v1/review/summary` -- MR Summary</a></li>

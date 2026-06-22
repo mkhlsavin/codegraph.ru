@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html" class="active">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -281,12 +280,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <h3  id="programmnoe-ispolzovanie"><span id="programmnoe_ispolzovanie"></span>Программное использование<a class="heading-anchor" href="#programmnoe-ispolzovanie" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReviewWorkflow</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReviewWorkflow</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review.cpg_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">PatchReviewCPGReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review.store</span><span class="w"> </span><span class="kn">import</span> <span class="n">connect_patch_review_store</span>
 
-<span class="c1"># Подключение к базе данных CPG</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectManager</span>
-<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
+<span class="c1"># Чтение CPG идет через GoCPG-first boundary.</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">connect_patch_review_store</span><span class="p">()</span>
+<span class="n">cpg_reader</span> <span class="o">=</span> <span class="n">PatchReviewCPGReader</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;data/projects/&lt;project&gt;.duckdb&quot;</span><span class="p">)</span>
 
 <span class="c1"># Настройка параметров DoD</span>
 <span class="n">dod_config</span> <span class="o">=</span> <span class="p">{</span>
@@ -299,7 +299,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="p">}</span>
 
 <span class="c1"># Создание рабочего процесса</span>
-<span class="n">workflow</span> <span class="o">=</span> <span class="n">ReviewWorkflow</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">dod_config</span><span class="o">=</span><span class="n">dod_config</span><span class="p">)</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">ReviewWorkflow</span><span class="p">(</span>
+    <span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_client</span><span class="o">=</span><span class="n">cpg_reader</span><span class="p">,</span>
+    <span class="n">dod_config</span><span class="o">=</span><span class="n">dod_config</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="c1"># Запуск проверки</span>
 <span class="n">verdict</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
@@ -335,7 +339,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 ├─────────────────────────────────────────────────────────┤
 │ Уровень 3: Workflow Scenario 9 (src/workflow/scenarios/) │
 │   PRAnalyzer → ContextAggregator → ReviewReporter       │
-│   Точка входа: MultiScenarioCopilot (code_review)       │
+│   Точка входа: role-bound invocation (scenario_09)       │
 │   Фокус: LLM-проверка, оптимизация обработчиками        │
 └─────────────────────────────────────────────────────────┘
 </code></pre></div>
@@ -345,9 +349,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <h3  id="patch-review-workflow-uroven-2"><span id="patch_review_workflow_uroven_2"></span>Patch Review Workflow (Уровень 2)<a class="heading-anchor" href="#patch-review-workflow-uroven-2" title="Link to this section">&para;</a></h3>
 <p>LangGraph-рабочий процесс в <code>src/patch_review/</code>. Парсит патчи из нескольких источников, генерирует дельта-CPG, запускает 4 анализатора воздействия, формирует 4 вердикта и проверяет DoD. Используется REST API и программным доступом.</p>
 <h3  id="workflow-scenario-9-uroven-3"><span id="workflow_scenario_9_uroven_3"></span>Workflow Scenario 9 (Уровень 3)<a class="heading-anchor" href="#workflow-scenario-9-uroven-3" title="Link to this section">&para;</a></h3>
-<p>LLM-усиленная проверка через <code>src/workflow/scenarios/code_review.py</code>. Трёхагентная архитектура с оптимизацией на основе обработчиков. Вызывается через MultiScenarioCopilot.</p>
+<p>LLM-усиленная проверка через <code>src/workflow/scenarios/code_review.py</code>. Трёхагентная архитектура с оптимизацией на основе обработчиков. Вызывается через role-bound контракт сценариев цифровых сотрудников.</p>
 <h2  id="cli-komanda"><span id="cli_komanda"></span>CLI-команда<a class="heading-anchor" href="#cli-komanda" title="Link to this section">&para;</a></h2>
-<p>Точка входа: <code>src/cli/review_command.py</code> → <code>add_review_commands()</code></p>
+<p>Точка входа: <code>src/cli/analysis_commands/review_command.py</code> -&gt; <code>add_review_commands()</code></p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </code></pre></div>
 
@@ -446,7 +450,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <p>8 шагов конвейера:</p>
 <ol>
-<li><strong>Resolve DB path</strong> — используется переданный <code>db_path</code> или <code>ProjectManager.get_active_db_path()</code></li>
+<li><strong>Resolve DB path</strong> — используется явный <code>db_path</code>, переданный вызывающей стороной</li>
 <li><strong>Check CPG status</strong> — сравнение <code>cpg_git_state.commit_hash</code> с <code>git rev-list HEAD</code></li>
 <li><strong>Load parse scope</strong> — чтение таблицы <code>cpg_parse_scope</code> для определения границ анализа</li>
 <li><strong>Determine changed files</strong> — через <code>git diff --name-only</code>, фильтрация по расширениям</li>
@@ -857,105 +861,20 @@ run_analyzers → generate_verdicts → aggregate_verdict → validate_dod → f
 <li><strong>Функциональность/Документация</strong>: не могут быть проверены автоматически</li>
 </ul>
 <h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<p><code>src/api/routers/review.py</code> предоставляет 7 эндпоинтов с префиксом <code>/review</code>.</p>
+<p>Legacy-router <code>src/api/routers/review.py</code> и прямые <code>/review/*</code> endpoints выведены из активного
+API. Для provider-backed MR/PR review используйте repository review snapshot routes, dashboard
+GitVerse review actions, MCP tools или CLI automation.</p>
 <h3  id="endpointy-proverki"><span id="endpointy_proverki"></span>Эндпоинты проверки<a class="heading-anchor" href="#endpointy-proverki" title="Link to this section">&para;</a></h3>
-<h4  id="post-reviewpatch"><span id="post_reviewpatch"></span>POST /review/patch<a class="heading-anchor" href="#post-reviewpatch" title="Link to this section">&para;</a></h4>
-<p>Проверка git diff/патча.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Запрос: PatchReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;patch_content&quot;</span><span class="p">:</span> <span class="s2">&quot;diff --git a/...&quot;</span><span class="p">,</span>       <span class="c1"># обязательное</span>
-    <span class="s2">&quot;task_description&quot;</span><span class="p">:</span> <span class="s2">&quot;Добавить авторизацию&quot;</span><span class="p">,</span> <span class="c1"># опциональное</span>
-    <span class="s2">&quot;dod_items&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Тесты проходят&quot;</span><span class="p">],</span>            <span class="c1"># опциональное</span>
-    <span class="s2">&quot;output_format&quot;</span><span class="p">:</span> <span class="s2">&quot;json&quot;</span>                     <span class="c1"># json|markdown|yaml</span>
-<span class="p">}</span>
-<span class="c1"># Заголовок: Authorization (JWT)</span>
-</code></pre></div>
-
-<h4  id="post-reviewpr"><span id="post_reviewpr"></span>POST /review/pr<a class="heading-anchor" href="#post-reviewpr" title="Link to this section">&para;</a></h4>
-<p>Проверка GitHub Pull Request.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Запрос: GitHubPRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;owner&quot;</span><span class="p">:</span> <span class="s2">&quot;myorg&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;repo&quot;</span><span class="p">:</span> <span class="s2">&quot;myrepo&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;pr_number&quot;</span><span class="p">:</span> <span class="mi">123</span>
-<span class="p">}</span>
-<span class="c1"># Заголовок: X-GitHub-Token (обязательный)</span>
-</code></pre></div>
-
-<h4  id="post-reviewmr"><span id="post_reviewmr"></span>POST /review/mr<a class="heading-anchor" href="#post-reviewmr" title="Link to this section">&para;</a></h4>
-<p>Проверка GitLab Merge Request.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Запрос: GitLabMRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;project_id&quot;</span><span class="p">:</span> <span class="s2">&quot;group/project&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;mr_iid&quot;</span><span class="p">:</span> <span class="mi">456</span><span class="p">,</span>
-    <span class="s2">&quot;gitlab_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://gitlab.com&quot;</span>
-<span class="p">}</span>
-<span class="c1"># Заголовок: X-GitLab-Token (обязательный)</span>
-</code></pre></div>
-
-<h4  id="post-reviewsourcecraft"><span id="post_reviewsourcecraft"></span>POST /review/sourcecraft<a class="heading-anchor" href="#post-reviewsourcecraft" title="Link to this section">&para;</a></h4>
-<p>Проверка SourceCraft Merge Request (Yandex Cloud).</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Запрос: SourceCraftMRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;project_id&quot;</span><span class="p">:</span> <span class="s2">&quot;project-id&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;mr_iid&quot;</span><span class="p">:</span> <span class="mi">789</span><span class="p">,</span>
-    <span class="s2">&quot;sourcecraft_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://api.sourcecraft.yandex.cloud&quot;</span>
-<span class="p">}</span>
-<span class="c1"># Заголовок: X-SourceCraft-Token (обязательный)</span>
-</code></pre></div>
-
-<h4  id="post-reviewgitverse"><span id="post_reviewgitverse"></span>POST /review/gitverse<a class="heading-anchor" href="#post-reviewgitverse" title="Link to this section">&para;</a></h4>
-<p>Проверка GitVerse Pull Request (Sber).</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Запрос: GitVersePRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;project_id&quot;</span><span class="p">:</span> <span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;pr_number&quot;</span><span class="p">:</span> <span class="mi">101</span><span class="p">,</span>
-    <span class="s2">&quot;gitverse_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://gitverse.ru/api/v1&quot;</span>
-<span class="p">}</span>
-<span class="c1"># Заголовок: X-GitVerse-Token (обязательный)</span>
-</code></pre></div>
-
+<p>Прямые <code>POST /review/patch</code>, <code>POST /review/pr</code> и <code>POST /review/mr</code> не являются активными API
+surfaces.</p>
 <h3  id="vspomogatelnye-endpointy"><span id="vspomogatelnye_endpointy"></span>Вспомогательные эндпоинты<a class="heading-anchor" href="#vspomogatelnye-endpointy" title="Link to this section">&para;</a></h3>
-<h4  id="post-reviewsummary"><span id="post_reviewsummary"></span>POST /review/summary<a class="heading-anchor" href="#post-reviewsummary" title="Link to this section">&para;</a></h4>
-<p>Генерация структурированного резюме MR из diff.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Запрос: SummaryRequest</span>
-<span class="p">{</span><span class="s2">&quot;diff_content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">}</span>
-
-<span class="c1"># Ответ: SummaryResponse</span>
-<span class="p">{</span>
-    <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Этот MR добавляет авторизацию...&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;changed_files&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;src/auth.py&quot;</span><span class="p">],</span>
-    <span class="s2">&quot;additions&quot;</span><span class="p">:</span> <span class="mi">45</span><span class="p">,</span>
-    <span class="s2">&quot;deletions&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-    <span class="s2">&quot;changed_methods&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;authenticate&quot;</span><span class="p">,</span> <span class="s2">&quot;reset_password&quot;</span><span class="p">],</span>
-    <span class="s2">&quot;risk_areas&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;SQL-инъекция в auth.py&quot;</span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h4  id="post-reviewcommit-message"><span id="post_reviewcommit_message"></span>POST /review/commit-message<a class="heading-anchor" href="#post-reviewcommit-message" title="Link to this section">&para;</a></h4>
-<p>Генерация сообщения коммита из diff.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Запрос: CommitMessageRequest</span>
-<span class="p">{</span><span class="s2">&quot;diff_content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">}</span>
-
-<span class="c1"># Ответ: CommitMessageResponse</span>
-<span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;feat(auth): add password reset flow&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;feat&quot;</span><span class="p">,</span> <span class="s2">&quot;scope&quot;</span><span class="p">:</span> <span class="s2">&quot;auth&quot;</span><span class="p">,</span> <span class="s2">&quot;files_changed&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
-</code></pre></div>
-
+<p>Прямые <code>POST /review/summary</code> и <code>POST /review/commit-message</code> не являются активными API
+surfaces.</p>
 <h3  id="model-otveta"><span id="model_otveta"></span>Модель ответа<a class="heading-anchor" href="#model-otveta" title="Link to this section">&para;</a></h3>
-<p>Все эндпоинты проверки возвращают <code>ReviewResponse</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ReviewResponse</span><span class="p">:</span>
-    <span class="n">recommendation</span><span class="p">:</span> <span class="nb">str</span>      <span class="c1"># APPROVE | REQUEST_CHANGES | COMMENT | BLOCK</span>
-    <span class="n">score</span><span class="p">:</span> <span class="nb">float</span>             <span class="c1"># 0-100</span>
-    <span class="n">findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Finding</span><span class="p">]</span>
-    <span class="n">dod_validation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">DODItem</span><span class="p">]]</span>
-    <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">processing_time_ms</span><span class="p">:</span> <span class="nb">float</span>
-    <span class="n">request_id</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-</code></pre></div>
-
+<p>Historical direct <code>/review/*</code> responses использовали <code>ReviewResponse</code>. Текущие API callers
+должны использовать response models активных repository snapshot и dashboard GitVerse routes.</p>
 <h2  id="workflow-scenario-9"><span id="workflow_scenario_9"></span>Workflow Scenario 9<a class="heading-anchor" href="#workflow-scenario-9" title="Link to this section">&para;</a></h2>
-<p><code>src/workflow/scenarios/code_review.py</code> — LLM-усиленная проверка кода через MultiScenarioCopilot.</p>
+<p><code>src/workflow/scenarios/code_review.py</code> — LLM-усиленная проверка кода через role-bound контракт сценариев цифровых сотрудников.</p>
 <h3  id="tryohagentnaya-arhitektura"><span id="tryohagentnaya_arhitektura"></span>Трёхагентная архитектура<a class="heading-anchor" href="#tryohagentnaya-arhitektura" title="Link to this section">&para;</a></h3>
 <p><strong>Агент 1: PRAnalyzer</strong> — парсинг PR/diff</p>
 <ul>
@@ -1403,7 +1322,7 @@ python<span class="w"> </span>examples/demo_patch_review.py<span class="w"> </sp
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/CODE_REVIEW.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

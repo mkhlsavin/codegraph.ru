@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -194,7 +193,7 @@
 <ul>
 <li><a href="#obzor">Обзор</a></li>
 <li><a href="#bystryy-start">Быстрый старт</a></li>
-<li><a href="#benchmark-gibridnogo-poiska">Бенчмарк гибридного поиска</a></li>
+<li><a href="#nabor-dannyh-dlya-testirovaniya">Набор данных для тестирования</a></li>
 <li><a href="#kompleksnyy-ranner-benchmarkov">Комплексный раннер бенчмарков</a></li>
 <li><a href="#vybor-postavschika-llm">Выбор поставщика LLM</a></li>
 <li><a href="#nabor-dannyh-dlya-testirovaniya">Набор данных для тестирования</a></li>
@@ -216,31 +215,11 @@
 <h2 id="obzor">Обзор<a class="heading-anchor" href="#obzor" title="Link to this section">&para;</a></h2>
 <p>Тестовая платформа предоставляет несколько инструментов оценки:</p>
 <ol>
-<li><strong>Бенчмарк гибридного поиска</strong> — сравнение векторного, графового и гибридного режимов</li>
 <li><strong>Комплексный раннер бенчмарков</strong> — сценарная оценка с 20 наборами эталонных данных</li>
 <li><strong>Бенчмарк классификации интентов</strong> — оценка точности классификатора интентов</li>
-<li><strong>Бенчмарк символьного выполнения</strong> — измерение влияния V2 на taint-анализ</li>
-<li><strong>Бенчмарк LLM-дизамбигуации</strong> — тестирование классификатора с поддержкой LLM</li>
 </ol>
 <h2  id="bystryy-start"><span id="bystryy_start"></span>Быстрый старт<a class="heading-anchor" href="#bystryy-start" title="Link to this section">&para;</a></h2>
-<h3  id="1-zapusk-benchmarka-gibridnogo-poiska"><span id="1_zapusk_benchmarka_gibridnogo_poiska"></span>1. Запуск бенчмарка гибридного поиска<a class="heading-anchor" href="#1-zapusk-benchmarka-gibridnogo-poiska" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_hybrid_retrieval.py<span class="w"> </span>--output-dir<span class="w"> </span>tests/benchmark/results/hybrid_retrieval
-</code></pre></div>
-
-<p><strong>Результат:</strong></p>
-<div class="highlight"><pre><span></span><code>================================================================================
-BENCHMARK SUMMARY
-================================================================================
-Metric               Vector       Graph        Hybrid       vs Vector    vs Graph
---------------------------------------------------------------------------------
-Precision@10         0.2182       0.2000       0.3000       +37.5%       +50.0%
-Recall@10            0.4327       0.3543       0.5528       +27.8%       +56.0%
-F1@10                0.2864       0.2510       0.3825       +33.6%       +52.4%
-MRR                  1.0000       0.6364       1.0000       +0.0%        +57.1%
-NDCG@10              0.5304       0.4443       0.6590       +24.3%       +48.3%
-</code></pre></div>
-
-<h3  id="2-zapusk-kompleksnogo-benchmarka"><span id="2_zapusk_kompleksnogo_benchmarka"></span>2. Запуск комплексного бенчмарка<a class="heading-anchor" href="#2-zapusk-kompleksnogo-benchmarka" title="Link to this section">&para;</a></h3>
+<h3  id="1-zapusk-kompleksnogo-benchmarka"><span id="1_zapusk_kompleksnogo_benchmarka"></span>1. Запуск комплексного бенчмарка<a class="heading-anchor" href="#1-zapusk-kompleksnogo-benchmarka" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Все сценарии, вопросы на русском</span>
 python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benchmark<span class="w"> </span>--language<span class="w"> </span>ru
 
@@ -251,72 +230,9 @@ python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benc
 python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benchmark<span class="w"> </span>--scenarios<span class="w"> </span><span class="m">01</span>,02,03
 </code></pre></div>
 
-<h3  id="3-zapusk-s-realnymi-dannymi-python-api"><span id="3_zapusk_s_realnymi_dannymi_python_api"></span>3. Запуск с реальными данными (Python API)<a class="heading-anchor" href="#3-zapusk-s-realnymi-dannymi-python-api" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">scripts.benchmark_hybrid_retrieval</span><span class="w"> </span><span class="kn">import</span> <span class="n">HybridRetrievalBenchmark</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.retrieval.vector_store_real</span><span class="w"> </span><span class="kn">import</span> <span class="n">VectorStoreReal</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.services.cpg_query_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGQueryService</span>
-
-<span class="c1"># Инициализация хранилищ</span>
-<span class="n">vector_store</span> <span class="o">=</span> <span class="n">VectorStoreReal</span><span class="p">(</span><span class="n">persist_directory</span><span class="o">=</span><span class="s2">&quot;chroma_db&quot;</span><span class="p">)</span>
-<span class="n">cpg_service</span> <span class="o">=</span> <span class="n">CPGQueryService</span><span class="p">()</span>
-
-<span class="c1"># Создание и запуск бенчмарка</span>
-<span class="n">benchmark</span> <span class="o">=</span> <span class="n">HybridRetrievalBenchmark</span><span class="p">(</span>
-    <span class="n">vector_store</span><span class="o">=</span><span class="n">vector_store</span><span class="p">,</span>
-    <span class="n">cpg_service</span><span class="o">=</span><span class="n">cpg_service</span><span class="p">,</span>
-    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;tests/benchmark/results/hybrid_retrieval&quot;</span>
-<span class="p">)</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<span class="n">report</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">benchmark</span><span class="o">.</span><span class="n">run_benchmark</span><span class="p">())</span>
-<span class="n">benchmark</span><span class="o">.</span><span class="n">save_report</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
-</code></pre></div>
-
-<h2  id="benchmark-gibridnogo-poiska"><span id="benchmark_gibridnogo_poiska"></span>Бенчмарк гибридного поиска<a class="heading-anchor" href="#benchmark-gibridnogo-poiska" title="Link to this section">&para;</a></h2>
-<p>Бенчмарк гибридного поиска (<code>scripts/benchmark_hybrid_retrieval.py</code>) сравнивает три режима:
-- <strong>Только векторный</strong>: семантический поиск через ChromaDB
-- <strong>Только графовый</strong>: структурный поиск через DuckDB/CPG
-- <strong>Гибридный</strong>: комбинация обоих через RRF</p>
-<p><strong>Ключевые классы:</strong>
-- <code>HybridRetrievalBenchmark(vector_store, cpg_service, output_dir="tests/benchmark/results/hybrid_retrieval")</code> — оркестратор
-- <code>BenchmarkQuery</code> — запрос с эталонными данными
-- <code>RetrievalMetrics</code> — метрики для одного запроса
-- <code>BenchmarkReport</code> — агрегированный отчёт</p>
-<p><strong>Аргументы CLI:</strong></p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_hybrid_retrieval.py<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Аргумент</th>
-<th>По умолчанию</th>
-<th>Описание</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--db-path</code></td>
-<td>активный проект</td>
-<td>Путь к DuckDB CPG</td>
-</tr>
-<tr>
-<td><code>--chroma-path</code></td>
-<td><code>chroma_db</code></td>
-<td>Путь к ChromaDB</td>
-</tr>
-<tr>
-<td><code>--output-dir</code></td>
-<td><code>tests/benchmark/results/hybrid_retrieval</code></td>
-<td>Директория для результатов</td>
-</tr>
-<tr>
-<td><code>--modes</code></td>
-<td><code>vector_only graph_only hybrid</code></td>
-<td>Режимы поиска</td>
-</tr>
-</tbody>
-</table></div>
+<p>Отдельные hybrid/vector benchmark scripts удалены. Активная semantic-memory
+retrieval работает через OpenViking, а сценарные бенчмарки запускаются через
+<code>tests/benchmark/</code>.</p>
 <h2  id="kompleksnyy-ranner-benchmarkov"><span id="kompleksnyy_ranner_benchmarkov"></span>Комплексный раннер бенчмарков<a class="heading-anchor" href="#kompleksnyy-ranner-benchmarkov" title="Link to this section">&para;</a></h2>
 <p>Основной инструмент (<code>tests/benchmark/run_benchmark.py</code>) запускает сценарную оценку всего конвейера CodeGraph.</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benchmark<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
@@ -777,16 +693,9 @@ python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benc
 </code></pre></div>
 
 <p>Оценка точности классификатора по 17 сценариям. Поддерживает <code>--compare-languages</code> для сравнения EN и RU.</p>
-<h3  id="benchmark-simvolnogo-vypolneniya"><span id="benchmark_simvolnogo_vypolneniya"></span>Бенчмарк символьного выполнения<a class="heading-anchor" href="#benchmark-simvolnogo-vypolneniya" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_symbolic_execution.py<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
-</code></pre></div>
-
-<p>Измерение влияния V2: процент фильтрации ложных срабатываний, накладные расходы по времени/памяти, покрытие парсера.</p>
-<h3  id="benchmark-llm-dizambiguatsii"><span id="benchmark_llm_dizambiguatsii"></span>Бенчмарк LLM-дизамбигуации<a class="heading-anchor" href="#benchmark-llm-dizambiguatsii" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_with_llm.py<span class="w"> </span>--llm<span class="w"> </span>--verbose
-</code></pre></div>
-
-<p>Тестирование классификатора с LLM-дизамбигуацией в сравнении с правилами.</p>
+<p>Отдельные <code>scripts/benchmark_*</code> entrypoints удалены вместе с legacy
+vector-store compatibility. Для активных запусков используйте канонический
+harness <code>tests/benchmark/</code>.</p>
 <h2  id="spravochnik-metrik"><span id="spravochnik_metrik"></span>Справочник метрик<a class="heading-anchor" href="#spravochnik-metrik" title="Link to this section">&para;</a></h2>
 <h3 id="precisionk">Precision@K<a class="heading-anchor" href="#precisionk" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>P@K = (кол-во релевантных в топ-K) / K
@@ -827,37 +736,18 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 - <strong>1.0</strong> = идеальное ранжирование
 - <strong>0.0</strong> = наихудшее ранжирование</p>
 <h2  id="polzovatelskie-zaprosy"><span id="polzovatelskie_zaprosy"></span>Пользовательские запросы<a class="heading-anchor" href="#polzovatelskie-zaprosy" title="Link to this section">&para;</a></h2>
-<p>Создание пользовательских запросов для бенчмарка гибридного поиска:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">scripts.benchmark_hybrid_retrieval</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkQuery</span>
-
-<span class="n">custom_queries</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">BenchmarkQuery</span><span class="p">(</span>
-        <span class="nb">id</span><span class="o">=</span><span class="s2">&quot;custom_001&quot;</span><span class="p">,</span>
-        <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Your question here&quot;</span><span class="p">,</span>
-        <span class="n">query_type</span><span class="o">=</span><span class="s2">&quot;semantic&quot;</span><span class="p">,</span>  <span class="c1"># или &quot;structural&quot;, &quot;security&quot;</span>
-        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Описание того, что тестируется&quot;</span><span class="p">,</span>
-        <span class="n">relevant_node_ids</span><span class="o">=</span><span class="p">{</span><span class="mi">1001</span><span class="p">,</span> <span class="mi">1002</span><span class="p">,</span> <span class="mi">1003</span><span class="p">,</span> <span class="mi">1004</span><span class="p">},</span>  <span class="c1"># ID узлов CPG</span>
-        <span class="n">highly_relevant_node_ids</span><span class="o">=</span><span class="p">{</span><span class="mi">1001</span><span class="p">,</span> <span class="mi">1002</span><span class="p">},</span>        <span class="c1"># Наиболее важные</span>
-        <span class="n">expected_difficulty</span><span class="o">=</span><span class="s2">&quot;medium&quot;</span>  <span class="c1"># &quot;easy&quot;, &quot;medium&quot;, &quot;hard&quot;</span>
-    <span class="p">),</span>
+<p>Пользовательские вопросы добавляются в канонические fixtures
+<code>tests/benchmark/ground_truth/</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">custom_queries</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;custom_001&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;question&quot;</span><span class="p">:</span> <span class="s2">&quot;Your question here&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;expected_scenario&quot;</span><span class="p">:</span> <span class="s2">&quot;scenario_01_onboarding&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
 <span class="p">]</span>
-
-<span class="c1"># Запуск с пользовательскими запросами</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<span class="n">report</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">benchmark</span><span class="o">.</span><span class="n">run_benchmark</span><span class="p">(</span><span class="n">queries</span><span class="o">=</span><span class="n">custom_queries</span><span class="p">))</span>
 </code></pre></div>
 
 <h2  id="vyhodnye-fayly"><span id="vyhodnye_fayly"></span>Выходные файлы<a class="heading-anchor" href="#vyhodnye-fayly" title="Link to this section">&para;</a></h2>
-<h3  id="benchmark-gibridnogo-poiska_1"><span id="benchmark_gibridnogo_poiska_1"></span>Бенчмарк гибридного поиска<a class="heading-anchor" href="#benchmark-gibridnogo-poiska_1" title="Link to this section">&para;</a></h3>
-<p>Два файла в <code>tests/benchmark/results/hybrid_retrieval/</code>:</p>
-<ol>
-<li>
-<p><strong>JSON-отчёт</strong> (<code>hybrid_benchmark_&lt;timestamp&gt;.json</code>) — полные машиночитаемые результаты: метрики по запросам, агрегированные метрики, ID извлечённых узлов, детализация оценок.</p>
-</li>
-<li>
-<p><strong>Markdown-отчёт</strong> (<code>hybrid_benchmark_&lt;timestamp&gt;.md</code>) — человекочитаемое резюме: сравнительная таблица, ключевые выводы, проценты улучшения.</p>
-</li>
-</ol>
 <h3  id="kompleksnyy-ranner-benchmarkov_1"><span id="kompleksnyy_ranner_benchmarkov_1"></span>Комплексный раннер бенчмарков<a class="heading-anchor" href="#kompleksnyy-ranner-benchmarkov_1" title="Link to this section">&para;</a></h3>
 <p>Результаты в <code>tests/benchmark/results/{RUN_ID}/</code>:</p>
 <div class="highlight"><pre><span></span><code>tests/benchmark/results/20260307_120000/
@@ -945,14 +835,14 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 <p><strong>Решение:</strong> запускайте из корневой директории проекта.</p>
 <h3  id="oshibka-modulenotfounderror-vectorstore"><span id="oshibka-ldquomodulenotfounderror-vectorstorerdquo"></span><span id="oshibka_ldquomodulenotfounderror_vectorstorerdquo"></span><span id="oshibka_modulenotfounderror_vectorstore"></span>Ошибка: &ldquo;ModuleNotFoundError: VectorStore&rdquo;<a class="heading-anchor" href="#oshibka-modulenotfounderror-vectorstore" title="Link to this section">&para;</a></h3>
 <p><strong>Решение:</strong> установите зависимости:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>chromadb<span class="w"> </span>sentence-transformers<span class="w"> </span>duckdb
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>openviking<span class="w"> </span>sentence-transformers<span class="w"> </span>duckdb
 </code></pre></div>
 
 <h3  id="oshibka-blokirovki-duckdb"><span id="oshibka_blokirovki_duckdb"></span>Ошибка блокировки DuckDB<a class="heading-anchor" href="#oshibka-blokirovki-duckdb" title="Link to this section">&para;</a></h3>
 <p><strong>Решение:</strong> убедитесь, что <code>gocpg.exe</code> не запущен (проверьте <code>ps aux | grep gocpg</code>).</p>
 <h3  id="nizkie-otsenki-benchmarka"><span id="nizkie_otsenki_benchmarka"></span>Низкие оценки бенчмарка<a class="heading-anchor" href="#nizkie-otsenki-benchmarka" title="Link to this section">&para;</a></h3>
 <p><strong>Решение:</strong> проверьте:
-1. ChromaDB содержит проиндексированные документы (директория <code>chroma_db/</code>)
+1. OpenViking содержит проиндексированные документы (директория <code>openviking_data/</code>)
 2. DuckDB имеет данные CPG (файл <code>*.duckdb</code> валиден)
 3. Домен задан корректно (<code>config.yaml</code> → <code>domain.name</code>)</p>
 <h2  id="dalneyshie-shagi"><span id="dalneyshie_shagi"></span>Дальнейшие шаги<a class="heading-anchor" href="#dalneyshie-shagi" title="Link to this section">&para;</a></h2>
@@ -987,7 +877,7 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/BENCHMARK_GUIDE.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -999,10 +889,7 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
         <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#obzor" class="level-2">Обзор</a></li>
 <li><a href="#bystryy-start" class="level-2">Быстрый старт</a></li>
-<li><a href="#1-zapusk-benchmarka-gibridnogo-poiska" class="level-3">1. Запуск бенчмарка гибридного поиска</a></li>
-<li><a href="#2-zapusk-kompleksnogo-benchmarka" class="level-3">2. Запуск комплексного бенчмарка</a></li>
-<li><a href="#3-zapusk-s-realnymi-dannymi-python-api" class="level-3">3. Запуск с реальными данными (Python API)</a></li>
-<li><a href="#benchmark-gibridnogo-poiska" class="level-2">Бенчмарк гибридного поиска</a></li>
+<li><a href="#1-zapusk-kompleksnogo-benchmarka" class="level-3">1. Запуск комплексного бенчмарка</a></li>
 <li><a href="#kompleksnyy-ranner-benchmarkov" class="level-2">Комплексный раннер бенчмарков</a></li>
 <li><a href="#vybor-postavschika-llm" class="level-2">Выбор поставщика LLM</a></li>
 <li><a href="#podderzhivaemye-postavschiki" class="level-3">Поддерживаемые поставщики</a></li>
@@ -1024,8 +911,6 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 <li><a href="#konfiguratsiya-benchmarka-testsbenchmarkconfigbenchmark-configyaml" class="level-3">Конфигурация бенчмарка (`tests/benchmark/config/benchmark_config.yaml`)</a></li>
 <li><a href="#dopolnitelnye-benchmarki" class="level-2">Дополнительные бенчмарки</a></li>
 <li><a href="#benchmark-klassifikatsii-intentov" class="level-3">Бенчмарк классификации интентов</a></li>
-<li><a href="#benchmark-simvolnogo-vypolneniya" class="level-3">Бенчмарк символьного выполнения</a></li>
-<li><a href="#benchmark-llm-dizambiguatsii" class="level-3">Бенчмарк LLM-дизамбигуации</a></li>
 <li><a href="#spravochnik-metrik" class="level-2">Справочник метрик</a></li>
 <li><a href="#precisionk" class="level-3">Precision@K</a></li>
 <li><a href="#recallk" class="level-3">Recall@K</a></li>
@@ -1034,7 +919,6 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 <li><a href="#normalizovannaya-diskontirovannaya-kumulyativnaya-vygoda-ndcgk" class="level-3">Нормализованная дисконтированная кумулятивная выгода (NDCG@K)</a></li>
 <li><a href="#polzovatelskie-zaprosy" class="level-2">Пользовательские запросы</a></li>
 <li><a href="#vyhodnye-fayly" class="level-2">Выходные файлы</a></li>
-<li><a href="#benchmark-gibridnogo-poiska" class="level-3">Бенчмарк гибридного поиска</a></li>
 <li><a href="#kompleksnyy-ranner-benchmarkov" class="level-3">Комплексный раннер бенчмарков</a></li>
 <li><a href="#interpretatsiya-rezultatov" class="level-2">Интерпретация результатов</a></li>
 <li><a href="#kak-interpretirovat-uluchsheniya" class="level-3">Как интерпретировать улучшения</a></li>

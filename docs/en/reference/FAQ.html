@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -175,9 +173,9 @@
       <div class="doc-sidebar-title">Technical Reference</div>
       <ul class="doc-sidebar-nav">
         <li><a href="index.html">Overview</a></li>
-        <li><a href="AGENTS.html">Agents Reference</a></li>
+        <li><a href="AGENTS.html">Agents and Digital Employees Reference</a></li>
         <li><a href="ANALYSIS_MODULES.html">Analysis Modules Reference</a></li>
-        <li><a href="API.html">Python SDK Reference</a></li>
+        <li><a href="API.html">API Reference</a></li>
         <li><a href="APPROVAL_ENGINE.html">Approval Engine</a></li>
         <li><a href="CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="FAQ.html" class="active">Frequently Asked Questions (FAQ)</a></li>
@@ -186,7 +184,6 @@
         <li><a href="SCHEMA.html">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Enterprise Security Module</a></li>
         <li><a href="SNAPSHOT_STORE.html">Snapshot Store Reference</a></li>
-        <li><a href="SQL_QUERY_COOKBOOK.html">SQL Query Cookbook for DuckDB CPG</a></li>
         <li><a href="SYMBOLIC_EXECUTION.html">Symbolic Execution (Z3 SMT Solver)</a></li>
         <li><a href="WORKFLOWS.html">Workflows Reference</a></li>
       </ul>
@@ -242,17 +239,17 @@
 <hr />
 <h2  id="orchestration-and-routing"><span id="orchestration_and_routing"></span>Orchestration and Routing<a class="heading-anchor" href="#orchestration-and-routing" title="Link to this section">&para;</a></h2>
 <h3  id="how-does-scenario-orchestration-work"><span id="how_does_scenario_orchestration_work"></span>How does scenario orchestration work?<a class="heading-anchor" href="#how-does-scenario-orchestration-work" title="Link to this section">&para;</a></h3>
-<p>Orchestration is implemented via a LangGraph graph with three nodes: <code>classify_intent_node</code> → <code>pre_retrieval</code> → <code>route_by_intent</code>. The <code>MultiScenarioCopilot</code> class (<code>src/workflow/orchestration/copilot.py</code>) builds this graph and executes it via <code>run(query)</code>. At the <code>classify_intent_node</code> step, an LLM provider (Yandex AI, GigaChat, or OpenAI) determines the user&rsquo;s query type. Then <code>route_by_intent</code> (<code>src/workflow/orchestration/router.py</code>) selects one of 21 scenarios for processing.</p>
+<p>Orchestration is implemented via a LangGraph graph with three nodes: <code>classify_intent_node</code> → <code>pre_retrieval</code> → <code>route_by_intent</code>. Runtime execution enters through <code>invoke_role_bound_scenario</code>, which first validates the accountable digital employee, project, namespace, and task scope. After that preflight, intent routing selects one of 21 scenarios for processing.</p>
 <h3  id="what-scenarios-does-the-system-support"><span id="what_scenarios_does_the_system_support"></span>What scenarios does the system support?<a class="heading-anchor" href="#what-scenarios-does-the-system-support" title="Link to this section">&para;</a></h3>
 <p>The system supports 21 scenarios: S01 (onboarding), S02 (security), S03 (documentation), S04 (feature development), S05 (refactoring), S06 (performance), S07 (test coverage), S08 (compliance), S09 (code review), S10 (cross-repo analysis), S11 (architecture), S12 (tech debt), S13 (mass refactoring), S14 (security incident), S15 (debugging), S16 (entry points), S17 (file editing), S18 (code optimization — composite), S19 (standards check — composite), S20 (dependencies), S21 (structural pattern search).</p>
 <h3  id="what-is-route-by-intent-and-how-does-it-work"><span id="what_is_route_by_intent_and_how_does_it_work"></span>What is <code>route_by_intent</code> and how does it work?<a class="heading-anchor" href="#what-is-route-by-intent-and-how-does-it-work" title="Link to this section">&para;</a></h3>
 <p>The <code>route_by_intent</code> function (<code>src/workflow/orchestration/router.py:16</code>) takes a <code>MultiScenarioState</code> with an <code>intent</code> field (populated during classification) and returns the name of the next workflow node. Internally, it uses a <code>routing_map</code> dictionary that maps intent values to handler function names (e.g., <code>"onboarding"</code> → <code>"onboarding_workflow"</code>, <code>"tech_debt"</code> → <code>"tech_debt_workflow"</code>). It supports composite mode for complex queries.</p>
-<h3  id="what-is-multiscenariocopilot"><span id="what_is_multiscenariocopilot"></span>What is <code>MultiScenarioCopilot</code>?<a class="heading-anchor" href="#what-is-multiscenariocopilot" title="Link to this section">&para;</a></h3>
-<p><code>MultiScenarioCopilot</code> (<code>src/workflow/orchestration/copilot.py</code>) is the system&rsquo;s central orchestrator. It builds the LangGraph graph, runs intent classification and routing, then hands off control to the appropriate workflow handler. The <code>run(query)</code> method returns a state dict with fields <code>query</code>, <code>intent</code>, <code>scenario_id</code>, <code>confidence</code>, <code>answer</code>, <code>evidence</code>, and <code>metadata</code>.</p>
+<h3  id="what-is-the-role-bound-scenario-invoker"><span id="what_is_the_role_bound_scenario_invoker"></span>What is the role-bound scenario invoker?<a class="heading-anchor" href="#what-is-the-role-bound-scenario-invoker" title="Link to this section">&para;</a></h3>
+<p><code>invoke_role_bound_scenario</code> (<code>src/digital_employees/runtime/scenarios/role_bound_scenario_invoker.py</code>) is the runtime scenario boundary. It validates the employee/scenario policy and required scope, runs pre-retrieval and routing, then returns a state dict with fields such as <code>query</code>, <code>intent</code>, <code>scenario_id</code>, <code>confidence</code>, <code>answer</code>, <code>evidence</code>, and <code>metadata</code>.</p>
 <h3  id="what-is-classify-intent-node"><span id="what_is_classify_intent_node"></span>What is <code>classify_intent_node</code>?<a class="heading-anchor" href="#what-is-classify-intent-node" title="Link to this section">&para;</a></h3>
 <p>The <code>classify_intent_node</code> (<code>src/workflow/orchestration/intent.py</code>) performs LLM-based classification of the user&rsquo;s intent. It takes the query text as input and populates <code>intent</code>, <code>scenario_id</code>, and <code>confidence</code> fields in the <code>MultiScenarioState</code>. It uses a prompt from <code>config/prompts/{lang}/workflow_prompts.yaml</code> listing all scenarios.</p>
 <h3  id="what-is-the-pre-retrieval-node"><span id="what_is_the_pre_retrieval_node"></span>What is the <code>pre_retrieval</code> node?<a class="heading-anchor" href="#what-is-the-pre-retrieval-node" title="Link to this section">&para;</a></h3>
-<p>The <code>pre_retrieval</code> node (<code>src/workflow/orchestration/pre_retrieval.py</code>) is an optional step between classification and routing (Phase E). It runs <code>HybridRetriever.retrieve()</code> to pre-fetch context from ChromaDB and DuckDB. Results are stored in <code>state["pre_retrieval_results"]</code>. Enabled via <code>config.yaml</code> → <code>workflows.pre_retrieval.enable: true</code> (on by default).</p>
+<p>The <code>pre_retrieval</code> node (<code>src/workflow/orchestration/pre_retrieval.py</code>) is an optional step between classification and routing (Phase E). It runs <code>HybridRetriever.retrieve()</code> to pre-fetch context from OpenViking and DuckDB. Results are stored in <code>state["pre_retrieval_results"]</code>. Enabled via <code>config.yaml</code> → <code>workflows.pre_retrieval.enable: true</code> (on by default).</p>
 <hr />
 <h2  id="authorization-and-security"><span id="authorization_and_security"></span>Authorization and Security<a class="heading-anchor" href="#authorization-and-security" title="Link to this section">&para;</a></h2>
 <h3  id="how-is-api-authorization-implemented"><span id="how_is_api_authorization_implemented"></span>How is API authorization implemented?<a class="heading-anchor" href="#how-is-api-authorization-implemented" title="Link to this section">&para;</a></h3>
@@ -272,7 +269,7 @@
 <h3  id="what-is-a-code-property-graph-cpg"><span id="what_is_a_code_property_graph_cpg"></span>What is a Code Property Graph (CPG)?<a class="heading-anchor" href="#what-is-a-code-property-graph-cpg" title="Link to this section">&para;</a></h3>
 <p>A CPG (Code Property Graph) is a unified representation of source code as a graph containing the Abstract Syntax Tree (AST), Control Flow Graph (CFG), and Data Flow Graph (DFG). In CodeGraph, the CPG is stored in DuckDB with tables <code>nodes_method</code>, <code>nodes_type</code>, <code>edges_call</code>, <code>call_containment</code>, <code>edges_inherits_from</code>, and others.</p>
 <h3  id="how-is-cpgqueryservice-structured"><span id="how_is_cpgqueryservice_structured"></span>How is <code>CPGQueryService</code> structured?<a class="heading-anchor" href="#how-is-cpgqueryservice-structured" title="Link to this section">&para;</a></h3>
-<p><code>CPGQueryService</code> (<code>src/services/cpg/</code>) is the main client for working with the CPG through DuckDB. It uses a mixin pattern: base class <code>CPGQueryBase</code> (<code>src/services/cpg/base.py</code>) plus 11 query mixins (SubsystemQueries, CallGraph, Security, Performance, Quality, Semantic, Statistics, Comment, External, Type, Pattern). The DB path is resolved via <code>ProjectManager.get_active_db_path()</code>.</p>
+<p><code>CPGQueryService</code> (<code>src/services/cpg/</code>) is the internal client for typed CPG read helpers. It uses a mixin pattern: base class <code>CPGQueryBase</code> (<code>src/services/cpg/base.py</code>) plus query mixins for subsystems, call graphs, security, performance, quality, semantic data, statistics, comments, external dependencies, types and patterns. Runtime callers should use explicit project-scoped context; user-facing integrations should use REST, MCP or GoCPG gRPC surfaces rather than direct DuckDB access.</p>
 <h3  id="what-is-call-containment"><span id="what_is_call_containment"></span>What is <code>call_containment</code>?<a class="heading-anchor" href="#what-is-call-containment" title="Link to this section">&para;</a></h3>
 <p>The <code>call_containment</code> view in DuckDB links function calls to their containing methods. Fields: <code>containing_method_name</code> (calling method) and <code>callee_name</code> (called method). Used for building call graphs in <code>MechanismExplanationHandler</code>.</p>
 <h3  id="what-does-the-is-test-field-in-nodes-method-mean"><span id="what_does_the_is_test_field_in_nodes_method_mean"></span>What does the <code>is_test</code> field in <code>nodes_method</code> mean?<a class="heading-anchor" href="#what-does-the-is-test-field-in-nodes-method-mean" title="Link to this section">&para;</a></h3>
@@ -286,7 +283,6 @@
 <span class="nv">CGO_ENABLED</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span>gocpg.exe<span class="w"> </span>./cmd/gocpg<span class="w">  </span><span class="c1"># Build</span>
 ./gocpg<span class="w"> </span>parse<span class="w"> </span>--input<span class="o">=</span>/path/to/source<span class="w"> </span>--output<span class="o">=</span>out.duckdb<span class="w"> </span>--lang<span class="o">=</span>python<span class="w">  </span><span class="c1"># Parse</span>
 ./gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w">  </span><span class="c1"># Stats</span>
-./gocpg<span class="w"> </span>query<span class="w"> </span>--db<span class="o">=</span>out.duckdb<span class="w"> </span>--sql<span class="o">=</span><span class="s2">&quot;SELECT COUNT(*) FROM nodes_method&quot;</span><span class="w">  </span><span class="c1"># Query</span>
 ./gocpg<span class="w"> </span>serve<span class="w"> </span>--port<span class="w"> </span><span class="m">50051</span><span class="w"> </span>--data-dir<span class="w"> </span>./data/projects<span class="w">  </span><span class="c1"># gRPC server</span>
 </code></pre></div>
 
@@ -303,9 +299,9 @@
 <hr />
 <h2  id="hybrid-search-and-retrieval"><span id="hybrid_search_and_retrieval"></span>Hybrid Search and Retrieval<a class="heading-anchor" href="#hybrid-search-and-retrieval" title="Link to this section">&para;</a></h2>
 <h3  id="how-does-hybrid-search-work"><span id="how_does_hybrid_search_work"></span>How does hybrid search work?<a class="heading-anchor" href="#how-does-hybrid-search-work" title="Link to this section">&para;</a></h3>
-<p><code>HybridRetriever</code> (<code>src/retrieval/hybrid/retriever.py</code>) performs parallel search across ChromaDB (vector) and DuckDB (graph), then merges results using adaptive RRF (Reciprocal Rank Fusion). Weights depend on query type: semantic (75% vector / 25% graph), structural (25% / 75%), security (40% / 60%), default (60% / 40%).</p>
-<h3  id="what-is-stored-in-chromadb"><span id="what_is_stored_in_chromadb"></span>What is stored in ChromaDB?<a class="heading-anchor" href="#what-is-stored-in-chromadb" title="Link to this section">&para;</a></h3>
-<p>OpenViking contains several collections: <code>code_comments</code> (code documentation and comments), <code>code_snippets</code> (code fragments), and <code>domain_patterns</code> (domain patterns). Collections are isolated per project via name prefixes (e.g., <code>codegraph_code_comments</code>). Indexing is performed by <code>VectorIndexer</code> through project import/update flows, the CLI, REST, or MCP.</p>
+<p><code>HybridRetriever</code> (<code>src/retrieval/hybrid/retriever.py</code>) performs parallel search across OpenViking semantic retrieval and GoCPG gRPC graph reads, then merges results using adaptive RRF (Reciprocal Rank Fusion). Weights depend on query type: semantic (75% semantic / 25% graph), structural (25% / 75%), security (40% / 60%), default (60% / 40%). Runtime graph reads do not open the project DuckDB file directly.</p>
+<h3  id="what-is-stored-in-openviking"><span id="what_is_stored_in_openviking"></span>What is stored in OpenViking?<a class="heading-anchor" href="#what-is-stored-in-openviking" title="Link to this section">&para;</a></h3>
+<p>OpenViking stores project-scoped resource and memory records for code comments, code snippets, generated documentation, domain patterns and accepted project memory. Sync is performed by project import/update and documentation-memory workflows through the OpenViking client/adapter layer. The retired local vector-indexer and user-triggered REST, CLI or MCP reindex surfaces are not active entry points.</p>
 <h3  id="what-is-the-pre-retrieval-phase-phase-e"><span id="what_is_the_pre_retrieval_phase_phase_e"></span>What is the Pre-Retrieval phase (Phase E)?<a class="heading-anchor" href="#what-is-the-pre-retrieval-phase-phase-e" title="Link to this section">&para;</a></h3>
 <p>The <code>pre_retrieval</code> node in the LangGraph graph (<code>src/workflow/orchestration/pre_retrieval.py</code>) runs <code>HybridRetriever</code> between intent classification and routing. Results are stored in <code>state["pre_retrieval_results"]</code> and available to all scenario handlers. Enabled by default (<code>config.yaml</code> → <code>workflows.pre_retrieval.enable: true</code>).</p>
 <h3  id="how-does-rrf-merging-work"><span id="how_does_rrf_merging_work"></span>How does RRF merging work?<a class="heading-anchor" href="#how-does-rrf-merging-work" title="Link to this section">&para;</a></h3>
@@ -318,8 +314,8 @@
 <p>Main sections: <code>llm</code> (LLM provider and settings), <code>api</code> (port, auth, demo mode), <code>workflows</code> (scenario settings, pre-retrieval, enrichment), <code>security</code> (rate limit, DLP, CSP), <code>composition</code> (composite orchestrators), <code>timeouts</code> (service timeouts), <code>projects</code> (project registry), <code>domain</code> (active domain).</p>
 <h3  id="how-to-configure-the-llm-provider"><span id="how_to_configure_the_llm_provider"></span>How to configure the LLM provider?<a class="heading-anchor" href="#how-to-configure-the-llm-provider" title="Link to this section">&para;</a></h3>
 <p>In <code>config.yaml</code> → <code>llm.provider</code>, set <code>yandex</code>, <code>gigachat</code>, <code>openai</code>, or <code>local</code>. Environment variables: <code>YANDEX_API_KEY</code>/<code>YANDEX_FOLDER_ID</code> for Yandex AI, <code>GIGACHAT_AUTH_KEY</code> for GigaChat, <code>OPENAI_API_KEY</code> for OpenAI. For local Qwen3: <code>QWEN3_MODEL_PATH</code>.</p>
-<h3  id="how-to-switch-the-active-project"><span id="how_to_switch_the_active_project"></span>How to switch the active project?<a class="heading-anchor" href="#how-to-switch-the-active-project" title="Link to this section">&para;</a></h3>
-<p>Projects are registered in <code>config.yaml</code> → <code>projects.registry</code> or in <code>projects.yaml</code>. The active project is set via <code>projects.active</code>. When switching, the project&rsquo;s domain plugin is automatically activated via <code>DomainRegistry.activate()</code>.</p>
+<h3  id="how-to-select-project-scope"><span id="how_to_select_project_scope"></span>How to select project scope?<a class="heading-anchor" href="#how-to-select-project-scope" title="Link to this section">&para;</a></h3>
+<p>Projects are registered in <code>config.yaml</code> → <code>projects.registry</code> or in <code>projects.yaml</code>. Runtime operations should receive explicit project scope from the route, CLI argument, workspace/session context or actor scope. After resolving that scope, the matching domain plugin is activated through <code>DomainRegistry.activate()</code>. Do not rely on a process-global active project for runtime reads.</p>
 <hr />
 <h2  id="project-import"><span id="project_import"></span>Project Import<a class="heading-anchor" href="#project-import" title="Link to this section">&para;</a></h2>
 <h3  id="how-to-import-a-project"><span id="how_to_import_a_project"></span>How to import a project?<a class="heading-anchor" href="#how-to-import-a-project" title="Link to this section">&para;</a></h3>
@@ -332,18 +328,15 @@
 </code></pre></div>
 
 <h3  id="what-steps-does-import-include"><span id="what_steps_does_import_include"></span>What steps does import include?<a class="heading-anchor" href="#what-steps-does-import-include" title="Link to this section">&para;</a></h3>
-<p>Full pipeline (<code>src/project_import/pipeline.py</code>): CloneStep → DetectLanguageStep → GoCPGParseStep → ValidateStep → ChromaDBSyncStep → DocGenerationStep → VectorIndexStep → DomainSetupStep. Incremental (when DB exists): GoCPGUpdateStep → ValidateStep → ChromaDBSyncStep → DomainSetupStep. Automatically detected by the presence of <code>cpg_git_state</code> rows. DocGenerationStep auto-generates documentation from CPG when a <code>docs/</code> directory is missing.</p>
-<h3  id="how-to-update-chromadb-indexes"><span id="how_to_update_chromadb_indexes"></span>How to update ChromaDB indexes?<a class="heading-anchor" href="#how-to-update-chromadb-indexes" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>reindex<span class="w"> </span>--replace
-</code></pre></div>
-
-<p>This runs <code>VectorIndexer</code> for the active project and refreshes OpenViking collections. You can also reindex through REST (<code>POST /api/v1/projects/{project_id}/reindex</code>) or MCP (<code>codegraph_reindex action=reindex</code>). When documentation is updated, re-indexing is recommended to keep enrichment context current.</p>
+<p>Full pipeline (<code>src/project_import/pipeline.py</code>): CloneStep → DetectLanguageStep → GoCPGParseStep → ValidateStep → OpenVikingSyncStep → DocGenerationStep → DomainSetupStep. Incremental (when DB exists): GoCPGUpdateStep → ValidateStep → OpenVikingSyncStep → DomainSetupStep. Automatically detected by the presence of <code>cpg_git_state</code> rows. DocGenerationStep auto-generates documentation from CPG when a <code>docs/</code> directory is missing.</p>
+<h3  id="how-to-update-openviking-indexes"><span id="how_to_update_openviking_indexes"></span>How to update OpenViking indexes?<a class="heading-anchor" href="#how-to-update-openviking-indexes" title="Link to this section">&para;</a></h3>
+<p>User-triggered OpenViking reindex surfaces were retired. Project import, update and documentation-memory workflows refresh OpenViking through the OpenViking sync/client layer. Use those workflows instead of REST, CLI, MCP or local vector-indexer reindex commands.</p>
 <hr />
 <h2  id="answer-enrichment"><span id="answer_enrichment"></span>Answer Enrichment<a class="heading-anchor" href="#answer-enrichment" title="Link to this section">&para;</a></h2>
 <h3  id="how-does-enrichment-work"><span id="how_does_enrichment_work"></span>How does enrichment work?<a class="heading-anchor" href="#how-does-enrichment-work" title="Link to this section">&para;</a></h3>
 <p>Enrichment (<code>src/workflow/scenarios/onboarding/enrichment.py</code>) runs in three phases:
 1. <strong>Phase 1</strong> — extract descriptions from CPG comments (docstrings and annotations)
-2. <strong>Phase 2</strong> — retrieve context from ChromaDB: Q&amp;A pairs (<code>code_comments</code>), code examples (<code>code_snippets</code>)
+2. <strong>Phase 2</strong> — retrieve context from OpenViking: Q&amp;A pairs (<code>code_comments</code>), code examples (<code>code_snippets</code>)
 3. <strong>Phase 3</strong> — LLM synthesis: a prompt combines the original answer, CPG descriptions, vector context, and generates an enriched answer</p>
 <h3  id="can-llm-enrichment-be-disabled"><span id="can_llm_enrichment_be_disabled"></span>Can LLM enrichment be disabled?<a class="heading-anchor" href="#can-llm-enrichment-be-disabled" title="Link to this section">&para;</a></h3>
 <p>Yes, via <code>config.yaml</code> → <code>workflows.onboarding.enrichment.enable: false</code>. Handlers can also set <code>skip_enrichment=True</code> on <code>OnboardingResult</code> for structured responses (tables, lists) to prevent LLM from rewriting them.</p>
@@ -364,13 +357,13 @@
 <hr />
 <h2  id="multi-tenancy-and-api"><span id="multi_tenancy_and_api"></span>Multi-Tenancy and API<a class="heading-anchor" href="#multi-tenancy-and-api" title="Link to this section">&para;</a></h2>
 <h3  id="how-does-multi-tenancy-work"><span id="how_does_multi_tenancy_work"></span>How does multi-tenancy work?<a class="heading-anchor" href="#how-does-multi-tenancy-work" title="Link to this section">&para;</a></h3>
-<p>When <code>multi_tenant.enabled: true</code>, the API is scoped by the <code>X-Project-Id</code> header. <code>ProjectContext</code> is a frozen dataclass with fields <code>project_id</code>, <code>group_id</code>, <code>db_path</code>, <code>domain</code>, <code>language</code>, <code>collection_prefix</code>. <code>ProjectScopedServices</code> caches <code>CPGQueryService</code> and <code>VectorStore</code> instances by <code>db_path</code>/<code>collection_prefix</code>.</p>
+<p>When <code>multi_tenant.enabled: true</code>, the API is scoped by the <code>X-Project-Id</code> header. <code>ProjectContext</code> is a frozen dataclass with fields <code>project_id</code>, <code>group_id</code>, <code>db_path</code>, <code>domain</code>, <code>language</code>, <code>collection_prefix</code>. <code>ProjectScopedServices</code> caches <code>CPGQueryService</code> instances by <code>db_path</code> and OpenViking retrieval adapters by <code>collection_prefix</code>.</p>
 <h3  id="how-is-the-database-path-protected"><span id="how_is_the_database_path_protected"></span>How is the database path protected?<a class="heading-anchor" href="#how-is-the-database-path-protected" title="Link to this section">&para;</a></h3>
 <p>All API routers use <code>ctx.db_path</code> from <code>ProjectContext</code>. User-supplied <code>db_path</code> from request body or query params is <strong>ignored</strong> with a deprecation warning. <code>CPGQueryBase</code> instances accept <code>allowed_db_paths</code> — checked on every query.</p>
 <h3  id="what-access-interfaces-are-available"><span id="what_access_interfaces_are_available"></span>What access interfaces are available?<a class="heading-anchor" href="#what-access-interfaces-are-available" title="Link to this section">&para;</a></h3>
 <p>Four access layers: CLI (<code>python -m src.cli</code>), REST API (<code>/api/v1/</code>), MCP server (<code>python -m src.mcp</code>), ACP protocol (<code>src/acp/</code>). REST API is documented at <code>http://localhost:8000/api/docs</code>.</p>
 <h3  id="how-does-demo-mode-work"><span id="how_does_demo_mode_work"></span>How does demo mode work?<a class="heading-anchor" href="#how-does-demo-mode-work" title="Link to this section">&para;</a></h3>
-<p>When <code>api.demo.enabled: true</code>, the <code>/api/v1/demo/chat</code> endpoint is accessible without authentication. It accepts <code>{"query": "..."}</code>, runs the full pipeline (classification → processing → enrichment), and returns <code>{"answer": "...", "scenario_id": "...", "processing_time_ms": ...}</code>.</p>
+<p>The legacy <code>/api/v1/demo/chat</code> endpoint has been retired. Use authenticated <code>/api/v1/chat</code> for conversational workflows and <code>/api/v1/health</code> for unauthenticated smoke checks.</p>
 <hr />
 <h2  id="analysis-modules"><span id="analysis_modules"></span>Analysis Modules<a class="heading-anchor" href="#analysis-modules" title="Link to this section">&para;</a></h2>
 <h3  id="what-analysis-modules-are-available"><span id="what_analysis_modules_are_available"></span>What analysis modules are available?<a class="heading-anchor" href="#what-analysis-modules-are-available" title="Link to this section">&para;</a></h3>
@@ -384,7 +377,7 @@
 - <strong>Call Graph Analysis</strong> (<code>callgraph/</code>) — PageRank, SCC, betweenness centrality, path finding
 - <strong>Autofix Engine</strong> (<code>autofix/</code>) — template and LLM-assisted vulnerability fix generation</p>
 <h3  id="how-does-clone-detection-work"><span id="how_does_clone_detection_work"></span>How does clone detection work?<a class="heading-anchor" href="#how-does-clone-detection-work" title="Link to this section">&para;</a></h3>
-<p><code>ASTCloneDetector</code> (<code>src/analysis/clone_detector.py</code>) compares methods pairwise using 4 similarity metrics in order: token Jaccard (&gt;0.95 → Type-1 exact), normalized tokens (&gt;0.85 → Type-2 renamed), AST structure (&gt;0.75 → Type-3 structural), control flow (&gt;0.70 → Type-4 semantic). Returns <code>CloneResult</code> objects sorted by similarity. Default limit: 300 methods (<code>max_methods_extended</code>). See <code>docs/reference/en/CLONE_DETECTION.md</code>.</p>
+<p><code>ASTCloneDetector</code> (<code>src/analysis/graph_core/clone_detector.py</code>) compares methods pairwise using 4 similarity metrics in order: token Jaccard (&gt;0.95 → Type-1 exact), normalized tokens (&gt;0.85 → Type-2 renamed), AST structure (&gt;0.75 → Type-3 structural), control flow (&gt;0.70 → Type-4 semantic). Returns <code>CloneResult</code> objects sorted by similarity. Default limit: 300 methods (<code>max_methods_extended</code>). See <code>docs/reference/en/CLONE_DETECTION.md</code>.</p>
 <h3  id="how-does-taint-analysis-work"><span id="how_does_taint_analysis_work"></span>How does taint analysis work?<a class="heading-anchor" href="#how-does-taint-analysis-work" title="Link to this section">&para;</a></h3>
 <p><code>TaintPropagator</code> (<code>src/analysis/dataflow/taint_analysis.py</code>) traces untrusted data flow through the CPG using <code>edges_reaching_def</code> and <code>edges_call</code>. Sources and sinks are defined per domain plugin (<code>get_taint_sources()</code>, <code>get_taint_sinks()</code>). Uses field-sensitive and inter-procedural analysis. Integrates with <code>PathConstraintTracker</code> for symbolic path feasibility checking via Z3. See <code>docs/reference/en/SYMBOLIC_EXECUTION.md</code>.</p>
 <h3  id="how-does-the-autofix-engine-work"><span id="how_does_the_autofix_engine_work"></span>How does the autofix engine work?<a class="heading-anchor" href="#how-does-the-autofix-engine-work" title="Link to this section">&para;</a></h3>
@@ -406,14 +399,14 @@
 <hr />
 <h2  id="documentation-and-changelog-generation"><span id="documentation_and_changelog_generation"></span>Documentation and Changelog Generation<a class="heading-anchor" href="#documentation-and-changelog-generation" title="Link to this section">&para;</a></h2>
 <h3  id="how-does-documentation-generation-work"><span id="how_does_documentation_generation_work"></span>How does documentation generation work?<a class="heading-anchor" href="#how-does-documentation-generation-work" title="Link to this section">&para;</a></h3>
-<p><code>DocumentationGenerator</code> (<code>src/services/doc_generator.py</code>) auto-generates 8 documentation sections from CPG data: project overview (MVD), module overview, function documentation, pipeline documentation, business logic description, type documentation, coverage reports, and call graph diagrams. Output can be indexed into ChromaDB for vector search.</p>
+<p><code>DocumentationGenerator</code> (<code>src/services/doc_generator.py</code>) auto-generates 8 documentation sections from CPG data: project overview (MVD), module overview, function documentation, pipeline documentation, business logic description, type documentation, coverage reports, and call graph diagrams. Output can be indexed into OpenViking for vector search.</p>
 <h3  id="how-to-generate-documentation"><span id="how_to_generate_documentation"></span>How to generate documentation?<a class="heading-anchor" href="#how-to-generate-documentation" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>en
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>full<span class="w"> </span>--output<span class="w"> </span>./docs/generated<span class="w"> </span>--language<span class="w"> </span>ru<span class="w">  </span><span class="c1"># Russian</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.generate_docs<span class="w"> </span>--sections<span class="w"> </span>overview,functions<span class="w"> </span>--output<span class="w"> </span>./docs/generated
 </code></pre></div>
 
-<p>Or via MCP: <code>codegraph_reindex action=generate</code>. During project import, <code>DocGenerationStep</code> runs automatically when the project has no <code>docs/</code> directory.</p>
+<p>During project import, <code>DocGenerationStep</code> runs automatically when the project has no <code>docs/</code> directory.</p>
 <h3  id="how-does-changelog-generation-work"><span id="how_does_changelog_generation_work"></span>How does changelog generation work?<a class="heading-anchor" href="#how-does-changelog-generation-work" title="Link to this section">&para;</a></h3>
 <p><code>ChangelogGenerator</code> (<code>src/changelog/generator.py</code>) parses git history for conventional commits (<code>feat:</code>, <code>fix:</code>, <code>docs:</code>, etc.), extracts scope and breaking change markers, groups changes by type, resolves issue references, and generates structured Markdown changelogs. Supports LLM enhancement for more descriptive entries and bilingual output (EN/RU).</p>
 <h3  id="how-to-generate-a-changelog"><span id="how_to_generate_a_changelog"></span>How to generate a changelog?<a class="heading-anchor" href="#how-to-generate-a-changelog" title="Link to this section">&para;</a></h3>
@@ -422,8 +415,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.changelog_comman
 </code></pre></div>
 
 <p>Or via REST API: <code>POST /api/v1/changelog/generate</code> with <code>{"from_ref": "v1.0.0", "to_ref": "HEAD"}</code>.</p>
-<h3  id="how-does-vector-reindexing-work"><span id="how_does_vector_reindexing_work"></span>How does vector reindexing work?<a class="heading-anchor" href="#how-does-vector-reindexing-work" title="Link to this section">&para;</a></h3>
-<p><code>VectorIndexer</code> (<code>src/retrieval/vector_indexer.py</code>) indexes project data into 6 ChromaDB collections: <code>code_snippets</code>, <code>qa_pairs</code>, <code>documentation</code>, <code>sql_examples</code>, <code>code_comments</code>, and <code>domain_patterns</code>. Supports incremental indexing via file state tracking. CLI: <code>python -m src.cli.reindex_commands reindex [--generate] [--sections ...]</code>. MCP: <code>codegraph_reindex action=reindex</code>.</p>
+<h3  id="how-does-openviking-sync-work"><span id="how_does_openviking_sync_work"></span>How does OpenViking sync work?<a class="heading-anchor" href="#how-does-openviking-sync-work" title="Link to this section">&para;</a></h3>
+<p>Project import/update and documentation-memory workflows publish project-scoped resources and accepted memory to OpenViking through the configured OpenViking client. The retired local vector-indexing modules and user-triggered REST, CLI or MCP reindex surfaces are not part of the active runtime contract.</p>
 <hr />
 <h2  id="domain-plugins"><span id="domain_plugins"></span>Domain Plugins<a class="heading-anchor" href="#domain-plugins" title="Link to this section">&para;</a></h2>
 <h3  id="what-is-a-domain-plugin"><span id="what_is_a_domain_plugin"></span>What is a domain plugin?<a class="heading-anchor" href="#what-is-a-domain-plugin" title="Link to this section">&para;</a></h3>
@@ -431,7 +424,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.changelog_comman
 <h3  id="what-domains-are-available"><span id="what_domains_are_available"></span>What domains are available?<a class="heading-anchor" href="#what-domains-are-available" title="Link to this section">&para;</a></h3>
 <p>13 domains: <code>python_generic</code> (default), <code>python_django</code>, <code>java</code>, <code>csharp</code>, <code>go</code>, <code>javascript</code>, <code>kotlin</code>, <code>php</code>, <code>postgresql</code>, <code>cpp</code>, <code>bsl_1c</code>, <code>typescript</code>, <code>web</code>. The active domain is set in <code>config.yaml</code> → <code>domain.name</code> or per-project in the project registry.</p>
 <h3  id="how-does-domain-auto-detection-work"><span id="how_does_domain_auto_detection_work"></span>How does domain auto-detection work?<a class="heading-anchor" href="#how-does-domain-auto-detection-work" title="Link to this section">&para;</a></h3>
-<p><code>CPGConfigLoader</code> (<code>src/config/cpg_config.py</code>) uses file extension heuristics from the CPG to detect the project&rsquo;s primary language. When a project is switched via <code>ProjectManager.switch_project()</code>, the corresponding domain plugin is automatically activated via <code>DomainRegistry.activate()</code>.</p>
+<p><code>CPGConfigLoader</code> (<code>src/config/cpg_config.py</code>) uses file extension heuristics from the CPG to detect the project&rsquo;s primary language. Runtime code should resolve the project context first, then activate the matching domain plugin from that explicit project scope via <code>DomainRegistry.activate()</code>. Do not rely on a global current-project switch for domain routing.</p>
 <h3  id="how-to-create-a-custom-domain-plugin"><span id="how_to_create_a_custom_domain_plugin"></span>How to create a custom domain plugin?<a class="heading-anchor" href="#how-to-create-a-custom-domain-plugin" title="Link to this section">&para;</a></h3>
 <p>Create a directory <code>src/domains/{name}/</code> with a plugin class inheriting <code>DomainPluginV3</code> and 10 YAML config files: <code>modules.yaml</code>, <code>subsystems.yaml</code>, <code>taint_sources.yaml</code>, <code>taint_sinks.yaml</code>, <code>operation_categories.yaml</code>, <code>security_patterns.yaml</code>, <code>quality_rules.yaml</code>, <code>prompts.yaml</code>, <code>domain_config.yaml</code>, <code>compliance_mapping.yaml</code>. Register the plugin in the domain registry.</p>
 <hr />
@@ -470,7 +463,7 @@ gocpg<span class="w"> </span>scan<span class="w"> </span>--db<span class="o">=</
 <hr />
 <h2  id="mcp-server-and-tools"><span id="mcp_server_and_tools"></span>MCP Server and Tools<a class="heading-anchor" href="#mcp-server-and-tools" title="Link to this section">&para;</a></h2>
 <h3  id="what-is-the-mcp-server"><span id="what_is_the_mcp_server"></span>What is the MCP server?<a class="heading-anchor" href="#what-is-the-mcp-server" title="Link to this section">&para;</a></h3>
-<p>The MCP (Model Context Protocol) server (<code>src/mcp/</code>) exposes CodeGraph functionality to AI assistants. It supports 21 built-in tools plus dynamic SQL tools loaded from <code>.codegraph/tools.yaml</code>. Transports: stdio (default), SSE, and HTTP.</p>
+<p>The MCP (Model Context Protocol) server (<code>src/mcp/</code>) exposes CodeGraph functionality to AI assistants through built-in, reviewed tools. Project-local raw SQL tool loading is retired. Transports: stdio (default), SSE, and HTTP.</p>
 <h3  id="how-to-start-the-mcp-server"><span id="how_to_start_the_mcp_server"></span>How to start the MCP server?<a class="heading-anchor" href="#how-to-start-the-mcp-server" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w">                              </span><span class="c1"># stdio (default)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>sse<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w">  </span><span class="c1"># SSE</span>
@@ -479,11 +472,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 </code></pre></div>
 
 <h3  id="what-mcp-tools-are-available"><span id="what_mcp_tools_are_available"></span>What MCP tools are available?<a class="heading-anchor" href="#what-mcp-tools-are-available" title="Link to this section">&para;</a></h3>
-<p>Key tools: <code>codegraph_query</code> (natural language query), <code>codegraph_search</code> (code search), <code>codegraph_callgraph</code> (call graph analysis), <code>codegraph_hotspots</code> (complexity hotspots), <code>codegraph_security</code> (security analysis), <code>codegraph_patterns</code> (pattern scan), <code>codegraph_compliance</code> (compliance check), <code>codegraph_tech_debt</code> (tech debt analysis), <code>codegraph_explain</code> (code explanation), <code>codegraph_standards_check</code> (coding standards), <code>codegraph_reindex</code> (vector reindex), <code>codegraph_hypothesis</code> (security hypothesis), <code>codegraph_docs_sync</code> (documentation drift detection).</p>
-<h3  id="what-are-dynamic-sql-tools"><span id="what_are_dynamic_sql_tools"></span>What are dynamic SQL tools?<a class="heading-anchor" href="#what-are-dynamic-sql-tools" title="Link to this section">&para;</a></h3>
-<p>Dynamic SQL tools are defined in <code>.codegraph/tools.yaml</code> per project. Each tool specifies a name, description, SQL query template, and parameters. The MCP server loads these at startup and exposes them alongside built-in tools. This allows project-specific CPG queries without code changes.</p>
+<p>Key tools: <code>codegraph_context_retrieval_fused_search</code> (context retrieval), <code>codegraph_context_retrieval_file_read</code> (file context), <code>codegraph_security_taint_analysis_run</code> (taint analysis), <code>codegraph_quality_tech_debt_report_get</code> (tech debt analysis), and <code>codegraph_security_hypothesis_run</code> (security hypothesis). Documentation drift detection runs through CLI <code>python -m src.cli docs-sync</code> or <code>InterfaceDocsSyncRunner</code>.</p>
 <h3  id="what-is-the-interface-documentation-sync-tool"><span id="what_is_the_interface_documentation_sync_tool"></span>What is the interface documentation sync tool?<a class="heading-anchor" href="#what-is-the-interface-documentation-sync-tool" title="Link to this section">&para;</a></h3>
-<p><code>codegraph_docs_sync</code> runs the 5-phase interface documentation sync composite (<code>src/workflow/scenarios/interface_docs_sync_composite.py</code>): Discovery → DocParse → Generation → DriftDetect → Report. It validates 6 interfaces (REST API, CLI, MCP, ACP, gRPC, WebSocket) against their documentation and reports drift types: UNDOCUMENTED, STALE, OUTDATED, COVERED.</p>
+<p><code>python -m src.cli docs-sync</code> and <code>InterfaceDocsSyncRunner</code> run the 5-phase interface documentation sync composite (<code>src/workflow/scenarios/interface_docs_sync_composite.py</code>): Discovery → DocParse → Generation → DriftDetect → Report. It validates 6 interfaces (REST API, CLI, MCP, ACP, gRPC, WebSocket) against their documentation and reports drift types: UNDOCUMENTED, STALE, OUTDATED, COVERED.</p>
       </article>
 
       <!-- Page Navigation -->
@@ -502,7 +493,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/FAQ.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -516,7 +507,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#how-does-scenario-orchestration-work" class="level-3">How does scenario orchestration work?</a></li>
 <li><a href="#what-scenarios-does-the-system-support" class="level-3">What scenarios does the system support?</a></li>
 <li><a href="#what-is-route-by-intent-and-how-does-it-work" class="level-3">What is `route_by_intent` and how does it work?</a></li>
-<li><a href="#what-is-multiscenariocopilot" class="level-3">What is `MultiScenarioCopilot`?</a></li>
+<li><a href="#what-is-the-role-bound-scenario-invoker" class="level-3">What is the role-bound scenario invoker?</a></li>
 <li><a href="#what-is-classify-intent-node" class="level-3">What is `classify_intent_node`?</a></li>
 <li><a href="#what-is-the-pre-retrieval-node" class="level-3">What is the `pre_retrieval` node?</a></li>
 <li><a href="#authorization-and-security" class="level-2">Authorization and Security</a></li>
@@ -541,18 +532,18 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#what-is-tkb-type-knowledge-base" class="level-3">What is TKB (Type Knowledge Base)?</a></li>
 <li><a href="#hybrid-search-and-retrieval" class="level-2">Hybrid Search and Retrieval</a></li>
 <li><a href="#how-does-hybrid-search-work" class="level-3">How does hybrid search work?</a></li>
-<li><a href="#what-is-stored-in-chromadb" class="level-3">What is stored in ChromaDB?</a></li>
+<li><a href="#what-is-stored-in-openviking" class="level-3">What is stored in OpenViking?</a></li>
 <li><a href="#what-is-the-pre-retrieval-phase-phase-e" class="level-3">What is the Pre-Retrieval phase (Phase E)?</a></li>
 <li><a href="#how-does-rrf-merging-work" class="level-3">How does RRF merging work?</a></li>
 <li><a href="#configuration-and-setup" class="level-2">Configuration and Setup</a></li>
 <li><a href="#what-is-get-unified-config" class="level-3">What is `get_unified_config`?</a></li>
 <li><a href="#what-sections-does-configyaml-have" class="level-3">What sections does config.yaml have?</a></li>
 <li><a href="#how-to-configure-the-llm-provider" class="level-3">How to configure the LLM provider?</a></li>
-<li><a href="#how-to-switch-the-active-project" class="level-3">How to switch the active project?</a></li>
+<li><a href="#how-to-select-project-scope" class="level-3">How to select project scope?</a></li>
 <li><a href="#project-import" class="level-2">Project Import</a></li>
 <li><a href="#how-to-import-a-project" class="level-3">How to import a project?</a></li>
 <li><a href="#what-steps-does-import-include" class="level-3">What steps does import include?</a></li>
-<li><a href="#how-to-update-chromadb-indexes" class="level-3">How to update ChromaDB indexes?</a></li>
+<li><a href="#how-to-update-openviking-indexes" class="level-3">How to update OpenViking indexes?</a></li>
 <li><a href="#answer-enrichment" class="level-2">Answer Enrichment</a></li>
 <li><a href="#how-does-enrichment-work" class="level-3">How does enrichment work?</a></li>
 <li><a href="#can-llm-enrichment-be-disabled" class="level-3">Can LLM enrichment be disabled?</a></li>
@@ -585,7 +576,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#how-to-generate-documentation" class="level-3">How to generate documentation?</a></li>
 <li><a href="#how-does-changelog-generation-work" class="level-3">How does changelog generation work?</a></li>
 <li><a href="#how-to-generate-a-changelog" class="level-3">How to generate a changelog?</a></li>
-<li><a href="#how-does-vector-reindexing-work" class="level-3">How does vector reindexing work?</a></li>
+<li><a href="#how-does-openviking-sync-work" class="level-3">How does OpenViking sync work?</a></li>
 <li><a href="#domain-plugins" class="level-2">Domain Plugins</a></li>
 <li><a href="#what-is-a-domain-plugin" class="level-3">What is a domain plugin?</a></li>
 <li><a href="#what-domains-are-available" class="level-3">What domains are available?</a></li>
@@ -600,7 +591,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#what-is-the-mcp-server" class="level-3">What is the MCP server?</a></li>
 <li><a href="#how-to-start-the-mcp-server" class="level-3">How to start the MCP server?</a></li>
 <li><a href="#what-mcp-tools-are-available" class="level-3">What MCP tools are available?</a></li>
-<li><a href="#what-are-dynamic-sql-tools" class="level-3">What are dynamic SQL tools?</a></li>
 <li><a href="#what-is-the-interface-documentation-sync-tool" class="level-3">What is the interface documentation sync tool?</a></li>
       </ul>
     </aside>

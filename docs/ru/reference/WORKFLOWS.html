@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
-        <li><a href="../api/DEMO_API.html">Демо API</a></li>
         <li><a href="../api/GRPC_API.html">Справочник gRPC API</a></li>
         <li><a href="../api/MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="../api/REST_API.html">Справочник REST API</a></li>
@@ -175,9 +173,9 @@
       <div class="doc-sidebar-title">Справочник</div>
       <ul class="doc-sidebar-nav">
         <li><a href="index.html">Обзор</a></li>
-        <li><a href="AGENTS.html">Справочник агентов</a></li>
+        <li><a href="AGENTS.html">Справочник агентов и цифровых сотрудников</a></li>
         <li><a href="ANALYSIS_MODULES.html">Справочник модулей анализа</a></li>
-        <li><a href="API.html">Справочник Python SDK</a></li>
+        <li><a href="API.html">Справка по API</a></li>
         <li><a href="APPROVAL_ENGINE.html">Механизм подтверждения операций</a></li>
         <li><a href="CLONE_DETECTION.html">Обнаружение клонов кода</a></li>
         <li><a href="FAQ.html">Часто задаваемые вопросы</a></li>
@@ -186,7 +184,6 @@
         <li><a href="SCHEMA.html">Дизайн схемы DuckDB CPG (CPG Spec v1.1)</a></li>
         <li><a href="SECURITY.html">Модуль корпоративной безопасности</a></li>
         <li><a href="SNAPSHOT_STORE.html">Справочник по хранилищу снимков</a></li>
-        <li><a href="SQL_QUERY_COOKBOOK.html">Кулинарная книга SQL-запросов для DuckDB CPG</a></li>
         <li><a href="SYMBOLIC_EXECUTION.html">Символьное выполнение (Z3 SMT Solver)</a></li>
         <li><a href="WORKFLOWS.html" class="active">Справочник по рабочим процессам</a></li>
       </ul>
@@ -223,7 +220,7 @@
 <h2 id="soderzhanie">Содержание<a class="heading-anchor" href="#soderzhanie" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="#arhitektura-rabochego-protsessa">Архитектура рабочего процесса</a></li>
-<li><a href="#multiscenariocopilot">MultiScenarioCopilot</a></li>
+<li><a href="#role-bound-vyzov-stsenariev">Role-bound вызов сценариев</a></li>
 <li><a href="#sostoyanie-rabochego-protsessa">Состояние рабочего процесса</a></li>
 <li><a href="#multiscenariostate">MultiScenarioState</a></li>
 <li><a href="#spetsializirovannye-sostoyaniya">Специализированные состояния</a></li>
@@ -252,7 +249,7 @@
 <li><a href="#raspolozhenie-klyuchevyh-faylov">Расположение ключевых файлов</a></li>
 </ul>
 <h2  id="arhitektura-rabochego-protsessa"><span id="arhitektura_rabochego_protsessa"></span>Архитектура рабочего процесса<a class="heading-anchor" href="#arhitektura-rabochego-protsessa" title="Link to this section">&para;</a></h2>
-<p>CodeGraph использует LangGraph для оркестрации рабочих процессов. Все запросы проходят через единую точку входа — <code>MultiScenarioCopilot</code>, который определяет тип задачи, при необходимости подгружает контекст и направляет запрос в подходящий сценарий.</p>
+<p>CodeGraph использует LangGraph для оркестрации рабочих процессов. Runtime-выполнение сценариев входит через role-bound контракт цифровых сотрудников, который проверяет employee policy и явный project, namespace и task scope перед pre-retrieval и маршрутизацией.</p>
 <p>Цепочка узлов графа:</p>
 <div class="highlight"><pre><span></span><code>classify_intent -&gt; pre_retrieval -&gt; route_by_intent -&gt; scenarios -&gt; END
 </code></pre></div>
@@ -306,30 +303,47 @@
 <span class="w">    </span><span class="n">S21</span><span class="w"> </span><span class="c1">--&gt; E</span>
 </code></pre></div>
 
-<h2 id="multiscenariocopilot">MultiScenarioCopilot<a class="heading-anchor" href="#multiscenariocopilot" title="Link to this section">&para;</a></h2>
-<p>Главная точка входа для выполнения всех рабочих процессов.</p>
-<p><strong>Расположение:</strong> <code>src/workflow/orchestration/copilot.py</code> (реэкспорт из <code>src/workflow/</code>)</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MultiScenarioCopilot</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">build_multi_scenario_graph</span><span class="p">()</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-        <span class="o">...</span>
+<h2  id="role-bound-vyzov-stsenariev"><span id="role_bound_vyzov_stsenariev"></span>Role-bound вызов сценариев<a class="heading-anchor" href="#role-bound-vyzov-stsenariev" title="Link to this section">&para;</a></h2>
+<p>Runtime-точка входа для выполнения сценариев.</p>
+<p><strong>Расположение:</strong> <code>src/digital_employees/runtime/scenarios/role_bound_scenario_invoker.py</code></p>
+<p>Старый публичный workflow-фасад retired.</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">invoke_role_bound_scenario</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">context</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">employee_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">scenario_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">execution_source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;role_bound_runtime&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="o">...</span>
 </code></pre></div>
 
-<p>Метод <code>run()</code> синхронный. Потоковая передача симулируется через thread pool executor на уровне API.</p>
+<p><code>invoke_role_bound_scenario()</code> синхронный. Потоковая передача симулируется через thread pool executor на уровне API.</p>
 <p>Пример использования:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.workflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">MultiScenarioCopilot</span>
-
-<span class="n">copilot</span> <span class="o">=</span> <span class="n">MultiScenarioCopilot</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="n">invoke_role_bound_scenario</span>
 
 <span class="c1"># Автоматическое определение сценария по запросу</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">copilot</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;Найти SQL-инъекции&quot;</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">invoke_role_bound_scenario</span><span class="p">(</span>
+    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Найти SQL-инъекции&quot;</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;project_key&quot;</span><span class="p">:</span> <span class="s2">&quot;codegraph&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;codegraph/default/codegraph&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="s2">&quot;TASK-EXAMPLE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;language&quot;</span><span class="p">:</span> <span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
 
 <span class="c1"># Принудительный выбор сценария</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">copilot</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-    <span class="s2">&quot;Проанализировать модуль&quot;</span><span class="p">,</span>
-    <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;scenario_id&quot;</span><span class="p">:</span> <span class="s2">&quot;scenario_2&quot;</span><span class="p">}</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">invoke_role_bound_scenario</span><span class="p">(</span>
+    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Проанализировать модуль&quot;</span><span class="p">,</span>
+    <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;scenario_02&quot;</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;project_key&quot;</span><span class="p">:</span> <span class="s2">&quot;codegraph&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;codegraph/default/codegraph&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="s2">&quot;TASK-EXAMPLE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;language&quot;</span><span class="p">:</span> <span class="s2">&quot;ru&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
 <span class="p">)</span>
 
 <span class="c1"># Структура результата</span>
@@ -379,7 +393,7 @@
 
     <span class="c1"># Конфигурация</span>
     <span class="n">enrichment_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
-    <span class="n">vector_store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+    <span class="n">retrieval_adapter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
 
     <span class="c1"># Мультитенантная изоляция</span>
     <span class="n">db_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
@@ -517,6 +531,11 @@
 +-- interface_docs_sync_composite.py  # S21 Синхронизация документации
 +-- audit_composite.py          # Аудит (композитный)
 +-- story_validation_composite.py  # Валидация историй (композитный)
+</code></pre></div>
+
+<p>Владение сценариями зафиксировано в <code>src/workflow/scenarios/scenario_ownership.yaml</code>.
+Проверка дрифта:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/check_scenario_ownership.py<span class="w"> </span>--json
 </code></pre></div>
 
 <h3  id="tablitsa-stsenariev"><span id="tablitsa_stsenariev"></span>Таблица сценариев<a class="heading-anchor" href="#tablitsa-stsenariev" title="Link to this section">&para;</a></h3>
@@ -681,6 +700,7 @@
 </tr>
 </tbody>
 </table></div>
+<p><code>concurrency_workflow</code> и <code>simple_query_workflow</code> удалены как точки входа сценариев. Анализ гонок, блокировок и производительности идет через S02/S06, простые вопросы по коду &ndash; через S01 и инструменты поиска/файлов/callgraph.</p>
 <h3  id="basehandler-i-handlerresult"><span id="basehandler_i_handlerresult"></span>BaseHandler и HandlerResult<a class="heading-anchor" href="#basehandler-i-handlerresult" title="Link to this section">&para;</a></h3>
 <p>Все обработчики сценариев наследуют от <code>BaseHandler</code>.</p>
 <p><strong>Расположение:</strong> <code>src/workflow/scenarios/_base/handler.py</code></p>
@@ -929,7 +949,7 @@
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--check<span class="o">]</span><span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--interfaces<span class="w"> </span>rest_api,cli<span class="o">]</span>
 </code></pre></div>
 
-<p>Также доступен как MCP-инструмент <code>codegraph_docs_sync</code> и REST-эндпоинт <code>POST /api/v1/documentation/sync</code>. CI-интеграция через <code>.github/workflows/docs-sync.yml</code>. Конфигурация в <code>config.yaml</code> -&gt; <code>composition.orchestrators.interface_docs_sync</code>.</p>
+<p>Также доступен через CLI <code>python -m src.cli docs-sync</code> и прямой <code>InterfaceDocsSyncRunner</code>. REST и MCP entrypoints для docs-sync retired. CI-интеграция через <code>.github/workflows/docs-sync.yml</code>. Конфигурация в <code>config.yaml</code> -&gt; <code>composition.orchestrators.interface_docs_sync</code>.</p>
 <h3  id="validatsiya-polzovatelskih-istoriy"><span id="validatsiya_polzovatelskih_istoriy"></span>Валидация пользовательских историй<a class="heading-anchor" href="#validatsiya-polzovatelskih-istoriy" title="Link to this section">&para;</a></h3>
 <p><code>StoryValidationRunner</code> валидирует пользовательские истории со статусом Done против 5 интерфейсов. Типы свидетельств: dedicated (порог 0.8 и выше), passthrough (порог 0.5 и ниже), scenario_map (0.7). Отслеживает все совпавшие функции через <code>all_matched_names</code>. Поддерживает Go CPG через параметр <code>--go-db</code>.</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-stories
@@ -1029,7 +1049,7 @@
 </tr>
 </tbody>
 </table></div>
-<p><code>MultiScenarioCopilot.run()</code> &ndash; синхронный метод. Потоковая передача на уровне API симулируется через thread pool executor, оборачивающий синхронный вызов в асинхронный генератор SSE-событий.</p>
+<p><code>invoke_role_bound_scenario()</code> &ndash; синхронная функция. Потоковая передача на уровне API симулируется через thread pool executor, оборачивающий синхронный вызов в асинхронный генератор SSE-событий.</p>
 <h2  id="svyazannaya-dokumentatsiya"><span id="svyazannaya_dokumentatsiya"></span>Связанная документация<a class="heading-anchor" href="#svyazannaya-dokumentatsiya" title="Link to this section">&para;</a></h2>
 <ul>
 <li><a href="./API.html">Справочник API</a> &ndash; полный справочник REST API</li>
@@ -1046,8 +1066,8 @@
 </thead>
 <tbody>
 <tr>
-<td><code>src/workflow/orchestration/copilot.py</code></td>
-<td><code>MultiScenarioCopilot</code></td>
+<td><code>src/digital_employees/runtime/scenarios/role_bound_scenario_invoker.py</code></td>
+<td><code>invoke_role_bound_scenario()</code></td>
 </tr>
 <tr>
 <td><code>src/workflow/orchestration/graph_builder.py</code></td>
@@ -1094,7 +1114,7 @@
 
       <a href="AGENTS.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Назад</span>
-        <span class="doc-page-nav-title">Справочник агентов</span>
+        <span class="doc-page-nav-title">Справочник агентов и цифровых сотрудников</span>
       </a>
 
       <a href="HYPOTHESIS_SYSTEM.html" class="doc-page-nav-next">
@@ -1105,7 +1125,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/reference/WORKFLOWS.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1116,7 +1136,7 @@
       <ul class="doc-toc-list">
         <li><a href="#soderzhanie" class="level-2">Содержание</a></li>
 <li><a href="#arhitektura-rabochego-protsessa" class="level-2">Архитектура рабочего процесса</a></li>
-<li><a href="#multiscenariocopilot" class="level-2">MultiScenarioCopilot</a></li>
+<li><a href="#role-bound-vyzov-stsenariev" class="level-2">Role-bound вызов сценариев</a></li>
 <li><a href="#sostoyanie-rabochego-protsessa" class="level-2">Состояние рабочего процесса</a></li>
 <li><a href="#multiscenariostate" class="level-3">MultiScenarioState</a></li>
 <li><a href="#spetsializirovannye-sostoyaniya" class="level-3">Специализированные состояния</a></li>

@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="DEMO_API.html">Demo API</a></li>
         <li><a href="GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="REST_API.html">REST API Reference</a></li>
@@ -197,7 +195,21 @@
       <!-- Content -->
       <article class="doc-content">
         <p>External interfaces and protocol references for CodeGraph: REST, WebSocket, dashboard
-streaming, ACP, MCP, gRPC, and demo endpoints.</p>
+streaming, ACP, MCP, and gRPC endpoints.</p>
+<h2  id="publication-readiness-notice"><span id="publication_readiness_notice"></span>Publication Readiness Notice<a class="heading-anchor" href="#publication-readiness-notice" title="Link to this section">&para;</a></h2>
+<p>CodeGraph production-publication hardening for story #933 is delivered with
+accepted evidence in
+<code>docs/development/notes/CODEGRAPH_PRODUCTION_PUBLICATION_READINESS_HARDENING_RELEASE_BLOCKER_LEDGER_20260611.md</code>.
+Production deployments must still provide explicit production secrets and run the
+configured validation gates; local development bypasses are not production defaults.</p>
+<p>Current production-sensitive notes:</p>
+<ul>
+<li>Webhook endpoints require configured platform secrets; missing secrets fail closed outside explicit local-development bypasses.</li>
+<li>Provider/import routes validate URL schemes and hosts, reject unsafe local path imports by default in production, and enforce group ACLs.</li>
+<li>API-key machine access fails closed when credential validation is unavailable.</li>
+<li>Runtime quota coverage includes durable import-job counting plus dynamic payload guards.</li>
+<li>WebSocket and MCP transports require project/job-scope authorization evidence before public production claims.</li>
+</ul>
 <h2 id="documents">Documents<a class="heading-anchor" href="#documents" title="Link to this section">&para;</a></h2>
 <h3 id="english">English<a class="heading-anchor" href="#english" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
@@ -231,10 +243,6 @@ streaming, ACP, MCP, gRPC, and demo endpoints.</p>
 <tr>
 <td><a href="GRPC_API.html">gRPC API</a></td>
 <td>GoCPG gRPC transport methods</td>
-</tr>
-<tr>
-<td><a href="DEMO_API.html">Demo API</a></td>
-<td>Public demo endpoint for landing page</td>
 </tr>
 </tbody>
 </table></div>
@@ -271,10 +279,6 @@ streaming, ACP, MCP, gRPC, and demo endpoints.</p>
 <td><a href="GRPC_API.html">gRPC API</a></td>
 <td>Методы gRPC-транспорта GoCPG</td>
 </tr>
-<tr>
-<td><a href="DEMO_API.html">Демо API</a></td>
-<td>Публичная демонстрационная конечная точка для лендинга</td>
-</tr>
 </tbody>
 </table></div>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
@@ -289,20 +293,17 @@ streaming, ACP, MCP, gRPC, and demo endpoints.</p>
 </code></pre></div>
 
 <h3  id="use-token-for-requests"><span id="use_token_for_requests"></span>Use Token for Requests<a class="heading-anchor" href="#use-token-for-requests" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://localhost:8000/api/v1/scenarios<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span>
-</code></pre></div>
-
+<p>Use the token on protected project and administration endpoints.</p>
 <h2 id="authentication">Authentication<a class="heading-anchor" href="#authentication" title="Link to this section">&para;</a></h2>
 <p>All endpoints (except <code>/health</code>) require authentication:</p>
 <h3  id="jwt-token"><span id="jwt_token"></span>JWT Token<a class="heading-anchor" href="#jwt-token" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>http://localhost:8000/api/v1/scenarios
+<span class="w">  </span>http://localhost:8000/api/v1/me
 </code></pre></div>
 
 <h3  id="api-key"><span id="api_key"></span>API Key<a class="heading-anchor" href="#api-key" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;X-API-Key: &lt;api-key&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>http://localhost:8000/api/v1/scenarios
+<span class="w">  </span>http://localhost:8000/api/v1/me
 </code></pre></div>
 
 <h2  id="api-endpoints"><span id="api_endpoints"></span>API Endpoints<a class="heading-anchor" href="#api-endpoints" title="Link to this section">&para;</a></h2>
@@ -328,17 +329,17 @@ streaming, ACP, MCP, gRPC, and demo endpoints.</p>
 </tr>
 <tr>
 <td>POST</td>
-<td><code>/api/v1/auth/api-keys</code></td>
+<td><code>/api/v1/me/api-keys</code></td>
 <td>Create API key</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/auth/me</code></td>
+<td><code>/api/v1/me</code></td>
 <td>Get current user</td>
 </tr>
 </tbody>
 </table></div>
-<h3 id="scenarios">Scenarios<a class="heading-anchor" href="#scenarios" title="Link to this section">&para;</a></h3>
+<h3 id="documentation">Documentation<a class="heading-anchor" href="#documentation" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -350,121 +351,18 @@ streaming, ACP, MCP, gRPC, and demo endpoints.</p>
 <tbody>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/scenarios</code></td>
-<td>List scenarios</td>
+<td><code>/api/v1/documentation/projects/{project_name}/facts-metrics</code></td>
+<td>Get documentation facts metrics</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/scenarios/{id}</code></td>
-<td>Get scenario</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/scenarios/{id}/query</code></td>
-<td>Execute query</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="chat">Chat<a class="heading-anchor" href="#chat" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/chat</code></td>
-<td>Send message</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/chat/stream</code></td>
-<td>Stream response</td>
+<td><code>/api/v1/documentation/projects/{project_name}/package</code></td>
+<td>Get generated documentation package summary</td>
 </tr>
 <tr>
 <td>GET</td>
-<td><code>/api/v1/chat/history</code></td>
-<td>Get history</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="query">Query<a class="heading-anchor" href="#query" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/query/execute</code></td>
-<td>Execute query</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/query/sql</code></td>
-<td>Execute CPG SQL query</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="review">Review<a class="heading-anchor" href="#review" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/review/patch</code></td>
-<td>Review patch</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/review/pr</code></td>
-<td>Review PR</td>
-</tr>
-</tbody>
-</table></div>
-<h3  id="documentation-generation"><span id="documentation_generation"></span>Documentation Generation<a class="heading-anchor" href="#documentation-generation" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/documentation/generate</code></td>
-<td>Generate full documentation</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/documentation/generate/{section}</code></td>
-<td>Generate single section</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/api/v1/documentation/stats</code></td>
-<td>Get ChromaDB stats</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/v1/documentation/search</code></td>
-<td>Semantic search in docs</td>
+<td><code>/api/v1/documentation/projects/{project_name}/document</code></td>
+<td>Get generated documentation document</td>
 </tr>
 </tbody>
 </table></div>
@@ -493,9 +391,9 @@ streaming, ACP, MCP, gRPC, and demo endpoints.</p>
 python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb
 </code></pre></div>
 
-<p>Key tools: <code>codegraph_query</code>, <code>codegraph_find_callers</code>, <code>codegraph_find_callees</code>,
-<code>codegraph_impact</code>, <code>codegraph_taint_analysis</code>, <code>codegraph_search</code>,
-<code>codegraph_explain</code>, <code>codegraph_hotspots</code>.</p>
+<p>Key tools: <code>codegraph_context_retrieval_fused_search</code>, <code>codegraph_context_retrieval_file_read</code>,
+<code>codegraph_security_taint_analysis_run</code>, <code>codegraph_quality_tech_debt_report_get</code>,
+<code>codegraph_security_hypothesis_run</code>.</p>
 <p>See: <a href="ACP_INTEGRATION.html">ACP Integration (EN)</a>,
 <a href="MCP_TOOLS.html">MCP Tools (EN)</a>,
 <a href="GRPC_API.html">gRPC API (EN)</a> |
@@ -521,7 +419,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/api/README.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -530,7 +428,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#documents" class="level-2">Documents</a></li>
+        <li><a href="#publication-readiness-notice" class="level-2">Publication Readiness Notice</a></li>
+<li><a href="#documents" class="level-2">Documents</a></li>
 <li><a href="#english" class="level-3">English</a></li>
 <li><a href="#russkiy" class="level-3">Русский</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
@@ -542,11 +441,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#api-key" class="level-3">API Key</a></li>
 <li><a href="#api-endpoints" class="level-2">API Endpoints</a></li>
 <li><a href="#authentication" class="level-3">Authentication</a></li>
-<li><a href="#scenarios" class="level-3">Scenarios</a></li>
-<li><a href="#chat" class="level-3">Chat</a></li>
-<li><a href="#query" class="level-3">Query</a></li>
-<li><a href="#review" class="level-3">Review</a></li>
-<li><a href="#documentation-generation" class="level-3">Documentation Generation</a></li>
+<li><a href="#documentation" class="level-3">Documentation</a></li>
 <li><a href="#websocket" class="level-3">WebSocket</a></li>
 <li><a href="#mcp-server" class="level-2">MCP Server</a></li>
 <li><a href="#interactive-documentation" class="level-2">Interactive Documentation</a></li>

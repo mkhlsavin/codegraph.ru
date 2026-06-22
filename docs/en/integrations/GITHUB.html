@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -227,6 +225,12 @@
 <li><strong>Standalone</strong> &ndash; deployed alongside GitHub, accessed via REST API / CLI / MCP</li>
 </ul>
 <p>GitHub webhook payloads are normalized by CodeGraph into unified <code>UnifiedPushEvent</code> and <code>UnifiedMREvent</code> models shared across all 4 supported platforms.</p>
+<blockquote class="callout">
+<p><strong>Production-readiness notice:</strong> CodeGraph GitHub integration is covered by the
+delivered story #933 production-publication hardening gate. Production use
+requires explicit webhook secrets, provider secret encryption or external env
+references, group ACLs, URL/path policy and the documented runtime quota gates.</p>
+</blockquote>
 <h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h2>
 <ul>
 <li>CodeGraph instance (Docker or standalone) accessible from GitHub (or self-hosted runners)</li>
@@ -235,14 +239,17 @@
 <li>LLM API key: <code>YANDEX_API_KEY</code>, <code>GIGACHAT_AUTH_KEY</code>, or <code>OPENAI_API_KEY</code></li>
 </ul>
 <h2  id="webhook-configuration"><span id="webhook_configuration"></span>Webhook Configuration<a class="heading-anchor" href="#webhook-configuration" title="Link to this section">&para;</a></h2>
-<p><strong>Endpoint:</strong> <code>POST /api/v1/webhooks/github</code> (returns <code>202 Accepted</code>)</p>
+<p><strong>Endpoint:</strong> <code>POST /api/v1/admin/runtime/webhooks/github</code> (returns <code>202 Accepted</code>)</p>
 <p><strong>GitHub setup:</strong> Repository <strong>Settings &gt; Webhooks &gt; Add webhook</strong>:
-1. Payload URL: <code>https://&lt;codegraph-host&gt;/api/v1/webhooks/github</code>
+1. Payload URL: <code>https://&lt;codegraph-host&gt;/api/v1/admin/runtime/webhooks/github</code>
 2. Content type: <code>application/json</code>
 3. Secret: any string (for HMAC-SHA256 verification)
 4. Events: select <strong>Pushes</strong> and <strong>Pull requests</strong> (or &ldquo;Let me select individual events&rdquo;)</p>
 <h3  id="signature-verification"><span id="signature_verification"></span>Signature Verification<a class="heading-anchor" href="#signature-verification" title="Link to this section">&para;</a></h3>
-<p>CodeGraph verifies the <code>X-Hub-Signature-256</code> header (HMAC-SHA256, format: <code>sha256=&lt;hex&gt;</code>).</p>
+<p>CodeGraph verifies the <code>X-Hub-Signature-256</code> header (HMAC-SHA256, format: <code>sha256=&lt;hex&gt;</code>).
+The GitHub webhook secret must be configured for deployed environments. Missing
+secrets fail closed; unsigned webhook acceptance is limited to explicit local
+development bypasses.</p>
 <p>Error codes:
 - <strong>401 Unauthorized</strong> &ndash; missing <code>X-Hub-Signature-256</code> header
 - <strong>403 Forbidden</strong> &ndash; invalid signature (HMAC mismatch)</p>
@@ -277,6 +284,9 @@
 <span class="w">  </span><span class="nt">auto_update_on_push</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># trigger incremental CPG update on push events</span>
 </code></pre></div>
 
+<p>Provider connection and import routes enforce group-level authorization and reject
+unsafe provider or repository URLs. Public <code>local_path</code> imports are disabled in
+production unless an explicit platform-admin local-import profile is enabled.</p>
 <h3  id="event-type-detection"><span id="event_type_detection"></span>Event Type Detection<a class="heading-anchor" href="#event-type-detection" title="Link to this section">&para;</a></h3>
 <p>CodeGraph detects event type from the <code>X-GitHub-Event</code> header. If the header is missing (e.g., testing via curl), it falls back to payload structure detection:</p>
 <ul>
@@ -373,7 +383,7 @@
 
 <p>Upload the SARIF file using <code>github/codeql-action/upload-sarif@v3</code> to see findings in the GitHub Security tab.</p>
 <h2  id="rest-api-endpoints"><span id="rest_api_endpoints"></span>REST API Endpoints<a class="heading-anchor" href="#rest-api-endpoints" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1webhooksgithub-webhook-receiver"><span id="post-apiv1webhooksgithub-ndash-webhook-receiver"></span><span id="post_apiv1webhooksgithub_ndash_webhook_receiver"></span><span id="post_apiv1webhooksgithub_webhook_receiver"></span><code>POST /api/v1/webhooks/github</code> &ndash; Webhook Receiver<a class="heading-anchor" href="#post-apiv1webhooksgithub-webhook-receiver" title="Link to this section">&para;</a></h3>
+<h3  id="post-apiv1adminruntimewebhooksgithub-webhook-receiver"><span id="post-apiv1adminruntimewebhooksgithub-ndash-webhook-receiver"></span><span id="post_apiv1adminruntimewebhooksgithub_ndash_webhook_receiver"></span><span id="post_apiv1adminruntimewebhooksgithub_webhook_receiver"></span><code>POST /api/v1/admin/runtime/webhooks/github</code> &ndash; Webhook Receiver<a class="heading-anchor" href="#post-apiv1adminruntimewebhooksgithub-webhook-receiver" title="Link to this section">&para;</a></h3>
 <p>See <a href="#webhook-configuration">Webhook Configuration</a>.</p>
 <h3  id="post-apiv1securityscan-diff-security-scan"><span id="post-apiv1securityscan-diff-ndash-security-scan"></span><span id="post_apiv1securityscan_diff_ndash_security_scan"></span><span id="post_apiv1securityscan_diff_security_scan"></span><code>POST /api/v1/security/scan-diff</code> &ndash; Security Scan<a class="heading-anchor" href="#post-apiv1securityscan-diff-security-scan" title="Link to this section">&para;</a></h3>
 <p>Scans a raw unified diff for security vulnerabilities.</p>
@@ -467,7 +477,7 @@
 
 <p>Requires <code>X-GitHub-Token</code> header with a GitHub access token that has read access to the repository.</p>
 <p><strong>Response:</strong> <code>recommendation</code>, <code>score</code>, <code>findings[]</code>, <code>dod_validation[]</code>, <code>summary</code>, <code>processing_time_ms</code>, <code>request_id</code>.</p>
-<h3  id="get-apiv1webhooksstatusproject-id-update-status"><span id="get-apiv1webhooksstatusproject-id-ndash-update-status"></span><span id="get_apiv1webhooksstatusproject_id_ndash_update_status"></span><span id="get_apiv1webhooksstatusproject_id_update_status"></span><code>GET /api/v1/webhooks/status/{project_id}</code> &ndash; Update Status<a class="heading-anchor" href="#get-apiv1webhooksstatusproject-id-update-status" title="Link to this section">&para;</a></h3>
+<h3  id="get-apiv1adminruntimewebhooksstatusproject-id-update-status"><span id="get-apiv1adminruntimewebhooksstatusproject-id-ndash-update-status"></span><span id="get_apiv1adminruntimewebhooksstatusproject_id_ndash_update_status"></span><span id="get_apiv1adminruntimewebhooksstatusproject_id_update_status"></span><code>GET /api/v1/admin/runtime/webhooks/status/{project_id}</code> &ndash; Update Status<a class="heading-anchor" href="#get-apiv1adminruntimewebhooksstatusproject-id-update-status" title="Link to this section">&para;</a></h3>
 <p>Returns the latest CPG update pipeline status for a project.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
@@ -476,7 +486,7 @@
 <span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc12345&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;gocpg_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;chromadb_synced&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;openviking_synced&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -511,9 +521,9 @@
 <td>GoCPG incremental update status</td>
 </tr>
 <tr>
-<td><code>chromadb_synced</code></td>
+<td><code>openviking_synced</code></td>
 <td>int</td>
-<td>Number of ChromaDB collections updated</td>
+<td>Number of OpenViking collections updated</td>
 </tr>
 </tbody>
 </table></div>
@@ -528,27 +538,27 @@
 </thead>
 <tbody>
 <tr>
-<td><code>codegraph_project_context</code></td>
-<td>Project overview: CPG stats, languages, hotspots, security findings</td>
+<td><code>codegraph://project/context</code></td>
+<td>Project overview resource: CPG stats, languages, hotspots, security findings</td>
 </tr>
 <tr>
-<td><code>codegraph_file_context</code></td>
+<td><code>codegraph_context_retrieval_file_read</code></td>
 <td>Per-file methods, metrics, callers, callees, dead code, security</td>
 </tr>
 <tr>
-<td><code>codegraph_diff_context</code></td>
+<td><code>codegraph_context_retrieval_diff_preview</code></td>
 <td>Blast radius analysis for changed files</td>
 </tr>
 <tr>
-<td><code>codegraph_query</code></td>
+<td><code>codegraph_code_query</code></td>
 <td>Execute raw SQL against CPG DuckDB</td>
 </tr>
 <tr>
-<td><code>codegraph_find_callers</code></td>
+<td><code>codegraph_code_find_callers</code></td>
 <td>Find all callers of a function</td>
 </tr>
 <tr>
-<td><code>codegraph_find_callees</code></td>
+<td><code>codegraph_code_find_callees</code></td>
 <td>Find all functions called by a function</td>
 </tr>
 <tr>
@@ -574,16 +584,19 @@
 <ol>
 <li><strong>Resolve project</strong> &ndash; match by <code>project_id</code>, repository URL, or active project</li>
 <li><strong>GoCPG Update</strong> &ndash; incremental CPG update via gRPC/subprocess (<code>from_commit</code> → <code>to_commit</code>)</li>
-<li><strong>ChromaDB Sync</strong> &ndash; update vector store collections for changed files</li>
+<li><strong>OpenViking Sync</strong> &ndash; update vector store collections for changed files</li>
 <li><strong>WebSocket Notification</strong> &ndash; broadcast <code>cpg.update.complete</code> event to connected clients</li>
 </ol>
 <p>Pipeline behavior:
 - Duplicate push events (same project + commit SHA) are deduplicated
 - Rapid pushes to the same project are coalesced (merged changed files, latest commit)
 - GoCPG failure triggers automatic retry after 60 seconds
-- ChromaDB sync continues even if GoCPG update fails
+- OpenViking sync continues even if GoCPG update fails
 - Webhook always returns <code>202 Accepted</code> immediately (processing is asynchronous)</p>
-<p>Monitor pipeline status via <code>GET /api/v1/webhooks/status/{project_id}</code>.</p>
+<p>Runtime quota note: story #933 adds durable import-job counting through the
+database-backed import job repository and payload-size guards for dynamic imports.
+Production deployments should keep those quota gates enabled.</p>
+<p>Monitor pipeline status via <code>GET /api/v1/admin/runtime/webhooks/status/{project_id}</code>.</p>
 <h2  id="docker-image-setup"><span id="docker_image_setup"></span>Docker Image Setup<a class="heading-anchor" href="#docker-image-setup" title="Link to this section">&para;</a></h2>
 <p>Images published to GHCR via <code>.github/workflows/publish-ghcr.yml</code>, tagged on version tags (<code>v*</code>) and <code>latest</code>.</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/mkhlsavin/codegraph:latest
@@ -647,7 +660,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/GITHUB.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -669,12 +682,12 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <li><a href="#required-secretsvariables" class="level-3">Required Secrets/Variables</a></li>
 <li><a href="#sarif-integration" class="level-3">SARIF Integration</a></li>
 <li><a href="#rest-api-endpoints" class="level-2">REST API Endpoints</a></li>
-<li><a href="#post-apiv1webhooksgithub-webhook-receiver" class="level-3">`POST /api/v1/webhooks/github` -- Webhook Receiver</a></li>
+<li><a href="#post-apiv1adminruntimewebhooksgithub-webhook-receiver" class="level-3">`POST /api/v1/admin/runtime/webhooks/github` -- Webhook Receiver</a></li>
 <li><a href="#post-apiv1securityscan-diff-security-scan" class="level-3">`POST /api/v1/security/scan-diff` -- Security Scan</a></li>
 <li><a href="#post-apiv1reviewsummary-pr-summary" class="level-3">`POST /api/v1/review/summary` -- PR Summary</a></li>
 <li><a href="#post-apiv1reviewcommit-message-commit-message" class="level-3">`POST /api/v1/review/commit-message` -- Commit Message</a></li>
 <li><a href="#post-apiv1reviewpr-github-pr-review" class="level-3">`POST /api/v1/review/pr` -- GitHub PR Review</a></li>
-<li><a href="#get-apiv1webhooksstatusproject-id-update-status" class="level-3">`GET /api/v1/webhooks/status/{project_id}` -- Update Status</a></li>
+<li><a href="#get-apiv1adminruntimewebhooksstatusproject-id-update-status" class="level-3">`GET /api/v1/admin/runtime/webhooks/status/{project_id}` -- Update Status</a></li>
 <li><a href="#mcp-tools" class="level-2">MCP Tools</a></li>
 <li><a href="#opencode-integration" class="level-3">OpenCode Integration</a></li>
 <li><a href="#incremental-cpg-updates" class="level-2">Incremental CPG Updates</a></li>

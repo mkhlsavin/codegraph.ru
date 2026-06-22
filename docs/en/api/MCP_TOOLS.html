@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="index.html">Overview</a></li>
         <li><a href="ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="DEMO_API.html">Demo API</a></li>
         <li><a href="GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="MCP_TOOLS.html" class="active">Built-in MCP Tools</a></li>
         <li><a href="REST_API.html">REST API Reference</a></li>
@@ -196,212 +194,71 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph exposes 164 built-in tools via the MCP server (<code>python -m src.mcp</code>). Each tool name starts with <code>codegraph_</code> and is callable by any MCP-compatible client. All tools are read-only unless explicitly noted. Tools that access the CPG database resolve the path automatically via <code>ProjectManager</code>.</p>
-<h2  id="call-graph-navigation"><span id="call-graph-amp-navigation"></span><span id="call_graph_amp_navigation"></span><span id="call_graph_navigation"></span>Call Graph &amp; Navigation<a class="heading-anchor" href="#call-graph-navigation" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-find-callers"><span id="codegraph_find_callers"></span>codegraph_find_callers<a class="heading-anchor" href="#codegraph-find-callers" title="Link to this section">&para;</a></h3>
-<p>Find all upstream callers of a method, including transitive callers up to a configurable depth.</p>
-<p><strong>Parameters:</strong> <code>method_name</code> (str), <code>max_depth</code> (int, optional; defaults to configured value), <code>direct_only</code> (bool, default false)</p>
-<h3  id="codegraph-find-callees"><span id="codegraph_find_callees"></span>codegraph_find_callees<a class="heading-anchor" href="#codegraph-find-callees" title="Link to this section">&para;</a></h3>
-<p>Find all methods called by the given method, including transitive callees.</p>
-<p><strong>Parameters:</strong> <code>method_name</code> (str), <code>max_depth</code> (int, optional; defaults to configured value), <code>direct_only</code> (bool, default false)</p>
-<h3  id="codegraph-impact"><span id="codegraph_impact"></span>codegraph_impact<a class="heading-anchor" href="#codegraph-impact" title="Link to this section">&para;</a></h3>
-<p>Analyze the blast radius of changes to a method. Returns direct/transitive callers, affected methods, and an impact score.</p>
-<p><strong>Parameters:</strong> <code>method_name</code> (str)</p>
-<h2  id="code-analysis"><span id="code_analysis"></span>Code Analysis<a class="heading-anchor" href="#code-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-query"><span id="codegraph_query"></span>codegraph_query<a class="heading-anchor" href="#codegraph-query" title="Link to this section">&para;</a></h3>
-<p>Execute a SQL query on the CPG database. Only SELECT queries are allowed.</p>
-<p><strong>Parameters:</strong> <code>sql</code> (str), <code>limit</code> (int, optional; defaults to configured value)</p>
-<h3  id="codegraph-search"><span id="codegraph_search"></span>codegraph_search<a class="heading-anchor" href="#codegraph-search" title="Link to this section">&para;</a></h3>
-<p>Search the codebase using hybrid semantic and graph search. Matches method names, full names, and code content.</p>
-<p><strong>Parameters:</strong> <code>query</code> (str), <code>limit</code> (int, optional; defaults to configured value)</p>
-<h3  id="codegraph-explain"><span id="codegraph_explain"></span>codegraph_explain<a class="heading-anchor" href="#codegraph-explain" title="Link to this section">&para;</a></h3>
-<p>Get comprehensive analysis of a method: metrics (complexity, fan-in/out), call graph, security properties, location, and pattern flags. Suggests similar names if the method is not found.</p>
-<p><strong>Parameters:</strong> <code>method_name</code> (str)</p>
-<h3  id="codegraph-diagram"><span id="codegraph_diagram"></span>codegraph_diagram<a class="heading-anchor" href="#codegraph-diagram" title="Link to this section">&para;</a></h3>
-<p>Generate architecture diagrams in Mermaid format: call graph, file dependency, or component diagram.</p>
-<p><strong>Parameters:</strong> <code>diagram_type</code> (str: &ldquo;callgraph&rdquo; | &ldquo;dependency&rdquo; | &ldquo;component&rdquo;, default &ldquo;callgraph&rdquo;), <code>target</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-hotspots"><span id="codegraph_hotspots"></span>codegraph_hotspots<a class="heading-anchor" href="#codegraph-hotspots" title="Link to this section">&para;</a></h3>
-<p>Find code hotspots ranked by a metric: cyclomatic complexity, caller count (fan-in), PageRank importance, or betweenness centrality.</p>
-<p><strong>Parameters:</strong> <code>metric</code> (str: &ldquo;complexity&rdquo; | &ldquo;callers&rdquo; | &ldquo;pagerank&rdquo; | &ldquo;betweenness&rdquo;, default &ldquo;complexity&rdquo;), <code>limit</code> (int, optional; defaults to configured value)</p>
-<h3  id="codegraph-edit-preview"><span id="codegraph_edit_preview"></span>codegraph_edit_preview<a class="heading-anchor" href="#codegraph-edit-preview" title="Link to this section">&para;</a></h3>
-<p>Preview AST information for a code target before editing. Returns type, location, caller count, and code preview for safe refactoring.</p>
-<p><strong>Parameters:</strong> <code>file_path</code> (str), <code>target_name</code> (str), <code>target_type</code> (str: &ldquo;function&rdquo; | &ldquo;class&rdquo; | &ldquo;method&rdquo;, default &ldquo;function&rdquo;)</p>
+        <p>CodeGraph exposes 152 callable full-profile MCP tools via the MCP server (<code>python -m src.mcp</code>). Restricted Codex/OpenCode profiles expose 132 operator-default tools plus governed read-only resource templates. Not every full-profile tool is callable in every client profile.</p>
+<ul>
+<li>Full MCP tool profile: 156 callable tools</li>
+<li>Codex/OpenCode governed profile: 132 callable tools</li>
+<li>MCP resource surfaces: 4 resources and 5 resource templates</li>
+<li>MCP resource projections: 0 resource candidates</li>
+</ul>
 <h2 id="security">Security<a class="heading-anchor" href="#security" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-taint-analysis"><span id="codegraph_taint_analysis"></span>codegraph_taint_analysis<a class="heading-anchor" href="#codegraph-taint-analysis" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-taint-analysis-run"><span id="codegraph_security_taint_analysis_run"></span>codegraph_security_taint_analysis_run<a class="heading-anchor" href="#codegraph-security-taint-analysis-run" title="Link to this section">&para;</a></h3>
 <p>Run taint analysis to find data flow paths from sources to sinks. Traces how untrusted data flows through the codebase.</p>
 <p><strong>Parameters:</strong> <code>method_name</code> (str), <code>source_category</code> (str, default &ldquo;user_input&rdquo;), <code>sink_category</code> (str, default &ldquo;sql&rdquo;)</p>
-<h3  id="codegraph-autofix"><span id="codegraph_autofix"></span>codegraph_autofix<a class="heading-anchor" href="#codegraph-autofix" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-autofix-preview"><span id="codegraph_security_autofix_preview"></span>codegraph_security_autofix_preview<a class="heading-anchor" href="#codegraph-security-autofix-preview" title="Link to this section">&para;</a></h3>
 <p>Generate automated fix suggestions for security vulnerabilities. Runs taint analysis, then produces template-based or LLM-powered patches. Read-only: returns diffs without applying changes.</p>
 <p><strong>Parameters:</strong> <code>method_name</code> (str), <code>cwe</code> (str, default &ldquo;&rdquo;)</p>
 <h2  id="sca-sbom"><span id="sca_sbom"></span>SCA / SBOM<a class="heading-anchor" href="#sca-sbom" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-sbom-generate"><span id="codegraph_sbom_generate"></span>codegraph_sbom_generate<a class="heading-anchor" href="#codegraph-sbom-generate" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-sbom-report-generate"><span id="codegraph_security_sbom_report_generate"></span>codegraph_security_sbom_report_generate<a class="heading-anchor" href="#codegraph-security-sbom-report-generate" title="Link to this section">&para;</a></h3>
 <p>Generate SBOM (Software Bill of Materials) for a project.</p>
 <p><strong>Parameters:</strong> <code>format</code> (str: &ldquo;cyclonedx&rdquo; | &ldquo;spdx&rdquo;, default &ldquo;cyclonedx&rdquo;), <code>project</code> (str, default &ldquo;&rdquo; — uses active project)</p>
-<h3  id="codegraph-sbom-audit"><span id="codegraph_sbom_audit"></span>codegraph_sbom_audit<a class="heading-anchor" href="#codegraph-sbom-audit" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-sbom-audit-run"><span id="codegraph_security_sbom_audit_run"></span>codegraph_security_sbom_audit_run<a class="heading-anchor" href="#codegraph-security-sbom-audit-run" title="Link to this section">&para;</a></h3>
 <p>Audit project dependencies for known vulnerabilities.</p>
 <p><strong>Parameters:</strong> <code>sources</code> (str, default &ldquo;osv&rdquo; — comma-separated: osv, nvd, bdu_fstec), <code>fail_on</code> (str: &ldquo;critical&rdquo; | &ldquo;high&rdquo; | &ldquo;medium&rdquo; | &ldquo;low&rdquo;, default &ldquo;&rdquo; — no threshold), <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;sarif&rdquo; | &ldquo;markdown&rdquo; | &ldquo;gost&rdquo;, default &ldquo;json&rdquo;), <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-sbom-sync"><span id="codegraph_sbom_sync"></span>codegraph_sbom_sync<a class="heading-anchor" href="#codegraph-sbom-sync" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-sbom-inventory-sync"><span id="codegraph_security_sbom_inventory_sync"></span>codegraph_security_sbom_inventory_sync<a class="heading-anchor" href="#codegraph-security-sbom-inventory-sync" title="Link to this section">&para;</a></h3>
 <p>Sync local vulnerability cache.</p>
 <p><strong>Parameters:</strong> <code>sources</code> (str, default &ldquo;osv,nvd,bdu_fstec&rdquo; — comma-separated), <code>force</code> (bool, default false — full re-sync)</p>
 <h2  id="supply-chain"><span id="supply_chain"></span>Supply Chain<a class="heading-anchor" href="#supply-chain" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-supply-chain-scan"><span id="codegraph_supply_chain_scan"></span>codegraph_supply_chain_scan<a class="heading-anchor" href="#codegraph-supply-chain-scan" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-supply-chain-scan-run"><span id="codegraph_security_supply_chain_scan_run"></span>codegraph_security_supply_chain_scan_run<a class="heading-anchor" href="#codegraph-security-supply-chain-scan-run" title="Link to this section">&para;</a></h3>
 <p>Scan supply chain for security risks: typosquatting, low trust, integrity issues.</p>
 <p><strong>Parameters:</strong> <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;sarif&rdquo; | &ldquo;markdown&rdquo; | &ldquo;gost&rdquo;, default &ldquo;json&rdquo;), <code>fail_on</code> (str, default &ldquo;&rdquo; — severity threshold), <code>language</code> (str: &ldquo;en&rdquo; | &ldquo;ru&rdquo;, default &ldquo;ru&rdquo;), <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-supply-chain-trust"><span id="codegraph_supply_chain_trust"></span>codegraph_supply_chain_trust<a class="heading-anchor" href="#codegraph-supply-chain-trust" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-supply-chain-trust-report-get"><span id="codegraph_security_supply_chain_trust_report_get"></span>codegraph_security_supply_chain_trust_report_get<a class="heading-anchor" href="#codegraph-security-supply-chain-trust-report-get" title="Link to this section">&para;</a></h3>
 <p>Assess trust scores for project dependencies.</p>
 <p><strong>Parameters:</strong> <code>min_score</code> (float, default 0.0), <code>project</code> (str, default &ldquo;&rdquo;)</p>
 <h2  id="threat-modeling"><span id="threat_modeling"></span>Threat Modeling<a class="heading-anchor" href="#threat-modeling" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-threat-model-generate"><span id="codegraph_threat_model_generate"></span>codegraph_threat_model_generate<a class="heading-anchor" href="#codegraph-threat-model-generate" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-threat-model-generate"><span id="codegraph_security_threat_model_generate"></span>codegraph_security_threat_model_generate<a class="heading-anchor" href="#codegraph-security-threat-model-generate" title="Link to this section">&para;</a></h3>
 <p>Generate STRIDE threat model from project CPG.</p>
 <p><strong>Parameters:</strong> <code>min_severity</code> (str: &ldquo;low&rdquo; | &ldquo;medium&rdquo; | &ldquo;high&rdquo; | &ldquo;critical&rdquo;, default &ldquo;low&rdquo;), <code>include_inferred</code> (bool, default true), <code>language</code> (str: &ldquo;en&rdquo; | &ldquo;ru&rdquo;, default &ldquo;ru&rdquo;), <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;markdown&rdquo;, default &ldquo;json&rdquo;)</p>
-<h3  id="codegraph-threat-model-dfd"><span id="codegraph_threat_model_dfd"></span>codegraph_threat_model_dfd<a class="heading-anchor" href="#codegraph-threat-model-dfd" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-threat-model-dfd-generate"><span id="codegraph_security_threat_model_dfd_generate"></span>codegraph_security_threat_model_dfd_generate<a class="heading-anchor" href="#codegraph-security-threat-model-dfd-generate" title="Link to this section">&para;</a></h3>
 <p>Generate Data Flow Diagram from project CPG.</p>
 <p><strong>Parameters:</strong> <code>format</code> (str: &ldquo;mermaid&rdquo; | &ldquo;json&rdquo;, default &ldquo;mermaid&rdquo;)</p>
 <h2 id="workflows">Workflows<a class="heading-anchor" href="#workflows" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-compose"><span id="codegraph_compose"></span>codegraph_compose<a class="heading-anchor" href="#codegraph-compose" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-runtime-composition-workflow-run"><span id="codegraph_runtime_composition_workflow_run"></span>codegraph_runtime_composition_workflow_run<a class="heading-anchor" href="#codegraph-runtime-composition-workflow-run" title="Link to this section">&para;</a></h3>
 <p>Run a composite analysis workflow combining multiple scenarios in parallel or sequentially.</p>
 <p><strong>Parameters:</strong> <code>query</code> (str), <code>orchestrator</code> (str: &ldquo;s18&rdquo; | &ldquo;s19&rdquo; | &ldquo;optimization&rdquo; | &ldquo;standards&rdquo;, default &ldquo;s18&rdquo;), <code>language</code> (str: &ldquo;en&rdquo; | &ldquo;ru&rdquo;, default &ldquo;en&rdquo;)</p>
-<h3  id="codegraph-compliance"><span id="codegraph_compliance"></span>codegraph_compliance<a class="heading-anchor" href="#codegraph-compliance" title="Link to this section">&para;</a></h3>
-<p>Check codebase compliance against coding standards and regulations via the compliance workflow (scenario 08).</p>
-<p><strong>Parameters:</strong> <code>query</code> (str, default &ldquo;Check compliance&rdquo;), <code>standard</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-compliance-gost"><span id="codegraph_compliance_gost"></span>codegraph_compliance_gost<a class="heading-anchor" href="#codegraph-compliance-gost" title="Link to this section">&para;</a></h3>
-<p>Evaluate GOST R 56939-2024 compliance for the active project. Collects artifacts from CPG, SARIF, config, tests, and git history, evaluates all 25 GOST processes, and renders a compliance report.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;evaluate&rdquo; | &ldquo;checklist&rdquo; | &ldquo;traceability&rdquo; | &ldquo;history&rdquo; | &ldquo;delta&rdquo;, default &ldquo;evaluate&rdquo;), <code>format</code> (str: &ldquo;markdown&rdquo; | &ldquo;json&rdquo; | &ldquo;gost&rdquo;, default &ldquo;markdown&rdquo;), <code>language</code> (str: &ldquo;ru&rdquo; | &ldquo;en&rdquo;, default &ldquo;ru&rdquo;), <code>process_filter</code> (str, default &ldquo;&rdquo;), <code>include_traceability</code> (bool, default false), <code>report_id_old</code> (str, default &ldquo;&rdquo;), <code>report_id_new</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-compliance-report-57580"><span id="codegraph_compliance_report_57580"></span>codegraph_compliance_report_57580<a class="heading-anchor" href="#codegraph-compliance-report-57580" title="Link to this section">&para;</a></h3>
-<p>Generate GOST R 57580.3 compliance report.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;), <code>type</code> (str: &ldquo;executive&rdquo; | &ldquo;infosec&rdquo; | &ldquo;maturity&rdquo; | &ldquo;full&rdquo;, default &ldquo;executive&rdquo;), <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;markdown&rdquo;, default &ldquo;json&rdquo;), <code>language</code> (str: &ldquo;ru&rdquo; | &ldquo;en&rdquo;, default &ldquo;ru&rdquo;)</p>
-<h3  id="codegraph-compliance-maturity"><span id="codegraph_compliance_maturity"></span>codegraph_compliance_maturity<a class="heading-anchor" href="#codegraph-compliance-maturity" title="Link to this section">&para;</a></h3>
-<p>Assess process maturity per GOST R 57580.2.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-compliance-report-delta"><span id="codegraph_compliance_report_delta"></span>codegraph_compliance_report_delta<a class="heading-anchor" href="#codegraph-compliance-report-delta" title="Link to this section">&para;</a></h3>
-<p>Compare two GOST R 57580.3 reports (delta analysis).</p>
-<p><strong>Parameters:</strong> <code>old_id</code> (str, required), <code>new_id</code> (str, required)</p>
-<h3  id="codegraph-cross-repo"><span id="codegraph_cross_repo"></span>codegraph_cross_repo<a class="heading-anchor" href="#codegraph-cross-repo" title="Link to this section">&para;</a></h3>
-<p>Analyze cross-repository dependencies and interactions. Identifies shared interfaces, common patterns, and cross-cutting concerns.</p>
-<p><strong>Parameters:</strong> <code>query</code> (str, default &ldquo;Analyze cross-repository dependencies&rdquo;), <code>analysis_type</code> (str: &ldquo;full&rdquo; | &ldquo;interfaces&rdquo; | &ldquo;patterns&rdquo;, default &ldquo;full&rdquo;)</p>
-<h3  id="codegraph-tech-debt"><span id="codegraph_tech_debt"></span>codegraph_tech_debt<a class="heading-anchor" href="#codegraph-tech-debt" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-quality-tech-debt-report-get"><span id="codegraph_quality_tech_debt_report_get"></span>codegraph_quality_tech_debt_report_get<a class="heading-anchor" href="#codegraph-quality-tech-debt-report-get" title="Link to this section">&para;</a></h3>
 <p>Get technical debt summary: dead method count, complexity hotspots, and overall quality score.</p>
 <p><strong>Parameters:</strong> none</p>
-<h3  id="codegraph-standards-check"><span id="codegraph_standards_check"></span>codegraph_standards_check<a class="heading-anchor" href="#codegraph-standards-check" title="Link to this section">&para;</a></h3>
-<p>Run coding standards check on the codebase via the composite workflow (scenario 19): compliance, code quality, and optimization.</p>
-<p><strong>Parameters:</strong> <code>query</code> (str, default &ldquo;Check coding standards&rdquo;), <code>category</code> (str, default &ldquo;&rdquo;), <code>severity</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-docs-sync"><span id="codegraph_docs_sync"></span>codegraph_docs_sync<a class="heading-anchor" href="#codegraph-docs-sync" title="Link to this section">&para;</a></h3>
-<p>Check documentation coverage across all CodeGraph interfaces. Discovers code entities and compares them against markdown docs to find undocumented entities, stale docs, and signature mismatches.</p>
-<p><strong>Parameters:</strong> <code>interfaces</code> (str, default &ldquo;&rdquo; — comma-separated: rest_api, cli, tui, mcp, acp, grpc, websocket), <code>language</code> (str: &ldquo;en&rdquo; | &ldquo;ru&rdquo;, default &ldquo;en&rdquo;), <code>output_format</code> (str: &ldquo;markdown&rdquo; | &ldquo;json&rdquo;, default &ldquo;markdown&rdquo;)</p>
-<h2  id="audit-diff"><span id="audit_diff"></span>Audit Diff<a class="heading-anchor" href="#audit-diff" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-audit-diff"><span id="codegraph_audit_diff"></span>codegraph_audit_diff<a class="heading-anchor" href="#codegraph-audit-diff" title="Link to this section">&para;</a></h3>
-<p>Diff warnings between two analysis runs (GOST R 71207-2024, section 8.9).</p>
-<p><strong>Parameters:</strong> <code>run1</code> (str, default &ldquo;&rdquo;), <code>run2</code> (str, default &ldquo;&rdquo;), <code>hide_fp</code> (bool, default false), <code>compare_last</code> (bool, default false), <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-scopes-check"><span id="codegraph_scopes_check"></span>codegraph_scopes_check<a class="heading-anchor" href="#codegraph-scopes-check" title="Link to this section">&para;</a></h3>
+<h2  id="audit-scope"><span id="audit_scope"></span>Audit Scope<a class="heading-anchor" href="#audit-scope" title="Link to this section">&para;</a></h2>
+<h3  id="codegraph-runtime-analysis-scope-check-run"><span id="codegraph_runtime_analysis_scope_check_run"></span>codegraph_runtime_analysis_scope_check_run<a class="heading-anchor" href="#codegraph-runtime-analysis-scope-check-run" title="Link to this section">&para;</a></h3>
 <p>Check analysis scope for a file (GOST R 71207-2024, section 5.4).</p>
 <p><strong>Parameters:</strong> <code>file_path</code> (str, required), <code>severity</code> (str: &ldquo;low&rdquo; | &ldquo;medium&rdquo; | &ldquo;high&rdquo; | &ldquo;critical&rdquo;, default &ldquo;medium&rdquo;), <code>rule_id</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-audit-progress"><span id="codegraph_audit_progress"></span>codegraph_audit_progress<a class="heading-anchor" href="#codegraph-audit-progress" title="Link to this section">&para;</a></h3>
-<p>Aggregate new, fixed, and remaining findings for a reporting period.</p>
-<p><strong>Parameters:</strong> <code>from_date</code> (str YYYY-MM-DD, required), <code>to_date</code> (str YYYY-MM-DD, required), <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-analysis-status"><span id="codegraph_analysis_status"></span>codegraph_analysis_status<a class="heading-anchor" href="#codegraph-analysis-status" title="Link to this section">&para;</a></h3>
-<p>Show when the last full scan happened and whether a new analysis run is due.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h2  id="dynamic-analysis"><span id="dynamic_analysis"></span>Dynamic Analysis<a class="heading-anchor" href="#dynamic-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-dynamic-import"><span id="codegraph_dynamic_import"></span>codegraph_dynamic_import<a class="heading-anchor" href="#codegraph-dynamic-import" title="Link to this section">&para;</a></h3>
-<p>Import dynamic analysis results (SARIF, Valgrind, sanitizer logs).</p>
-<p><strong>Parameters:</strong> <code>input_path</code> (str, default &ldquo;&rdquo;), <code>format</code> (str: &ldquo;sarif&rdquo; | &ldquo;valgrind&rdquo; | &ldquo;sanitizer&rdquo;, default &ldquo;sarif&rdquo;), <code>content</code> (str, default &ldquo;&rdquo;), <code>project</code> (str, default &ldquo;&rdquo;), <code>commit</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-dynamic-runs"><span id="codegraph_dynamic_runs"></span>codegraph_dynamic_runs<a class="heading-anchor" href="#codegraph-dynamic-runs" title="Link to this section">&para;</a></h3>
-<p>List dynamic analysis runs.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;), <code>limit</code> (int, default 20)</p>
-<h3  id="codegraph-dynamic-correlate"><span id="codegraph_dynamic_correlate"></span>codegraph_dynamic_correlate<a class="heading-anchor" href="#codegraph-dynamic-correlate" title="Link to this section">&para;</a></h3>
-<p>Correlate static and dynamic findings.</p>
-<p><strong>Parameters:</strong> <code>static_findings_json</code> (str), <code>dynamic_run_id</code> (str, default &ldquo;&rdquo;), <code>dynamic_findings_json</code> (str, default &ldquo;&rdquo;), <code>line_tolerance</code> (int, default 10)</p>
-<h3  id="codegraph-dynamic-fuzz-targets"><span id="codegraph_dynamic_fuzz_targets"></span>codegraph_dynamic_fuzz_targets<a class="heading-anchor" href="#codegraph-dynamic-fuzz-targets" title="Link to this section">&para;</a></h3>
-<p>Generate prioritized fuzz targets from CPG.</p>
-<p><strong>Parameters:</strong> <code>language</code> (str, default &ldquo;&rdquo;), <code>max_targets</code> (int, default 50), <code>min_priority</code> (float, default 0.3)</p>
-<h2  id="issue-tracker"><span id="issue_tracker"></span>Issue Tracker<a class="heading-anchor" href="#issue-tracker" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-issues-create"><span id="codegraph_issues_create"></span>codegraph_issues_create<a class="heading-anchor" href="#codegraph-issues-create" title="Link to this section">&para;</a></h3>
-<p>Create an issue in the configured tracker from a finding.</p>
-<p><strong>Parameters:</strong> <code>title</code> (str, required), <code>description</code> (str, default &ldquo;&rdquo;), <code>severity</code> (str: &ldquo;critical&rdquo; | &ldquo;high&rdquo; | &ldquo;medium&rdquo; | &ldquo;low&rdquo;, default &ldquo;medium&rdquo;), <code>finding_id</code> (str, default &ldquo;&rdquo;), <code>cwe_id</code> (str, default &ldquo;&rdquo;), <code>file_path</code> (str, default &ldquo;&rdquo;), <code>line</code> (int, default 0)</p>
-<h3  id="codegraph-issues-bulk-create"><span id="codegraph_issues_bulk_create"></span>codegraph_issues_bulk_create<a class="heading-anchor" href="#codegraph-issues-bulk-create" title="Link to this section">&para;</a></h3>
-<p>Create issues from a list of findings.</p>
-<p><strong>Parameters:</strong> <code>findings</code> (str JSON array, default &ldquo;[]&rdquo;)</p>
-<h3  id="codegraph-issues-sync"><span id="codegraph_issues_sync"></span>codegraph_issues_sync<a class="heading-anchor" href="#codegraph-issues-sync" title="Link to this section">&para;</a></h3>
-<p>Bidirectional sync between CodeGraph findings and issue tracker.</p>
-<p><strong>Parameters:</strong> <code>findings</code> (str JSON array, default &ldquo;[]&rdquo;), <code>tracked_issues</code> (str JSON object, default &ldquo;{}&rdquo;), <code>close_on_fix</code> (bool, default true), <code>min_severity</code> (str, default &ldquo;high&rdquo;)</p>
-<h3  id="codegraph-issues-status"><span id="codegraph_issues_status"></span>codegraph_issues_status<a class="heading-anchor" href="#codegraph-issues-status" title="Link to this section">&para;</a></h3>
-<p>Get current status of an issue from the tracker.</p>
-<p><strong>Parameters:</strong> <code>issue_id</code> (str, required)</p>
-<h2  id="release-gate"><span id="release_gate"></span>Release Gate<a class="heading-anchor" href="#release-gate" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-release-gate-check"><span id="codegraph_release_gate_check"></span>codegraph_release_gate_check<a class="heading-anchor" href="#codegraph-release-gate-check" title="Link to this section">&para;</a></h3>
-<p>Run release gate checks for the active project. Evaluates readiness across multiple check types (tests, security, compliance, documentation, SCA, patterns).</p>
-<p><strong>Parameters:</strong> <code>profile</code> (str: &ldquo;gost-56939&rdquo; | &ldquo;standard&rdquo; | &ldquo;minimal&rdquo;, default &ldquo;standard&rdquo;), <code>version</code> (str, default &ldquo;&rdquo;), <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;markdown&rdquo;, default &ldquo;json&rdquo;), <code>language</code> (str: &ldquo;en&rdquo; | &ldquo;ru&rdquo;, default &ldquo;ru&rdquo;)</p>
-<h3  id="codegraph-release-gate-profiles"><span id="codegraph_release_gate_profiles"></span>codegraph_release_gate_profiles<a class="heading-anchor" href="#codegraph-release-gate-profiles" title="Link to this section">&para;</a></h3>
-<p>List available release gate profiles with their check configurations.</p>
-<p><strong>Parameters:</strong> none</p>
-<h3  id="codegraph-release-gate-suppress"><span id="codegraph_release_gate_suppress"></span>codegraph_release_gate_suppress<a class="heading-anchor" href="#codegraph-release-gate-suppress" title="Link to this section">&para;</a></h3>
-<p>Manage release gate suppressions (accepted risks). List, add, or remove suppressions.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;list&rdquo; | &ldquo;add&rdquo; | &ldquo;remove&rdquo;, default &ldquo;list&rdquo;), <code>finding_id</code> (str, default &ldquo;&rdquo;), <code>reason</code> (str, default &ldquo;&rdquo;), <code>expires_at</code> (str, default &ldquo;&rdquo; — ISO date), <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h2  id="risk-management-gost-r-575803"><span id="risk_management_gost_r_575803"></span>Risk Management (GOST R 57580.3)<a class="heading-anchor" href="#risk-management-gost-r-575803" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-risk-kir"><span id="codegraph_risk_kir"></span>codegraph_risk_kir<a class="heading-anchor" href="#codegraph-risk-kir" title="Link to this section">&para;</a></h3>
-<p>Calculate Key Risk Indicators (KIR) from CPG data. Returns 8 predefined KIR values with threshold status (NORMAL/SIGNAL/CONTROL).</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;), <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;markdown&rdquo;, default &ldquo;json&rdquo;)</p>
-<h3  id="codegraph-risk-kpur"><span id="codegraph_risk_kpur"></span>codegraph_risk_kpur<a class="heading-anchor" href="#codegraph-risk-kpur" title="Link to this section">&para;</a></h3>
-<p>Calculate Control Risk Level Indicators (KPUR) by 3 groups: losses (OPR.11.1), operational reliability (OPR.11.2), unauthorized operations (OPR.11.3).</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-risk-dashboard"><span id="codegraph_risk_dashboard"></span>codegraph_risk_dashboard<a class="heading-anchor" href="#codegraph-risk-dashboard" title="Link to this section">&para;</a></h3>
-<p>Full risk dashboard: KIR values + KPUR status + alerts. Calculates all risk indicators, checks thresholds, and returns a comprehensive dashboard with overall risk status.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-risk-assess"><span id="codegraph_risk_assess"></span>codegraph_risk_assess<a class="heading-anchor" href="#codegraph-risk-assess" title="Link to this section">&para;</a></h3>
-<p>Risk assessment using SVR × STP matrix per GOST R 57580.3-2022. Calculates threat realization probability (SVR) and consequence severity (STP) for each hypothesis finding, builds 5×5 risk matrix, and generates risk register.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;), <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;markdown&rdquo; | &ldquo;gost&rdquo;, default &ldquo;json&rdquo;), <code>language</code> (str: &ldquo;ru&rdquo; | &ldquo;en&rdquo;, default &ldquo;ru&rdquo;)</p>
-<h3  id="codegraph-risk-matrix"><span id="codegraph_risk_matrix"></span>codegraph_risk_matrix<a class="heading-anchor" href="#codegraph-risk-matrix" title="Link to this section">&para;</a></h3>
-<p>Risk matrix 5×5 (SVR × STP) showing finding distribution. Returns 25-cell matrix with counts of findings at each SVR/STP intersection.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-risk-detail"><span id="codegraph_risk_detail"></span>codegraph_risk_detail<a class="heading-anchor" href="#codegraph-risk-detail" title="Link to this section">&para;</a></h3>
-<p>Detailed risk assessment for a specific finding. Shows SVR/STP factors, risk score, mitigations, and residual risk.</p>
-<p><strong>Parameters:</strong> <code>finding_id</code> (str — required), <code>project</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-risk-threat-model-57580"><span id="codegraph_risk_threat_model_57580"></span>codegraph_risk_threat_model_57580<a class="heading-anchor" href="#codegraph-risk-threat-model-57580" title="Link to this section">&para;</a></h3>
-<p>Generate GOST R 57580.3 threat model. Produces a 5-section threat model: sources, intruder profiles, vulnerabilities, ATT&amp;CK techniques, and threat inventory.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;), <code>format</code> (str: &ldquo;json&rdquo; | &ldquo;markdown&rdquo; | &ldquo;gost&rdquo;, default &ldquo;json&rdquo;), <code>language</code> (str: &ldquo;ru&rdquo; | &ldquo;en&rdquo;, default &ldquo;ru&rdquo;)</p>
-<h3  id="codegraph-risk-events"><span id="codegraph_risk_events"></span>codegraph_risk_events<a class="heading-anchor" href="#codegraph-risk-events" title="Link to this section">&para;</a></h3>
-<p>Get classified risk events per GOST R 57580.3 appendices A-D. Returns events classified by 4 dimensions: source, type, activity, losses.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;), <code>classification</code> (str, default &ldquo;&rdquo; — filter by dimension: source, type, activity, or loss)</p>
-<h3  id="codegraph-risk-checklist"><span id="codegraph_risk_checklist"></span>codegraph_risk_checklist<a class="heading-anchor" href="#codegraph-risk-checklist" title="Link to this section">&para;</a></h3>
-<p>Generate self-assessment checklist per GOST R 57580.3. Evaluates ~80 measures with auto-detection of technical capabilities.</p>
-<p><strong>Parameters:</strong> <code>project</code> (str, default &ldquo;&rdquo;), <code>level</code> (int: 1 | 2 | 3, default 2)</p>
 <h2  id="context-analysis"><span id="context-amp-analysis"></span><span id="context_amp_analysis"></span><span id="context_analysis"></span>Context &amp; Analysis<a class="heading-anchor" href="#context-analysis" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-project-context"><span id="codegraph_project_context"></span>codegraph_project_context<a class="heading-anchor" href="#codegraph-project-context" title="Link to this section">&para;</a></h3>
-<p>Get full context of the active CodeGraph project: metadata, CPG database statistics (method/file/call counts), available tables, detected language, domain plugin info, and top-level complexity hotspots. Use as a starting point before making queries.</p>
+<h3 id="codegraphprojectcontext">codegraph://project/context<a class="heading-anchor" href="#codegraphprojectcontext" title="Link to this section">&para;</a></h3>
+<p>Read-only project context resource: metadata, CPG database statistics (method/file/call counts), available tables, detected language, domain plugin info, and top-level complexity hotspots. Use as a starting point before making queries.</p>
 <p><strong>Parameters:</strong> none</p>
-<h3  id="codegraph-diff-context"><span id="codegraph_diff_context"></span>codegraph_diff_context<a class="heading-anchor" href="#codegraph-diff-context" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-context-retrieval-diff-preview"><span id="codegraph_context_retrieval_diff_preview"></span>codegraph_context_retrieval_diff_preview<a class="heading-anchor" href="#codegraph-context-retrieval-diff-preview" title="Link to this section">&para;</a></h3>
 <p>Analyze the impact of code changes using the CPG. Returns per-file impact: affected methods, their callers (blast radius), security findings delta, and complexity changes. Use before committing or during code review.</p>
 <p><strong>Parameters:</strong> <code>base_ref</code> (str, default &ldquo;HEAD~1&rdquo; — git ref to diff against), <code>changed_files</code> (str, default &ldquo;&rdquo; — comma-separated file paths, alternative to base_ref)</p>
-<h3  id="codegraph-file-context"><span id="codegraph_file_context"></span>codegraph_file_context<a class="heading-anchor" href="#codegraph-file-context" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-context-retrieval-file-read"><span id="codegraph_context_retrieval_file_read"></span>codegraph_context_retrieval_file_read<a class="heading-anchor" href="#codegraph-context-retrieval-file-read" title="Link to this section">&para;</a></h3>
 <p>Get CPG analysis context for a specific file: all methods with metrics (complexity, fan-in/out), call relationships, security findings, dead code flags, and pattern violations. Use before reviewing or modifying a file.</p>
 <p><strong>Parameters:</strong> <code>file_path</code> (str — relative path to source file, e.g. &ldquo;src/api/main.py&rdquo;)</p>
-<h2  id="project-management"><span id="project_management"></span>Project Management<a class="heading-anchor" href="#project-management" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-project-list"><span id="codegraph_project_list"></span>codegraph_project_list<a class="heading-anchor" href="#codegraph-project-list" title="Link to this section">&para;</a></h3>
-<p>List all registered projects with their status: name, language, active flag, database path, domain, and existence check.</p>
-<p><strong>Parameters:</strong> none</p>
-<h3  id="codegraph-project-switch"><span id="codegraph_project_switch"></span>codegraph_project_switch<a class="heading-anchor" href="#codegraph-project-switch" title="Link to this section">&para;</a></h3>
-<p>Switch the active project by name. Updates config.yaml, activates the domain plugin, and resets workflow components.</p>
-<p><strong>Parameters:</strong> <code>name</code> (str)</p>
-<h3  id="codegraph-project-rename"><span id="codegraph_project_rename"></span>codegraph_project_rename<a class="heading-anchor" href="#codegraph-project-rename" title="Link to this section">&para;</a></h3>
-<p>Rename a project in the registry. Validates uniqueness and updates the active project reference if needed.</p>
-<p><strong>Parameters:</strong> <code>old_name</code> (str), <code>new_name</code> (str)</p>
-<h3  id="codegraph-project-delete"><span id="codegraph_project_delete"></span>codegraph_project_delete<a class="heading-anchor" href="#codegraph-project-delete" title="Link to this section">&para;</a></h3>
-<p>Delete a project from the registry. Cannot delete the active project. Optionally removes DuckDB files and ChromaDB vector collections.</p>
-<p><strong>Parameters:</strong> <code>name</code> (str), <code>delete_data</code> (bool, default false)</p>
-<h2 id="infrastructure">Infrastructure<a class="heading-anchor" href="#infrastructure" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-import-status"><span id="codegraph_import_status"></span>codegraph_import_status<a class="heading-anchor" href="#codegraph-import-status" title="Link to this section">&para;</a></h3>
-<p>Check project import status, list supported languages, or list registered projects.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;status&rdquo; | &ldquo;languages&rdquo; | &ldquo;projects&rdquo;, default &ldquo;status&rdquo;)</p>
-<h3  id="codegraph-config"><span id="codegraph_config"></span>codegraph_config<a class="heading-anchor" href="#codegraph-config" title="Link to this section">&para;</a></h3>
-<p>Introspect CodeGraph configuration (read-only). Available sections: summary, timeouts, llm, retrieval.</p>
-<p><strong>Parameters:</strong> <code>section</code> (str: &ldquo;summary&rdquo; | &ldquo;timeouts&rdquo; | &ldquo;llm&rdquo; | &ldquo;retrieval&rdquo;, default &ldquo;summary&rdquo;)</p>
-<h3  id="codegraph-domain"><span id="codegraph_domain"></span>codegraph_domain<a class="heading-anchor" href="#codegraph-domain" title="Link to this section">&para;</a></h3>
-<p>Manage domain plugins for language-specific analysis. List available domains, show active domain, or inspect domain details.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;list&rdquo; | &ldquo;active&rdquo; | &ldquo;info&rdquo;, default &ldquo;list&rdquo;), <code>domain_name</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-ci-exec"><span id="codegraph_ci_exec"></span>codegraph_ci_exec<a class="heading-anchor" href="#codegraph-ci-exec" title="Link to this section">&para;</a></h3>
+<h2  id="project-lifecycle"><span id="project_lifecycle"></span>Project Lifecycle<a class="heading-anchor" href="#project-lifecycle" title="Link to this section">&para;</a></h2>
+<p>Project registry, activation, rename and delete operations are intentionally not MCP callables. Use CLI project commands or REST <code>/api/v1/projects</code> routes for lifecycle changes, and use the <code>codegraph://project/context</code> MCP resource for read-only scoped project context.</p>
+<h3  id="codegraph-runtime-ci-execution-run"><span id="codegraph_runtime_ci_execution_run"></span>codegraph_runtime_ci_execution_run<a class="heading-anchor" href="#codegraph-runtime-ci-execution-run" title="Link to this section">&para;</a></h3>
 <p>Execute CI-related CPG operations: show database stats, validate database integrity, or run a pattern scan.</p>
 <p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;status&rdquo; | &ldquo;validate&rdquo; | &ldquo;scan&rdquo;, default &ldquo;status&rdquo;), <code>db_path</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-watch"><span id="codegraph_watch"></span>codegraph_watch<a class="heading-anchor" href="#codegraph-watch" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-runtime-cpg-watch-run"><span id="codegraph_runtime_cpg_watch_run"></span>codegraph_runtime_cpg_watch_run<a class="heading-anchor" href="#codegraph-runtime-cpg-watch-run" title="Link to this section">&para;</a></h3>
 <p>Monitor CPG database freshness for the active project. Show current status, check whether re-parse is required, or trigger incremental update when stale.</p>
 <p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;status&rdquo; | &ldquo;check&rdquo; | &ldquo;update&rdquo;, default &ldquo;status&rdquo;)</p>
 <p><strong>Structured output highlights:</strong></p>
@@ -409,79 +266,11 @@
 <li><code>check</code>: returns <code>project</code>, <code>db_path</code>, <code>last_parse</code>, <code>cpg_commit</code>, <code>head_commit</code>, <code>commits_behind</code>, <code>commits_behind_strict</code>, <code>is_fresh</code>, <code>is_fresh_strict</code>, <code>has_relevant_changes_since_cpg</code>, <code>freshness_reason</code>, <code>needs_update</code>.</li>
 <li><code>update</code>: returns <code>updated</code>, <code>before</code>, <code>after</code>, <code>attempted</code>, <code>failure_kind</code>, <code>locker_pids</code>, <code>auto_unlock_attempted</code>, <code>auto_unlock_killed_pids</code>, <code>auto_unlock_errors</code>, <code>next_step</code>, <code>next_command</code>, and command/output tails for troubleshooting.</li>
 </ul>
-<h3  id="codegraph-hooks"><span id="codegraph_hooks"></span>codegraph_hooks<a class="heading-anchor" href="#codegraph-hooks" title="Link to this section">&para;</a></h3>
-<p>Introspect webhook and hook configuration. List configured webhook endpoints or show platform configuration.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;list&rdquo; | &ldquo;config&rdquo;, default &ldquo;list&rdquo;)</p>
-<h3  id="codegraph-cli-bridge"><span id="codegraph_cli_bridge"></span>codegraph_cli_bridge<a class="heading-anchor" href="#codegraph-cli-bridge" title="Link to this section">&para;</a></h3>
-<p>Introspect available CLI commands (read-only, does not execute). Lists commands and their help text for AI agent discovery.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;list&rdquo; | &ldquo;help&rdquo;, default &ldquo;list&rdquo;)</p>
-<h2 id="patterns">Patterns<a class="heading-anchor" href="#patterns" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-pattern-search"><span id="codegraph_code_pattern_search"></span>codegraph_code_pattern_search<a class="heading-anchor" href="#codegraph-pattern-search" title="Link to this section">&para;</a></h3>
-<p>Search for structural code patterns using AST-based matching with metavariables (e.g., <code>malloc($SIZE)</code>).</p>
-<p><strong>Parameters:</strong> <code>pattern</code> (str), <code>language</code> (str), <code>max_results</code> (int, optional; defaults to configured value)</p>
-<h3  id="codegraph-pattern-findings"><span id="codegraph_pattern_findings"></span>codegraph_pattern_findings<a class="heading-anchor" href="#codegraph-pattern-findings" title="Link to this section">&para;</a></h3>
-<p>Query persisted structural pattern findings from the <code>cpg_pattern_results</code> table produced by <code>gocpg scan</code>.</p>
-<p><strong>Parameters:</strong> <code>rule_id</code> (str, optional), <code>severity</code> (str, optional: &ldquo;error&rdquo; | &ldquo;warning&rdquo; | &ldquo;info&rdquo; | &ldquo;hint&rdquo;), <code>filename</code> (str, optional), <code>category</code> (str, optional), <code>limit</code> (int, optional; defaults to configured value)</p>
-<h3  id="codegraph-pattern-stats"><span id="codegraph_pattern_stats"></span>codegraph_pattern_stats<a class="heading-anchor" href="#codegraph-pattern-stats" title="Link to this section">&para;</a></h3>
-<p>Get aggregated statistics for structural pattern findings grouped by severity, category, and rule.</p>
-<p><strong>Parameters:</strong> none</p>
-<h3  id="codegraph-pattern-fix"><span id="codegraph_pattern_fix"></span>codegraph_pattern_fix<a class="heading-anchor" href="#codegraph-pattern-fix" title="Link to this section">&para;</a></h3>
-<p>Apply structural pattern fixes via SSR rules. Runs <code>gocpg scan --fix</code> to apply AST-aware code transformations. Returns unified diffs.</p>
-<p><strong>Parameters:</strong> <code>rule_id</code> (str, optional), <code>dry_run</code> (bool, default true)</p>
-<h3  id="codegraph-pattern-generate"><span id="codegraph_code_pattern_generate"></span>codegraph_code_pattern_generate<a class="heading-anchor" href="#codegraph-pattern-generate" title="Link to this section">&para;</a></h3>
-<p>Generate and validate a YAML pattern rule from a natural language description. Uses LLM generation with up to 3 validation retries.</p>
-<p><strong>Parameters:</strong> <code>description</code> (str), <code>language</code> (str), <code>with_fix</code> (bool, default true)</p>
-<h3  id="codegraph-pattern-test"><span id="codegraph_pattern_test"></span>codegraph_pattern_test<a class="heading-anchor" href="#codegraph-pattern-test" title="Link to this section">&para;</a></h3>
-<p>Test a YAML pattern rule against a code snippet. Validates the rule and returns match count and fix preview.</p>
-<p><strong>Parameters:</strong> <code>rule_yaml</code> (str), <code>code_snippet</code> (str), <code>language</code> (str)</p>
 <h2 id="enterprise">Enterprise<a class="heading-anchor" href="#enterprise" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-vault"><span id="codegraph_vault"></span>codegraph_vault<a class="heading-anchor" href="#codegraph-vault" title="Link to this section">&para;</a></h3>
-<p>Manage HashiCorp Vault integration for secret management. Check connection and authentication status.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;status&rdquo; | &ldquo;health&rdquo;, default &ldquo;status&rdquo;)</p>
-<h3  id="codegraph-siem"><span id="codegraph_siem"></span>codegraph_siem<a class="heading-anchor" href="#codegraph-siem" title="Link to this section">&para;</a></h3>
-<p>Manage SIEM integration for security event dispatching. Check dispatcher status or show buffer statistics.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;status&rdquo; | &ldquo;stats&rdquo;, default &ldquo;status&rdquo;)</p>
-<h3  id="codegraph-rbac"><span id="codegraph_rbac"></span>codegraph_rbac<a class="heading-anchor" href="#codegraph-rbac" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-rbac-permission-report-get"><span id="codegraph_security_rbac_permission_report_get"></span>codegraph_security_rbac_permission_report_get<a class="heading-anchor" href="#codegraph-security-rbac-permission-report-get" title="Link to this section">&para;</a></h3>
 <p>Inspect RBAC roles and permissions. List available roles or show permissions for a specific role.</p>
 <p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;roles&rdquo; | &ldquo;permissions&rdquo;, default &ldquo;roles&rdquo;), <code>role</code> (str: &ldquo;VIEWER&rdquo; | &ldquo;ANALYST&rdquo; | &ldquo;REVIEWER&rdquo; | &ldquo;ADMIN&rdquo;, default &ldquo;&rdquo;)</p>
-<h2  id="platform-integration"><span id="platform_integration"></span>Platform Integration<a class="heading-anchor" href="#platform-integration" title="Link to this section">&para;</a></h2>
-<h3  id="codegraph-sc-review"><span id="codegraph_sc_review"></span>codegraph_sc_review<a class="heading-anchor" href="#codegraph-sc-review" title="Link to this section">&para;</a></h3>
-<p>Review a SourceCraft merge request using CPG analysis.</p>
-<p><strong>Parameters:</strong> <code>project_id</code> (str), <code>mr_iid</code> (int), <code>token</code> (str), <code>url</code> (str, default &ldquo;https://api.sourcecraft.yandex.cloud&rdquo;), <code>task_description</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-sc-suggestions"><span id="codegraph_sc_suggestions"></span>codegraph_sc_suggestions<a class="heading-anchor" href="#codegraph-sc-suggestions" title="Link to this section">&para;</a></h3>
-<p>Get code context suggestions at cursor position for SourceCraft IDE. Returns method info, callers, callees, and type information.</p>
-<p><strong>Parameters:</strong> <code>file_path</code> (str), <code>line</code> (int), <code>column</code> (int, default 0)</p>
-<h3  id="codegraph-sc-completion"><span id="codegraph_sc_completion"></span>codegraph_sc_completion<a class="heading-anchor" href="#codegraph-sc-completion" title="Link to this section">&para;</a></h3>
-<p>Get code completion context for SourceCraft IDE. Provides prefix-matched symbols, type info, and import suggestions.</p>
-<p><strong>Parameters:</strong> <code>file_path</code> (str), <code>line</code> (int), <code>prefix</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-sc-navigate"><span id="codegraph_sc_navigate"></span>codegraph_sc_navigate<a class="heading-anchor" href="#codegraph-sc-navigate" title="Link to this section">&para;</a></h3>
-<p>Navigate to symbol definition, references, and call hierarchy.</p>
-<p><strong>Parameters:</strong> <code>symbol</code> (str), <code>file_path</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-sc-test-hints"><span id="codegraph_sc_test_hints"></span>codegraph_sc_test_hints<a class="heading-anchor" href="#codegraph-sc-test-hints" title="Link to this section">&para;</a></h3>
-<p>Get test generation hints for a method. Analyzes callers, parameters, and edge cases to suggest test scenarios.</p>
-<p><strong>Parameters:</strong> <code>method_name</code> (str), <code>file_path</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-sc-mr-info"><span id="codegraph_sc_mr_info"></span>codegraph_sc_mr_info<a class="heading-anchor" href="#codegraph-sc-mr-info" title="Link to this section">&para;</a></h3>
-<p>Get SourceCraft merge request information and diff.</p>
-<p><strong>Parameters:</strong> <code>project_id</code> (str), <code>mr_iid</code> (int), <code>token</code> (str), <code>url</code> (str, default &ldquo;https://api.sourcecraft.yandex.cloud&rdquo;)</p>
-<h3  id="codegraph-sc-commit-status"><span id="codegraph_sc_commit_status"></span>codegraph_sc_commit_status<a class="heading-anchor" href="#codegraph-sc-commit-status" title="Link to this section">&para;</a></h3>
-<p>Update commit pipeline status in SourceCraft.</p>
-<p><strong>Parameters:</strong> <code>project_id</code> (str), <code>commit_sha</code> (str), <code>state</code> (str: &ldquo;pending&rdquo; | &ldquo;running&rdquo; | &ldquo;success&rdquo; | &ldquo;failed&rdquo; | &ldquo;canceled&rdquo;), <code>token</code> (str), <code>url</code> (str, default &ldquo;https://api.sourcecraft.yandex.cloud&rdquo;)</p>
-<h3  id="codegraph-sc-summary"><span id="codegraph_sc_summary"></span>codegraph_sc_summary<a class="heading-anchor" href="#codegraph-sc-summary" title="Link to this section">&para;</a></h3>
-<p>Generate a summary for a SourceCraft merge request from diff content.</p>
-<p><strong>Parameters:</strong> <code>diff_content</code> (str), <code>title</code> (str, default &ldquo;&rdquo;), <code>description</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-gv-review"><span id="codegraph_gv_review"></span>codegraph_gv_review<a class="heading-anchor" href="#codegraph-gv-review" title="Link to this section">&para;</a></h3>
-<p>Review a GitVerse pull request using CPG analysis.</p>
-<p><strong>Parameters:</strong> <code>project_id</code> (str, owner/repo format), <code>pr_number</code> (int), <code>token</code> (str), <code>url</code> (str, default &ldquo;https://gitverse.ru/api/v1&rdquo;), <code>task_description</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-gv-pr-info"><span id="codegraph_gv_pr_info"></span>codegraph_gv_pr_info<a class="heading-anchor" href="#codegraph-gv-pr-info" title="Link to this section">&para;</a></h3>
-<p>Get GitVerse pull request information and diff.</p>
-<p><strong>Parameters:</strong> <code>project_id</code> (str, owner/repo format), <code>pr_number</code> (int), <code>token</code> (str), <code>url</code> (str, default &ldquo;https://gitverse.ru/api/v1&rdquo;)</p>
-<h3  id="codegraph-gv-commit-status"><span id="codegraph_gv_commit_status"></span>codegraph_gv_commit_status<a class="heading-anchor" href="#codegraph-gv-commit-status" title="Link to this section">&para;</a></h3>
-<p>Update commit status in GitVerse.</p>
-<p><strong>Parameters:</strong> <code>project_id</code> (str, owner/repo format), <code>commit_sha</code> (str), <code>state</code> (str: &ldquo;pending&rdquo; | &ldquo;running&rdquo; | &ldquo;success&rdquo; | &ldquo;failed&rdquo; | &ldquo;canceled&rdquo;), <code>token</code> (str), <code>url</code> (str, default &ldquo;https://gitverse.ru/api/v1&rdquo;)</p>
-<h3  id="codegraph-gv-summary"><span id="codegraph_gv_summary"></span>codegraph_gv_summary<a class="heading-anchor" href="#codegraph-gv-summary" title="Link to this section">&para;</a></h3>
-<p>Generate a summary for a GitVerse pull request from diff content.</p>
-<p><strong>Parameters:</strong> <code>diff_content</code> (str), <code>title</code> (str, default &ldquo;&rdquo;), <code>description</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-hypothesis"><span id="codegraph_hypothesis"></span>codegraph_hypothesis<a class="heading-anchor" href="#codegraph-hypothesis" title="Link to this section">&para;</a></h3>
+<h3  id="codegraph-security-hypothesis-run"><span id="codegraph_security_hypothesis_run"></span>codegraph_security_hypothesis_run<a class="heading-anchor" href="#codegraph-security-hypothesis-run" title="Link to this section">&para;</a></h3>
 <p>Run hypothesis-driven security analysis on the CPG database. Generates and validates security hypotheses based on the CWE/CAPEC knowledge base, or lists available CWEs and pattern providers.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table>
@@ -538,496 +327,19 @@
 <li><code>list_cwes</code> — List CWE database entries, optionally filtered by <code>category</code>.</li>
 <li><code>list_providers</code> — List registered pattern providers with their supported languages.</li>
 </ul>
-<h3  id="codegraph-reindex"><span id="codegraph_reindex"></span>codegraph_reindex<a class="heading-anchor" href="#codegraph-reindex" title="Link to this section">&para;</a></h3>
-<p>Manage vector search collections for the active project. Supports indexing, incremental updates, deletion, and documentation generation from CPG.</p>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>action</code></td>
-<td>str</td>
-<td><code>"status"</code></td>
-<td>One of <code>status</code>, <code>index</code>, <code>incremental</code>, <code>delete</code>, <code>generate</code></td>
-</tr>
-<tr>
-<td><code>collection</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Collection name for targeted indexing (empty = all). Valid: <code>code_snippets</code>, <code>qa_pairs</code>, <code>documentation</code>, <code>sql_examples</code>, <code>code_comments</code>, <code>domain_patterns</code></td>
-</tr>
-<tr>
-<td><code>replace</code></td>
-<td>bool</td>
-<td><code>false</code></td>
-<td>Delete and recreate collections before indexing</td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>str</td>
-<td><code>"en"</code></td>
-<td>Language for doc generation: <code>"en"</code> or <code>"ru"</code></td>
-</tr>
-<tr>
-<td><code>sections</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Comma-separated doc sections for <code>generate</code> (empty = all). Valid: <code>mvd_doc</code>, <code>module_overview</code>, <code>function_doc</code>, <code>pipeline_doc</code>, <code>business_logic_doc</code>, <code>type_doc</code>, <code>coverage_doc</code>, <code>diagram_doc</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Actions:</strong></p>
-<ul>
-<li><code>status</code> — Show collection document counts for the active project.</li>
-<li><code>index</code> — Index all or a specific collection. Use <code>replace=true</code> to recreate.</li>
-<li><code>incremental</code> — Index only changed files since last sync (uses <code>cpg_file_state</code>).</li>
-<li><code>delete</code> — Delete all vector collections for the active project.</li>
-<li><code>generate</code> — Generate documentation from CPG and index it into the <code>documentation</code> collection.</li>
-</ul>
 <h2  id="dashboard-v2-mcp-tools"><span id="dashboard_v2_mcp_tools"></span>Dashboard V2 MCP Tools<a class="heading-anchor" href="#dashboard-v2-mcp-tools" title="Link to this section">&para;</a></h2>
 <p>Dashboard V2 MCP tools provide CISO/CTO data for portfolio visibility, project drill-down, trends, period and release comparisons, saved views, risk alerting, and compliance heatmaps. All tools are read-only. Data is sourced from the CPG database, audit results, release gate checks, SCA findings, and compliance evaluations.</p>
-<h3  id="codegraph-dashboard-portfolio"><span id="codegraph_dashboard_portfolio"></span>codegraph_dashboard_portfolio<a class="heading-anchor" href="#codegraph-dashboard-portfolio" title="Link to this section">&para;</a></h3>
-<p>Get an aggregated portfolio health overview across all registered projects. Returns per-project health scores, risk distribution, and overall portfolio status.</p>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>group</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Filter projects by group name (empty = all groups)</td>
-</tr>
-<tr>
-<td><code>format</code></td>
-<td>str</td>
-<td><code>"json"</code></td>
-<td>Output format: <code>"json"</code> or <code>"markdown"</code></td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>str</td>
-<td><code>"ru"</code></td>
-<td>Output language: <code>"en"</code> or <code>"ru"</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response format:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;portfolio&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;total_projects&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;avg_health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">72.5</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;risk_distribution&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;critical&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;high&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;medium&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;low&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;projects&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">      </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;group&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;backend&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">85.0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;audit_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">90.0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">78.0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;release_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;sca_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">92.0</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;risk_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;low&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;last_audit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-15T10:30:00Z&quot;</span>
-<span class="w">      </span><span class="p">}</span>
-<span class="w">    </span><span class="p">]</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;generated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17T12:00:00Z&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
 <h2  id="supplemental-tool-coverage"><span id="supplemental_tool_coverage"></span>Supplemental Tool Coverage<a class="heading-anchor" href="#supplemental-tool-coverage" title="Link to this section">&para;</a></h2>
 <p>These newer tools are part of the authoritative MCP surface and are listed explicitly here to keep the reference aligned with the runtime server:</p>
 <ul>
 <li><code>codegraph_context_active_task</code> returns the currently attached active task capsule for a session.</li>
-<li><code>codegraph_context_task_why</code> explains why the current active task capsule is attached to the session.</li>
-<li><code>codegraph_context_why</code> explains the currently surfaced recall bundle for a session.</li>
-<li><code>codegraph_task_feedback</code> records positive or negative feedback for the active recall bundle.</li>
-<li><code>codegraph_context_dismiss_recall</code> dismisses the current recall bundle or suppresses it by default.</li>
+<li><code>codegraph_task_context_attachment_rationale_get</code> explains why the current active task capsule is attached to the session.</li>
+<li><code>codegraph_task_context_recall_rationale_get</code> explains the currently surfaced recall bundle for a session.</li>
+<li><code>codegraph_task_context_feedback_submit</code> records positive or negative feedback for the active recall bundle.</li>
+<li><code>codegraph_task_context_recall_dismiss</code> dismisses the current recall bundle or suppresses it by default.</li>
 <li><code>codegraph_context_story_capsules</code> lists or synchronizes user-story task capsules derived from <code>USER_STORIES.md</code>.</li>
-<li><code>codegraph_context_next_task</code> returns the highest-priority project-scoped next task with explainability.</li>
-<li><code>codegraph_dashboard_security_dlp_config</code> returns the dashboard-facing DLP configuration surface for security operations.</li>
+<li><code>codegraph_task_context_next_task_get</code> returns the highest-priority project-scoped next task with explainability.</li>
 </ul>
-<h3  id="codegraph-dashboard-saved-views"><span id="codegraph_dashboard_saved_views"></span>codegraph_dashboard_saved_views<a class="heading-anchor" href="#codegraph-dashboard-saved-views" title="Link to this section">&para;</a></h3>
-<p>Manage persistent dashboard saved views.</p>
-<p><strong>Parameters:</strong> <code>action</code> (str: &ldquo;list&rdquo; | &ldquo;get&rdquo; | &ldquo;save&rdquo; | &ldquo;delete&rdquo;, default &ldquo;list&rdquo;), <code>user_id</code> (str, default &ldquo;mcp-user&rdquo;), <code>view_id</code> (str, default &ldquo;&rdquo;), <code>name</code> (str, default &ldquo;&rdquo;), <code>scope</code> (str, default &ldquo;portfolio&rdquo;), <code>filters_json</code> (str JSON object, default &ldquo;{}&rdquo;), <code>projects</code> (str comma-separated, default &ldquo;&rdquo;), <code>view_format</code> (str, default &ldquo;json&rdquo;)</p>
-<h3  id="codegraph-dashboard-metrics"><span id="codegraph_dashboard_metrics"></span>codegraph_dashboard_metrics<a class="heading-anchor" href="#codegraph-dashboard-metrics" title="Link to this section">&para;</a></h3>
-<p>Get canonical dashboard metric samples for Grafana-style dashboards.</p>
-<p><strong>Parameters:</strong> <code>group_id</code> (str, default &ldquo;&rdquo;), <code>organization</code> (str, default &ldquo;&rdquo;), <code>team</code> (str, default &ldquo;&rdquo;), <code>environment</code> (str, default &ldquo;&rdquo;), <code>criticality</code> (str, default &ldquo;&rdquo;), <code>language</code> (str, default &ldquo;&rdquo;), <code>domain</code> (str, default &ldquo;&rdquo;), <code>service_type</code> (str, default &ldquo;&rdquo;), <code>min_risk</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-dashboard-project"><span id="codegraph_dashboard_project"></span>codegraph_dashboard_project<a class="heading-anchor" href="#codegraph-dashboard-project" title="Link to this section">&para;</a></h3>
-<p>Get detailed dashboard data for a single project. Returns health scores, findings breakdown, compliance status, release gate results, and SCA summary.</p>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>project</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Project name (empty = active project)</td>
-</tr>
-<tr>
-<td><code>format</code></td>
-<td>str</td>
-<td><code>"json"</code></td>
-<td>Output format: <code>"json"</code> or <code>"markdown"</code></td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>str</td>
-<td><code>"ru"</code></td>
-<td>Output language: <code>"en"</code> or <code>"ru"</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response format:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">85.0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;audit&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">90.0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;findings_by_severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;critical&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;high&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;medium&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;low&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;dimensions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;security&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">92.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;code_quality&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">88.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;documentation&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">85.0</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;compliance&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">78.0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;standard&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOST-56939&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;passed_processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;total_processes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">25</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;release_gate&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;profile&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;standard&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;checks_passed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;checks_total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;failed_checks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;sca&quot;</span><span class="p">]</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;sca&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;health&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">92.0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;total_dependencies&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;vulnerable&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;critical_vulnerabilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;high_vulnerabilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;generated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17T12:00:00Z&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="codegraph-dashboard-trends"><span id="codegraph_dashboard_trends"></span>codegraph_dashboard_trends<a class="heading-anchor" href="#codegraph-dashboard-trends" title="Link to this section">&para;</a></h3>
-<p>Get time-series trend data for dashboard metrics over a configurable period. Returns historical health, audit, and compliance scores for trend visualization.</p>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>project</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Project name (empty = active project)</td>
-</tr>
-<tr>
-<td><code>period</code></td>
-<td>str</td>
-<td><code>"30d"</code></td>
-<td>Time period: <code>"7d"</code>, <code>"30d"</code>, <code>"90d"</code>, <code>"180d"</code>, <code>"365d"</code></td>
-</tr>
-<tr>
-<td><code>metrics</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Comma-separated metric names to include (empty = all). Valid: <code>health_score</code>, <code>audit_score</code>, <code>compliance_score</code>, <code>sca_health</code></td>
-</tr>
-<tr>
-<td><code>format</code></td>
-<td>str</td>
-<td><code>"json"</code></td>
-<td>Output format: <code>"json"</code> or <code>"markdown"</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response format:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;period&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;30d&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;data_points&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-02-15&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">70.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;audit_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">75.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">65.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;sca_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">88.0</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">85.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;audit_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">90.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">78.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;sca_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">92.0</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;trend_direction&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;improving&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;audit_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;improving&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;improving&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;sca_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stable&quot;</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;generated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17T12:00:00Z&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="codegraph-dashboard-compare-periods"><span id="codegraph_dashboard_compare_periods"></span>codegraph_dashboard_compare_periods<a class="heading-anchor" href="#codegraph-dashboard-compare-periods" title="Link to this section">&para;</a></h3>
-<p>Compare two adjacent snapshot-backed periods for a project.</p>
-<p><strong>Parameters:</strong> <code>name</code> (str, required), <code>baseline_period</code> (str: &ldquo;7d&rdquo; | &ldquo;30d&rdquo; | &ldquo;90d&rdquo; | &ldquo;180d&rdquo; | &ldquo;1y&rdquo;, default &ldquo;30d&rdquo;), <code>comparison_period</code> (str: &ldquo;7d&rdquo; | &ldquo;30d&rdquo; | &ldquo;90d&rdquo; | &ldquo;180d&rdquo; | &ldquo;1y&rdquo;, default &ldquo;7d&rdquo;)</p>
-<h3  id="codegraph-dashboard-release-compare"><span id="codegraph_dashboard_release_compare"></span>codegraph_dashboard_release_compare<a class="heading-anchor" href="#codegraph-dashboard-release-compare" title="Link to this section">&para;</a></h3>
-<p>Compare two release gate runs and attach snapshot deltas where available.</p>
-<p><strong>Parameters:</strong> <code>name</code> (str, required), <code>from_run_id</code> (str, default &ldquo;&rdquo;), <code>to_run_id</code> (str, default &ldquo;&rdquo;)</p>
-<h3  id="codegraph-dashboard-drilldown"><span id="codegraph_dashboard_drilldown"></span>codegraph_dashboard_drilldown<a class="heading-anchor" href="#codegraph-dashboard-drilldown" title="Link to this section">&para;</a></h3>
-<p>Drill down from a project/category aggregate to findings and source locations.</p>
-<p><strong>Parameters:</strong> <code>name</code> (str, required), <code>category</code> (str, required), <code>limit</code> (int, default 50)</p>
-<h3  id="codegraph-dashboard-red-zone"><span id="codegraph_dashboard_red_zone"></span>codegraph_dashboard_red_zone<a class="heading-anchor" href="#codegraph-dashboard-red-zone" title="Link to this section">&para;</a></h3>
-<p>Identify projects in the &ldquo;red zone&rdquo; &ndash; those failing critical thresholds for health, compliance, or security. Returns a prioritized list with reasons and recommended actions.</p>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>group</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Filter projects by group name (empty = all groups)</td>
-</tr>
-<tr>
-<td><code>threshold</code></td>
-<td>float</td>
-<td><code>50.0</code></td>
-<td>Health score threshold below which a project enters the red zone (0.0&ndash;100.0)</td>
-</tr>
-<tr>
-<td><code>format</code></td>
-<td>str</td>
-<td><code>"json"</code></td>
-<td>Output format: <code>"json"</code> or <code>"markdown"</code></td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>str</td>
-<td><code>"ru"</code></td>
-<td>Output language: <code>"en"</code> or <code>"ru"</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response format:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;red_zone_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.0</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;projects&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;legacy-auth&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;group&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;backend&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">35.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;reasons&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;Critical SCA vulnerabilities: 3&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;Compliance score below 40%&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;Release gate: blocked&quot;</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;recommended_actions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;Patch critical CVEs immediately&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;Run compliance evaluation and address gaps&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">&quot;Review and fix release gate failures&quot;</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;days_in_red_zone&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;generated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17T12:00:00Z&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="codegraph-dashboard-compare"><span id="codegraph_dashboard_compare"></span>codegraph_dashboard_compare<a class="heading-anchor" href="#codegraph-dashboard-compare" title="Link to this section">&para;</a></h3>
-<p>Compare two or more projects side by side across all dashboard dimensions. Useful for benchmarking teams or tracking relative progress.</p>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>projects</code></td>
-<td>str</td>
-<td>—</td>
-<td>Comma-separated project names (required, minimum 2)</td>
-</tr>
-<tr>
-<td><code>format</code></td>
-<td>str</td>
-<td><code>"json"</code></td>
-<td>Output format: <code>"json"</code> or <code>"markdown"</code></td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>str</td>
-<td><code>"ru"</code></td>
-<td>Output language: <code>"en"</code> or <code>"ru"</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response format:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;comparison&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">85.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;audit_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">90.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">78.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;release_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ready&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;sca_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">92.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;findings_total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;critical_findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;project&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;legacy-auth&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">35.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;audit_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">45.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">38.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;release_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;blocked&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;sca_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">60.0</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;findings_total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">47</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;critical_findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;best_in_class&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;health_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;audit_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;compliance_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;sca_health&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payments-api&quot;</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;generated_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17T12:00:00Z&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="codegraph-dashboard-compliance-heatmap"><span id="codegraph_dashboard_compliance_heatmap"></span>codegraph_dashboard_compliance_heatmap<a class="heading-anchor" href="#codegraph-dashboard-compliance-heatmap" title="Link to this section">&para;</a></h3>
-<p>Generate a compliance heatmap showing process-level compliance status across multiple projects. Each cell represents one project&rsquo;s status for one GOST R 56939 process.</p>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>group</code></td>
-<td>str</td>
-<td><code>""</code></td>
-<td>Filter projects by group name (empty = all groups)</td>
-</tr>
-<tr>
-<td><code>standard</code></td>
-<td>str</td>
-<td><code>"gost-56939"</code></td>
-<td>Compliance standard: <code>"gost-56939"</code></td>
-</tr>
-<tr>
-<td><code>format</code></td>
-<td>str</td>
-<td><code>"json"</code></td>
-<td>Output format: <code>"json"</code> or <code>"markdown"</code></td>
-</tr>
-<tr>
-<td><code>language</code></td>
-<td>str</td>
-<td><code>"ru"</code></td>
-<td>Output language: <code>"en"</code> or <code>"ru"</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><strong>Response format:</strong></p>
-<p>```json
-{
-  &ldquo;standard&rdquo;: &ldquo;gost-56939&rdquo;,
-  &ldquo;processes&rdquo;: [&ldquo;5.1&rdquo;, &ldquo;5.2&rdquo;, &ldquo;5.3&rdquo;, &ldquo;5.4&rdquo;, &ldquo;5.5&rdquo;, &ldquo;5.6&rdquo;, &ldquo;5.7&rdquo;, &ldquo;5.8&rdquo;, &ldquo;5.9&rdquo;, &ldquo;5.10&rdquo;],
-  &ldquo;projects&rdquo;: [
-    {
-      &ldquo;name&rdquo;: &ldquo;payments-api&rdquo;,
-      &ldquo;statuses&rdquo;: {
-        &ldquo;5.1&rdquo;: &ldquo;compliant&rdquo;,
-        &ldquo;5.2&rdquo;: &ldquo;compliant&rdquo;,
-        &ldquo;5.3&rdquo;: &ldquo;partial&rdquo;,
-        &ldquo;5.4&rdquo;: &ldquo;compliant&rdquo;,
-        &ldquo;5.5&rdquo;: &ldquo;non_compliant&rdquo;,
-        &ldquo;5.6&rdquo;: &ldquo;compliant&rdquo;,
-        &ldquo;5.7&rdquo;: &ldquo;partial&rdquo;,
-        &ldquo;5.8&rdquo;: &ldquo;compliant&rdquo;,
-        &ldquo;5.9&rdquo;: &ldquo;compliant&rdquo;,
-        &ldquo;5.10&rdquo;: &ldquo;partial&rdquo;
-      },
-      &ldquo;overall_score&rdquo;: 78.0
-    }
-  ],
-  &ldquo;legend&rdquo;: {
-    &ldquo;compliant&rdquo;: &ldquo;All requirements met&rdquo;,
-    &ldquo;partial&rdquo;: &ldquo;Some requirements met&rdquo;,
-    &ldquo;non_compliant&rdquo;: &ldquo;Requirements not met&rdquo;,
-    &ldquo;not_evaluated&rdquo;: &ldquo;Not yet evaluated&rdquo;
-  },
-  &ldquo;generated_at&rdquo;: &ldquo;2026-03-17T12:00:00Z&rdquo;
-}</p>
       </article>
 
       <!-- Page Navigation -->
@@ -1046,7 +358,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/api/MCP_TOOLS.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1055,126 +367,36 @@
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#call-graph-navigation" class="level-2">Call Graph & Navigation</a></li>
-<li><a href="#codegraph-find-callers" class="level-3">codegraph_find_callers</a></li>
-<li><a href="#codegraph-find-callees" class="level-3">codegraph_find_callees</a></li>
-<li><a href="#codegraph-impact" class="level-3">codegraph_impact</a></li>
-<li><a href="#code-analysis" class="level-2">Code Analysis</a></li>
-<li><a href="#codegraph-query" class="level-3">codegraph_query</a></li>
-<li><a href="#codegraph-search" class="level-3">codegraph_search</a></li>
-<li><a href="#codegraph-explain" class="level-3">codegraph_explain</a></li>
-<li><a href="#codegraph-diagram" class="level-3">codegraph_diagram</a></li>
-<li><a href="#codegraph-hotspots" class="level-3">codegraph_hotspots</a></li>
-<li><a href="#codegraph-edit-preview" class="level-3">codegraph_edit_preview</a></li>
-<li><a href="#security" class="level-2">Security</a></li>
-<li><a href="#codegraph-taint-analysis" class="level-3">codegraph_taint_analysis</a></li>
-<li><a href="#codegraph-autofix" class="level-3">codegraph_autofix</a></li>
+        <li><a href="#security" class="level-2">Security</a></li>
+<li><a href="#codegraph-security-taint-analysis-run" class="level-3">codegraph_security_taint_analysis_run</a></li>
+<li><a href="#codegraph-security-autofix-preview" class="level-3">codegraph_security_autofix_preview</a></li>
 <li><a href="#sca-sbom" class="level-2">SCA / SBOM</a></li>
-<li><a href="#codegraph-sbom-generate" class="level-3">codegraph_sbom_generate</a></li>
-<li><a href="#codegraph-sbom-audit" class="level-3">codegraph_sbom_audit</a></li>
-<li><a href="#codegraph-sbom-sync" class="level-3">codegraph_sbom_sync</a></li>
+<li><a href="#codegraph-security-sbom-report-generate" class="level-3">codegraph_security_sbom_report_generate</a></li>
+<li><a href="#codegraph-security-sbom-audit-run" class="level-3">codegraph_security_sbom_audit_run</a></li>
+<li><a href="#codegraph-security-sbom-inventory-sync" class="level-3">codegraph_security_sbom_inventory_sync</a></li>
 <li><a href="#supply-chain" class="level-2">Supply Chain</a></li>
-<li><a href="#codegraph-supply-chain-scan" class="level-3">codegraph_supply_chain_scan</a></li>
-<li><a href="#codegraph-supply-chain-trust" class="level-3">codegraph_supply_chain_trust</a></li>
+<li><a href="#codegraph-security-supply-chain-scan-run" class="level-3">codegraph_security_supply_chain_scan_run</a></li>
+<li><a href="#codegraph-security-supply-chain-trust-report-get" class="level-3">codegraph_security_supply_chain_trust_report_get</a></li>
 <li><a href="#threat-modeling" class="level-2">Threat Modeling</a></li>
-<li><a href="#codegraph-threat-model-generate" class="level-3">codegraph_threat_model_generate</a></li>
-<li><a href="#codegraph-threat-model-dfd" class="level-3">codegraph_threat_model_dfd</a></li>
+<li><a href="#codegraph-security-threat-model-generate" class="level-3">codegraph_security_threat_model_generate</a></li>
+<li><a href="#codegraph-security-threat-model-dfd-generate" class="level-3">codegraph_security_threat_model_dfd_generate</a></li>
 <li><a href="#workflows" class="level-2">Workflows</a></li>
-<li><a href="#codegraph-compose" class="level-3">codegraph_compose</a></li>
-<li><a href="#codegraph-compliance" class="level-3">codegraph_compliance</a></li>
-<li><a href="#codegraph-compliance-gost" class="level-3">codegraph_compliance_gost</a></li>
-<li><a href="#codegraph-compliance-report-57580" class="level-3">codegraph_compliance_report_57580</a></li>
-<li><a href="#codegraph-compliance-maturity" class="level-3">codegraph_compliance_maturity</a></li>
-<li><a href="#codegraph-compliance-report-delta" class="level-3">codegraph_compliance_report_delta</a></li>
-<li><a href="#codegraph-cross-repo" class="level-3">codegraph_cross_repo</a></li>
-<li><a href="#codegraph-tech-debt" class="level-3">codegraph_tech_debt</a></li>
-<li><a href="#codegraph-standards-check" class="level-3">codegraph_standards_check</a></li>
-<li><a href="#codegraph-docs-sync" class="level-3">codegraph_docs_sync</a></li>
-<li><a href="#audit-diff" class="level-2">Audit Diff</a></li>
-<li><a href="#codegraph-audit-diff" class="level-3">codegraph_audit_diff</a></li>
-<li><a href="#codegraph-scopes-check" class="level-3">codegraph_scopes_check</a></li>
-<li><a href="#codegraph-audit-progress" class="level-3">codegraph_audit_progress</a></li>
-<li><a href="#codegraph-analysis-status" class="level-3">codegraph_analysis_status</a></li>
-<li><a href="#dynamic-analysis" class="level-2">Dynamic Analysis</a></li>
-<li><a href="#codegraph-dynamic-import" class="level-3">codegraph_dynamic_import</a></li>
-<li><a href="#codegraph-dynamic-runs" class="level-3">codegraph_dynamic_runs</a></li>
-<li><a href="#codegraph-dynamic-correlate" class="level-3">codegraph_dynamic_correlate</a></li>
-<li><a href="#codegraph-dynamic-fuzz-targets" class="level-3">codegraph_dynamic_fuzz_targets</a></li>
-<li><a href="#issue-tracker" class="level-2">Issue Tracker</a></li>
-<li><a href="#codegraph-issues-create" class="level-3">codegraph_issues_create</a></li>
-<li><a href="#codegraph-issues-bulk-create" class="level-3">codegraph_issues_bulk_create</a></li>
-<li><a href="#codegraph-issues-sync" class="level-3">codegraph_issues_sync</a></li>
-<li><a href="#codegraph-issues-status" class="level-3">codegraph_issues_status</a></li>
-<li><a href="#release-gate" class="level-2">Release Gate</a></li>
-<li><a href="#codegraph-release-gate-check" class="level-3">codegraph_release_gate_check</a></li>
-<li><a href="#codegraph-release-gate-profiles" class="level-3">codegraph_release_gate_profiles</a></li>
-<li><a href="#codegraph-release-gate-suppress" class="level-3">codegraph_release_gate_suppress</a></li>
-<li><a href="#risk-management-gost-r-575803" class="level-2">Risk Management (GOST R 57580.3)</a></li>
-<li><a href="#codegraph-risk-kir" class="level-3">codegraph_risk_kir</a></li>
-<li><a href="#codegraph-risk-kpur" class="level-3">codegraph_risk_kpur</a></li>
-<li><a href="#codegraph-risk-dashboard" class="level-3">codegraph_risk_dashboard</a></li>
-<li><a href="#codegraph-risk-assess" class="level-3">codegraph_risk_assess</a></li>
-<li><a href="#codegraph-risk-matrix" class="level-3">codegraph_risk_matrix</a></li>
-<li><a href="#codegraph-risk-detail" class="level-3">codegraph_risk_detail</a></li>
-<li><a href="#codegraph-risk-threat-model-57580" class="level-3">codegraph_risk_threat_model_57580</a></li>
-<li><a href="#codegraph-risk-events" class="level-3">codegraph_risk_events</a></li>
-<li><a href="#codegraph-risk-checklist" class="level-3">codegraph_risk_checklist</a></li>
+<li><a href="#codegraph-runtime-composition-workflow-run" class="level-3">codegraph_runtime_composition_workflow_run</a></li>
+<li><a href="#codegraph-quality-tech-debt-report-get" class="level-3">codegraph_quality_tech_debt_report_get</a></li>
+<li><a href="#audit-scope" class="level-2">Audit Scope</a></li>
+<li><a href="#codegraph-runtime-analysis-scope-check-run" class="level-3">codegraph_runtime_analysis_scope_check_run</a></li>
 <li><a href="#context-analysis" class="level-2">Context & Analysis</a></li>
-<li><a href="#codegraph-project-context" class="level-3">codegraph_project_context</a></li>
-<li><a href="#codegraph-diff-context" class="level-3">codegraph_diff_context</a></li>
-<li><a href="#codegraph-file-context" class="level-3">codegraph_file_context</a></li>
-<li><a href="#project-management" class="level-2">Project Management</a></li>
-<li><a href="#codegraph-project-list" class="level-3">codegraph_project_list</a></li>
-<li><a href="#codegraph-project-switch" class="level-3">codegraph_project_switch</a></li>
-<li><a href="#codegraph-project-rename" class="level-3">codegraph_project_rename</a></li>
-<li><a href="#codegraph-project-delete" class="level-3">codegraph_project_delete</a></li>
-<li><a href="#infrastructure" class="level-2">Infrastructure</a></li>
-<li><a href="#codegraph-import-status" class="level-3">codegraph_import_status</a></li>
-<li><a href="#codegraph-config" class="level-3">codegraph_config</a></li>
-<li><a href="#codegraph-domain" class="level-3">codegraph_domain</a></li>
-<li><a href="#codegraph-ci-exec" class="level-3">codegraph_ci_exec</a></li>
-<li><a href="#codegraph-watch" class="level-3">codegraph_watch</a></li>
-<li><a href="#codegraph-hooks" class="level-3">codegraph_hooks</a></li>
-<li><a href="#codegraph-cli-bridge" class="level-3">codegraph_cli_bridge</a></li>
-<li><a href="#patterns" class="level-2">Patterns</a></li>
-<li><a href="#codegraph-pattern-search" class="level-3">codegraph_code_pattern_search</a></li>
-<li><a href="#codegraph-pattern-findings" class="level-3">codegraph_pattern_findings</a></li>
-<li><a href="#codegraph-pattern-stats" class="level-3">codegraph_pattern_stats</a></li>
-<li><a href="#codegraph-pattern-fix" class="level-3">codegraph_pattern_fix</a></li>
-<li><a href="#codegraph-pattern-generate" class="level-3">codegraph_code_pattern_generate</a></li>
-<li><a href="#codegraph-pattern-test" class="level-3">codegraph_pattern_test</a></li>
+<li><a href="#codegraphprojectcontext" class="level-3">codegraph://project/context</a></li>
+<li><a href="#codegraph-context-retrieval-diff-preview" class="level-3">codegraph_context_retrieval_diff_preview</a></li>
+<li><a href="#codegraph-context-retrieval-file-read" class="level-3">codegraph_context_retrieval_file_read</a></li>
+<li><a href="#project-lifecycle" class="level-2">Project Lifecycle</a></li>
+<li><a href="#codegraph-runtime-ci-execution-run" class="level-3">codegraph_runtime_ci_execution_run</a></li>
+<li><a href="#codegraph-runtime-cpg-watch-run" class="level-3">codegraph_runtime_cpg_watch_run</a></li>
 <li><a href="#enterprise" class="level-2">Enterprise</a></li>
-<li><a href="#codegraph-vault" class="level-3">codegraph_vault</a></li>
-<li><a href="#codegraph-siem" class="level-3">codegraph_siem</a></li>
-<li><a href="#codegraph-rbac" class="level-3">codegraph_rbac</a></li>
-<li><a href="#platform-integration" class="level-2">Platform Integration</a></li>
-<li><a href="#codegraph-sc-review" class="level-3">codegraph_sc_review</a></li>
-<li><a href="#codegraph-sc-suggestions" class="level-3">codegraph_sc_suggestions</a></li>
-<li><a href="#codegraph-sc-completion" class="level-3">codegraph_sc_completion</a></li>
-<li><a href="#codegraph-sc-navigate" class="level-3">codegraph_sc_navigate</a></li>
-<li><a href="#codegraph-sc-test-hints" class="level-3">codegraph_sc_test_hints</a></li>
-<li><a href="#codegraph-sc-mr-info" class="level-3">codegraph_sc_mr_info</a></li>
-<li><a href="#codegraph-sc-commit-status" class="level-3">codegraph_sc_commit_status</a></li>
-<li><a href="#codegraph-sc-summary" class="level-3">codegraph_sc_summary</a></li>
-<li><a href="#codegraph-gv-review" class="level-3">codegraph_gv_review</a></li>
-<li><a href="#codegraph-gv-pr-info" class="level-3">codegraph_gv_pr_info</a></li>
-<li><a href="#codegraph-gv-commit-status" class="level-3">codegraph_gv_commit_status</a></li>
-<li><a href="#codegraph-gv-summary" class="level-3">codegraph_gv_summary</a></li>
-<li><a href="#codegraph-hypothesis" class="level-3">codegraph_hypothesis</a></li>
-<li><a href="#codegraph-reindex" class="level-3">codegraph_reindex</a></li>
+<li><a href="#codegraph-security-rbac-permission-report-get" class="level-3">codegraph_security_rbac_permission_report_get</a></li>
+<li><a href="#codegraph-security-hypothesis-run" class="level-3">codegraph_security_hypothesis_run</a></li>
 <li><a href="#dashboard-v2-mcp-tools" class="level-2">Dashboard V2 MCP Tools</a></li>
-<li><a href="#codegraph-dashboard-portfolio" class="level-3">codegraph_dashboard_portfolio</a></li>
 <li><a href="#supplemental-tool-coverage" class="level-2">Supplemental Tool Coverage</a></li>
-<li><a href="#codegraph-dashboard-saved-views" class="level-3">codegraph_dashboard_saved_views</a></li>
-<li><a href="#codegraph-dashboard-metrics" class="level-3">codegraph_dashboard_metrics</a></li>
-<li><a href="#codegraph-dashboard-project" class="level-3">codegraph_dashboard_project</a></li>
-<li><a href="#codegraph-dashboard-trends" class="level-3">codegraph_dashboard_trends</a></li>
-<li><a href="#codegraph-dashboard-compare-periods" class="level-3">codegraph_dashboard_compare_periods</a></li>
-<li><a href="#codegraph-dashboard-release-compare" class="level-3">codegraph_dashboard_release_compare</a></li>
-<li><a href="#codegraph-dashboard-drilldown" class="level-3">codegraph_dashboard_drilldown</a></li>
-<li><a href="#codegraph-dashboard-red-zone" class="level-3">codegraph_dashboard_red_zone</a></li>
-<li><a href="#codegraph-dashboard-compare" class="level-3">codegraph_dashboard_compare</a></li>
-<li><a href="#codegraph-dashboard-compliance-heatmap" class="level-3">codegraph_dashboard_compliance_heatmap</a></li>
       </ul>
     </aside>
   </div>

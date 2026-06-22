@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -200,7 +199,7 @@
 <li><a href="#s19-kak-orkestrator">S19 как оркестратор</a></li>
 <li><a href="#komponenty-kompozitsii">Компоненты композиции</a></li>
 <li><a href="#konfiguratsiya">Конфигурация</a></li>
-<li><a href="#api-endpointy">Конечные точки API</a></li>
+<li><a href="#runtime-interfeysy">Runtime-интерфейсы</a></li>
 <li><a href="#komandy-cli">Команды CLI</a></li>
 <li><a href="#audit-kachestva-koda">Аудит качества кода</a></li>
 <li><a href="#validatsiya-polzovatelskih-istoriy">Валидация пользовательских историй</a></li>
@@ -881,11 +880,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="c1"># Фильтрация по интерфейсам</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>docs-sync<span class="w"> </span>--interfaces<span class="w"> </span>rest_api,cli<span class="w"> </span>--language<span class="w"> </span>ru
 
-<span class="c1"># REST API</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>/api/v1/documentation/sync<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;interfaces&quot;: [&quot;rest_api&quot;, &quot;cli&quot;]}&#39;</span>
-
-<span class="c1"># MCP-инструмент</span>
-codegraph_docs_sync<span class="o">(</span><span class="nv">interfaces</span><span class="o">=</span><span class="s2">&quot;rest_api,cli&quot;</span>,<span class="w"> </span><span class="nv">output_format</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="o">)</span>
+<span class="c1"># Programmatic runner</span>
+python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">from src.workflow.scenarios.interface_docs_sync_composite import InterfaceDocsSyncRunner</span>
+<span class="s">print(InterfaceDocsSyncRunner().run(output_format=&quot;json&quot;).json_report)</span>
+<span class="s">PY</span>
 </code></pre></div>
 
 <h3  id="integratsiya-s-ci"><span id="integratsiya_s_ci"></span>Интеграция с CI<a class="heading-anchor" href="#integratsiya-s-ci" title="Link to this section">&para;</a></h3>
@@ -1101,81 +1100,8 @@ codegraph_docs_sync<span class="o">(</span><span class="nv">interfaces</span><sp
 <span class="w">    </span><span class="nt">log_resolutions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
 
-<h2  id="api-endpointy"><span id="api_endpointy"></span><span id="konechnye-tochki-api"></span><span id="konechnye_tochki_api"></span>Конечные точки API<a class="heading-anchor" href="#api-endpointy" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1compositionquery"><span id="post_apiv1compositionquery"></span>POST /api/v1/composition/query<a class="heading-anchor" href="#post-apiv1compositionquery" title="Link to this section">&para;</a></h3>
-<p>Выполнить композитный рабочий процесс:</p>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/composition/query</span>
-<span class="err">Content-Type: application/json</span>
-<span class="err">Authorization: Bearer &lt;token&gt;</span>
-
-<span class="err">{</span>
-<span class="err">  &quot;query&quot;: &quot;Оптимизировать src/core/&quot;,</span>
-<span class="err">  &quot;orchestrator&quot;: &quot;scenario_18&quot;,</span>
-<span class="err">  &quot;context&quot;: {</span>
-<span class="err">    &quot;language&quot;: &quot;ru&quot;,</span>
-<span class="err">    &quot;file_paths&quot;: [&quot;src/core/&quot;]</span>
-<span class="err">  },</span>
-<span class="err">  &quot;parallel&quot;: true,</span>
-<span class="err">  &quot;merge_strategy&quot;: &quot;weighted&quot;</span>
-<span class="err">}</span>
-</code></pre></div>
-
-<p><strong>Ответ:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sess_abc123&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;answer&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Найдено 52 возможности для оптимизации...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;unified_findings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">  </span><span class="nt">&quot;priority_scores&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-<span class="w">  </span><span class="nt">&quot;sub_scenario_results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-<span class="w">  </span><span class="nt">&quot;conflicts_resolved&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;execution_time_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">4234.5</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3  id="post-apiv1compositionapply"><span id="post_apiv1compositionapply"></span>POST /api/v1/composition/apply<a class="heading-anchor" href="#post-apiv1compositionapply" title="Link to this section">&para;</a></h3>
-<p>Применить ожидающую правку из сессии:</p>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/v1/composition/apply</span>
-<span class="err">Content-Type: application/json</span>
-<span class="err">Authorization: Bearer &lt;token&gt;</span>
-
-<span class="err">{</span>
-<span class="err">  &quot;session_id&quot;: &quot;sess_abc123&quot;,</span>
-<span class="err">  &quot;finding_id&quot;: &quot;find_xyz789&quot;,</span>
-<span class="err">  &quot;preview&quot;: true</span>
-<span class="err">}</span>
-</code></pre></div>
-
-<h3  id="get-apiv1compositionconflictssession-id"><span id="get_apiv1compositionconflictssession_id"></span>GET /api/v1/composition/conflicts/{session_id}<a class="heading-anchor" href="#get-apiv1compositionconflictssession-id" title="Link to this section">&para;</a></h3>
-<p>Получить информацию о конфликтах для сессии:</p>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/composition/conflicts/sess_abc123</span>
-<span class="err">Authorization: Bearer &lt;token&gt;</span>
-</code></pre></div>
-
-<h3  id="get-apiv1compositionsessionsession-id"><span id="get_apiv1compositionsessionsession_id"></span>GET /api/v1/composition/session/{session_id}<a class="heading-anchor" href="#get-apiv1compositionsessionsession-id" title="Link to this section">&para;</a></h3>
-<p>Получить полное состояние сессии:</p>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/composition/session/sess_abc123</span>
-<span class="err">Authorization: Bearer &lt;token&gt;</span>
-</code></pre></div>
-
-<h3  id="delete-apiv1compositionsessionsession-id"><span id="delete_apiv1compositionsessionsession_id"></span>DELETE /api/v1/composition/session/{session_id}<a class="heading-anchor" href="#delete-apiv1compositionsessionsession-id" title="Link to this section">&para;</a></h3>
-<p>Удалить сессию и её состояние:</p>
-<div class="highlight"><pre><span></span><code><span class="err">DELETE /api/v1/composition/session/sess_abc123</span>
-<span class="err">Authorization: Bearer &lt;token&gt;</span>
-</code></pre></div>
-
-<h3  id="get-apiv1compositionconfig"><span id="get_apiv1compositionconfig"></span>GET /api/v1/composition/config<a class="heading-anchor" href="#get-apiv1compositionconfig" title="Link to this section">&para;</a></h3>
-<p>Получить конфигурацию композиции:</p>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/composition/config</span>
-<span class="err">Authorization: Bearer &lt;token&gt;</span>
-</code></pre></div>
-
-<h3  id="get-apiv1compositionscenarios"><span id="get_apiv1compositionscenarios"></span>GET /api/v1/composition/scenarios<a class="heading-anchor" href="#get-apiv1compositionscenarios" title="Link to this section">&para;</a></h3>
-<p>Список доступных сценариев для композиции:</p>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/v1/composition/scenarios</span>
-<span class="err">Authorization: Bearer &lt;token&gt;</span>
-</code></pre></div>
-
+<h2  id="runtime-interfeysy"><span id="runtime_interfeysy"></span>Runtime-интерфейсы<a class="heading-anchor" href="#runtime-interfeysy" title="Link to this section">&para;</a></h2>
+<p>REST-эндпоинты композитных рабочих процессов удалены. Для выполнения композитных workflow используйте CLI-команды композиции или MCP-инструмент <code>codegraph_runtime_composition_workflow_run</code>.</p>
 <h2  id="komandy-cli"><span id="komandy_cli"></span>Команды CLI<a class="heading-anchor" href="#komandy-cli" title="Link to this section">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Запустить композитный рабочий процесс</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>composition<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;&lt;запрос&gt;&quot;</span><span class="w"> </span>-o<span class="w"> </span>s18<span class="p">|</span>s19
@@ -1265,25 +1191,25 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <tr>
 <td>Список проектов</td>
 <td><code>projects list</code></td>
-<td><code>codegraph_project_list</code></td>
+<td>—</td>
 <td><code>GET /api/v1/projects</code></td>
 </tr>
 <tr>
 <td>Переключение</td>
 <td><code>projects activate &lt;name&gt;</code></td>
-<td><code>codegraph_project_switch</code></td>
+<td>—</td>
 <td><code>POST /api/v1/projects/{id}/activate</code></td>
 </tr>
 <tr>
 <td>Переименование</td>
 <td><code>projects rename &lt;old&gt; &lt;new&gt;</code></td>
-<td><code>codegraph_project_rename</code></td>
+<td>—</td>
 <td><code>PUT /api/v1/projects/{id}</code></td>
 </tr>
 <tr>
 <td>Удаление</td>
 <td><code>projects delete &lt;name&gt;</code></td>
-<td><code>codegraph_project_delete</code></td>
+<td>—</td>
 <td><code>DELETE /api/v1/projects/{id}</code></td>
 </tr>
 </tbody>
@@ -1292,7 +1218,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <p>Удаление может опционально удалить связанные данные:</p>
 <ul>
 <li><strong>Файлы DuckDB</strong> — CLI <code>--delete-files</code>, API неявно через реестр импорта</li>
-<li><strong>Коллекции ChromaDB</strong> — CLI <code>--delete-collections</code>, API <code>?delete_collections=true</code>, MCP <code>delete_data=true</code></li>
+<li><strong>Коллекции OpenViking</strong> — CLI <code>--delete-collections</code>, API <code>?delete_collections=true</code></li>
 <li><strong>Запрос подтверждения</strong> — CLI требует <code>--yes</code> / <code>-y</code> для пропуска интерактивного подтверждения при удалении данных</li>
 </ul>
 <h3  id="razresheniya-rbac"><span id="razresheniya_rbac"></span>Разрешения RBAC<a class="heading-anchor" href="#razresheniya-rbac" title="Link to this section">&para;</a></h3>
@@ -1351,7 +1277,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/composite-workflows.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -1397,14 +1323,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#conflictresolver" class="level-3">ConflictResolver</a></li>
 <li><a href="#prioritycalculator" class="level-3">PriorityCalculator</a></li>
 <li><a href="#konfiguratsiya" class="level-2">Конфигурация</a></li>
-<li><a href="#api-endpointy" class="level-2">Конечные точки API</a></li>
-<li><a href="#post-apiv1compositionquery" class="level-3">POST /api/v1/composition/query</a></li>
-<li><a href="#post-apiv1compositionapply" class="level-3">POST /api/v1/composition/apply</a></li>
-<li><a href="#get-apiv1compositionconflictssession-id" class="level-3">GET /api/v1/composition/conflicts/{session_id}</a></li>
-<li><a href="#get-apiv1compositionsessionsession-id" class="level-3">GET /api/v1/composition/session/{session_id}</a></li>
-<li><a href="#delete-apiv1compositionsessionsession-id" class="level-3">DELETE /api/v1/composition/session/{session_id}</a></li>
-<li><a href="#get-apiv1compositionconfig" class="level-3">GET /api/v1/composition/config</a></li>
-<li><a href="#get-apiv1compositionscenarios" class="level-3">GET /api/v1/composition/scenarios</a></li>
+<li><a href="#runtime-interfeysy" class="level-2">Runtime-интерфейсы</a></li>
 <li><a href="#komandy-cli" class="level-2">Команды CLI</a></li>
 <li><a href="#luchshie-praktiki" class="level-2">Лучшие практики</a></li>
 <li><a href="#1-vybor-pravilnogo-orkestratora" class="level-3">1. Выбор правильного оркестратора</a></li>

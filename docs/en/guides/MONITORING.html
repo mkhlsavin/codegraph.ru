@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -688,9 +687,9 @@
 <td>LLM provider config</td>
 </tr>
 <tr>
-<td><code>chromadb</code></td>
-<td><code>check_chromadb_health()</code></td>
-<td>ChromaDB vector store</td>
+<td><code>openviking</code></td>
+<td><code>check_openviking_health()</code></td>
+<td>OpenViking vector store</td>
 </tr>
 <tr>
 <td><code>cpg</code></td>
@@ -830,10 +829,6 @@
 <td><code>GET /api/v1/health/version</code></td>
 <td>API version</td>
 </tr>
-<tr>
-<td><code>GET /api/v1/metrics</code></td>
-<td>Prometheus metrics (separate router)</td>
-</tr>
 </tbody>
 </table></div>
 <p><strong>GET /api/v1/health</strong> response:</p>
@@ -845,7 +840,7 @@
 <span class="w">  </span><span class="nt">&quot;components&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;database&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;llm&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;provider&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yandex&quot;</span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;chromadb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;collections&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;openviking&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;collections&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;cpg&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data/project.duckdb&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;methods&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1500</span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
@@ -857,14 +852,14 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring.health</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">check_database_connection</span><span class="p">,</span>
     <span class="n">check_llm_availability</span><span class="p">,</span>
-    <span class="n">check_vector_store</span><span class="p">,</span>
+    <span class="n">check_openviking_context_backend</span><span class="p">,</span>
     <span class="n">run_health_check_cli</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># Quick boolean checks</span>
 <span class="n">db_ok</span> <span class="o">=</span> <span class="n">check_database_connection</span><span class="p">()</span>    <span class="c1"># True if DuckDB responds to SELECT 1</span>
 <span class="n">llm_ok</span> <span class="o">=</span> <span class="n">check_llm_availability</span><span class="p">()</span>      <span class="c1"># True if LLM is_available()</span>
-<span class="n">vs_ok</span> <span class="o">=</span> <span class="n">check_vector_store</span><span class="p">()</span>           <span class="c1"># True if ChromaDB heartbeat succeeds</span>
+<span class="n">ov_ok</span> <span class="o">=</span> <span class="n">check_openviking_context_backend</span><span class="p">()</span>  <span class="c1"># True if OpenViking heartbeat succeeds</span>
 
 <span class="c1"># CLI health check (prints report, exits with code 0/1/2)</span>
 <span class="n">run_health_check_cli</span><span class="p">()</span>
@@ -1017,8 +1012,38 @@
 <span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;LLM</span><span class="nv"> </span><span class="s">errors</span><span class="nv"> </span><span class="s">detected&quot;</span>
 
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_sentry</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphSentryCriticalIssues</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum(codegraph_sentry_critical_unresolved_issues{level=~&quot;error|fatal&quot;}) &gt; 0</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Critical</span><span class="nv"> </span><span class="s">Sentry</span><span class="nv"> </span><span class="s">issues</span><span class="nv"> </span><span class="s">are</span><span class="nv"> </span><span class="s">unresolved&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphSentryExporterDown</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">up{job=&quot;sentry-alert-exporter&quot;} == 0 or codegraph_sentry_exporter_up == 0</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Sentry</span><span class="nv"> </span><span class="s">alert</span><span class="nv"> </span><span class="s">exporter</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">down</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">cannot</span><span class="nv"> </span><span class="s">poll</span><span class="nv"> </span><span class="s">Sentry&quot;</span>
+
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_infrastructure</span>
 <span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphHostDiskFreeSpaceLow</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">(</span>
+<span class="w">            </span><span class="no">node_filesystem_avail_bytes{job=&quot;node-exporter&quot;, mountpoint=&quot;/&quot;, fstype!=&quot;rootfs&quot;}</span>
+<span class="w">            </span><span class="no">/ node_filesystem_size_bytes{job=&quot;node-exporter&quot;, mountpoint=&quot;/&quot;, fstype!=&quot;rootfs&quot;}</span>
+<span class="w">          </span><span class="no">) &lt; 0.12</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Host</span><span class="nv"> </span><span class="s">root</span><span class="nv"> </span><span class="s">filesystem</span><span class="nv"> </span><span class="s">has</span><span class="nv"> </span><span class="s">less</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">12%</span><span class="nv"> </span><span class="s">free</span><span class="nv"> </span><span class="s">space&quot;</span>
+
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PrometheusTargetDown</span>
 <span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">up == 0</span>
 <span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3m</span>
@@ -1032,7 +1057,7 @@
 <p>Alertmanager configuration in <code>monitoring/alertmanager.yml</code>:</p>
 <ul>
 <li><strong>Routing:</strong> groups alerts by <code>alertname</code> and <code>severity</code>. Critical alerts repeat every 1 hour, others every 4 hours.</li>
-<li><strong>Receiver:</strong> default webhook via <code>${ALERTMANAGER_WEBHOOK_URL}</code> with <code>send_resolved: true</code>. Supports Slack, email (commented out by default).</li>
+<li><strong>Receiver:</strong> default webhook to <code>http://host.docker.internal:8001/api/v1/leads/internal/alertmanager</code> with <code>send_resolved: true</code>; the leads service forwards monitoring alerts to Telegram.</li>
 <li><strong>Inhibit rules:</strong> critical alerts suppress warning alerts with the same <code>alertname</code>.</li>
 </ul>
 <h3  id="yandex-cloud-dashboard"><span id="yandex_cloud_dashboard"></span>Yandex Cloud Dashboard<a class="heading-anchor" href="#yandex-cloud-dashboard" title="Link to this section">&para;</a></h3>
@@ -1077,7 +1102,7 @@
 <span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph</span>
 <span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
-<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/metrics</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v2/dashboard/metrics</span>
 <span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
 </code></pre></div>
 
@@ -1104,7 +1129,7 @@
 </ol>
 <h3 id="datasource">Datasource<a class="heading-anchor" href="#datasource" title="Link to this section">&para;</a></h3>
 <p>The dashboard requires a <strong>Prometheus</strong> datasource pointed at the standard CodeGraph metrics endpoint:</p>
-<div class="highlight"><pre><span></span><code>/api/v1/metrics
+<div class="highlight"><pre><span></span><code>/api/v2/dashboard/metrics
 </code></pre></div>
 
 <p>Auto-refresh is set to <strong>5 minutes</strong> by default. Adjust in <strong>Dashboard Settings &gt; Time Options</strong> if needed.</p>
@@ -1251,21 +1276,21 @@
 <td><code>codegraph_project_compliance_score &lt; 40</code></td>
 <td>1h</td>
 <td>warning</td>
-<td>Run a full GOST R 56939 compliance evaluation (<code>codegraph_compliance_gost</code>). Focus on non-compliant processes shown in the compliance heatmap.</td>
+<td>Run a full GOST R 56939 compliance evaluation (CLI <code>codegraph compliance gost-56939</code>). Focus on non-compliant processes shown in the compliance heatmap.</td>
 </tr>
 <tr>
 <td><code>DashboardReleaseGateFail</code></td>
 <td><code>codegraph_project_release_status == 0</code></td>
 <td>15m</td>
 <td>warning</td>
-<td>Review release gate failures with <code>codegraph_release_gate_check</code>. Address blocking checks before the next release window.</td>
+<td>Review release gate failures with <code>codegraph_runtime_release_gate_check_run</code>. Address blocking checks before the next release window.</td>
 </tr>
 <tr>
 <td><code>DashboardScaCriticalVuln</code></td>
 <td><code>codegraph_project_sca_vulnerabilities{severity="critical"} &gt; 0</code></td>
 <td>5m</td>
 <td>critical</td>
-<td>Patch critical CVEs immediately. Run <code>codegraph_sbom_audit</code> to identify affected dependencies. Consider emergency release if production is exposed.</td>
+<td>Patch critical CVEs immediately. Run <code>codegraph_security_sbom_audit_run</code> to identify affected dependencies. Consider emergency release if production is exposed.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1585,7 +1610,7 @@
 
 <h3  id="metrics-endpoint"><span id="metrics_endpoint"></span>Metrics endpoint<a class="heading-anchor" href="#metrics-endpoint" title="Link to this section">&para;</a></h3>
 <p>Dashboard gauges are served through the standard Prometheus endpoint:</p>
-<div class="highlight"><pre><span></span><code>GET /api/v1/metrics
+<div class="highlight"><pre><span></span><code>GET /api/v2/dashboard/metrics
 </code></pre></div>
 
 <p>The response uses Prometheus text exposition format:</p>
@@ -1608,7 +1633,7 @@ codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;re
 <div class="highlight"><pre><span></span><code><span class="nt">scrape_configs</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph-dashboard</span>
 <span class="w">    </span><span class="nt">scrape_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
-<span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/metrics</span>
+<span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v2/dashboard/metrics</span>
 <span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;localhost:8000&quot;</span><span class="p p-Indicator">]</span>
 </code></pre></div>
@@ -1639,7 +1664,7 @@ codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;re
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/MONITORING.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>

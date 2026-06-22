@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -233,9 +231,9 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>MCP Tools</strong> (149)</td>
-<td>Direct CPG, context, and workflow queries</td>
-<td><code>codegraph_query</code>, <code>codegraph_explain</code>, <code>codegraph_context_fetch</code>, etc. via stdio</td>
+<td><strong>MCP Tools</strong> (175 default tools)</td>
+<td>Governed operator workflow, context, and digital-employee commands</td>
+<td><code>codegraph_context_retrieval_evidence_fetch</code>, <code>codegraph_project_context_status</code>, <code>codegraph_context_active_task</code>, etc. via stdio</td>
 </tr>
 <tr>
 <td><strong>Plugin</strong> (<code>opencode-codegraph</code>)</td>
@@ -285,14 +283,14 @@
 <td>Editor diagnostics are recomputed through GoCPG read-only gRPC queries</td>
 </tr>
 <tr>
-<td>MCP <code>codegraph_watch</code> <code>check</code>/<code>update</code></td>
+<td>MCP <code>codegraph_runtime_cpg_watch_run</code> <code>check</code>/<code>update</code></td>
 <td>Manual</td>
 <td>Explicit freshness check/update with structured status fields</td>
 </tr>
 <tr>
 <td>OpenCode <code>/update</code> command</td>
 <td>Manual</td>
-<td>Convenience wrapper around <code>codegraph_watch</code> freshness workflow</td>
+<td>Convenience wrapper around <code>codegraph_runtime_cpg_watch_run</code> freshness workflow</td>
 </tr>
 <tr>
 <td>OpenCode <code>/status</code> command</td>
@@ -316,7 +314,7 @@
 </tr>
 </tbody>
 </table></div>
-<p>Automatic plugin hooks are best-effort and non-blocking. For deterministic CI/headless freshness guarantees, run <code>codegraph_watch update</code> (or <code>/update</code>) explicitly.</p>
+<p>Automatic plugin hooks are best-effort and non-blocking. For deterministic CI/headless freshness guarantees, run <code>codegraph_runtime_cpg_watch_run update</code> (or <code>/update</code>) explicitly.</p>
 <h2 id="installation">Installation<a class="heading-anchor" href="#installation" title="Link to this section">&para;</a></h2>
 <h3  id="minimal-setup-mcp-only"><span id="minimal_setup_mcp_only"></span>Minimal setup (MCP only)<a class="heading-anchor" href="#minimal-setup-mcp-only" title="Link to this section">&para;</a></h3>
 <p>Create <code>opencode.json</code> in the project root:</p>
@@ -387,7 +385,7 @@
 <li>When <code>CODEGRAPH_OPENCODE_PLUGIN_SOURCE=local</code>, the launcher also syncs the workspace <code>opencode-codegraph</code> into OpenCode runtime cache directories under <code>%USERPROFILE%\\.cache\\opencode\\...</code>, so headless <code>opencode run</code> uses the current local plugin code.</li>
 </ol>
 <p>Headless example:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/run_opencode_codegraph.py<span class="w"> </span>--run<span class="w"> </span><span class="s2">&quot;Use codegraph_project_context and summarize top risks&quot;</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/run_opencode_codegraph.py<span class="w"> </span>--run<span class="w"> </span><span class="s2">&quot;Read codegraph://project/context and summarize top risks&quot;</span>
 </code></pre></div>
 
 <p>Pass extra OpenCode flags after <code>--</code>:</p>
@@ -436,8 +434,8 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 <li><code>--db</code> in OpenCode and LSP config is a target database identifier, not permission for those clients to open DuckDB directly.</li>
 </ul>
 <h2 id="features">Features<a class="heading-anchor" href="#features" title="Link to this section">&para;</a></h2>
-<h3  id="1-mcp-tools-149-tools"><span id="1_mcp_tools_149_tools"></span>1. MCP Tools (149 tools)<a class="heading-anchor" href="#1-mcp-tools-149-tools" title="Link to this section">&para;</a></h3>
-<p>All 149 CodeGraph MCP tools are available in OpenCode chat. Key tool groups:</p>
+<h3  id="1-mcp-tools-175-default-tools"><span id="1_mcp_tools_175_default_tools"></span>1. MCP Tools (175 default tools)<a class="heading-anchor" href="#1-mcp-tools-175-default-tools" title="Link to this section">&para;</a></h3>
+<p>OpenCode uses the governed default MCP profile: 175 operator-default tools plus read-only resource projections. Code-intelligence tools such as <code>codegraph_code_query</code> and <code>codegraph_code_symbol_search</code> are role-scoped surfaces, not default operator commands.</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -449,28 +447,23 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 <tbody>
 <tr>
 <td><strong>Context</strong></td>
-<td><code>codegraph_project_context</code>, <code>codegraph_file_context</code>, <code>codegraph_diff_context</code></td>
+<td><code>codegraph://project/context</code>, <code>codegraph_context_retrieval_file_read</code>, <code>codegraph_context_retrieval_diff_preview</code></td>
 <td>Understand project/file/diff before changes</td>
 </tr>
 <tr>
-<td><strong>Navigation</strong></td>
-<td><code>codegraph_find_callers</code>, <code>codegraph_find_callees</code>, <code>codegraph_explain</code>, <code>codegraph_search</code></td>
-<td>Navigate the call graph</td>
+<td><strong>Project readiness</strong></td>
+<td><code>codegraph_project_context_status</code>, <code>codegraph_project_context_sync_status</code></td>
+<td>Check graph/OpenViking freshness and readiness</td>
 </tr>
 <tr>
-<td><strong>Analysis</strong></td>
-<td><code>codegraph_hotspots</code>, <code>codegraph_taint_analysis</code>, <code>codegraph_code_pattern_search</code>, <code>codegraph_hypothesis</code></td>
-<td>Find security issues and hotspots</td>
+<td><strong>Task and session</strong></td>
+<td><code>codegraph_context_active_task</code>, <code>codegraph_context_session_open</code>, <code>codegraph_context_session_share</code></td>
+<td>Work inside explicit task/session context</td>
 </tr>
 <tr>
-<td><strong>Operations</strong></td>
-<td><code>codegraph_compose</code>, <code>codegraph_autofix</code>, <code>codegraph_diagram</code></td>
-<td>Run composite analysis, auto-fix, diagrams</td>
-</tr>
-<tr>
-<td><strong>Project</strong></td>
-<td><code>codegraph_project_list</code>, <code>codegraph_project_switch</code></td>
-<td>Multi-project management</td>
+<td><strong>Digital employees</strong></td>
+<td><code>codegraph_digital_employee_*</code> governed tools</td>
+<td>Route SDLC work to accountable employee lanes</td>
 </tr>
 </tbody>
 </table></div>
@@ -491,7 +484,7 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 <p>The supported freshness path for OpenCode users is now plugin- and command-driven:</p>
 <ol>
 <li>the plugin can run a best-effort post-commit refresh after local <code>git commit</code>;</li>
-<li><code>/update</code> runs an explicit freshness check and incremental update through <code>codegraph_watch</code>;</li>
+<li><code>/update</code> runs an explicit freshness check and incremental update through <code>codegraph_runtime_cpg_watch_run</code>;</li>
 <li><code>/status</code> and <code>/next</code> surface the current workflow state and the recommended follow-up action;</li>
 <li>LSP diagnostics reflect the refreshed CPG state in the editor.</li>
 </ol>
@@ -558,32 +551,32 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 </thead>
 <tbody>
 <tr>
-<td><code>codegraph_context_open_session</code></td>
+<td><code>codegraph_context_session_open</code></td>
 <td><code>session_id</code> (optional)</td>
 <td>Open or reconnect an explicit CodeGraph/OpenViking context session</td>
 </tr>
 <tr>
-<td><code>codegraph_context_fetch</code></td>
+<td><code>codegraph_context_retrieval_evidence_fetch</code></td>
 <td><code>query</code>, <code>target_uri</code> (optional), <code>limit</code> (optional), <code>session_id</code> (optional), <code>include_needs_review</code> (optional)</td>
 <td>Fetch semantic context candidates for the active OpenCode session</td>
 </tr>
 <tr>
-<td><code>codegraph_context_read</code></td>
+<td><code>codegraph_context_retrieval_source_read</code></td>
 <td><code>uri</code>, <code>level</code> (optional), <code>session_id</code> (optional)</td>
 <td>Read a specific OpenViking <code>viking://</code> resource</td>
 </tr>
 <tr>
-<td><code>codegraph_context_browse</code></td>
+<td><code>codegraph_context_retrieval_source_browse</code></td>
 <td><code>uri</code>, <code>level_limit</code> (optional), <code>node_limit</code> (optional), <code>session_id</code> (optional)</td>
 <td>Browse an OpenViking resource tree</td>
 </tr>
 <tr>
-<td><code>codegraph_context_record_used_context</code></td>
+<td><code>codegraph_task_context_used_context_record</code></td>
 <td><code>items_json</code>, <code>session_id</code> (optional)</td>
 <td>Persist used-context trace before background commit</td>
 </tr>
 <tr>
-<td><code>codegraph_context_commit</code></td>
+<td><code>codegraph_context_memory_commit_record</code></td>
 <td><code>session_id</code> (optional)</td>
 <td>Trigger background commit for an explicit context session</td>
 </tr>
@@ -603,7 +596,7 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 <td>Return one fused payload of OpenViking context hits and graph evidence</td>
 </tr>
 <tr>
-<td><code>codegraph_skill_list</code></td>
+<td><code>codegraph_context_skill_list</code></td>
 <td><code>category</code> (optional), <code>include_needs_review</code> (optional)</td>
 <td>List curated agent-visible CodeGraph skills</td>
 </tr>
@@ -685,9 +678,9 @@ gocpg<span class="w"> </span>stats<span class="w"> </span>--db<span class="w"> <
 
 <p>The <code>codegraph</code> agent (uses your default model):
 - Always checks CPG before modifying code
-- Verifies callers before refactoring (<code>codegraph_find_callers</code>)
+- Verifies callers before refactoring (<code>codegraph_code_find_callers</code>)
 - Runs taint analysis before security reviews (<code>codegraph_taint_analysis</code>)
-- Prioritizes by complexity and impact metrics (<code>codegraph_hotspots</code>)</p>
+- Prioritizes by complexity and impact metrics (<code>codegraph_code_hotspots</code>)</p>
 <p>Defined in <code>.opencode/agents/codegraph.md</code>.</p>
 <h2  id="lsp-server"><span id="lsp_server"></span>LSP Server<a class="heading-anchor" href="#lsp-server" title="Link to this section">&para;</a></h2>
 <p>The CodeGraph LSP server provides real-time CPG-powered diagnostics:</p>
@@ -875,7 +868,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <h3  id="no-cpg-data-in-tool-results"><span id="no_cpg_data_in_tool_results"></span>No CPG Data in Tool Results<a class="heading-anchor" href="#no-cpg-data-in-tool-results" title="Link to this section">&para;</a></h3>
 <ul>
 <li>Verify CPG database is built: <code>python -m src.cli query "SELECT count(*) FROM nodes_method"</code></li>
-<li>Check active project: <code>opencode run "Use codegraph_project_context"</code></li>
+<li>Check active project: <code>opencode run "Read codegraph://project/context"</code></li>
 <li>Default behavior is workspace-based auto-resolution via the backend effective-project resolver</li>
 <li>Confirm OpenCode launches from the repository root so <code>CODEGRAPH_WORKSPACE_PATH</code> points at the expected workspace</li>
 <li>Use <code>CODEGRAPH_PROJECT=myproject</code> in <code>opencode.json</code> only as an explicit override or troubleshooting fallback, not as the normal configuration path</li>
@@ -898,7 +891,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/OPENCODE_PLUGIN.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -920,7 +913,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 <li><a href="#stdio-vs-tcp" class="level-3">Stdio vs TCP</a></li>
 <li><a href="#ownership-model" class="level-3">Ownership model</a></li>
 <li><a href="#features" class="level-2">Features</a></li>
-<li><a href="#1-mcp-tools-149-tools" class="level-3">1. MCP Tools (149 tools)</a></li>
+<li><a href="#1-mcp-tools-175-default-tools" class="level-3">1. MCP Tools (175 default tools)</a></li>
 <li><a href="#2-instructions-files" class="level-3">2. Instructions Files</a></li>
 <li><a href="#3-freshness-and-incremental-updates" class="level-3">3. Freshness and Incremental Updates</a></li>
 <li><a href="#plugin" class="level-2">Plugin</a></li>

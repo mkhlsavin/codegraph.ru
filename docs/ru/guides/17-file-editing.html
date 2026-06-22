@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -211,8 +210,7 @@
 <li><a href="#operatsiya-pereimenovaniya">Операция переименования</a></li>
 <li><a href="#konfiguratsiya">Конфигурация</a></li>
 <li><a href="#ispolzovanie-cli">Использование CLI</a></li>
-<li><a href="#rest-api">REST API</a></li>
-<li><a href="#instrument-mcp">Инструмент MCP</a></li>
+<li><a href="#runtime-interfeysy">Runtime-интерфейсы</a></li>
 <li><a href="#primery-voprosov">Примеры вопросов</a></li>
 <li><a href="#svyazannye-stsenarii">Связанные сценарии</a></li>
 </ul>
@@ -364,7 +362,7 @@ SSRAdapter ──&gt; CodeModifier
 </table></div>
 <p>Regex-шаблоны доступны для Python, C, C++, JavaScript и Go — покрывают определения функций, классов, методов, структур, интерфейсов и стрелочных функций.</p>
 <h3  id="poisk-tseley"><span id="poisk_tseley"></span>Поиск целей<a class="heading-anchor" href="#poisk-tseley" title="Link to this section">&para;</a></h3>
-<p><code>TargetFinder</code> предоставляет 7 методов поиска, комбинирующих CPG-запросы и AST-парсинг:</p>
+<p><code>TargetFinder</code> предоставляет 6 методов поиска, комбинирующих параметризованные CPG-запросы и AST-парсинг:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -388,11 +386,6 @@ SSRAdapter ──&gt; CodeModifier
 <td><code>find_by_location()</code></td>
 <td>AST</td>
 <td>Поиск наименьшей цели, содержащей указанную строку</td>
-</tr>
-<tr>
-<td><code>find_by_cpg_query()</code></td>
-<td>CPG</td>
-<td>Выполнение произвольного SQL к базе CPG</td>
 </tr>
 <tr>
 <td><code>find_callers()</code></td>
@@ -849,61 +842,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span><span class="nb">history</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span><span class="w"> </span>--file<span class="w"> </span>src/utils/
 </code></pre></div>
 
-<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<p>5 эндпоинтов в <code>src/api/routers/editing.py</code>:</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Метод</th>
-<th>Эндпоинт</th>
-<th>Описание</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/find-target</code></td>
-<td>Поиск целей кода по имени/шаблону</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/preview</code></td>
-<td>Генерация предпросмотра diff (пробный запуск)</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/apply</code></td>
-<td>Применение правки с опциональной резервной копией</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/undo</code></td>
-<td>Отмена последней правки</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/edit/history</code></td>
-<td>Получение истории правок (лимит, по умолчанию 10)</td>
-</tr>
-</tbody>
-</table></div>
-<p>Пример:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Поиск целей</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/edit/find-target<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;file_path&quot;: &quot;src/utils/validation.c&quot;, &quot;name_pattern&quot;: &quot;validate_input&quot;, &quot;target_type&quot;: &quot;function&quot;}&#39;</span>
-
-<span class="c1"># Предпросмотр правки</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/edit/preview<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;file_path&quot;: &quot;src/file.c&quot;, &quot;target_name&quot;: &quot;func&quot;, &quot;new_code&quot;: &quot;...&quot;, &quot;diff_format&quot;: &quot;unified&quot;}&#39;</span>
-</code></pre></div>
-
-<h2  id="instrument-mcp"><span id="instrument_mcp"></span>Инструмент MCP<a class="heading-anchor" href="#instrument-mcp" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>codegraph_edit_preview(file_path, target_name, target_type=&quot;function&quot;)
-</code></pre></div>
-
-<p>Находит цель в CPG и возвращает тип, расположение и предпросмотр кода — полезно для безопасного рефакторинга из ИИ-ассистента. Использует <code>TargetFinder</code> с CPG-сервисом для семантического понимания.</p>
+<h2  id="runtime-interfeysy"><span id="runtime_interfeysy"></span>Runtime-интерфейсы<a class="heading-anchor" href="#runtime-interfeysy" title="Link to this section">&para;</a></h2>
+<p>Низкоуровневые REST-эндпоинты редактирования файлов удалены. Для локальных operator workflows используйте CLI-команды редактирования, а для автоматизации - governed MCP/workflow orchestration.</p>
 <h2  id="primery-voprosov"><span id="primery_voprosov"></span>Примеры вопросов<a class="heading-anchor" href="#primery-voprosov" title="Link to this section">&para;</a></h2>
 <p><strong>Поиск целей:</strong>
 - «Найти функцию heap_insert в src/heap.c»
@@ -944,7 +884,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/17-file-editing.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -976,8 +916,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li><a href="#operatsiya-pereimenovaniya" class="level-3">Операция переименования</a></li>
 <li><a href="#konfiguratsiya" class="level-2">Конфигурация</a></li>
 <li><a href="#ispolzovanie-cli" class="level-2">Использование CLI</a></li>
-<li><a href="#rest-api" class="level-2">REST API</a></li>
-<li><a href="#instrument-mcp" class="level-2">Инструмент MCP</a></li>
+<li><a href="#runtime-interfeysy" class="level-2">Runtime-интерфейсы</a></li>
 <li><a href="#primery-voprosov" class="level-2">Примеры вопросов</a></li>
 <li><a href="#svyazannye-stsenarii" class="level-2">Связанные сценарии</a></li>
       </ul>

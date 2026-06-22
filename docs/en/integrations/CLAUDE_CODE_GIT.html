@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -262,22 +260,15 @@
 </code></pre></div>
 
 <h3  id="data-flow"><span id="data_flow"></span>Data flow<a class="heading-anchor" href="#data-flow" title="Link to this section">&para;</a></h3>
-<p>All hooks query the CPG database through one of two paths:</p>
+<p>All hooks query CPG through the GoCPG subprocess boundary:</p>
 <ol>
-<li>
-<p><strong>GoCPG subprocess</strong> (<code>gocpg.exe query --sql "..."</code>) &ndash; used by most hooks via <code>_utils.run_gocpg_query()</code>. No Python dependency on DuckDB required.</p>
-</li>
-<li>
-<p><strong>DuckDB direct</strong> (<code>import duckdb; con.execute(...)</code>) &ndash; used by <code>commit_analysis.py</code> for the full analysis pipeline (<code>CommitAnalyzer</code>, <code>CPGFreshnessChecker</code>). Falls back to subprocess if DuckDB import fails.</p>
-</li>
+<li><strong>GoCPG subprocess</strong> (<code>gocpg.exe query --sql "..."</code>) &ndash; used by hooks via <code>_utils.run_gocpg_query()</code>. No Python dependency on DuckDB is required, and hooks must not open the project DuckDB file directly.</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="n">Hook</span><span class="w"> </span><span class="n">Script</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">_utils</span><span class="p">.</span><span class="n">get_active_project</span><span class="p">()</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">config</span><span class="p">.</span><span class="n">yaml</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">db_path</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">_utils</span><span class="p">.</span><span class="n">run_gocpg_query</span><span class="p">(</span><span class="kr">sql</span><span class="p">,</span><span class="w"> </span><span class="n">db_path</span><span class="p">)</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">gocpg</span><span class="p">.</span><span class="n">exe</span><span class="w"> </span><span class="n">query</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">stdout</span>
-<span class="w">    </span><span class="o">|</span><span class="w">   </span><span class="kr">OR</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">duckdb</span><span class="p">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">direct</span><span class="w"> </span><span class="kr">SQL</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">safe_json_output</span><span class="p">(</span><span class="n">markdown</span><span class="p">)</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="p">{</span><span class="s">&quot;additionalContext&quot;</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p">}</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">Claude</span><span class="w"> </span><span class="n">Code</span>
 </code></pre></div>
@@ -322,7 +313,7 @@
 </tr>
 <tr>
 <td><code>load_parse_scope(db_path)</code></td>
-<td>Load parse scope from <code>cpg_parse_scope</code> table in DuckDB</td>
+<td>Load parse scope from <code>cpg_parse_scope</code> via GoCPG subprocess query</td>
 </tr>
 <tr>
 <td><code>is_partial_scope(scope)</code></td>
@@ -831,7 +822,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/CLAUDE_CODE_GIT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>

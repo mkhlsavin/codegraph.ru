@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -194,7 +193,7 @@
 <ul>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#quick-start">Quick Start</a></li>
-<li><a href="#hybrid-retrieval-benchmark">Hybrid Retrieval Benchmark</a></li>
+<li><a href="#benchmark-dataset">Benchmark Dataset</a></li>
 <li><a href="#comprehensive-benchmark-runner">Comprehensive Benchmark Runner</a></li>
 <li><a href="#llm-provider-selection">LLM Provider Selection</a></li>
 <li><a href="#benchmark-dataset">Benchmark Dataset</a></li>
@@ -216,31 +215,11 @@
 <h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
 <p>The benchmark framework provides multiple evaluation tools:</p>
 <ol>
-<li><strong>Hybrid Retrieval Benchmark</strong> — compares vector-only, graph-only, and hybrid retrieval modes</li>
 <li><strong>Comprehensive Benchmark Runner</strong> — scenario-based evaluation with 20 ground truth scenarios</li>
 <li><strong>Intent Classification Benchmark</strong> — evaluates intent classifier accuracy</li>
-<li><strong>Symbolic Execution Benchmark</strong> — measures V2 symbolic execution impact on taint analysis</li>
-<li><strong>LLM Disambiguation Benchmark</strong> — tests intent classifier with LLM support</li>
 </ol>
 <h2  id="quick-start"><span id="quick_start"></span>Quick Start<a class="heading-anchor" href="#quick-start" title="Link to this section">&para;</a></h2>
-<h3  id="1-run-hybrid-retrieval-benchmark"><span id="1_run_hybrid_retrieval_benchmark"></span>1. Run Hybrid Retrieval Benchmark<a class="heading-anchor" href="#1-run-hybrid-retrieval-benchmark" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_hybrid_retrieval.py<span class="w"> </span>--output-dir<span class="w"> </span>tests/benchmark/results/hybrid_retrieval
-</code></pre></div>
-
-<p><strong>Output:</strong></p>
-<div class="highlight"><pre><span></span><code>================================================================================
-BENCHMARK SUMMARY
-================================================================================
-Metric               Vector       Graph        Hybrid       vs Vector    vs Graph
---------------------------------------------------------------------------------
-Precision@10         0.2182       0.2000       0.3000       +37.5%       +50.0%
-Recall@10            0.4327       0.3543       0.5528       +27.8%       +56.0%
-F1@10                0.2864       0.2510       0.3825       +33.6%       +52.4%
-MRR                  1.0000       0.6364       1.0000       +0.0%        +57.1%
-NDCG@10              0.5304       0.4443       0.6590       +24.3%       +48.3%
-</code></pre></div>
-
-<h3  id="2-run-comprehensive-benchmark"><span id="2_run_comprehensive_benchmark"></span>2. Run Comprehensive Benchmark<a class="heading-anchor" href="#2-run-comprehensive-benchmark" title="Link to this section">&para;</a></h3>
+<h3  id="1-run-comprehensive-benchmark"><span id="1_run_comprehensive_benchmark"></span>1. Run Comprehensive Benchmark<a class="heading-anchor" href="#1-run-comprehensive-benchmark" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># All scenarios, English questions</span>
 python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benchmark<span class="w"> </span>--language<span class="w"> </span>en
 
@@ -251,72 +230,9 @@ python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benc
 python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benchmark<span class="w"> </span>--scenarios<span class="w"> </span><span class="m">01</span>,02,03
 </code></pre></div>
 
-<h3  id="3-run-with-real-data-python-api"><span id="3_run_with_real_data_python_api"></span>3. Run With Real Data (Python API)<a class="heading-anchor" href="#3-run-with-real-data-python-api" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">scripts.benchmark_hybrid_retrieval</span><span class="w"> </span><span class="kn">import</span> <span class="n">HybridRetrievalBenchmark</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.retrieval.vector_store_real</span><span class="w"> </span><span class="kn">import</span> <span class="n">VectorStoreReal</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.services.cpg_query_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPGQueryService</span>
-
-<span class="c1"># Initialize stores</span>
-<span class="n">vector_store</span> <span class="o">=</span> <span class="n">VectorStoreReal</span><span class="p">(</span><span class="n">persist_directory</span><span class="o">=</span><span class="s2">&quot;chroma_db&quot;</span><span class="p">)</span>
-<span class="n">cpg_service</span> <span class="o">=</span> <span class="n">CPGQueryService</span><span class="p">()</span>
-
-<span class="c1"># Create and run benchmark</span>
-<span class="n">benchmark</span> <span class="o">=</span> <span class="n">HybridRetrievalBenchmark</span><span class="p">(</span>
-    <span class="n">vector_store</span><span class="o">=</span><span class="n">vector_store</span><span class="p">,</span>
-    <span class="n">cpg_service</span><span class="o">=</span><span class="n">cpg_service</span><span class="p">,</span>
-    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;tests/benchmark/results/hybrid_retrieval&quot;</span>
-<span class="p">)</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<span class="n">report</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">benchmark</span><span class="o">.</span><span class="n">run_benchmark</span><span class="p">())</span>
-<span class="n">benchmark</span><span class="o">.</span><span class="n">save_report</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
-</code></pre></div>
-
-<h2  id="hybrid-retrieval-benchmark"><span id="hybrid_retrieval_benchmark"></span>Hybrid Retrieval Benchmark<a class="heading-anchor" href="#hybrid-retrieval-benchmark" title="Link to this section">&para;</a></h2>
-<p>The hybrid retrieval benchmark (<code>scripts/benchmark_hybrid_retrieval.py</code>) compares three retrieval modes:
-- <strong>Vector-only</strong>: Pure semantic search using ChromaDB
-- <strong>Graph-only</strong>: Pure structural search using DuckDB/CPG
-- <strong>Hybrid</strong>: RRF-merged combination of both</p>
-<p><strong>Key classes:</strong>
-- <code>HybridRetrievalBenchmark(vector_store, cpg_service, output_dir="tests/benchmark/results/hybrid_retrieval")</code> — main orchestrator
-- <code>BenchmarkQuery</code> — dataclass for a single query with ground truth
-- <code>RetrievalMetrics</code> — dataclass for per-query metrics
-- <code>BenchmarkReport</code> — aggregate report</p>
-<p><strong>CLI arguments:</strong></p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_hybrid_retrieval.py<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Argument</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--db-path</code></td>
-<td>active project</td>
-<td>Path to DuckDB CPG database</td>
-</tr>
-<tr>
-<td><code>--chroma-path</code></td>
-<td><code>chroma_db</code></td>
-<td>Path to ChromaDB vector store</td>
-</tr>
-<tr>
-<td><code>--output-dir</code></td>
-<td><code>tests/benchmark/results/hybrid_retrieval</code></td>
-<td>Output directory for results</td>
-</tr>
-<tr>
-<td><code>--modes</code></td>
-<td><code>vector_only graph_only hybrid</code></td>
-<td>Retrieval modes to benchmark</td>
-</tr>
-</tbody>
-</table></div>
+<p>Standalone hybrid/vector benchmark scripts are retired. Active semantic memory
+retrieval is provided by OpenViking and scenario benchmarks run through
+<code>tests/benchmark/</code>.</p>
 <h2  id="comprehensive-benchmark-runner"><span id="comprehensive_benchmark_runner"></span>Comprehensive Benchmark Runner<a class="heading-anchor" href="#comprehensive-benchmark-runner" title="Link to this section">&para;</a></h2>
 <p>The main benchmark tool (<code>tests/benchmark/run_benchmark.py</code>) runs scenario-based evaluations against the full CodeGraph pipeline.</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benchmark<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
@@ -777,16 +693,9 @@ python<span class="w"> </span>-m<span class="w"> </span>tests.benchmark.run_benc
 </code></pre></div>
 
 <p>Evaluates intent classifier accuracy across 17 scenarios. Supports <code>--compare-languages</code> for EN vs RU comparison.</p>
-<h3  id="symbolic-execution-benchmark"><span id="symbolic_execution_benchmark"></span>Symbolic Execution Benchmark<a class="heading-anchor" href="#symbolic-execution-benchmark" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_symbolic_execution.py<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
-</code></pre></div>
-
-<p>Measures V2 symbolic execution impact: FP filtering rate, time/memory overhead, parser coverage.</p>
-<h3  id="llm-disambiguation-benchmark"><span id="llm_disambiguation_benchmark"></span>LLM Disambiguation Benchmark<a class="heading-anchor" href="#llm-disambiguation-benchmark" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/benchmark_with_llm.py<span class="w"> </span>--llm<span class="w"> </span>--verbose
-</code></pre></div>
-
-<p>Tests intent classifier with LLM disambiguation enabled vs rule-based only.</p>
+<p>Standalone <code>scripts/benchmark_*</code> entrypoints are retired with the local
+vector-store compatibility layer. Use the canonical <code>tests/benchmark/</code>
+harness for active benchmark runs.</p>
 <h2  id="metrics-reference"><span id="metrics_reference"></span>Metrics Reference<a class="heading-anchor" href="#metrics-reference" title="Link to this section">&para;</a></h2>
 <h3 id="precisionk">Precision@K<a class="heading-anchor" href="#precisionk" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>P@K = (# relevant in top-K) / K
@@ -827,37 +736,18 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 - <strong>1.0</strong> = Perfect ranking
 - <strong>0.0</strong> = Worst ranking</p>
 <h2  id="custom-benchmark-queries"><span id="custom_benchmark_queries"></span>Custom Benchmark Queries<a class="heading-anchor" href="#custom-benchmark-queries" title="Link to this section">&para;</a></h2>
-<p>Create custom queries with ground truth for the hybrid retrieval benchmark:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">scripts.benchmark_hybrid_retrieval</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkQuery</span>
-
-<span class="n">custom_queries</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">BenchmarkQuery</span><span class="p">(</span>
-        <span class="nb">id</span><span class="o">=</span><span class="s2">&quot;custom_001&quot;</span><span class="p">,</span>
-        <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Your question here&quot;</span><span class="p">,</span>
-        <span class="n">query_type</span><span class="o">=</span><span class="s2">&quot;semantic&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;structural&quot;, &quot;security&quot;</span>
-        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Description of what this tests&quot;</span><span class="p">,</span>
-        <span class="n">relevant_node_ids</span><span class="o">=</span><span class="p">{</span><span class="mi">1001</span><span class="p">,</span> <span class="mi">1002</span><span class="p">,</span> <span class="mi">1003</span><span class="p">,</span> <span class="mi">1004</span><span class="p">},</span>  <span class="c1"># CPG node IDs</span>
-        <span class="n">highly_relevant_node_ids</span><span class="o">=</span><span class="p">{</span><span class="mi">1001</span><span class="p">,</span> <span class="mi">1002</span><span class="p">},</span>        <span class="c1"># Most important nodes</span>
-        <span class="n">expected_difficulty</span><span class="o">=</span><span class="s2">&quot;medium&quot;</span>  <span class="c1"># &quot;easy&quot;, &quot;medium&quot;, &quot;hard&quot;</span>
-    <span class="p">),</span>
+<p>Create custom questions in the canonical benchmark fixtures under
+<code>tests/benchmark/ground_truth/</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">custom_queries</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;custom_001&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;question&quot;</span><span class="p">:</span> <span class="s2">&quot;Your question here&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;expected_scenario&quot;</span><span class="p">:</span> <span class="s2">&quot;scenario_01_onboarding&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
 <span class="p">]</span>
-
-<span class="c1"># Run with custom queries</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-<span class="n">report</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">benchmark</span><span class="o">.</span><span class="n">run_benchmark</span><span class="p">(</span><span class="n">queries</span><span class="o">=</span><span class="n">custom_queries</span><span class="p">))</span>
 </code></pre></div>
 
 <h2  id="output-files"><span id="output_files"></span>Output Files<a class="heading-anchor" href="#output-files" title="Link to this section">&para;</a></h2>
-<h3  id="hybrid-retrieval-benchmark_1"><span id="hybrid_retrieval_benchmark_1"></span>Hybrid Retrieval Benchmark<a class="heading-anchor" href="#hybrid-retrieval-benchmark_1" title="Link to this section">&para;</a></h3>
-<p>Two files in <code>tests/benchmark/results/hybrid_retrieval/</code>:</p>
-<ol>
-<li>
-<p><strong>JSON Report</strong> (<code>hybrid_benchmark_&lt;timestamp&gt;.json</code>) — complete machine-readable results: per-query metrics, aggregate metrics by mode, retrieved node IDs, score breakdowns.</p>
-</li>
-<li>
-<p><strong>Markdown Report</strong> (<code>hybrid_benchmark_&lt;timestamp&gt;.md</code>) — human-readable summary: comparison table, key findings, improvement percentages.</p>
-</li>
-</ol>
 <h3  id="comprehensive-benchmark-runner_1"><span id="comprehensive_benchmark_runner_1"></span>Comprehensive Benchmark Runner<a class="heading-anchor" href="#comprehensive-benchmark-runner_1" title="Link to this section">&para;</a></h3>
 <p>Results in <code>tests/benchmark/results/{RUN_ID}/</code>:</p>
 <div class="highlight"><pre><span></span><code>tests/benchmark/results/20260307_120000/
@@ -945,14 +835,14 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 <p><strong>Solution:</strong> Run from project root directory.</p>
 <h3  id="error-modulenotfounderror-vectorstore"><span id="error-ldquomodulenotfounderror-vectorstorerdquo"></span><span id="error_ldquomodulenotfounderror_vectorstorerdquo"></span><span id="error_modulenotfounderror_vectorstore"></span>Error: &ldquo;ModuleNotFoundError: VectorStore&rdquo;<a class="heading-anchor" href="#error-modulenotfounderror-vectorstore" title="Link to this section">&para;</a></h3>
 <p><strong>Solution:</strong> Ensure all dependencies installed:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>chromadb<span class="w"> </span>sentence-transformers<span class="w"> </span>duckdb
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>openviking<span class="w"> </span>sentence-transformers<span class="w"> </span>duckdb
 </code></pre></div>
 
 <h3  id="duckdb-lock-error"><span id="duckdb_lock_error"></span>DuckDB Lock Error<a class="heading-anchor" href="#duckdb-lock-error" title="Link to this section">&para;</a></h3>
 <p><strong>Solution:</strong> Ensure <code>gocpg.exe</code> is not running (check with <code>ps aux | grep gocpg</code>).</p>
 <h3  id="low-benchmark-scores"><span id="low_benchmark_scores"></span>Low Benchmark Scores<a class="heading-anchor" href="#low-benchmark-scores" title="Link to this section">&para;</a></h3>
 <p><strong>Solution:</strong> Check that:
-1. ChromaDB has indexed documents (<code>chroma_db/</code> directory exists)
+1. OpenViking has indexed documents (<code>openviking_data/</code> directory exists)
 2. DuckDB has CPG data (<code>*.duckdb</code> file is valid)
 3. Domain is correctly set (<code>config.yaml</code> → <code>domain.name</code>)</p>
 <h2  id="next-steps"><span id="next_steps"></span>Next Steps<a class="heading-anchor" href="#next-steps" title="Link to this section">&para;</a></h2>
@@ -987,7 +877,7 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/BENCHMARK_GUIDE.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -999,10 +889,7 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
         <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
 <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#quick-start" class="level-2">Quick Start</a></li>
-<li><a href="#1-run-hybrid-retrieval-benchmark" class="level-3">1. Run Hybrid Retrieval Benchmark</a></li>
-<li><a href="#2-run-comprehensive-benchmark" class="level-3">2. Run Comprehensive Benchmark</a></li>
-<li><a href="#3-run-with-real-data-python-api" class="level-3">3. Run With Real Data (Python API)</a></li>
-<li><a href="#hybrid-retrieval-benchmark" class="level-2">Hybrid Retrieval Benchmark</a></li>
+<li><a href="#1-run-comprehensive-benchmark" class="level-3">1. Run Comprehensive Benchmark</a></li>
 <li><a href="#comprehensive-benchmark-runner" class="level-2">Comprehensive Benchmark Runner</a></li>
 <li><a href="#llm-provider-selection" class="level-2">LLM Provider Selection</a></li>
 <li><a href="#supported-providers" class="level-3">Supported Providers</a></li>
@@ -1024,8 +911,6 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 <li><a href="#benchmark-config-testsbenchmarkconfigbenchmark-configyaml" class="level-3">Benchmark Config (`tests/benchmark/config/benchmark_config.yaml`)</a></li>
 <li><a href="#additional-benchmarks" class="level-2">Additional Benchmarks</a></li>
 <li><a href="#intent-classification-benchmark" class="level-3">Intent Classification Benchmark</a></li>
-<li><a href="#symbolic-execution-benchmark" class="level-3">Symbolic Execution Benchmark</a></li>
-<li><a href="#llm-disambiguation-benchmark" class="level-3">LLM Disambiguation Benchmark</a></li>
 <li><a href="#metrics-reference" class="level-2">Metrics Reference</a></li>
 <li><a href="#precisionk" class="level-3">Precision@K</a></li>
 <li><a href="#recallk" class="level-3">Recall@K</a></li>
@@ -1034,7 +919,6 @@ DCG@K = Σ (2^rel_i - 1) / log2(i + 1)
 <li><a href="#normalized-discounted-cumulative-gain-ndcgk" class="level-3">Normalized Discounted Cumulative Gain (NDCG@K)</a></li>
 <li><a href="#custom-benchmark-queries" class="level-2">Custom Benchmark Queries</a></li>
 <li><a href="#output-files" class="level-2">Output Files</a></li>
-<li><a href="#hybrid-retrieval-benchmark" class="level-3">Hybrid Retrieval Benchmark</a></li>
 <li><a href="#comprehensive-benchmark-runner" class="level-3">Comprehensive Benchmark Runner</a></li>
 <li><a href="#understanding-results" class="level-2">Understanding Results</a></li>
 <li><a href="#interpreting-improvements" class="level-3">Interpreting Improvements</a></li>

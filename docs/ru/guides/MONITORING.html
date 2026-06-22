@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -688,9 +687,9 @@
 <td>Конфигурация поставщика LLM</td>
 </tr>
 <tr>
-<td><code>chromadb</code></td>
-<td><code>check_chromadb_health()</code></td>
-<td>Векторное хранилище ChromaDB</td>
+<td><code>openviking</code></td>
+<td><code>check_openviking_health()</code></td>
+<td>Векторное хранилище OpenViking</td>
 </tr>
 <tr>
 <td><code>cpg</code></td>
@@ -830,10 +829,6 @@
 <td><code>GET /api/v1/health/version</code></td>
 <td>Версия API</td>
 </tr>
-<tr>
-<td><code>GET /api/v1/metrics</code></td>
-<td>Метрики Prometheus (отдельный роутер)</td>
-</tr>
 </tbody>
 </table></div>
 <p><strong>GET /api/v1/health</strong> — ответ:</p>
@@ -845,7 +840,7 @@
 <span class="w">  </span><span class="nt">&quot;components&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;database&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;llm&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;provider&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;yandex&quot;</span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;chromadb&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;collections&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;openviking&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;collections&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">},</span>
 <span class="w">    </span><span class="nt">&quot;cpg&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;db_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/data/project.duckdb&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;methods&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1500</span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
@@ -857,14 +852,14 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.monitoring.health</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">check_database_connection</span><span class="p">,</span>
     <span class="n">check_llm_availability</span><span class="p">,</span>
-    <span class="n">check_vector_store</span><span class="p">,</span>
+    <span class="n">check_openviking_context_backend</span><span class="p">,</span>
     <span class="n">run_health_check_cli</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># Быстрые логические проверки</span>
 <span class="n">db_ok</span> <span class="o">=</span> <span class="n">check_database_connection</span><span class="p">()</span>    <span class="c1"># True, если DuckDB отвечает на SELECT 1</span>
 <span class="n">llm_ok</span> <span class="o">=</span> <span class="n">check_llm_availability</span><span class="p">()</span>      <span class="c1"># True, если LLM is_available()</span>
-<span class="n">vs_ok</span> <span class="o">=</span> <span class="n">check_vector_store</span><span class="p">()</span>           <span class="c1"># True, если ChromaDB heartbeat успешен</span>
+<span class="n">ov_ok</span> <span class="o">=</span> <span class="n">check_openviking_context_backend</span><span class="p">()</span>  <span class="c1"># True, если OpenViking heartbeat успешен</span>
 
 <span class="c1"># Проверка работоспособности из CLI (выводит отчёт, завершается с кодом 0/1/2)</span>
 <span class="n">run_health_check_cli</span><span class="p">()</span>
@@ -1017,8 +1012,38 @@
 <span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Обнаружены</span><span class="nv"> </span><span class="s">ошибки</span><span class="nv"> </span><span class="s">LLM&quot;</span>
 
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_sentry</span>
+<span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphSentryCriticalIssues</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum(codegraph_sentry_critical_unresolved_issues{level=~&quot;error|fatal&quot;}) &gt; 0</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Есть</span><span class="nv"> </span><span class="s">незакрытые</span><span class="nv"> </span><span class="s">критические</span><span class="nv"> </span><span class="s">события</span><span class="nv"> </span><span class="s">Sentry&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphSentryExporterDown</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">up{job=&quot;sentry-alert-exporter&quot;} == 0 or codegraph_sentry_exporter_up == 0</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Sentry</span><span class="nv"> </span><span class="s">alert</span><span class="nv"> </span><span class="s">exporter</span><span class="nv"> </span><span class="s">недоступен</span><span class="nv"> </span><span class="s">или</span><span class="nv"> </span><span class="s">не</span><span class="nv"> </span><span class="s">может</span><span class="nv"> </span><span class="s">опросить</span><span class="nv"> </span><span class="s">Sentry&quot;</span>
+
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph_infrastructure</span>
 <span class="w">    </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CodeGraphHostDiskFreeSpaceLow</span>
+<span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">(</span>
+<span class="w">            </span><span class="no">node_filesystem_avail_bytes{job=&quot;node-exporter&quot;, mountpoint=&quot;/&quot;, fstype!=&quot;rootfs&quot;}</span>
+<span class="w">            </span><span class="no">/ node_filesystem_size_bytes{job=&quot;node-exporter&quot;, mountpoint=&quot;/&quot;, fstype!=&quot;rootfs&quot;}</span>
+<span class="w">          </span><span class="no">) &lt; 0.12</span>
+<span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">        </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">        </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;На</span><span class="nv"> </span><span class="s">корневом</span><span class="nv"> </span><span class="s">разделе</span><span class="nv"> </span><span class="s">хоста</span><span class="nv"> </span><span class="s">осталось</span><span class="nv"> </span><span class="s">менее</span><span class="nv"> </span><span class="s">12%</span><span class="nv"> </span><span class="s">свободного</span><span class="nv"> </span><span class="s">места&quot;</span>
+
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PrometheusTargetDown</span>
 <span class="w">        </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">up == 0</span>
 <span class="w">        </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3m</span>
@@ -1032,7 +1057,7 @@
 <p>Конфигурация Alertmanager в <code>monitoring/alertmanager.yml</code>:</p>
 <ul>
 <li><strong>Маршрутизация:</strong> группировка оповещений по <code>alertname</code> и <code>severity</code>. Критические оповещения повторяются каждый 1 час, остальные — каждые 4 часа.</li>
-<li><strong>Получатель:</strong> webhook по умолчанию через <code>${ALERTMANAGER_WEBHOOK_URL}</code> с <code>send_resolved: true</code>. Поддержка Slack и email (закомментированы по умолчанию).</li>
+<li><strong>Получатель:</strong> webhook по умолчанию на <code>http://host.docker.internal:8001/api/v1/leads/internal/alertmanager</code> с <code>send_resolved: true</code>; сервис leads пересылает monitoring alerts в Telegram.</li>
 <li><strong>Правила подавления:</strong> критические оповещения подавляют предупреждения с тем же <code>alertname</code>.</li>
 </ul>
 <h3  id="yandex-cloud-dashboard"><span id="yandex_cloud_dashboard"></span>Yandex Cloud Dashboard<a class="heading-anchor" href="#yandex-cloud-dashboard" title="Link to this section">&para;</a></h3>
@@ -1077,7 +1102,7 @@
 <span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph</span>
 <span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
-<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/metrics</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v2/dashboard/metrics</span>
 <span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
 </code></pre></div>
 
@@ -1104,7 +1129,7 @@
 </ol>
 <h3  id="ciso-grafana-datasource"><span id="ciso_grafana_datasource"></span><span id="istochnik-dannyh"></span><span id="istochnik_dannyh"></span>Источник данных<a class="heading-anchor" href="#ciso-grafana-datasource" title="Link to this section">&para;</a></h3>
 <p>Дашборд требует источник данных <strong>Prometheus</strong>, направленный на стандартную конечную точку метрик CodeGraph:</p>
-<div class="highlight"><pre><span></span><code>/api/v1/metrics
+<div class="highlight"><pre><span></span><code>/api/v2/dashboard/metrics
 </code></pre></div>
 
 <p>Автообновление по умолчанию установлено на <strong>5 минут</strong>. При необходимости измените в <strong>Dashboard Settings &gt; Time Options</strong>.</p>
@@ -1251,21 +1276,21 @@
 <td><code>codegraph_project_compliance_score &lt; 40</code></td>
 <td>1h</td>
 <td>warning</td>
-<td>Запустить полную оценку соответствия ГОСТ Р 56939 (<code>codegraph_compliance_gost</code>). Сосредоточиться на несоответствующих процессах, показанных в тепловой карте соответствия.</td>
+<td>Запустить полную оценку соответствия ГОСТ Р 56939 (CLI <code>codegraph compliance gost-56939</code>). Сосредоточиться на несоответствующих процессах, показанных в тепловой карте соответствия.</td>
 </tr>
 <tr>
 <td><code>DashboardReleaseGateFail</code></td>
 <td><code>codegraph_project_release_status == 0</code></td>
 <td>15m</td>
 <td>warning</td>
-<td>Проверить причины блокировки контроля релизов через <code>codegraph_release_gate_check</code>. Устранить блокирующие проверки до следующего окна релиза.</td>
+<td>Проверить причины блокировки контроля релизов через <code>codegraph_runtime_release_gate_check_run</code>. Устранить блокирующие проверки до следующего окна релиза.</td>
 </tr>
 <tr>
 <td><code>DashboardScaCriticalVuln</code></td>
 <td><code>codegraph_project_sca_vulnerabilities{severity="critical"} &gt; 0</code></td>
 <td>5m</td>
 <td>critical</td>
-<td>Немедленно исправить критические CVE. Запустить <code>codegraph_sbom_audit</code> для выявления затронутых зависимостей. Рассмотреть экстренный релиз, если затронуто рабочее окружение.</td>
+<td>Немедленно исправить критические CVE. Запустить <code>codegraph_security_sbom_audit_run</code> для выявления затронутых зависимостей. Рассмотреть экстренный релиз, если затронуто рабочее окружение.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1585,7 +1610,7 @@
 
 <h3  id="dashboard-metrics-endpoint"><span id="dashboard_metrics_endpoint"></span><span id="konechnaya-tochka-metrik"></span><span id="konechnaya_tochka_metrik"></span>Конечная точка метрик<a class="heading-anchor" href="#dashboard-metrics-endpoint" title="Link to this section">&para;</a></h3>
 <p>Dashboard gauges доступны через стандартную Prometheus endpoint:</p>
-<div class="highlight"><pre><span></span><code>GET /api/v1/metrics
+<div class="highlight"><pre><span></span><code>GET /api/v2/dashboard/metrics
 </code></pre></div>
 
 <p>Ответ использует текстовый формат Prometheus:</p>
@@ -1608,7 +1633,7 @@ codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;re
 <div class="highlight"><pre><span></span><code><span class="nt">scrape_configs</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph-dashboard</span>
 <span class="w">    </span><span class="nt">scrape_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
-<span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v1/metrics</span>
+<span class="w">    </span><span class="nt">metrics_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/api/v2/dashboard/metrics</span>
 <span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;localhost:8000&quot;</span><span class="p p-Indicator">]</span>
 </code></pre></div>
@@ -1639,7 +1664,7 @@ codegraph_red_zone_items_count{project=&quot;legacy-auth&quot;,category=&quot;re
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/MONITORING.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

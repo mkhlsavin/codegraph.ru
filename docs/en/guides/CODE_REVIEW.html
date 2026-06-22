@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html" class="active">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -281,12 +280,13 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <h3  id="programmatic-usage"><span id="programmatic_usage"></span>Programmatic Usage<a class="heading-anchor" href="#programmatic-usage" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">duckdb</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReviewWorkflow</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReviewWorkflow</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review.cpg_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">PatchReviewCPGReader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.patch_review.store</span><span class="w"> </span><span class="kn">import</span> <span class="n">connect_patch_review_store</span>
 
-<span class="c1"># Connect to CPG database</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectManager</span>
-<span class="n">conn</span> <span class="o">=</span> <span class="n">duckdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ProjectManager</span><span class="o">.</span><span class="n">get_active_db_path</span><span class="p">())</span>
+<span class="c1"># Use the GoCPG-first reader boundary for CPG reads.</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">connect_patch_review_store</span><span class="p">()</span>
+<span class="n">cpg_reader</span> <span class="o">=</span> <span class="n">PatchReviewCPGReader</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;data/projects/&lt;project&gt;.duckdb&quot;</span><span class="p">)</span>
 
 <span class="c1"># Configure DoD settings</span>
 <span class="n">dod_config</span> <span class="o">=</span> <span class="p">{</span>
@@ -299,7 +299,11 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <span class="p">}</span>
 
 <span class="c1"># Create workflow</span>
-<span class="n">workflow</span> <span class="o">=</span> <span class="n">ReviewWorkflow</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">dod_config</span><span class="o">=</span><span class="n">dod_config</span><span class="p">)</span>
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">ReviewWorkflow</span><span class="p">(</span>
+    <span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_client</span><span class="o">=</span><span class="n">cpg_reader</span><span class="p">,</span>
+    <span class="n">dod_config</span><span class="o">=</span><span class="n">dod_config</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="c1"># Run review</span>
 <span class="n">verdict</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
@@ -335,7 +339,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 ├─────────────────────────────────────────────────────────┤
 │ Layer 3: Workflow Scenario 9 (src/workflow/scenarios/)   │
 │   PRAnalyzer → ContextAggregator → ReviewReporter       │
-│   Entry: MultiScenarioCopilot (scenario_id=code_review) │
+│   Entry: role-bound scenario invocation (scenario_09)     │
 │   Focus: LLM-based review, handler optimization         │
 └─────────────────────────────────────────────────────────┘
 </code></pre></div>
@@ -345,9 +349,9 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <h3  id="patch-review-workflow-layer-2"><span id="patch_review_workflow_layer_2"></span>Patch Review Workflow (Layer 2)<a class="heading-anchor" href="#patch-review-workflow-layer-2" title="Link to this section">&para;</a></h3>
 <p>The LangGraph-based workflow in <code>src/patch_review/</code>. Parses patches from multiple sources, generates delta CPG, runs 4 impact analyzers, produces 4 verdicts, and validates DoD. Used by REST API and programmatic access.</p>
 <h3  id="workflow-scenario-9-layer-3"><span id="workflow_scenario_9_layer_3"></span>Workflow Scenario 9 (Layer 3)<a class="heading-anchor" href="#workflow-scenario-9-layer-3" title="Link to this section">&para;</a></h3>
-<p>LLM-augmented review via <code>src/workflow/scenarios/code_review.py</code>. Three-agent architecture with handler-based optimization. Invoked through the MultiScenarioCopilot workflow engine.</p>
+<p>LLM-augmented review via <code>src/workflow/scenarios/code_review.py</code>. Three-agent architecture with handler-based optimization. Invoked through the role-bound digital employee scenario contract.</p>
 <h2  id="cli-command"><span id="cli_command"></span>CLI Command<a class="heading-anchor" href="#cli-command" title="Link to this section">&para;</a></h2>
-<p>Entry point: <code>src/cli/review_command.py</code> → <code>add_review_commands()</code></p>
+<p>Entry point: <code>src/cli/analysis_commands/review_command.py</code> -&gt; <code>add_review_commands()</code></p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>review<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </code></pre></div>
 
@@ -446,7 +450,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <p>The 8-step pipeline:</p>
 <ol>
-<li><strong>Resolve DB path</strong> — uses provided <code>db_path</code> or <code>ProjectManager.get_active_db_path()</code></li>
+<li><strong>Resolve DB path</strong> — uses the explicit <code>db_path</code> supplied by the caller</li>
 <li><strong>Check CPG status</strong> — compares <code>cpg_git_state.commit_hash</code> to <code>git rev-list HEAD</code></li>
 <li><strong>Load parse scope</strong> — reads <code>cpg_parse_scope</code> table for scope boundaries</li>
 <li><strong>Determine changed files</strong> — via <code>git diff --name-only</code>, filters to code extensions</li>
@@ -857,113 +861,20 @@ Options:
 <li><strong>Functional/Documentation</strong>: Cannot be auto-validated (pending for manual review)</li>
 </ul>
 <h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<p><code>src/api/routers/review.py</code> provides 7 endpoints under the <code>/review</code> prefix.</p>
+<p>The legacy <code>src/api/routers/review.py</code> router and direct <code>/review/*</code> endpoints are retired.
+Use repository review snapshot routes, dashboard GitVerse review actions, MCP tools, or CLI
+automation for provider-backed MR/PR review.</p>
 <h3  id="review-endpoints"><span id="review_endpoints"></span>Review Endpoints<a class="heading-anchor" href="#review-endpoints" title="Link to this section">&para;</a></h3>
-<h4  id="post-reviewpatch"><span id="post_reviewpatch"></span>POST /review/patch<a class="heading-anchor" href="#post-reviewpatch" title="Link to this section">&para;</a></h4>
-<p>Review a git diff/patch.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Request: PatchReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;patch_content&quot;</span><span class="p">:</span> <span class="s2">&quot;diff --git a/...&quot;</span><span class="p">,</span>       <span class="c1"># required</span>
-    <span class="s2">&quot;task_description&quot;</span><span class="p">:</span> <span class="s2">&quot;Add auth feature&quot;</span><span class="p">,</span>     <span class="c1"># optional</span>
-    <span class="s2">&quot;dod_items&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Tests pass&quot;</span><span class="p">,</span> <span class="s2">&quot;No vulns&quot;</span><span class="p">],</span>    <span class="c1"># optional</span>
-    <span class="s2">&quot;output_format&quot;</span><span class="p">:</span> <span class="s2">&quot;json&quot;</span>                     <span class="c1"># json|markdown|yaml</span>
-<span class="p">}</span>
-<span class="c1"># Header: Authorization (JWT)</span>
-</code></pre></div>
-
-<h4  id="post-reviewpr"><span id="post_reviewpr"></span>POST /review/pr<a class="heading-anchor" href="#post-reviewpr" title="Link to this section">&para;</a></h4>
-<p>Review a GitHub Pull Request.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Request: GitHubPRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;owner&quot;</span><span class="p">:</span> <span class="s2">&quot;myorg&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;repo&quot;</span><span class="p">:</span> <span class="s2">&quot;myrepo&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;pr_number&quot;</span><span class="p">:</span> <span class="mi">123</span><span class="p">,</span>
-    <span class="s2">&quot;task_description&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span>    <span class="c1"># optional</span>
-    <span class="s2">&quot;dod_items&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>            <span class="c1"># optional</span>
-<span class="p">}</span>
-<span class="c1"># Header: X-GitHub-Token (required)</span>
-</code></pre></div>
-
-<h4  id="post-reviewmr"><span id="post_reviewmr"></span>POST /review/mr<a class="heading-anchor" href="#post-reviewmr" title="Link to this section">&para;</a></h4>
-<p>Review a GitLab Merge Request.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Request: GitLabMRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;project_id&quot;</span><span class="p">:</span> <span class="s2">&quot;group/project&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;mr_iid&quot;</span><span class="p">:</span> <span class="mi">456</span><span class="p">,</span>
-    <span class="s2">&quot;gitlab_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://gitlab.com&quot;</span><span class="p">,</span>   <span class="c1"># default</span>
-    <span class="s2">&quot;task_description&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;dod_items&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
-<span class="p">}</span>
-<span class="c1"># Header: X-GitLab-Token (required)</span>
-</code></pre></div>
-
-<h4  id="post-reviewsourcecraft"><span id="post_reviewsourcecraft"></span>POST /review/sourcecraft<a class="heading-anchor" href="#post-reviewsourcecraft" title="Link to this section">&para;</a></h4>
-<p>Review a SourceCraft Merge Request (Yandex Cloud).</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Request: SourceCraftMRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;project_id&quot;</span><span class="p">:</span> <span class="s2">&quot;project-id&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;mr_iid&quot;</span><span class="p">:</span> <span class="mi">789</span><span class="p">,</span>
-    <span class="s2">&quot;sourcecraft_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://api.sourcecraft.yandex.cloud&quot;</span><span class="p">,</span>   <span class="c1"># default</span>
-    <span class="s2">&quot;task_description&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;dod_items&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
-<span class="p">}</span>
-<span class="c1"># Header: X-SourceCraft-Token (required)</span>
-</code></pre></div>
-
-<h4  id="post-reviewgitverse"><span id="post_reviewgitverse"></span>POST /review/gitverse<a class="heading-anchor" href="#post-reviewgitverse" title="Link to this section">&para;</a></h4>
-<p>Review a GitVerse Pull Request (Sber).</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Request: GitVersePRReviewRequest</span>
-<span class="p">{</span>
-    <span class="s2">&quot;project_id&quot;</span><span class="p">:</span> <span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;pr_number&quot;</span><span class="p">:</span> <span class="mi">101</span><span class="p">,</span>
-    <span class="s2">&quot;gitverse_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://gitverse.ru/api/v1&quot;</span><span class="p">,</span>   <span class="c1"># default</span>
-    <span class="s2">&quot;task_description&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;dod_items&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
-<span class="p">}</span>
-<span class="c1"># Header: X-GitVerse-Token (required)</span>
-</code></pre></div>
-
+<p>Direct <code>POST /review/patch</code>, <code>POST /review/pr</code>, and <code>POST /review/mr</code> endpoints are not
+active API surfaces.</p>
 <h3  id="utility-endpoints"><span id="utility_endpoints"></span>Utility Endpoints<a class="heading-anchor" href="#utility-endpoints" title="Link to this section">&para;</a></h3>
-<h4  id="post-reviewsummary"><span id="post_reviewsummary"></span>POST /review/summary<a class="heading-anchor" href="#post-reviewsummary" title="Link to this section">&para;</a></h4>
-<p>Generate a structured MR summary from diff content.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Request: SummaryRequest</span>
-<span class="p">{</span><span class="s2">&quot;diff_content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">}</span>
-
-<span class="c1"># Response: SummaryResponse</span>
-<span class="p">{</span>
-    <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;This MR adds authentication...&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;changed_files&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;src/auth.py&quot;</span><span class="p">],</span>
-    <span class="s2">&quot;additions&quot;</span><span class="p">:</span> <span class="mi">45</span><span class="p">,</span>
-    <span class="s2">&quot;deletions&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-    <span class="s2">&quot;changed_methods&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;authenticate&quot;</span><span class="p">,</span> <span class="s2">&quot;reset_password&quot;</span><span class="p">],</span>
-    <span class="s2">&quot;risk_areas&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;SQL injection in auth.py&quot;</span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h4  id="post-reviewcommit-message"><span id="post_reviewcommit_message"></span>POST /review/commit-message<a class="heading-anchor" href="#post-reviewcommit-message" title="Link to this section">&para;</a></h4>
-<p>Generate a conventional commit message from diff.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Request: CommitMessageRequest</span>
-<span class="p">{</span><span class="s2">&quot;diff_content&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">}</span>
-
-<span class="c1"># Response: CommitMessageResponse</span>
-<span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;feat(auth): add password reset flow&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;feat&quot;</span><span class="p">,</span> <span class="s2">&quot;scope&quot;</span><span class="p">:</span> <span class="s2">&quot;auth&quot;</span><span class="p">,</span> <span class="s2">&quot;files_changed&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
-</code></pre></div>
-
+<p>Direct <code>POST /review/summary</code> and <code>POST /review/commit-message</code> endpoints are not active API
+surfaces.</p>
 <h3  id="response-model"><span id="response_model"></span>Response Model<a class="heading-anchor" href="#response-model" title="Link to this section">&para;</a></h3>
-<p>All review endpoints return <code>ReviewResponse</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ReviewResponse</span><span class="p">:</span>
-    <span class="n">recommendation</span><span class="p">:</span> <span class="nb">str</span>      <span class="c1"># APPROVE | REQUEST_CHANGES | COMMENT | BLOCK</span>
-    <span class="n">score</span><span class="p">:</span> <span class="nb">float</span>             <span class="c1"># 0-100</span>
-    <span class="n">findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Finding</span><span class="p">]</span>
-    <span class="n">dod_validation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">DODItem</span><span class="p">]]</span>
-    <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">processing_time_ms</span><span class="p">:</span> <span class="nb">float</span>
-    <span class="n">request_id</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-</code></pre></div>
-
+<p>Historical direct <code>/review/*</code> responses used <code>ReviewResponse</code>. Current API callers should use
+the response models on the active repository snapshot and dashboard GitVerse routes.</p>
 <h2  id="workflow-scenario-9"><span id="workflow_scenario_9"></span>Workflow Scenario 9<a class="heading-anchor" href="#workflow-scenario-9" title="Link to this section">&para;</a></h2>
-<p><code>src/workflow/scenarios/code_review.py</code> — LLM-augmented code review invoked through the MultiScenarioCopilot workflow engine.</p>
+<p><code>src/workflow/scenarios/code_review.py</code> — LLM-augmented code review invoked through the role-bound digital employee scenario contract.</p>
 <h3  id="three-agent-architecture"><span id="three_agent_architecture"></span>Three-Agent Architecture<a class="heading-anchor" href="#three-agent-architecture" title="Link to this section">&para;</a></h3>
 <p><strong>Agent 1: PRAnalyzer</strong> — parses PR/diff data</p>
 <ul>
@@ -1411,7 +1322,7 @@ python<span class="w"> </span>examples/demo_patch_review.py<span class="w"> </sp
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/CODE_REVIEW.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>

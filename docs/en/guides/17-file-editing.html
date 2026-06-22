@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -211,8 +210,7 @@
 <li><a href="#rename-operation">Rename Operation</a></li>
 <li><a href="#configuration">Configuration</a></li>
 <li><a href="#cli-usage">CLI Usage</a></li>
-<li><a href="#rest-api">REST API</a></li>
-<li><a href="#mcp-tool">MCP Tool</a></li>
+<li><a href="#runtime-interfaces">Runtime Interfaces</a></li>
 <li><a href="#example-questions">Example Questions</a></li>
 <li><a href="#related-scenarios">Related Scenarios</a></li>
 </ul>
@@ -364,7 +362,7 @@ SSRAdapter ──&gt; CodeModifier
 </table></div>
 <p>Regex fallback patterns are available for Python, C, C++, JavaScript, and Go — covering function, class, method, struct, interface, and arrow function definitions.</p>
 <h3  id="target-search"><span id="target_search"></span>Target Search<a class="heading-anchor" href="#target-search" title="Link to this section">&para;</a></h3>
-<p><code>TargetFinder</code> provides 7 search methods combining CPG database queries with AST parsing:</p>
+<p><code>TargetFinder</code> provides 6 search methods combining parameterized CPG database queries with AST parsing:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -388,11 +386,6 @@ SSRAdapter ──&gt; CodeModifier
 <td><code>find_by_location()</code></td>
 <td>AST</td>
 <td>Find the smallest target containing a specific line number</td>
-</tr>
-<tr>
-<td><code>find_by_cpg_query()</code></td>
-<td>CPG</td>
-<td>Execute custom SQL against the CPG database</td>
 </tr>
 <tr>
 <td><code>find_callers()</code></td>
@@ -849,61 +842,8 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>edit<span class="w"> </span><span class="nb">history</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span><span class="w"> </span>--file<span class="w"> </span>src/utils/
 </code></pre></div>
 
-<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<p>5 endpoints in <code>src/api/routers/editing.py</code>:</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/find-target</code></td>
-<td>Find code targets by name/pattern</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/preview</code></td>
-<td>Generate diff preview (dry-run)</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/apply</code></td>
-<td>Apply edit with optional backup</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/edit/undo</code></td>
-<td>Undo the most recent edit</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/edit/history</code></td>
-<td>Get edit history (limit, default 10)</td>
-</tr>
-</tbody>
-</table></div>
-<p>Example:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Find targets</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/edit/find-target<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;file_path&quot;: &quot;src/utils/validation.c&quot;, &quot;name_pattern&quot;: &quot;validate_input&quot;, &quot;target_type&quot;: &quot;function&quot;}&#39;</span>
-
-<span class="c1"># Preview edit</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/edit/preview<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;file_path&quot;: &quot;src/file.c&quot;, &quot;target_name&quot;: &quot;func&quot;, &quot;new_code&quot;: &quot;...&quot;, &quot;diff_format&quot;: &quot;unified&quot;}&#39;</span>
-</code></pre></div>
-
-<h2  id="mcp-tool"><span id="mcp_tool"></span>MCP Tool<a class="heading-anchor" href="#mcp-tool" title="Link to this section">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>codegraph_edit_preview(file_path, target_name, target_type=&quot;function&quot;)
-</code></pre></div>
-
-<p>Locates the target in the CPG and returns its type, location, and code preview — useful for safe refactoring from an AI assistant. Uses <code>TargetFinder</code> with CPG service for semantic understanding.</p>
+<h2  id="runtime-interfaces"><span id="runtime_interfaces"></span>Runtime Interfaces<a class="heading-anchor" href="#runtime-interfaces" title="Link to this section">&para;</a></h2>
+<p>Low-level file-editing REST endpoints have been removed. Use the CLI editing commands for local operator workflows and governed MCP/workflow orchestration for automation.</p>
 <h2  id="example-questions"><span id="example_questions"></span>Example Questions<a class="heading-anchor" href="#example-questions" title="Link to this section">&para;</a></h2>
 <p><strong>Finding targets:</strong>
 - &ldquo;Find function heap_insert in src/heap.c&rdquo;
@@ -944,7 +884,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/17-file-editing.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -976,8 +916,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li><a href="#rename-operation" class="level-3">Rename Operation</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
 <li><a href="#cli-usage" class="level-2">CLI Usage</a></li>
-<li><a href="#rest-api" class="level-2">REST API</a></li>
-<li><a href="#mcp-tool" class="level-2">MCP Tool</a></li>
+<li><a href="#runtime-interfaces" class="level-2">Runtime Interfaces</a></li>
 <li><a href="#example-questions" class="level-2">Example Questions</a></li>
 <li><a href="#related-scenarios" class="level-2">Related Scenarios</a></li>
       </ul>

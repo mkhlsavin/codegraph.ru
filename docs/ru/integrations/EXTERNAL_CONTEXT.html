@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
-        <li><a href="../api/DEMO_API.html">Демо API</a></li>
         <li><a href="../api/GRPC_API.html">Справочник gRPC API</a></li>
         <li><a href="../api/MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="../api/REST_API.html">Справочник REST API</a></li>
@@ -276,7 +274,7 @@
 <span class="c">        |                                          |</span>
 <span class="c">        v                                          v</span>
 <span class="nb">+--------------------+</span><span class="c">                  </span><span class="nb">+------------------------+</span>
-<span class="c">|   PostgreSQL       |                  |      DuckDB CPG        |</span>
+<span class="c">|   PostgreSQL       |                  | GoCPG CPG read model   |</span>
 <span class="c">| (необработанные    |                  |   (nodes_tag_v2</span><span class="nt">,</span><span class="c">       |</span>
 <span class="c">|  метаданные)       |                  |    edges_tagged_by</span><span class="nt">,</span><span class="c">    |</span>
 <span class="c">| </span><span class="nb">-</span><span class="c"> external_context |                  |    nodes_method)        |</span>
@@ -286,12 +284,12 @@
 <span class="nb">+--------------------+</span>
 </code></pre></div>
 
-<p>Данные поступают из внешних систем через сервисы синхронизации в два хранилища:</p>
+<p>Данные поступают из внешних систем через сервисы синхронизации в metadata storage и read-only CPG lookup boundary:</p>
 <ul>
 <li><strong>PostgreSQL</strong> (необязательно): хранит необработанные метаданные в таблицах <code>external_context</code>, <code>file_commit_history</code>, <code>git_authors</code>, <code>runtime_metrics</code></li>
-<li><strong>DuckDB CPG</strong>: хранит теги в <code>nodes_tag_v2</code> и связывает их с методами через <code>edges_tagged_by</code></li>
+<li><strong>GoCPG CPG read model</strong>: читает существующие CPG tables <code>nodes_tag_v2</code>, <code>edges_tagged_by</code> и <code>nodes_method</code> через настроенный CPG read boundary. External-context sync создаёт synthetic compatibility tags/edges in memory и не изменяет project CPG store.</li>
 </ul>
-<p>Все теги хранятся в <code>nodes_tag_v2</code> (не <code>nodes_tag</code>). Связи методов с тегами проходят через <code>edges_tagged_by</code>.</p>
+<p>SQL-примеры ниже выполняются через GoCPG-backed query execution.</p>
 <h2  id="bystraya-nastroyka"><span id="bystraya_nastroyka"></span>Быстрая настройка<a class="heading-anchor" href="#bystraya-nastroyka" title="Link to this section">&para;</a></h2>
 <h3  id="ustanovka-zavisimostey"><span id="1-ustanovka-zavisimostey"></span><span id="1_ustanovka_zavisimostey"></span><span id="ustanovka_zavisimostey"></span>1. Установка зависимостей<a class="heading-anchor" href="#ustanovka-zavisimostey" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
@@ -318,7 +316,7 @@
 
 <span class="c1"># Инициализация оркестратора</span>
 <span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ExternalContextOrchestrator</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">your_duckdb_connection</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">your_gocpg_read_connection</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">your_postgres_connection</span><span class="p">,</span>  <span class="c1"># необязательно</span>
     <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;/path/to/your/repo&quot;</span>
 <span class="p">)</span>
@@ -347,7 +345,7 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.external_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">GitSyncService</span>
 
 <span class="n">service</span> <span class="o">=</span> <span class="n">GitSyncService</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>        <span class="c1"># необязательно, для хранения необработанных данных</span>
     <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;/path/to/repo&quot;</span><span class="p">,</span>
     <span class="n">max_commits</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>        <span class="c1"># по умолчанию</span>
@@ -374,10 +372,10 @@
 </thead>
 <tbody>
 <tr>
-<td><code>duckdb_conn</code></td>
-<td>connection</td>
+<td><code>cpg_read_conn</code></td>
+<td>connection-like</td>
 <td>обязательный</td>
-<td>Подключение к DuckDB</td>
+<td>GoCPG-backed read boundary для CPG lookup</td>
 </tr>
 <tr>
 <td><code>pg_conn</code></td>
@@ -516,7 +514,7 @@
 
 <span class="c1"># GitHub</span>
 <span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span>
     <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
@@ -526,7 +524,7 @@
 
 <span class="c1"># GitLab</span>
 <span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;gitlab&quot;</span><span class="p">,</span>
     <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
     <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://gitlab.company.com&quot;</span><span class="p">,</span>
@@ -535,7 +533,7 @@
 
 <span class="c1"># Jira</span>
 <span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;jira&quot;</span><span class="p">,</span>
     <span class="n">project_key</span><span class="o">=</span><span class="s2">&quot;PROJ&quot;</span><span class="p">,</span>
     <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://company.atlassian.net&quot;</span><span class="p">,</span>
@@ -557,10 +555,10 @@
 </thead>
 <tbody>
 <tr>
-<td><code>duckdb_conn</code></td>
-<td>connection</td>
+<td><code>cpg_read_conn</code></td>
+<td>connection-like</td>
 <td>обязательный</td>
-<td>Подключение к DuckDB</td>
+<td>GoCPG-backed read boundary для CPG lookup</td>
 </tr>
 <tr>
 <td><code>pg_conn</code></td>
@@ -699,7 +697,7 @@
 <h3  id="sozdanie-zadach"><span id="sozdanie_zadach"></span>Создание задач<a class="heading-anchor" href="#sozdanie-zadach" title="Link to this section">&para;</a></h3>
 <p><code>IssueSyncService</code> позволяет программно создавать задачи в Jira:</p>
 <div class="highlight"><pre><span></span><code><span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;jira&quot;</span><span class="p">,</span>
     <span class="n">project_key</span><span class="o">=</span><span class="s2">&quot;PROJ&quot;</span><span class="p">,</span>
     <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://company.atlassian.net&quot;</span><span class="p">,</span>
@@ -723,7 +721,7 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.external_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentrySyncService</span>
 
 <span class="n">service</span> <span class="o">=</span> <span class="n">SentrySyncService</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
     <span class="n">org_slug</span><span class="o">=</span><span class="s2">&quot;my-organization&quot;</span><span class="p">,</span>
     <span class="n">project_slug</span><span class="o">=</span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
@@ -747,10 +745,10 @@
 </thead>
 <tbody>
 <tr>
-<td><code>duckdb_conn</code></td>
-<td>connection</td>
+<td><code>cpg_read_conn</code></td>
+<td>connection-like</td>
 <td>обязательный</td>
-<td>Подключение к DuckDB</td>
+<td>GoCPG-backed read boundary для CPG lookup</td>
 </tr>
 <tr>
 <td><code>pg_conn</code></td>
@@ -914,10 +912,9 @@
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.services.external_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExternalContextOrchestrator</span>
 
 <span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ExternalContextOrchestrator</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>       <span class="c1"># необязательно</span>
     <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
-    <span class="n">vector_store</span><span class="o">=</span><span class="kc">None</span>      <span class="c1"># необязательно, для семантического индексирования</span>
 <span class="p">)</span>
 
 <span class="c1"># Синхронизация всех источников одновременно</span>
@@ -1035,7 +1032,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 <tbody>
 <tr>
 <td><code>--duckdb</code></td>
-<td>Путь к базе данных DuckDB</td>
+<td>Явный путь к project CPG DuckDB file для GoCPG-backed read-only lookups</td>
 <td>обязательный</td>
 </tr>
 <tr>
@@ -1150,7 +1147,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 
 <span class="c1"># Синхронизация метаданных Git</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">sync_git_to_cpg</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>       <span class="c1"># необязательно</span>
     <span class="n">repo_path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
     <span class="n">since_days</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
@@ -1159,7 +1156,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 
 <span class="c1"># Синхронизация задач</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">sync_issues_to_cpg</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span>
     <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
@@ -1168,7 +1165,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 
 <span class="c1"># Синхронизация ошибок Sentry</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">sync_sentry_to_cpg</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">pg_conn</span><span class="o">=</span><span class="n">pg_conn</span><span class="p">,</span>
     <span class="n">org_slug</span><span class="o">=</span><span class="s2">&quot;my-org&quot;</span><span class="p">,</span>
     <span class="n">project_slug</span><span class="o">=</span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
@@ -1768,7 +1765,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 <h3 id="externalcontextbase">ExternalContextBase<a class="heading-anchor" href="#externalcontextbase" title="Link to this section">&para;</a></h3>
 <p>Абстрактный базовый класс для всех сервисов синхронизации. Расположен в <code>src/services/external_context/base.py</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExternalContextBase</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duckdb_conn</span><span class="p">,</span> <span class="n">pg_conn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">ExternalSource</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cpg_read_conn</span><span class="p">,</span> <span class="n">pg_conn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">ExternalSource</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="o">...</span>
 </code></pre></div>
 
@@ -1793,7 +1790,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 <td><code>create_tag_edge</code></td>
 <td><code>method_id: int, tag_id: int</code></td>
 <td><code>bool</code></td>
-<td>Создает ребро в <code>edges_tagged_by</code></td>
+<td>Записывает synthetic compatibility edge без изменения project CPG store</td>
 </tr>
 <tr>
 <td><code>find_methods_by_file_lines</code></td>
@@ -1918,7 +1915,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 <h3  id="ogranichenie-chastoty-zaprosov-github"><span id="ogranichenie_chastoty_zaprosov_github"></span>Ограничение частоты запросов GitHub<a class="heading-anchor" href="#ogranichenie-chastoty-zaprosov-github" title="Link to this section">&para;</a></h3>
 <p>Используйте токен аутентификации для повышения лимитов:</p>
 <div class="highlight"><pre><span></span><code><span class="n">service</span> <span class="o">=</span> <span class="n">IssueSyncService</span><span class="p">(</span>
-    <span class="n">duckdb_conn</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
+    <span class="n">cpg_read_conn</span><span class="o">=</span><span class="n">cpg_read_conn</span><span class="p">,</span>
     <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;github&quot;</span><span class="p">,</span>
     <span class="n">repo</span><span class="o">=</span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
     <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">)</span>
@@ -1933,7 +1930,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 <li>Для self-hosted Sentry укажите <code>--sentry-url</code> с URL вашего экземпляра</li>
 </ol>
 <h3  id="tegi-est-no-rebra-otsutstvuyut"><span id="tegi_est_no_rebra_otsutstvuyut"></span>Теги есть, но ребра отсутствуют<a class="heading-anchor" href="#tegi-est-no-rebra-otsutstvuyut" title="Link to this section">&para;</a></h3>
-<p>Если теги присутствуют в <code>nodes_tag_v2</code>, но ребра в <code>edges_tagged_by</code> отсутствуют, это обычно означает, что пути файлов в CPG не совпадают с путями, возвращаемыми Git/Sentry. Проверьте:</p>
+<p>Если synthetic links external-context пустые, это обычно означает, что пути файлов в CPG не совпадают с путями, возвращаемыми Git/Sentry. Проверьте через GoCPG-backed query boundary:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Просмотр значений тегов</span>
 <span class="k">SELECT</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">nodes_tag_v2</span><span class="w"> </span><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="k">LIMIT</span><span class="w"> </span><span class="mi">20</span><span class="p">;</span>
 
@@ -1943,7 +1940,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 
 <h2  id="dalneyshie-shagi"><span id="dalneyshie_shagi"></span>Дальнейшие шаги<a class="heading-anchor" href="#dalneyshie-shagi" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook</a> &ndash; дополнительные примеры SQL-запросов для CPG</li>
 <li><a href="../guides/01-onboarding.html">Сценарий онбординга</a> &ndash; использование внешнего контекста в запросах на естественном языке</li>
 <li><a href="../guides/11-architecture.html">Архитектура</a> &ndash; общая архитектура системы</li>
 </ul>
@@ -1965,7 +1961,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.services.external_co
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/EXTERNAL_CONTEXT.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

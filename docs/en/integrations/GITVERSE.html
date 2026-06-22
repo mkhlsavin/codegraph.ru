@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -214,7 +212,7 @@
 <li><a href="#webhook-configuration">Webhook Configuration</a></li>
 <li><a href="#ci-pipeline">CI Pipeline</a></li>
 <li><a href="#oauth-authentication">OAuth Authentication</a></li>
-<li><a href="#rest-api-endpoints">REST API Endpoints</a></li>
+<li><a href="#review-workflows">Review Workflows</a></li>
 <li><a href="#helm-deployment">Helm Deployment</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 <li><a href="#next-steps">Next Steps</a></li>
@@ -317,7 +315,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <tr>
 <td><code>GITVERSE_TOKEN</code></td>
 <td>Secret</td>
-<td>GitVerse API token (for PR review endpoint)</td>
+<td>GitVerse API token for CLI/dashboard review workflows</td>
 </tr>
 </tbody>
 </table></div>
@@ -325,7 +323,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <ol>
 <li><strong>Build CPG</strong> &ndash; <code>gocpg parse</code> in <code>ghcr.io/mkhlsavin/codegraph:latest</code> container</li>
 <li><strong>Security Scan</strong> &ndash; diff-based security analysis via <code>/api/v1/security/scan-diff</code></li>
-<li><strong>PR Review</strong> &ndash; structural review via <code>/api/v1/review/gitverse</code></li>
+<li><strong>PR Review</strong> &ndash; structural review via the GitVerse CLI/dashboard operator workflow</li>
 <li><strong>Report</strong> &ndash; aggregates results into job summary</li>
 </ol>
 <p>Key pipeline fragment (full version in <code>ci/gitverse/codegraph-review.yaml</code>):</p>
@@ -353,12 +351,11 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Review PR</span>
 <span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">          </span><span class="no">curl -sf -X POST &quot;${CODEGRAPH_URL}/api/v1/review/gitverse&quot; \</span>
-<span class="w">            </span><span class="no">-H &quot;Authorization: Bearer ${CODEGRAPH_TOKEN}&quot; \</span>
-<span class="w">            </span><span class="no">-H &quot;X-GitVerse-Token: ${{ secrets.GITVERSE_TOKEN }}&quot; \</span>
-<span class="w">            </span><span class="no">-H &quot;Content-Type: application/json&quot; \</span>
-<span class="w">            </span><span class="no">-d &#39;{&quot;project_id&quot;: &quot;${{ github.repository }}&quot;, &quot;pr_number&quot;: ${{ github.event.pull_request.number }}, &quot;publish_review&quot;: true}&#39; \</span>
-<span class="w">            </span><span class="no">-o review-results.json</span>
+<span class="w">          </span><span class="no">codegraph gitverse review-dry-run \</span>
+<span class="w">            </span><span class="no">--project-id &quot;${{ github.repository }}&quot; \</span>
+<span class="w">            </span><span class="no">--pr-number &quot;${{ github.event.pull_request.number }}&quot; \</span>
+<span class="w">            </span><span class="no">--token &quot;${{ secrets.GITVERSE_TOKEN }}&quot; \</span>
+<span class="w">            </span><span class="no">--format json &gt; review-results.json</span>
 </code></pre></div>
 
 <h2  id="oauth-authentication"><span id="oauth_authentication"></span>OAuth Authentication<a class="heading-anchor" href="#oauth-authentication" title="Link to this section">&para;</a></h2>
@@ -388,8 +385,53 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <td>GitVerse server base URL</td>
 <td><code>https://gitverse.ru</code></td>
 </tr>
+<tr>
+<td><code>OAUTH_GITVERSE_VAULT_PATH</code></td>
+<td>Vault KV secret path for GitVerse OAuth</td>
+<td>&ndash;</td>
+</tr>
+<tr>
+<td><code>OAUTH_GITVERSE_CLIENT_ID_VAULT_KEY</code></td>
+<td>Client id key inside the Vault secret</td>
+<td><code>client_id</code></td>
+</tr>
+<tr>
+<td><code>OAUTH_GITVERSE_CLIENT_SECRET_VAULT_KEY</code></td>
+<td>Client secret key inside the Vault secret</td>
+<td><code>client_secret</code></td>
+</tr>
+<tr>
+<td><code>OAUTH_GITVERSE_SERVER_URL_VAULT_KEY</code></td>
+<td>Server URL key inside the Vault secret</td>
+<td><code>server_url</code></td>
+</tr>
 </tbody>
 </table></div>
+<p>When <code>OAUTH_GITVERSE_VAULT_PATH</code> is set, CodeGraph reads the OAuth client id, secret and optional server URL from HashiCorp Vault. Explicit <code>OAUTH_GITVERSE_CLIENT_ID</code>, <code>OAUTH_GITVERSE_CLIENT_SECRET</code> and <code>OAUTH_GITVERSE_SERVER_URL</code> values take precedence for emergency override.</p>
+<p>Minimal Vault KV v2 entry:</p>
+<div class="highlight"><pre><span></span><code>vault<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>secret/codegraph/oauth/gitverse<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">client_id</span><span class="o">=</span><span class="s2">&quot;&lt;gitverse-oauth-client-id&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">client_secret</span><span class="o">=</span><span class="s2">&quot;&lt;gitverse-oauth-client-secret&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">server_url</span><span class="o">=</span><span class="s2">&quot;https://gitverse.ru&quot;</span>
+</code></pre></div>
+
+<p>Runtime Vault variables:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">VAULT_ENABLED</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">VAULT_ADDR</span><span class="o">=</span>http://vault.example.com:8200
+<span class="nv">VAULT_AUTH_METHOD</span><span class="o">=</span>token
+<span class="nv">VAULT_SECRETS_MOUNT</span><span class="o">=</span>secret
+<span class="nv">VAULT_TOKEN</span><span class="o">=</span>&lt;vault-token-with-read-access&gt;
+<span class="nv">OAUTH_GITVERSE_VAULT_PATH</span><span class="o">=</span>codegraph/oauth/gitverse
+</code></pre></div>
+
+<p>For local testing, register this callback URL:</p>
+<div class="highlight"><pre><span></span><code>http://127.0.0.1:8000/api/v1/auth/oauth/gitverse/callback
+</code></pre></div>
+
+<p>For production runtime, use the public API origin:</p>
+<div class="highlight"><pre><span></span><code>https://&lt;codegraph-host&gt;/api/v1/auth/oauth/gitverse/callback
+</code></pre></div>
+
 <h3 id="endpoints">Endpoints<a class="heading-anchor" href="#endpoints" title="Link to this section">&para;</a></h3>
 <p>OAuth uses parameterized routes that work for any configured provider:</p>
 <div class="table-wrapper"><table>
@@ -415,7 +457,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 - Callback: <code>GET /api/v1/auth/oauth/gitverse/callback</code>
  - Discoverability: <code>GET /api/v1/auth/oauth/providers</code> includes <code>gitverse</code> when configured</p>
 <h3  id="oauth-url-construction"><span id="oauth_url_construction"></span>OAuth URL Construction<a class="heading-anchor" href="#oauth-url-construction" title="Link to this section">&para;</a></h3>
-<p>OAuth is auto-enabled when <code>OAUTH_GITVERSE_CLIENT_ID</code> is set. The provider constructs URLs from the server URL:</p>
+<p>OAuth is auto-enabled when client id and client secret are available from env or Vault. The provider constructs URLs from the server URL:</p>
 <ul>
 <li>Authorize: <code>{server_url}/oauth/authorize</code></li>
 <li>Token: <code>{server_url}/oauth/token</code></li>
@@ -426,22 +468,29 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OAUTH_GITVERSE_SERVER_URL</span><span class="o">=</span><span class="s2">&quot;https://gitverse.company.ru&quot;</span>
 </code></pre></div>
 
-<h2  id="rest-api-endpoints"><span id="rest_api_endpoints"></span>REST API Endpoints<a class="heading-anchor" href="#rest-api-endpoints" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1reviewgitverse-review-pr"><span id="post-apiv1reviewgitverse-ndash-review-pr"></span><span id="post_apiv1reviewgitverse_ndash_review_pr"></span><span id="post_apiv1reviewgitverse_review_pr"></span><code>POST /api/v1/review/gitverse</code> &ndash; Review PR<a class="heading-anchor" href="#post-apiv1reviewgitverse-review-pr" title="Link to this section">&para;</a></h3>
-<p>Fetches PR diff from GitVerse and runs structural code review (blast radius, complexity delta, dead code, security).</p>
-<p><strong>Headers:</strong> <code>Authorization: Bearer &lt;token&gt;</code>, <code>X-GitVerse-Token: &lt;gitverse-pat&gt;</code></p>
-<p><strong>Request body:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;owner/repo&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;pr_number&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;gitverse_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://gitverse.ru/api/v1&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;publish_review&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;task_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optional context&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;dod_items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Tests pass&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;No security issues&quot;</span><span class="p">]</span>
-<span class="p">}</span>
+<h3  id="verification-and-rotation"><span id="verification_and_rotation"></span>Verification and rotation<a class="heading-anchor" href="#verification-and-rotation" title="Link to this section">&para;</a></h3>
+<ol>
+<li>Restart the API after changing <code>.env</code> or Vault access policy.</li>
+<li>Check discoverability:</li>
+</ol>
+<p><code>bash
+   curl -sf http://127.0.0.1:8000/api/v1/auth/oauth/providers | jq '.[] | select(.name=="gitverse")'</code></p>
+<ol start="3">
+<li>Verify that <code>enabled=true</code> and <code>authorize_url</code> contains <code>state=</code>.</li>
+<li>Open <code>/auth</code> and sign in through GitVerse.</li>
+<li>After secret rotation, update the Vault secret with the same keys, restart the API and rerun the discoverability/login smoke.</li>
+</ol>
+<p>GitVerse webhooks and CPG auto-update are independent of OAuth login: for automatic update tracking keep using <code>POST /api/v1/webhooks/gitverse</code> and the HMAC secret from <a href="#webhook-configuration">Webhook Configuration</a>.</p>
+<h2  id="review-workflows"><span id="review_workflows"></span>Review Workflows<a class="heading-anchor" href="#review-workflows" title="Link to this section">&para;</a></h2>
+<p>Direct GitVerse review REST endpoints were retired under STORY-937. Use the GitVerse dashboard operator, repository review snapshot flow, MCP project-ops tool, or CLI command instead:</p>
+<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>gitverse<span class="w"> </span>review-dry-run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--project-id<span class="w"> </span>owner/repo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pr-number<span class="w"> </span><span class="m">42</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$GITVERSE_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--format<span class="w"> </span>json
 </code></pre></div>
 
-<p><strong>Response</strong> (<code>ReviewResponse</code>):</p>
+<p>The workflow returns the same review result shape used by the dashboard and snapshot services:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;recommendation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;REQUEST_CHANGES&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">72.5</span><span class="p">,</span>
@@ -473,7 +522,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <ul>
 <li><strong>Web</strong>: <code>/dashboard/gitverse</code> productizes onboarding, project health, and audit drill-downs</li>
 <li><strong>CLI</strong>: <code>codegraph gitverse status|bindings|template|review-dry-run</code></li>
-<li><strong>MCP</strong>: <code>codegraph_gv_review</code>, <code>codegraph_gv_pr_info</code>, <code>codegraph_gv_commit_status</code>, <code>codegraph_gv_summary</code></li>
+<li><strong>MCP</strong>: <code>codegraph_integration_gitverse_review</code>, <code>codegraph_integration_gitverse_pr_info</code>, <code>codegraph_integration_gitverse_commit_status</code>, <code>codegraph_integration_gitverse_summary</code></li>
 </ul>
 <p>Recommendation values: <code>APPROVE</code>, <code>REQUEST_CHANGES</code>, <code>COMMENT</code>, <code>BLOCK</code>.</p>
 <h3  id="post-apiv1webhooksgitverse-webhook-receiver"><span id="post-apiv1webhooksgitverse-ndash-webhook-receiver"></span><span id="post_apiv1webhooksgitverse_ndash_webhook_receiver"></span><span id="post_apiv1webhooksgitverse_webhook_receiver"></span><code>POST /api/v1/webhooks/gitverse</code> &ndash; Webhook Receiver<a class="heading-anchor" href="#post-apiv1webhooksgitverse-webhook-receiver" title="Link to this section">&para;</a></h3>
@@ -525,7 +574,7 @@ python<span class="w"> </span>scripts/validate_gitverse_deployment.py
 <ul>
 <li><code>service.type=ClusterIP</code> behind ingress</li>
 <li>ingress route for <code>/api</code> and <code>/dashboard</code></li>
-<li>persistent PVCs for both CPG data and ChromaDB</li>
+<li>persistent PVCs for both CPG data and OpenViking</li>
 <li>GitVerse webhook secret and GitVerse OAuth client secret injected via Kubernetes Secret</li>
 <li>GitVerse OAuth client ID and server URL injected via ConfigMap</li>
 </ul>
@@ -598,7 +647,7 @@ python<span class="w"> </span>scripts/validate_gitverse_deployment.py
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/GITVERSE.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -622,8 +671,8 @@ python<span class="w"> </span>scripts/validate_gitverse_deployment.py
 <li><a href="#endpoints" class="level-3">Endpoints</a></li>
 <li><a href="#oauth-url-construction" class="level-3">OAuth URL Construction</a></li>
 <li><a href="#sber-id-support" class="level-3">Sber ID Support</a></li>
-<li><a href="#rest-api-endpoints" class="level-2">REST API Endpoints</a></li>
-<li><a href="#post-apiv1reviewgitverse-review-pr" class="level-3">`POST /api/v1/review/gitverse` -- Review PR</a></li>
+<li><a href="#verification-and-rotation" class="level-3">Verification and rotation</a></li>
+<li><a href="#review-workflows" class="level-2">Review Workflows</a></li>
 <li><a href="#operator-surfaces" class="level-2">Operator Surfaces</a></li>
 <li><a href="#post-apiv1webhooksgitverse-webhook-receiver" class="level-3">`POST /api/v1/webhooks/gitverse` -- Webhook Receiver</a></li>
 <li><a href="#post-apiv1reviewsummary-mr-summary" class="level-3">`POST /api/v1/review/summary` -- MR Summary</a></li>

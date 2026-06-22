@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -175,9 +173,9 @@
       <div class="doc-sidebar-title">Technical Reference</div>
       <ul class="doc-sidebar-nav">
         <li><a href="../reference/index.html">Overview</a></li>
-        <li><a href="../reference/AGENTS.html">Agents Reference</a></li>
+        <li><a href="../reference/AGENTS.html">Agents and Digital Employees Reference</a></li>
         <li><a href="../reference/ANALYSIS_MODULES.html">Analysis Modules Reference</a></li>
-        <li><a href="../reference/API.html">Python SDK Reference</a></li>
+        <li><a href="../reference/API.html">API Reference</a></li>
         <li><a href="../reference/APPROVAL_ENGINE.html">Approval Engine</a></li>
         <li><a href="../reference/CLONE_DETECTION.html">Clone Detection</a></li>
         <li><a href="../reference/FAQ.html">Frequently Asked Questions (FAQ)</a></li>
@@ -186,7 +184,6 @@
         <li><a href="../reference/SCHEMA.html">DuckDB CPG Schema Design (CPG Spec v1.1)</a></li>
         <li><a href="../reference/SECURITY.html">Enterprise Security Module</a></li>
         <li><a href="../reference/SNAPSHOT_STORE.html">Snapshot Store Reference</a></li>
-        <li><a href="../reference/SQL_QUERY_COOKBOOK.html">SQL Query Cookbook for DuckDB CPG</a></li>
         <li><a href="../reference/SYMBOLIC_EXECUTION.html">Symbolic Execution (Z3 SMT Solver)</a></li>
         <li><a href="../reference/WORKFLOWS.html">Workflows Reference</a></li>
       </ul>
@@ -231,128 +228,174 @@
       <!-- Content -->
       <article class="doc-content">
         <blockquote class="callout">
-<p>Technical Documentation for IT and Security Teams</p>
+<p>Enterprise reference for the current CodeGraph authentication, authorization, and machine-access runtime.</p>
 </blockquote>
-<hr />
-<h2  id="table-of-contents"><span id="table_of_contents"></span>Table of Contents<a class="heading-anchor" href="#table-of-contents" title="Link to this section">&para;</a></h2>
+<h2  id="scope-and-source-of-truth"><span id="scope_and_source_of_truth"></span>Scope and Source of Truth<a class="heading-anchor" href="#scope-and-source-of-truth" title="Link to this section">&para;</a></h2>
+<p>This document describes the implementation currently present under <code>src/</code>.</p>
+<p>Canonical code surfaces:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Permission enum and role mapping</td>
+<td><code>src/api/auth/tokens/permissions.py</code></td>
+</tr>
+<tr>
+<td>Request auth context and FastAPI auth dependencies</td>
+<td><code>src/api/auth/providers/middleware.py</code></td>
+</tr>
+<tr>
+<td>JWT creation, validation, and blacklist</td>
+<td><code>src/api/auth/tokens/jwt_handler.py</code></td>
+</tr>
+<tr>
+<td>User API-key helpers</td>
+<td><code>src/api/auth/tokens/api_keys.py</code></td>
+</tr>
+<tr>
+<td>Machine credential catalog and authorization</td>
+<td><code>src/api/auth/machine/machine_access.py</code></td>
+</tr>
+<tr>
+<td>Machine audit, project scope, and optional mTLS binding</td>
+<td><code>src/api/auth/machine/machine_runtime.py</code></td>
+</tr>
+<tr>
+<td>API-key/service-account middleware</td>
+<td><code>src/api/middleware/scope_enforcement.py</code></td>
+</tr>
+<tr>
+<td>Path validation middleware</td>
+<td><code>src/api/middleware/path_validation.py</code></td>
+</tr>
+<tr>
+<td>Local, OAuth, LDAP, API-key, service-account routes</td>
+<td><code>src/api/routers/auth_suite/*</code></td>
+</tr>
+<tr>
+<td>User, API-key, tenant, project-access, and service-account models</td>
+<td><code>src/api/database/models_*.py</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Compatibility imports are intentionally preserved by <code>src/api/auth/__init__.py</code>, which extends the package path with <code>machine</code>, <code>providers</code>, and <code>tokens</code>. New references should prefer the physical module paths above.</p>
+<h2  id="runtime-model"><span id="runtime_model"></span>Runtime Model<a class="heading-anchor" href="#runtime-model" title="Link to this section">&para;</a></h2>
+<p>CodeGraph uses three related authorization layers:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it controls</th>
+<th>Main implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User RBAC</td>
+<td>Human user role permissions for route dependencies and application logic</td>
+<td><code>Permission</code>, <code>Role</code>, <code>ROLE_PERMISSIONS</code>, <code>has_permission()</code></td>
+</tr>
+<tr>
+<td>Machine scopes</td>
+<td>API-key and service-account access to API/MCP routes</td>
+<td><code>MachinePrincipal</code>, <code>API_ROUTE_SCOPE_MAP</code>, <code>MCP_ROUTE_SCOPE_MAP</code>, <code>authorize_machine_request()</code></td>
+</tr>
+<tr>
+<td>Tenant/project scope</td>
+<td>Group membership and selected project access in multi-tenant installations</td>
+<td><code>GroupRole</code>, <code>ProjectScopeMode</code>, <code>UserGroupAccess</code>, <code>UserProjectAccess</code>, project repositories</td>
+</tr>
+</tbody>
+</table></div>
+<p>Authentication methods produce either a user identity or a machine principal. Authorization then checks role permissions, raw scopes, interface allowlists, tenant/project restrictions, and middleware-specific security controls.</p>
+<h2  id="user-roles-and-permissions"><span id="user_roles_and_permissions"></span>User Roles and Permissions<a class="heading-anchor" href="#user-roles-and-permissions" title="Link to this section">&para;</a></h2>
+<h3 id="roles">Roles<a class="heading-anchor" href="#roles" title="Link to this section">&para;</a></h3>
+<p>User roles are defined twice for separate boundaries:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Enum</th>
+<th>Source</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Role</code></td>
+<td><code>src/api/auth/tokens/permissions.py</code></td>
+<td>Auth dependency permission checks</td>
+</tr>
+<tr>
+<td><code>UserRole</code></td>
+<td><code>src/api/database/models_base.py</code></td>
+<td>Persisted user role in the application database</td>
+</tr>
+</tbody>
+</table></div>
+<p>Both currently use the same values:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VIEWER</code></td>
+<td><code>viewer</code></td>
+<td>Read-only product access</td>
+</tr>
+<tr>
+<td><code>ANALYST</code></td>
+<td><code>analyst</code></td>
+<td>Viewer plus query/scenario execution, session writes, API-key creation, basic digital-employee task work</td>
+</tr>
+<tr>
+<td><code>REVIEWER</code></td>
+<td><code>reviewer</code></td>
+<td>Analyst plus review integrations and higher-risk digital-employee operations</td>
+</tr>
+<tr>
+<td><code>ADMIN</code></td>
+<td><code>admin</code></td>
+<td>Platform admin role</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>src/api/dependencies.py::require_role()</code> treats this as an ordered hierarchy: <code>viewer &lt; analyst &lt; reviewer &lt; admin</code>.</p>
+<h3  id="permission-behavior"><span id="permission_behavior"></span>Permission Behavior<a class="heading-anchor" href="#permission-behavior" title="Link to this section">&para;</a></h3>
+<p><code>Permission</code> currently contains 31 values, including <code>admin:all</code>.</p>
+<p>Important runtime details:</p>
 <ul>
-<li><a href="#overview">Overview</a></li>
-<li><a href="#key-capabilities">Key Capabilities</a></li>
-<li><a href="#rbac-architecture">RBAC Architecture</a></li>
-<li><a href="#role-hierarchy">Role Hierarchy</a></li>
-<li><a href="#permission-inheritance">Permission Inheritance</a></li>
-<li><a href="#permission-catalog">Permission Catalog</a></li>
-<li><a href="#permissions-by-category">Permissions by Category</a></li>
-<li><a href="#authentication-methods">Authentication Methods</a></li>
-<li><a href="#1-jwt-bearer-token">1. JWT Bearer Token</a></li>
-<li><a href="#2-api-keys">2. API Keys</a></li>
-<li><a href="#service-accounts-and-machine-access">Service Accounts and Machine Access</a></li>
-<li><a href="#3-oauth2oidc">3. OAuth2/OIDC</a></li>
-<li><a href="#4-ldapactive-directory">4. LDAP/Active Directory</a></li>
-<li><a href="#5-iam-yandex-cloud">5. IAM (Yandex Cloud)</a></li>
-<li><a href="#api-reference">API Reference</a></li>
-<li><a href="#middleware-dependencies">Middleware Dependencies</a></li>
-<li><a href="#fastapi-usage-examples">FastAPI Usage Examples</a></li>
-<li><a href="#authcontext">AuthContext</a></li>
-<li><a href="#permission-helper-functions">Permission Helper Functions</a></li>
-<li><a href="#scope-enforcement">Scope Enforcement</a></li>
-<li><a href="#webhook-authentication">Webhook Authentication</a></li>
-<li><a href="#token-blacklist-api">Token Blacklist API</a></li>
-<li><a href="#api-key-data-models">API Key Data Models</a></li>
-<li><a href="#auditing-and-logging">Auditing and Logging</a></li>
-<li><a href="#authorization-events">Authorization Events</a></li>
-<li><a href="#log-format">Log Format</a></li>
-<li><a href="#group-level-rbac-multi-tenant">Group-Level RBAC (Multi-Tenant)</a></li>
-<li><a href="#implementation-status">Implementation Status</a></li>
-<li><a href="#group-rbac-configuration">Group RBAC Configuration</a></li>
-<li><a href="#path-validation-middleware">Path Validation Middleware</a></li>
-<li><a href="#path-validation-configuration">Path Validation Configuration</a></li>
-<li><a href="#attack-vectors-blocked">Attack Vectors Blocked</a></li>
-<li><a href="#best-practices">Best Practices</a></li>
-<li><a href="#for-administrators">For Administrators</a></li>
-<li><a href="#for-developers">For Developers</a></li>
-<li><a href="#related-documents">Related Documents</a></li>
+<li><code>ROLE_PERMISSIONS[Role.ADMIN]</code> stores only <code>{Permission.ADMIN_ALL}</code>.</li>
+<li><code>get_role_permissions(Role.ADMIN)</code> returns that raw set; it does not expand to every permission.</li>
+<li><code>has_permission(Role.ADMIN, ...)</code> returns <code>True</code> for every requested permission.</li>
+<li>Explicit scopes also grant permissions when the scope string matches the required <code>Permission.value</code>.</li>
+<li>The <code>admin:all</code> scope grants all permission checks in <code>has_permission()</code> and bypasses machine scope checks.</li>
 </ul>
-<h2 id="overview">Overview<a class="heading-anchor" href="#overview" title="Link to this section">&para;</a></h2>
-<p>CodeGraph implements a comprehensive Role-Based Access Control (RBAC) system with support for multiple authentication modes. The system provides granular access control to platform features.</p>
-<h3  id="key-capabilities"><span id="key_capabilities"></span>Key Capabilities<a class="heading-anchor" href="#key-capabilities" title="Link to this section">&para;</a></h3>
-<ul>
-<li><strong>4 role levels</strong> with hierarchical inheritance</li>
-<li><strong>21 granular permissions</strong> across functional categories</li>
-<li><strong>Authentication modes</strong>: JWT, API keys, OAuth2, LDAP, IAM (Yandex Cloud), and unauthenticated access where explicitly allowed</li>
-<li><strong>Service-account lifecycle</strong> for non-human machine identities</li>
-<li><strong>Token blacklisting</strong> for instant access revocation</li>
-<li><strong>Webhook signature verification</strong> with replay attack protection</li>
-<li><strong>Scope enforcement</strong> for fine-grained API key access control</li>
-<li><strong>SIEM integration</strong> for authorization event auditing</li>
-</ul>
-<hr />
-<h2  id="rbac-architecture"><span id="rbac_architecture"></span>RBAC Architecture<a class="heading-anchor" href="#rbac-architecture" title="Link to this section">&para;</a></h2>
-<h3  id="role-hierarchy"><span id="role_hierarchy"></span>Role Hierarchy<a class="heading-anchor" href="#role-hierarchy" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>                           +---------------------+
-                           |       ADMIN         |
-                           |   (ADMIN_ALL        |
-                           |    meta-permission) |
-                           +----------+----------+
-                                      |
-                           +----------v----------+
-                           |      REVIEWER       |
-                           |  Code review +      |
-                           |  GitHub + GitLab    |
-                           +----------+----------+
-                                      |
-                           +----------v----------+
-                           |      ANALYST        |
-                           |  Query execution    |
-                           |  + API keys         |
-                           +----------+----------+
-                                      |
-                           +----------v----------+
-                           |       VIEWER        |
-                           |    Read-only        |
-                           +---------------------+
-</code></pre></div>
-
-<h3  id="permission-inheritance"><span id="permission_inheritance"></span>Permission Inheritance<a class="heading-anchor" href="#permission-inheritance" title="Link to this section">&para;</a></h3>
-<p>Each role inherits all permissions from lower-level roles:</p>
-<ul>
-<li><code>ADMIN</code> &ndash; uses <code>ADMIN_ALL</code> meta-permission. The <code>get_role_permissions()</code> function expands it to the full set of 21 permissions at runtime. The raw <code>ROLE_PERMISSIONS</code> mapping stores only <code>{Permission.ADMIN_ALL}</code>.</li>
-<li><code>REVIEWER</code> &ndash; <code>ANALYST</code> permissions + code review (<code>review:execute</code>, <code>review:github</code>, <code>review:gitlab</code>)</li>
-<li><code>ANALYST</code> &ndash; <code>VIEWER</code> permissions + execution/export</li>
-<li><code>VIEWER</code> &ndash; read-only (base level)</li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.permissions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Role</span><span class="p">,</span> <span class="n">ROLE_PERMISSIONS</span><span class="p">,</span> <span class="n">Permission</span>
-
-<span class="c1"># ADMIN stores only the meta-permission</span>
-<span class="n">ROLE_PERMISSIONS</span><span class="p">[</span><span class="n">Role</span><span class="o">.</span><span class="n">ADMIN</span><span class="p">]</span>  <span class="c1"># =&gt; {Permission.ADMIN_ALL}</span>
-
-<span class="c1"># get_role_permissions() expands ADMIN_ALL to all 21 permissions</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.permissions</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_role_permissions</span>
-<span class="n">perms</span> <span class="o">=</span> <span class="n">get_role_permissions</span><span class="p">(</span><span class="n">Role</span><span class="o">.</span><span class="n">ADMIN</span><span class="p">)</span>  <span class="c1"># =&gt; all Permission values</span>
-</code></pre></div>
-
-<hr />
-<h2  id="permission-catalog"><span id="permission_catalog"></span>Permission Catalog<a class="heading-anchor" href="#permission-catalog" title="Link to this section">&para;</a></h2>
-<h3  id="permissions-by-category"><span id="permissions_by_category"></span>Permissions by Category<a class="heading-anchor" href="#permissions-by-category" title="Link to this section">&para;</a></h3>
-<p>All 21 permissions are defined in the <code>Permission(str, Enum)</code> class in <code>src/api/auth/permissions.py</code>.</p>
-<h4  id="scenarios-scenarios"><span id="scenarios_scenarios"></span>Scenarios (<code>scenarios:*</code>)<a class="heading-anchor" href="#scenarios-scenarios" title="Link to this section">&para;</a></h4>
+<h3  id="permission-catalog"><span id="permission_catalog"></span>Permission Catalog<a class="heading-anchor" href="#permission-catalog" title="Link to this section">&para;</a></h3>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
+<th>Enum name</th>
+<th style="text-align: center;">Viewer</th>
+<th style="text-align: center;">Analyst</th>
+<th style="text-align: center;">Reviewer</th>
+<th style="text-align: center;">Admin</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>scenarios:read</code></td>
 <td><code>SCENARIOS_READ</code></td>
-<td>View scenario list</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -361,32 +404,14 @@
 <tr>
 <td><code>scenarios:execute</code></td>
 <td><code>SCENARIOS_EXECUTE</code></td>
-<td>Run analysis scenarios</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4  id="queries-query"><span id="queries_query"></span>Queries (<code>query:*</code>)<a class="heading-anchor" href="#queries-query" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>query:execute</code></td>
 <td><code>QUERY_EXECUTE</code></td>
-<td>Execute SQL queries against CPG</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -395,32 +420,14 @@
 <tr>
 <td><code>query:validate</code></td>
 <td><code>QUERY_VALIDATE</code></td>
-<td>Validate query syntax</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4  id="code-review-review"><span id="code_review_review"></span>Code Review (<code>review:*</code>)<a class="heading-anchor" href="#code-review-review" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>review:execute</code></td>
 <td><code>REVIEW_EXECUTE</code></td>
-<td>Run automated review</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
@@ -429,7 +436,6 @@
 <tr>
 <td><code>review:github</code></td>
 <td><code>REVIEW_GITHUB</code></td>
-<td>GitHub PR integration</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
@@ -438,32 +444,14 @@
 <tr>
 <td><code>review:gitlab</code></td>
 <td><code>REVIEW_GITLAB</code></td>
-<td>GitLab MR integration</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4  id="sessions-sessions"><span id="sessions_sessions"></span>Sessions (<code>sessions:*</code>)<a class="heading-anchor" href="#sessions-sessions" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>sessions:read</code></td>
 <td><code>SESSIONS_READ</code></td>
-<td>View sessions</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -472,7 +460,6 @@
 <tr>
 <td><code>sessions:write</code></td>
 <td><code>SESSIONS_WRITE</code></td>
-<td>Create/modify sessions</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -481,32 +468,14 @@
 <tr>
 <td><code>sessions:delete</code></td>
 <td><code>SESSIONS_DELETE</code></td>
-<td>Delete sessions</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4  id="history-history"><span id="history_history"></span>History (<code>history:*</code>)<a class="heading-anchor" href="#history-history" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>history:read</code></td>
 <td><code>HISTORY_READ</code></td>
-<td>View query history</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -515,32 +484,14 @@
 <tr>
 <td><code>history:export</code></td>
 <td><code>HISTORY_EXPORT</code></td>
-<td>Export history</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4  id="users-users"><span id="users_users"></span>Users (<code>users:*</code>)<a class="heading-anchor" href="#users-users" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>users:read</code></td>
 <td><code>USERS_READ</code></td>
-<td>View user list</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
@@ -549,7 +500,6 @@
 <tr>
 <td><code>users:write</code></td>
 <td><code>USERS_WRITE</code></td>
-<td>Create/edit users</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
@@ -558,32 +508,14 @@
 <tr>
 <td><code>users:delete</code></td>
 <td><code>USERS_DELETE</code></td>
-<td>Delete users</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4  id="api-keys-api-keys"><span id="api_keys_api_keys"></span>API Keys (<code>api_keys:*</code>)<a class="heading-anchor" href="#api-keys-api-keys" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>api_keys:read</code></td>
 <td><code>API_KEYS_READ</code></td>
-<td>View own keys</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -592,7 +524,6 @@
 <tr>
 <td><code>api_keys:write</code></td>
 <td><code>API_KEYS_WRITE</code></td>
-<td>Create keys</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -601,32 +532,14 @@
 <tr>
 <td><code>api_keys:delete</code></td>
 <td><code>API_KEYS_DELETE</code></td>
-<td>Delete any keys</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4  id="metrics-stats-metrics"><span id="metrics_stats_metrics"></span>Metrics (<code>stats:*</code>, <code>metrics:*</code>)<a class="heading-anchor" href="#metrics-stats-metrics" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>stats:read</code></td>
 <td><code>STATS_READ</code></td>
-<td>View statistics</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
 <td style="text-align: center;">x</td>
@@ -635,32 +548,94 @@
 <tr>
 <td><code>metrics:read</code></td>
 <td><code>METRICS_READ</code></td>
-<td>Prometheus metrics</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;">x</td>
 </tr>
-</tbody>
-</table></div>
-<h4 id="administration">Administration<a class="heading-anchor" href="#administration" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
 <tr>
-<th>Permission</th>
-<th>Enum Name</th>
-<th>Description</th>
-<th style="text-align: center;">VIEWER</th>
-<th style="text-align: center;">ANALYST</th>
-<th style="text-align: center;">REVIEWER</th>
-<th style="text-align: center;">ADMIN</th>
+<td><code>digital_employees:read</code></td>
+<td><code>DIGITAL_EMPLOYEES_READ</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
 </tr>
-</thead>
-<tbody>
+<tr>
+<td><code>digital_employees:task:write</code></td>
+<td><code>DIGITAL_EMPLOYEES_TASK_WRITE</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:task:high_risk</code></td>
+<td><code>DIGITAL_EMPLOYEES_HIGH_RISK_TASK</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:handoff:write</code></td>
+<td><code>DIGITAL_EMPLOYEES_HANDOFF_WRITE</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:approval:write</code></td>
+<td><code>DIGITAL_EMPLOYEES_APPROVAL_WRITE</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:audit:write</code></td>
+<td><code>DIGITAL_EMPLOYEES_AUDIT_WRITE</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:external_publish:write</code></td>
+<td><code>DIGITAL_EMPLOYEES_EXTERNAL_PUBLISH</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:lifecycle:write</code></td>
+<td><code>DIGITAL_EMPLOYEES_LIFECYCLE_WRITE</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:control_tower:repair</code></td>
+<td><code>DIGITAL_EMPLOYEES_CONTROL_TOWER_REPAIR</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+</tr>
+<tr>
+<td><code>digital_employees:admin</code></td>
+<td><code>DIGITAL_EMPLOYEES_ADMIN</code></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">x</td>
+</tr>
 <tr>
 <td><code>admin:all</code></td>
 <td><code>ADMIN_ALL</code></td>
-<td>Full access (meta-permission)</td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
 <td style="text-align: center;"></td>
@@ -668,591 +643,466 @@
 </tr>
 </tbody>
 </table></div>
-<hr />
-<h2  id="authentication-methods"><span id="authentication_methods"></span>Authentication Methods<a class="heading-anchor" href="#authentication-methods" title="Link to this section">&para;</a></h2>
-<p>CodeGraph supports several authentication modes. The <code>auth_method</code> field in <code>AuthContext</code> indicates which mode was used:</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Method</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>jwt</code></td>
-<td>JWT Bearer Token</td>
-<td>Primary method for web applications</td>
-</tr>
-<tr>
-<td><code>api_key</code></td>
-<td>API Key</td>
-<td>For integrations, CI/CD, and automation</td>
-</tr>
-<tr>
-<td><code>oauth2</code></td>
-<td>OAuth2/OIDC</td>
-<td>Enterprise identity providers</td>
-</tr>
-<tr>
-<td><code>ldap</code></td>
-<td>LDAP/AD</td>
-<td>Corporate directory integration</td>
-</tr>
-<tr>
-<td><code>iam</code></td>
-<td>Yandex Cloud IAM</td>
-<td>Cloud-native authentication</td>
-</tr>
-<tr>
-<td><code>none</code></td>
-<td>Unauthenticated</td>
-<td>Default when no credentials are provided</td>
-</tr>
-</tbody>
-</table></div>
-<h3  id="1-jwt-bearer-token"><span id="1_jwt_bearer_token"></span>1. JWT Bearer Token<a class="heading-anchor" href="#1-jwt-bearer-token" title="Link to this section">&para;</a></h3>
-<p>Primary method for web applications and interactive sessions.</p>
-<h4  id="token-structure-tokenpayload"><span id="token_structure_tokenpayload"></span>Token Structure (TokenPayload)<a class="heading-anchor" href="#token-structure-tokenpayload" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TokenPayload</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-    <span class="n">sub</span><span class="p">:</span> <span class="nb">str</span>                          <span class="c1"># Subject (user_id)</span>
-    <span class="n">jti</span><span class="p">:</span> <span class="nb">str</span>                          <span class="c1"># JWT ID (unique identifier)</span>
-    <span class="n">exp</span><span class="p">:</span> <span class="n">datetime</span>                     <span class="c1"># Expiration time</span>
-    <span class="n">iat</span><span class="p">:</span> <span class="n">datetime</span>                     <span class="c1"># Issued at</span>
-    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span>                         <span class="c1"># &quot;access&quot; or &quot;refresh&quot;</span>
-    <span class="n">scopes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>            <span class="c1"># Permission scopes</span>
-    <span class="n">role</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>        <span class="c1"># User role</span>
-    <span class="n">group_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>    <span class="c1"># Optional group scope (for CI/CD service accounts)</span>
-</code></pre></div>
-
-<p>Source: <code>src/api/auth/jwt_handler.py</code></p>
-<h4  id="token-parameters"><span id="token_parameters"></span>Token Parameters<a class="heading-anchor" href="#token-parameters" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Token Type</th>
-<th>TTL</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Access Token</td>
-<td>30 minutes</td>
-<td>API request authorization</td>
-</tr>
-<tr>
-<td>Refresh Token</td>
-<td>7 days</td>
-<td>Access token renewal</td>
-</tr>
-</tbody>
-</table></div>
-<h4  id="token-functions"><span id="token_functions"></span>Token Functions<a class="heading-anchor" href="#token-functions" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.jwt_handler</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">create_access_token</span><span class="p">,</span>   <span class="c1"># Create JWT access token</span>
-    <span class="n">create_refresh_token</span><span class="p">,</span>  <span class="c1"># Create JWT refresh token</span>
-    <span class="n">decode_token</span><span class="p">,</span>          <span class="c1"># Decode and validate JWT</span>
-    <span class="n">verify_token</span><span class="p">,</span>          <span class="c1"># Verify JWT and check type</span>
-    <span class="n">get_token_jti</span><span class="p">,</span>         <span class="c1"># Extract JTI without full verification</span>
-    <span class="n">blacklist_token</span><span class="p">,</span>       <span class="c1"># Add token to blacklist</span>
-    <span class="n">is_token_blacklisted</span><span class="p">,</span>  <span class="c1"># Check if token is blacklisted</span>
-    <span class="n">load_blacklist_cache</span><span class="p">,</span>  <span class="c1"># Load blacklist from DB into memory</span>
+<p><code>ROLE_PERMISSIONS</code> does not currently include <code>USERS_*</code>, <code>API_KEYS_DELETE</code>, <code>METRICS_READ</code>, the admin-only digital-employee permissions, or <code>ADMIN_ALL</code> for non-admin roles. They are effectively admin-only through <code>Role.ADMIN</code> or an explicit <code>admin:all</code> scope.</p>
+<h3  id="permission-helpers"><span id="permission_helpers"></span>Permission Helpers<a class="heading-anchor" href="#permission-helpers" title="Link to this section">&para;</a></h3>
+<p>Use <code>src.api.auth.permissions</code> for role/scope checks:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.permissions</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Permission</span><span class="p">,</span>
+    <span class="n">Role</span><span class="p">,</span>
+    <span class="n">get_default_scopes_for_api_key</span><span class="p">,</span>
+    <span class="n">get_role_permissions</span><span class="p">,</span>
+    <span class="n">has_all_permissions</span><span class="p">,</span>
+    <span class="n">has_any_permission</span><span class="p">,</span>
+    <span class="n">has_permission</span><span class="p">,</span>
+    <span class="n">validate_scopes</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
 
-<p><strong><code>create_access_token()</code></strong> &ndash; creates a new JWT access token:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_access_token</span><span class="p">(</span>
-    <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">scopes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">role</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">expires_delta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">timedelta</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">group_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong><code>get_token_jti()</code></strong> &ndash; extracts the JTI (JWT ID) from a token without full signature verification. Used for blacklist operations when the token may already be expired:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_token_jti</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</code></pre></div>
-
-<p>Returns an empty string if extraction fails.</p>
-<h4  id="usage-example"><span id="usage_example"></span>Usage Example<a class="heading-anchor" href="#usage-example" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Get token</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>/api/v1/auth/login<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;analyst&quot;, &quot;password&quot;: &quot;***&quot;}&#39;</span>
-
-<span class="c1"># Response:</span>
-<span class="o">{</span>
-<span class="w">  </span><span class="s2">&quot;access_token&quot;</span>:<span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;refresh_token&quot;</span>:<span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;token_type&quot;</span>:<span class="w"> </span><span class="s2">&quot;bearer&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;expires_in&quot;</span>:<span class="w"> </span><span class="m">1800</span>
-<span class="o">}</span>
-
-<span class="c1"># Use token</span>
-curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>/api/v1/scenarios<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...&quot;</span>
-</code></pre></div>
-
-<h4  id="token-revocation-blacklisting"><span id="token_revocation_blacklisting"></span>Token Revocation (Blacklisting)<a class="heading-anchor" href="#token-revocation-blacklisting" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Logout - add token to blacklist</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>/api/v1/auth/logout<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...&quot;</span>
-</code></pre></div>
-
-<p>After blacklisting, the token becomes invalid immediately. See <a href="#token-blacklist-api">Token Blacklist API</a> for implementation details.</p>
-<hr />
-<h3  id="2-api-keys"><span id="2_api_keys"></span>2. API Keys<a class="heading-anchor" href="#2-api-keys" title="Link to this section">&para;</a></h3>
-<p>For integrations, CI/CD, and automation.</p>
-<h4  id="api-key-format"><span id="api_key_format"></span>API Key Format<a class="heading-anchor" href="#api-key-format" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="n">Prefix</span><span class="o">:</span><span class="w">  </span><span class="n">rag_</span><span class="o">&lt;</span><span class="mi">8</span><span class="w"> </span><span class="n">hex</span><span class="w"> </span><span class="n">chars</span><span class="o">&gt;</span><span class="w">     </span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">g</span><span class="o">.,</span><span class="w"> </span><span class="n">rag_a1b2c3d4</span><span class="o">)</span>
-<span class="n">Secret</span><span class="o">:</span><span class="w">  </span><span class="o">&lt;</span><span class="mi">48</span><span class="w"> </span><span class="n">hex</span><span class="w"> </span><span class="n">chars</span><span class="o">&gt;</span><span class="w">        </span><span class="o">(</span><span class="n">secrets</span><span class="o">.</span><span class="na">token_hex</span><span class="o">(</span><span class="mi">24</span><span class="o">))</span>
-<span class="n">Full</span><span class="o">:</span><span class="w">    </span><span class="n">rag_</span><span class="o">&lt;</span><span class="mi">8</span><span class="n">hex</span><span class="o">&gt;</span><span class="n">_</span><span class="o">&lt;</span><span class="mi">48</span><span class="n">hex</span><span class="o">&gt;</span>
-
-<span class="n">Example</span><span class="o">:</span><span class="w"> </span><span class="n">rag_a1b2c3d4_e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8</span>
-</code></pre></div>
-
-<p>The key is generated by <code>generate_api_key()</code> in <code>src/api/auth/api_keys.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_api_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns (full_key, prefix, key_hash).&quot;&quot;&quot;</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;rag_</span><span class="si">{</span><span class="n">secrets</span><span class="o">.</span><span class="n">token_hex</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>   <span class="c1"># e.g., rag_a1b2c3d4</span>
-    <span class="n">secret</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">token_hex</span><span class="p">(</span><span class="mi">24</span><span class="p">)</span>            <span class="c1"># 48 hex chars</span>
-    <span class="n">full_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">secret</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="n">key_hash</span> <span class="o">=</span> <span class="n">hash_api_key</span><span class="p">(</span><span class="n">full_key</span><span class="p">)</span>         <span class="c1"># SHA-256</span>
-    <span class="k">return</span> <span class="n">full_key</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">key_hash</span>
-</code></pre></div>
-
-<h4  id="storage-security"><span id="storage_security"></span>Storage Security<a class="heading-anchor" href="#storage-security" title="Link to this section">&para;</a></h4>
+<p>Key behavior:</p>
 <ul>
-<li>Keys are SHA-256 hashed before storage (<code>hash_api_key()</code>)</li>
-<li>Full key shown only at creation time (returned as <code>ApiKeyWithSecret</code>)</li>
-<li>Support for expiration (<code>is_key_expired()</code>) and revocation (<code>is_revoked</code> flag)</li>
-<li>Constant-time comparison via <code>secrets.compare_digest()</code> in <code>verify_api_key()</code></li>
+<li><code>get_default_scopes_for_api_key()</code> returns <code>scenarios:read</code>, <code>scenarios:execute</code>, <code>query:execute</code>, <code>sessions:read</code>, <code>sessions:write</code>, <code>history:read</code>.</li>
+<li><code>validate_scopes()</code> filters unknown strings against the <code>Permission</code> enum.</li>
+<li><code>has_permission()</code> considers role grants first and explicit scope strings second.</li>
 </ul>
-<h4  id="default-api-key-scopes"><span id="default_api_key_scopes"></span>Default API Key Scopes<a class="heading-anchor" href="#default-api-key-scopes" title="Link to this section">&para;</a></h4>
-<p>The <code>get_default_scopes_for_api_key()</code> function returns default scopes for new API keys:</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_default_scopes_for_api_key</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-    <span class="k">return</span> <span class="p">[</span>
-        <span class="s2">&quot;scenarios:read&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;scenarios:execute&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;query:execute&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;sessions:read&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;sessions:write&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;history:read&quot;</span><span class="p">,</span>
-    <span class="p">]</span>
-</code></pre></div>
-
-<h4  id="usage-example_1"><span id="usage_example_1"></span>Usage Example<a class="heading-anchor" href="#usage-example_1" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create API key</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>/api/v1/auth/api-keys<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;admin_token&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;name&quot;: &quot;CI Pipeline&quot;, &quot;scopes&quot;: [&quot;query:execute&quot;, &quot;scenarios:execute&quot;]}&#39;</span>
-
-<span class="c1"># Response:</span>
-<span class="o">{</span>
-<span class="w">  </span><span class="s2">&quot;id&quot;</span>:<span class="w"> </span><span class="s2">&quot;key_123&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;key&quot;</span>:<span class="w"> </span><span class="s2">&quot;rag_a1b2c3d4_e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;name&quot;</span>:<span class="w"> </span><span class="s2">&quot;CI Pipeline&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;prefix&quot;</span>:<span class="w"> </span><span class="s2">&quot;rag_a1b2c3d4&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;scopes&quot;</span>:<span class="w"> </span><span class="o">[</span><span class="s2">&quot;query:execute&quot;</span>,<span class="w"> </span><span class="s2">&quot;scenarios:execute&quot;</span><span class="o">]</span>,
-<span class="w">  </span><span class="s2">&quot;created_at&quot;</span>:<span class="w"> </span><span class="s2">&quot;2026-03-07T10:00:00Z&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;expires_at&quot;</span>:<span class="w"> </span><span class="s2">&quot;2026-06-07T10:00:00Z&quot;</span>,
-<span class="w">  </span><span class="s2">&quot;is_revoked&quot;</span>:<span class="w"> </span><span class="nb">false</span>
-<span class="o">}</span>
-
-<span class="c1"># Use API key</span>
-curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>/api/v1/scenarios<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-API-Key: rag_a1b2c3d4_e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8&quot;</span>
-</code></pre></div>
-
-<hr />
-<h3  id="service-accounts-and-machine-access"><span id="service_accounts_and_machine_access"></span>Service Accounts and Machine Access<a class="heading-anchor" href="#service-accounts-and-machine-access" title="Link to this section">&para;</a></h3>
-<p>Service accounts build on the <code>X-API-Key</code> transport but introduce a separate machine-identity lifecycle.</p>
-<p>Implemented capabilities:</p>
-<ul>
-<li>dedicated <code>ServiceAccount</code> and <code>ServiceAccountCredential</code> records</li>
-<li>project/group scoping</li>
-<li>interface allowlists (<code>api</code>, <code>mcp</code>)</li>
-<li>rotate/revoke/deactivate flows</li>
-<li>unified audit metadata across API and MCP</li>
-<li>per-service-account rate limiting</li>
-<li>machine contract version validation through <code>X-CodeGraph-Machine-Contract</code></li>
-</ul>
-<p>Admin API:</p>
-<ul>
-<li><code>GET /api/v1/auth/service-accounts/action-catalog</code></li>
-<li><code>POST /api/v1/auth/service-accounts</code></li>
-<li><code>GET /api/v1/auth/service-accounts</code></li>
-<li><code>GET /api/v1/auth/service-accounts/{id}</code></li>
-<li><code>POST /api/v1/auth/service-accounts/{id}/rotate</code></li>
-<li><code>POST /api/v1/auth/service-accounts/{id}/credentials/{credential_id}/revoke</code></li>
-<li><code>POST /api/v1/auth/service-accounts/{id}/deactivate</code></li>
-</ul>
-<p>CLI:</p>
-<div class="highlight"><pre><span></span><code>codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>create<span class="w"> </span>--owner<span class="w"> </span>admin<span class="w"> </span>--name<span class="w"> </span>ci-bot<span class="w"> </span>--template<span class="w"> </span>ci<span class="w"> </span>--interface<span class="w"> </span>api
-codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>list
-codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>inspect<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
-codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>rotate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
-codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>revoke<span class="w"> </span>--id<span class="w"> </span>&lt;credential-id&gt;
-codegraph<span class="w"> </span>auth<span class="w"> </span>service-account<span class="w"> </span>deactivate<span class="w"> </span>--id<span class="w"> </span>&lt;service-account-id&gt;
-</code></pre></div>
-
-<p>Operational notes:</p>
-<ul>
-<li>use service accounts for CI, bots, portals, and MCP/API automation</li>
-<li>roll out rotated credentials before revoking the old credential</li>
-<li>API and MCP use the same scope and interface enforcement logic</li>
-<li>high-assurance deployments can enable proxy-terminated mTLS bindings for <code>grpc</code> and <code>acp</code>
-  while keeping API-key-based service-account auth in place</li>
-<li>configure trusted certificate bindings with <code>security.service_account_mtls_*</code> settings and map
-  fingerprints to service-account UUIDs</li>
-<li>OAuth2/OIDC client-credentials for machine callers remains deferred and is not part of the
-  current service-account runtime baseline</li>
-</ul>
-<hr />
-<h3  id="3-oauth2oidc"><span id="3_oauth2oidc"></span>3. OAuth2/OIDC<a class="heading-anchor" href="#3-oauth2oidc" title="Link to this section">&para;</a></h3>
-<p>Support for enterprise identity providers. See <a href="OAUTH_LDAP.html">OAuth2/OIDC &amp; LDAP/AD Integration</a> for full configuration guide.</p>
-<h4  id="supported-providers"><span id="supported_providers"></span>Supported Providers<a class="heading-anchor" href="#supported-providers" title="Link to this section">&para;</a></h4>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Provider</th>
-<th>Status</th>
-<th>Use Case</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>GitHub</td>
-<td>Ready</td>
-<td>Developers, open-source</td>
-</tr>
-<tr>
-<td>GitLab</td>
-<td>Ready</td>
-<td>Corporate GitLab</td>
-</tr>
-<tr>
-<td>Google</td>
-<td>Ready</td>
-<td>Google Workspace</td>
-</tr>
-<tr>
-<td>Keycloak</td>
-<td>Ready</td>
-<td>Enterprise IdP</td>
-</tr>
-<tr>
-<td>Azure AD</td>
-<td>Ready</td>
-<td>Microsoft 365</td>
-</tr>
-</tbody>
-</table></div>
-<h4  id="configuration-keycloak-example"><span id="configuration_keycloak_example"></span>Configuration (Keycloak Example)<a class="heading-anchor" href="#configuration-keycloak-example" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="nt">oauth2</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">providers</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">keycloak</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">client_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;codegraph&quot;</span>
-<span class="w">      </span><span class="nt">client_secret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${KEYCLOAK_SECRET}&quot;</span>
-<span class="w">      </span><span class="nt">authorize_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://keycloak.company.com/realms/main/protocol/openid-connect/auth&quot;</span>
-<span class="w">      </span><span class="nt">token_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://keycloak.company.com/realms/main/protocol/openid-connect/token&quot;</span>
-<span class="w">      </span><span class="nt">userinfo_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://keycloak.company.com/realms/main/protocol/openid-connect/userinfo&quot;</span>
-<span class="w">      </span><span class="nt">scopes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;openid&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;email&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;groups&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">role_claim</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;realm_access.roles&quot;</span>
-<span class="w">      </span><span class="nt">role_mapping</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">codegraph-admin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">admin</span>
-<span class="w">        </span><span class="nt">codegraph-reviewer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reviewer</span>
-<span class="w">        </span><span class="nt">codegraph-analyst</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analyst</span>
-<span class="w">        </span><span class="nt">codegraph-viewer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">viewer</span>
-</code></pre></div>
-
-<hr />
-<h3  id="4-ldapactive-directory"><span id="4_ldapactive_directory"></span>4. LDAP/Active Directory<a class="heading-anchor" href="#4-ldapactive-directory" title="Link to this section">&para;</a></h3>
-<p>Integration with corporate directory. See <a href="OAUTH_LDAP.html">OAuth2/OIDC &amp; LDAP/AD Integration</a> for full configuration guide.</p>
-<h4 id="configuration">Configuration<a class="heading-anchor" href="#configuration" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="nt">ldap</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">server</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ldaps://ldap.company.com:636&quot;</span>
-<span class="w">  </span><span class="nt">base_dn</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dc=company,dc=com&quot;</span>
-<span class="w">  </span><span class="nt">bind_dn</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cn=codegraph,ou=services,dc=company,dc=com&quot;</span>
-<span class="w">  </span><span class="nt">bind_password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${LDAP_PASSWORD}&quot;</span>
-<span class="w">  </span><span class="nt">user_search_base</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ou=users,dc=company,dc=com&quot;</span>
-<span class="w">  </span><span class="nt">user_search_filter</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;(sAMAccountName={username})&quot;</span>
-<span class="w">  </span><span class="nt">group_search_base</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ou=groups,dc=company,dc=com&quot;</span>
-<span class="w">  </span><span class="nt">group_membership_attr</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;memberOf&quot;</span>
-<span class="w">  </span><span class="nt">group_mapping</span><span class="p">:</span>
-<span class="w">    </span><span class="s">&quot;CN=CodeGraph-Admins,OU=Groups,DC=company,DC=com&quot;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">admin</span>
-<span class="w">    </span><span class="s">&quot;CN=CodeGraph-Reviewers,OU=Groups,DC=company,DC=com&quot;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reviewer</span>
-<span class="w">    </span><span class="s">&quot;CN=CodeGraph-Analysts,OU=Groups,DC=company,DC=com&quot;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">analyst</span>
-<span class="w">    </span><span class="s">&quot;CN=CodeGraph-Viewers,OU=Groups,DC=company,DC=com&quot;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">viewer</span>
-<span class="w">  </span><span class="nt">sync_interval_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span>
-</code></pre></div>
-
-<h4  id="group-synchronization"><span id="group_synchronization"></span>Group Synchronization<a class="heading-anchor" href="#group-synchronization" title="Link to this section">&para;</a></h4>
-<ul>
-<li>Automatic role sync with AD groups</li>
-<li>Nested group support</li>
-<li>Caching with configurable TTL</li>
-</ul>
-<hr />
-<h3  id="5-iam-yandex-cloud"><span id="5_iam_yandex_cloud"></span>5. IAM (Yandex Cloud)<a class="heading-anchor" href="#5-iam-yandex-cloud" title="Link to this section">&para;</a></h3>
-<p>Cloud-native authentication for services running in Yandex Cloud. IAM-authenticated users receive the <code>ANALYST</code> role by default with a limited scope set.</p>
-<h4  id="how-it-works"><span id="how_it_works"></span>How It Works<a class="heading-anchor" href="#how-it-works" title="Link to this section">&para;</a></h4>
-<p>The middleware checks the <code>X-YC-IAM-Token</code> header before JWT and API key authentication. If the header is present, the token is validated via the IAM validator (<code>src/api/auth/iam</code>).</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># IAM authentication flow in get_auth_context():</span>
-<span class="n">iam_token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-YC-IAM-Token&quot;</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">iam_token</span><span class="p">:</span>
-    <span class="n">validator</span> <span class="o">=</span> <span class="n">get_iam_validator</span><span class="p">()</span>
-    <span class="n">user_info</span> <span class="o">=</span> <span class="k">await</span> <span class="n">validator</span><span class="o">.</span><span class="n">validate_token</span><span class="p">(</span><span class="n">iam_token</span><span class="p">)</span>
-    <span class="c1"># Returns AuthContext with:</span>
-    <span class="c1">#   role=Role.ANALYST</span>
-    <span class="c1">#   scopes=[&quot;scenarios:read&quot;, &quot;query:execute&quot;, &quot;review:execute&quot;]</span>
-    <span class="c1">#   auth_method=&quot;iam&quot;</span>
-</code></pre></div>
-
-<h4 id="usage">Usage<a class="heading-anchor" href="#usage" title="Link to this section">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Authenticate with IAM token</span>
-curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>/api/v1/scenarios<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-YC-IAM-Token: t1.9euelZqMkJKVjJqTnZyRm5GUkZqRke...&quot;</span>
-</code></pre></div>
-
-<h4  id="default-iam-permissions"><span id="default_iam_permissions"></span>Default IAM Permissions<a class="heading-anchor" href="#default-iam-permissions" title="Link to this section">&para;</a></h4>
+<h2  id="fastapi-auth-context"><span id="fastapi_auth_context"></span>FastAPI Auth Context<a class="heading-anchor" href="#fastapi-auth-context" title="Link to this section">&para;</a></h2>
+<p><code>AuthContext</code> is defined in <code>src/api/auth/providers/middleware.py</code>.</p>
+<p>Fields:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Field</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>role</code></td>
-<td><code>ANALYST</code></td>
-</tr>
-<tr>
-<td><code>scopes</code></td>
-<td><code>scenarios:read</code>, <code>query:execute</code>, <code>review:execute</code></td>
-</tr>
-<tr>
-<td><code>auth_method</code></td>
-<td><code>iam</code></td>
-</tr>
-</tbody>
-</table></div>
-<h4 id="environment">Environment<a class="heading-anchor" href="#environment" title="Link to this section">&para;</a></h4>
-<p>Requires <code>IAM_ENABLED</code> environment variable and a configured IAM validator. When the validator is unavailable, authentication falls through to JWT/API key methods.</p>
-<hr />
-<h2  id="api-reference"><span id="api_reference"></span>API Reference<a class="heading-anchor" href="#api-reference" title="Link to this section">&para;</a></h2>
-<h3  id="middleware-dependencies"><span id="middleware_dependencies"></span>Middleware Dependencies<a class="heading-anchor" href="#middleware-dependencies" title="Link to this section">&para;</a></h3>
-<p>All middleware functions are in <code>src/api/auth/middleware.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">get_auth_context</span><span class="p">,</span>        <span class="c1"># Get context (returns unauthenticated context if no credentials)</span>
-    <span class="n">get_current_user</span><span class="p">,</span>        <span class="c1"># FastAPI dependency, raises 401 if unauthenticated</span>
-    <span class="n">get_optional_user</span><span class="p">,</span>       <span class="c1"># FastAPI dependency, returns unauthenticated context if no credentials</span>
-    <span class="n">require_auth</span><span class="p">,</span>            <span class="c1"># Require any authentication (raises 401)</span>
-    <span class="n">require_permission</span><span class="p">,</span>      <span class="c1"># Factory: require specific permission (raises 403)</span>
-    <span class="n">require_any_permission</span><span class="p">,</span>  <span class="c1"># Factory: require any of multiple permissions (raises 403)</span>
-    <span class="n">require_role</span><span class="p">,</span>            <span class="c1"># Factory: require specific role (raises 403)</span>
-    <span class="n">require_admin</span><span class="p">,</span>           <span class="c1"># Shortcut for require_role(Role.ADMIN)</span>
-    <span class="n">require_analyst</span><span class="p">,</span>         <span class="c1"># Shortcut for require_role(Role.ANALYST, Role.REVIEWER, Role.ADMIN)</span>
-    <span class="n">require_reviewer</span><span class="p">,</span>        <span class="c1"># Shortcut for require_role(Role.REVIEWER, Role.ADMIN)</span>
-<span class="p">)</span>
-</code></pre></div>
-
-<p><strong>Function signatures:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_auth_context</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">bearer_token</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AuthContext</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_current_user</span><span class="p">(</span><span class="n">auth</span><span class="p">:</span> <span class="n">AuthContext</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_auth</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">AuthContext</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_optional_user</span><span class="p">(</span><span class="n">auth</span><span class="p">:</span> <span class="n">AuthContext</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_auth_context</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">AuthContext</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">require_auth</span><span class="p">(</span><span class="n">auth</span><span class="p">:</span> <span class="n">AuthContext</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_auth_context</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">AuthContext</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">require_permission</span><span class="p">(</span><span class="n">permission</span><span class="p">:</span> <span class="n">Permission</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span>  <span class="c1"># dependency factory</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">require_any_permission</span><span class="p">(</span><span class="o">*</span><span class="n">permissions</span><span class="p">:</span> <span class="n">Permission</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span>  <span class="c1"># dependency factory</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">require_role</span><span class="p">(</span><span class="o">*</span><span class="n">roles</span><span class="p">:</span> <span class="n">Role</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span>  <span class="c1"># dependency factory</span>
-</code></pre></div>
-
-<h3  id="fastapi-usage-examples"><span id="fastapi_usage_examples"></span>FastAPI Usage Examples<a class="heading-anchor" href="#fastapi-usage-examples" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">APIRouter</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">require_permission</span><span class="p">,</span>
-    <span class="n">require_any_permission</span><span class="p">,</span>
-    <span class="n">require_admin</span><span class="p">,</span>
-    <span class="n">get_current_user</span><span class="p">,</span>
-    <span class="n">get_optional_user</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.permissions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Permission</span>
-
-<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
-
-<span class="c1"># Require specific permission</span>
-<span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/query/execute&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_query</span><span class="p">(</span>
-    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">auth</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_permission</span><span class="p">(</span><span class="n">Permission</span><span class="o">.</span><span class="n">QUERY_EXECUTE</span><span class="p">))</span>
-<span class="p">):</span>
-    <span class="c1"># auth.user_id, auth.role, auth.scopes, auth.group_id available</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">}</span>
-
-<span class="c1"># Require one of multiple permissions</span>
-<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/reviews&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_reviews</span><span class="p">(</span>
-    <span class="n">auth</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_any_permission</span><span class="p">(</span>
-        <span class="n">Permission</span><span class="o">.</span><span class="n">REVIEW_EXECUTE</span><span class="p">,</span>
-        <span class="n">Permission</span><span class="o">.</span><span class="n">REVIEW_GITHUB</span><span class="p">,</span>
-        <span class="n">Permission</span><span class="o">.</span><span class="n">REVIEW_GITLAB</span>
-    <span class="p">))</span>
-<span class="p">):</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;reviews&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]}</span>
-
-<span class="c1"># Require Admin role</span>
-<span class="nd">@router</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/users/</span><span class="si">{user_id}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_user</span><span class="p">(</span>
-    <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">auth</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_admin</span><span class="p">)</span>
-<span class="p">):</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;deleted&quot;</span><span class="p">:</span> <span class="n">user_id</span><span class="p">}</span>
-
-<span class="c1"># Get authenticated user (raises 401 if not authenticated)</span>
-<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_profile</span><span class="p">(</span><span class="n">auth</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)):</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="n">auth</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="n">auth</span><span class="o">.</span><span class="n">role</span><span class="p">}</span>
-
-<span class="c1"># Optional authentication (no error if unauthenticated)</span>
-<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/public&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">public_endpoint</span><span class="p">(</span><span class="n">auth</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_optional_user</span><span class="p">)):</span>
-    <span class="k">if</span> <span class="n">auth</span><span class="o">.</span><span class="n">is_authenticated</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;greeting&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Hello, </span><span class="si">{</span><span class="n">auth</span><span class="o">.</span><span class="n">username</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;greeting&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello, anonymous&quot;</span><span class="p">}</span>
-</code></pre></div>
-
-<h3 id="authcontext">AuthContext<a class="heading-anchor" href="#authcontext" title="Link to this section">&para;</a></h3>
-<p>The <code>AuthContext</code> class holds the authentication state for the current request. Source: <code>src/api/auth/middleware.py</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AuthContext</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">user_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">username</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">role</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Role</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">scopes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">auth_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>       <span class="c1"># &quot;jwt&quot;, &quot;api_key&quot;, &quot;oauth2&quot;, &quot;ldap&quot;, &quot;iam&quot;, &quot;none&quot;</span>
-        <span class="n">group_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># optional group scope (from JWT or API key)</span>
-    <span class="p">):</span>
-        <span class="o">...</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">is_authenticated</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;True if user_id is not None.&quot;&quot;&quot;</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">has_permission</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">permission</span><span class="p">:</span> <span class="n">Permission</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if user has a specific permission.&quot;&quot;&quot;</span>
-</code></pre></div>
-
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Type</th>
-<th>Description</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>user_id</code></td>
-<td><code>Optional[str]</code></td>
-<td>User ID (None if unauthenticated)</td>
+<td>Human user id when available</td>
+</tr>
+<tr>
+<td><code>subject_id</code></td>
+<td>Canonical subject id; user id or service-account id</td>
+</tr>
+<tr>
+<td><code>subject_type</code></td>
+<td><code>user</code> or <code>service_account</code></td>
 </tr>
 <tr>
 <td><code>username</code></td>
-<td><code>Optional[str]</code></td>
-<td>Username</td>
+<td>Display name or username</td>
 </tr>
 <tr>
 <td><code>role</code></td>
-<td><code>Optional[Role]</code></td>
-<td>Role: <code>VIEWER</code>, <code>ANALYST</code>, <code>REVIEWER</code>, <code>ADMIN</code></td>
+<td>Optional <code>Role</code> for user RBAC</td>
 </tr>
 <tr>
 <td><code>scopes</code></td>
-<td><code>List[str]</code></td>
-<td>Permission scope list</td>
+<td>Raw permission/scope strings</td>
 </tr>
 <tr>
 <td><code>auth_method</code></td>
-<td><code>str</code></td>
-<td>Authentication method used</td>
+<td><code>jwt</code>, <code>api_key</code>, <code>service_account_api_key</code>, <code>iam</code>, <code>local_plugin</code>, or <code>none</code></td>
 </tr>
 <tr>
 <td><code>group_id</code></td>
-<td><code>Optional[str]</code></td>
-<td>Group scope for multi-tenant isolation</td>
+<td>Optional tenant/group scope</td>
+</tr>
+<tr>
+<td><code>project_id</code></td>
+<td>Optional project scope for service accounts</td>
+</tr>
+<tr>
+<td><code>service_account_id</code></td>
+<td>Service-account id when authenticated as one</td>
+</tr>
+<tr>
+<td><code>credential_id</code></td>
+<td>API key or service-account credential id</td>
+</tr>
+<tr>
+<td><code>allowed_interfaces</code></td>
+<td>Interfaces allowed for the authenticated subject</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="permission-helper-functions"><span id="permission_helper_functions"></span>Permission Helper Functions<a class="heading-anchor" href="#permission-helper-functions" title="Link to this section">&para;</a></h3>
-<p>All functions are in <code>src/api/auth/permissions.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.permissions</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">get_role_permissions</span><span class="p">,</span>
-    <span class="n">has_permission</span><span class="p">,</span>
-    <span class="n">has_any_permission</span><span class="p">,</span>
-    <span class="n">has_all_permissions</span><span class="p">,</span>
-    <span class="n">validate_scopes</span><span class="p">,</span>
-    <span class="n">get_default_scopes_for_api_key</span><span class="p">,</span>
+<p>The main dependency flow is:</p>
+<ol>
+<li>Reuse <code>request.state.machine_principal</code> if <code>ScopeEnforcementMiddleware</code> has already validated an API key.</li>
+<li>Check <code>X-YC-IAM-Token</code> if IAM is enabled.</li>
+<li>Check JWT bearer token and reject blacklisted JWT ids.</li>
+<li>Check <code>X-API-Key</code> as a machine credential.</li>
+<li>Return unauthenticated context when no valid credentials exist.</li>
+</ol>
+<p>Use these dependencies for route code:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">get_auth_context</span><span class="p">,</span>
+    <span class="n">get_current_user</span><span class="p">,</span>
+    <span class="n">get_optional_user</span><span class="p">,</span>
+    <span class="n">require_admin</span><span class="p">,</span>
+    <span class="n">require_analyst</span><span class="p">,</span>
+    <span class="n">require_any_permission</span><span class="p">,</span>
+    <span class="n">require_auth</span><span class="p">,</span>
+    <span class="n">require_auth_or_localhost</span><span class="p">,</span>
+    <span class="n">require_permission</span><span class="p">,</span>
+    <span class="n">require_reviewer</span><span class="p">,</span>
+    <span class="n">require_role</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
 
-<p><strong><code>get_role_permissions(role: Role) -&gt; Set[Permission]</code></strong></p>
-<p>Returns the set of permissions for a role. For <code>ADMIN</code>, the raw mapping contains only <code>{Permission.ADMIN_ALL}</code>.</p>
-<p><strong><code>has_permission(role, required_permission, user_scopes=None) -&gt; bool</code></strong></p>
-<p>Checks if a role or user has a specific permission. Returns <code>True</code> if the role includes <code>ADMIN_ALL</code>, the permission is in role permissions, or the permission is in explicit user scopes.</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">has_permission</span><span class="p">(</span>
-    <span class="n">role</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Role</span><span class="p">],</span>
-    <span class="n">required_permission</span><span class="p">:</span> <span class="n">Permission</span><span class="p">,</span>
-    <span class="n">user_scopes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong><code>has_any_permission(role, required_permissions, user_scopes=None) -&gt; bool</code></strong></p>
-<p>Returns <code>True</code> if any of the specified permissions is granted.</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">has_any_permission</span><span class="p">(</span>
-    <span class="n">role</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Role</span><span class="p">],</span>
-    <span class="n">required_permissions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Permission</span><span class="p">],</span>
-    <span class="n">user_scopes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong><code>has_all_permissions(role, required_permissions, user_scopes=None) -&gt; bool</code></strong></p>
-<p>Returns <code>True</code> only if all specified permissions are granted.</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">has_all_permissions</span><span class="p">(</span>
-    <span class="n">role</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Role</span><span class="p">],</span>
-    <span class="n">required_permissions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Permission</span><span class="p">],</span>
-    <span class="n">user_scopes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong><code>validate_scopes(scopes: List[str]) -&gt; List[str]</code></strong></p>
-<p>Validates and filters scope strings against the <code>Permission</code> enum. Returns only valid scope strings, silently dropping unknown values.</p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_scopes</span><span class="p">(</span><span class="n">scopes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-    <span class="n">valid_permissions</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Permission</span><span class="p">}</span>
-    <span class="k">return</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">scopes</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">valid_permissions</span><span class="p">]</span>
-</code></pre></div>
-
-<p><strong><code>get_default_scopes_for_api_key() -&gt; List[str]</code></strong></p>
-<p>Returns default scopes for new API keys. Used in API key management when no explicit scopes are specified.</p>
-<h3  id="scope-enforcement"><span id="scope_enforcement"></span>Scope Enforcement<a class="heading-anchor" href="#scope-enforcement" title="Link to this section">&para;</a></h3>
-<p>Source: <code>src/api/auth/scope_enforcement.py</code></p>
-<p>API key scope enforcement operates at two levels:</p>
-<p><strong>1. Automatic enforcement (middleware)</strong> &ndash; The <code>ScopeEnforcementMiddleware</code> (<code>src/api/middleware/scope_enforcement.py</code>) automatically checks API key scopes against the <code>ROUTE_SCOPE_MAP</code> based on the request path prefix. This runs for every API-key-authenticated request without requiring any changes to router code.</p>
-<p>Route prefix → scope mapping (excerpt):</p>
+<p><code>require_auth_or_localhost()</code> allows local plugin traffic only when <code>security.local_dev_unauthenticated_surfaces_enabled</code> is true and the request is loopback. Mutating local-plugin requests must include <code>X-Actor-Agent-Id</code> and <code>X-Task-Id</code>, and generic agent ids such as <code>codex</code> or <code>codex-headless</code> are rejected.</p>
+<p><code>src/api/dependencies.py</code> also contains database-backed dependencies returning ORM <code>User</code> records. Auth-suite routes use those dependencies for account administration and API-key CRUD.</p>
+<h2  id="authentication-methods"><span id="authentication_methods"></span>Authentication Methods<a class="heading-anchor" href="#authentication-methods" title="Link to this section">&para;</a></h2>
+<h3  id="local-username-and-password"><span id="local_username_and_password"></span>Local Username and Password<a class="heading-anchor" href="#local-username-and-password" title="Link to this section">&para;</a></h3>
+<p>Routes are mounted under <code>/api/v1/auth</code>:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Route Prefix</th>
-<th>Required Scope</th>
+<th>Route</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>POST /register</code></td>
+<td>Create a local user and return tokens</td>
+</tr>
+<tr>
+<td><code>POST /login</code></td>
+<td>Login alias for token issuance</td>
+</tr>
+<tr>
+<td><code>POST /token</code></td>
+<td>Primary username/password token endpoint</td>
+</tr>
+<tr>
+<td><code>POST /refresh</code></td>
+<td>Rotate refresh token and issue new tokens</td>
+</tr>
+<tr>
+<td><code>DELETE /logout</code></td>
+<td>Blacklist current bearer token</td>
+</tr>
+<tr>
+<td><code>POST /oauth/token</code></td>
+<td>RFC 6749-compatible password and refresh-token grants</td>
+</tr>
+</tbody>
+</table></div>
+<p>Local passwords are hashed with <code>bcrypt</code>. New self-registered users receive the <code>analyst</code> role.</p>
+<h3  id="jwt-bearer-tokens"><span id="jwt_bearer_tokens"></span>JWT Bearer Tokens<a class="heading-anchor" href="#jwt-bearer-tokens" title="Link to this section">&para;</a></h3>
+<p>JWT code lives in <code>src/api/auth/tokens/jwt_handler.py</code>.</p>
+<p><code>TokenPayload</code> fields:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sub</code></td>
+<td>Subject user id</td>
+</tr>
+<tr>
+<td><code>jti</code></td>
+<td>JWT id</td>
+</tr>
+<tr>
+<td><code>exp</code></td>
+<td>Expiration</td>
+</tr>
+<tr>
+<td><code>iat</code></td>
+<td>Issued-at time</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>access</code> or <code>refresh</code></td>
+</tr>
+<tr>
+<td><code>scopes</code></td>
+<td>Raw permission scope strings</td>
+</tr>
+<tr>
+<td><code>role</code></td>
+<td>Optional user role string</td>
+</tr>
+<tr>
+<td><code>group_id</code></td>
+<td>Optional group scope</td>
+</tr>
+</tbody>
+</table></div>
+<p>Defaults:</p>
+<ul>
+<li>Access token TTL: 30 minutes when <code>expires_delta</code> is omitted.</li>
+<li>Refresh token TTL: 7 days.</li>
+<li>Signing settings come from <code>src/api/config.py</code> (<code>API_JWT_ALGORITHM</code>, JWT secret resolution).</li>
+</ul>
+<p>Revocation:</p>
+<ul>
+<li><code>blacklist_token()</code> stores a SHA-256 fingerprint of the JTI in memory and in the <code>token_blacklist</code> table.</li>
+<li><code>is_token_blacklisted()</code> checks memory first, then the database.</li>
+<li><code>load_blacklist_cache()</code> loads non-expired blacklist rows at startup.</li>
+<li><code>_blacklist_sync_task()</code> refreshes the in-memory cache periodically.</li>
+</ul>
+<h3  id="user-api-keys"><span id="user_api_keys"></span>User API Keys<a class="heading-anchor" href="#user-api-keys" title="Link to this section">&para;</a></h3>
+<p>User API keys are created through <code>/api/v1/me/api-keys</code> and transported as <code>X-API-Key</code>.</p>
+<p>Format:</p>
+<div class="highlight"><pre><span></span><code>rag_&lt;8 hex chars&gt;_&lt;48 hex chars&gt;
+</code></pre></div>
+
+<p>Implementation details:</p>
+<ul>
+<li><code>generate_api_key()</code> returns <code>(full_key, prefix, key_hash)</code>.</li>
+<li>The prefix starts with <code>rag_</code>.</li>
+<li>The secret is <code>secrets.token_hex(24)</code>.</li>
+<li>The stored hash is SHA-256.</li>
+<li><code>verify_api_key()</code> uses <code>secrets.compare_digest()</code>.</li>
+<li><code>ApiKey.group_id</code> optionally limits a key to one tenant group.</li>
+<li>User API keys authenticate as <code>MachinePrincipal(subject_type="user", auth_method="api_key")</code>.</li>
+<li>User API keys allow <code>api</code> and <code>mcp</code> interfaces by default.</li>
+<li><code>ApiKeyInfo</code> is the secret-free response model.</li>
+<li><code>ApiKeyWithSecret</code> extends <code>ApiKeyInfo</code> and is returned only when the key is created.</li>
+</ul>
+<p>API-key CRUD:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /api/v1/me/api-keys</code></td>
+<td>Create a key for the current user</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/me/api-keys</code></td>
+<td>List current user&rsquo;s keys without secrets</td>
+</tr>
+<tr>
+<td><code>DELETE /api/v1/me/api-keys/{key_id}</code></td>
+<td>Revoke one owned key</td>
+</tr>
+</tbody>
+</table></div>
+<p>The create request defaults to <code>["scenarios:read", "query:execute"]</code>; the lower-level helper <code>get_default_scopes_for_api_key()</code> returns a broader legacy default list. Route behavior is the authoritative runtime behavior.</p>
+<h3  id="service-accounts"><span id="service_accounts"></span>Service Accounts<a class="heading-anchor" href="#service-accounts" title="Link to this section">&para;</a></h3>
+<p>Service accounts use the same <code>X-API-Key</code> transport with a distinct credential prefix:</p>
+<div class="highlight"><pre><span></span><code>svc_&lt;8 hex chars&gt;_&lt;48 hex chars&gt;
+</code></pre></div>
+
+<p>Service-account records are persisted in <code>service_accounts</code>; credentials are persisted in <code>service_account_credentials</code>.</p>
+<p>Implemented controls:</p>
+<ul>
+<li>Admin-only service-account management.</li>
+<li>Policy templates: <code>ci</code>, <code>portal</code>, <code>bot</code>, <code>agent</code>.</li>
+<li>Explicit <code>scopes</code> and <code>allowed_interfaces</code>.</li>
+<li>Optional <code>group_id</code> or <code>project_id</code> restriction.</li>
+<li>Account expiry and credential expiry.</li>
+<li>Credential rotation without immediate old-credential revocation.</li>
+<li>Active credential quota through <code>security.service_account_max_active_credentials</code>.</li>
+<li>Revoke and deactivate flows.</li>
+<li>Machine contract header: <code>X-CodeGraph-Machine-Contract</code>, currently <code>2026-03-v1</code>.</li>
+<li>Optional proxy-terminated mTLS binding for configured interfaces.</li>
+<li>Unified machine audit events through <code>AuditAction.MACHINE_ACCESS</code>.</li>
+</ul>
+<p>Admin routes:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/v1/admin/identity/service-accounts/action-catalog</code></td>
+<td>Return route scopes, machine contract, policy templates, and security limits</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/admin/identity/service-accounts</code></td>
+<td>Create service account and initial credential</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/admin/identity/service-accounts</code></td>
+<td>List service accounts</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/admin/identity/service-accounts/{service_account_id}</code></td>
+<td>Inspect service account and credential metadata</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/admin/identity/service-accounts/{service_account_id}/rotate</code></td>
+<td>Issue a new credential</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/admin/identity/service-accounts/{service_account_id}/credentials/{credential_id}/revoke</code></td>
+<td>Revoke one credential</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/admin/identity/service-accounts/{service_account_id}/deactivate</code></td>
+<td>Disable account and revoke credentials</td>
+</tr>
+</tbody>
+</table></div>
+<p>Policy templates:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Scopes</th>
+<th>Interfaces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ci</code></td>
+<td><code>query:execute</code>, <code>scenarios:read</code>, <code>mcp:access</code></td>
+<td><code>api</code>, <code>mcp</code></td>
+</tr>
+<tr>
+<td><code>portal</code></td>
+<td><code>stats:read</code>, <code>history:read</code></td>
+<td><code>api</code></td>
+</tr>
+<tr>
+<td><code>bot</code></td>
+<td><code>query:execute</code>, <code>scenarios:read</code>, <code>mcp:access</code></td>
+<td><code>api</code>, <code>mcp</code></td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td><code>query:execute</code>, <code>scenarios:execute</code>, <code>review:execute</code>, <code>mcp:access</code>, <code>digital_employees:read</code>, <code>digital_employees:task:write</code></td>
+<td><code>api</code>, <code>mcp</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="oauth2oidc">OAuth2/OIDC<a class="heading-anchor" href="#oauth2oidc" title="Link to this section">&para;</a></h3>
+<p>OAuth code lives in <code>src/api/auth/providers/oauth.py</code>; routes live in <code>auth_external_routes.py</code>.</p>
+<p>Supported provider implementations:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>github</code></td>
+<td>GitHub OAuth</td>
+</tr>
+<tr>
+<td><code>gitlab</code></td>
+<td>GitLab OAuth, configurable server URL</td>
+</tr>
+<tr>
+<td><code>google</code></td>
+<td>Google OIDC</td>
+</tr>
+<tr>
+<td><code>keycloak</code></td>
+<td>Keycloak OIDC, configurable server and realm</td>
+</tr>
+<tr>
+<td><code>sourcecraft</code></td>
+<td>Yandex ID based SourceCraft provider</td>
+</tr>
+<tr>
+<td><code>gitverse</code></td>
+<td>GitVerse provider</td>
+</tr>
+</tbody>
+</table></div>
+<p>Routes:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/v1/auth/oauth/providers</code></td>
+<td>List configured providers and generated authorize URLs</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/auth/oauth/{provider}</code></td>
+<td>Start OAuth flow</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/auth/oauth/{provider}/callback</code></td>
+<td>Exchange code, create or find user, issue JWTs</td>
+</tr>
+</tbody>
+</table></div>
+<p>Configured OAuth users receive JWTs using their persisted database role.</p>
+<h3  id="ldapactive-directory"><span id="ldapactive_directory"></span>LDAP/Active Directory<a class="heading-anchor" href="#ldapactive-directory" title="Link to this section">&para;</a></h3>
+<p>LDAP code lives in <code>src/api/auth/providers/ldap_auth.py</code>; route integration exists in <code>auth_external_routes.py</code>.</p>
+<p>Routes:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /api/v1/auth/ldap</code></td>
+<td>Authenticate against LDAP/AD and issue JWTs</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/auth/ldap/status</code></td>
+<td>Report LDAP availability and connection status</td>
+</tr>
+</tbody>
+</table></div>
+<p>Runtime caveat: <code>LDAPAuthenticator.map_groups_to_role()</code> reads <code>config.group_role_mapping</code>. Ensure the deployed <code>LDAPConfig</code> provides that attribute or all LDAP-created users fall back to <code>analyst</code>.</p>
+<h3  id="yandex-cloud-iam"><span id="yandex_cloud_iam"></span>Yandex Cloud IAM<a class="heading-anchor" href="#yandex-cloud-iam" title="Link to this section">&para;</a></h3>
+<p>IAM validation lives in <code>src/api/auth/providers/iam.py</code> and is initialized from API settings when IAM is enabled.</p>
+<p>Request header:</p>
+<div class="highlight"><pre><span></span><code>X-YC-IAM-Token: &lt;token&gt;
+</code></pre></div>
+
+<p>When the token validates, <code>get_auth_context()</code> returns:</p>
+<ul>
+<li><code>role=Role.ANALYST</code></li>
+<li><code>scopes=["scenarios:read", "query:execute", "review:execute"]</code></li>
+<li><code>auth_method="iam"</code></li>
+</ul>
+<p>Validation results are cached for the configured IAM token cache TTL.</p>
+<h2  id="machine-scope-enforcement"><span id="machine_scope_enforcement"></span>Machine Scope Enforcement<a class="heading-anchor" href="#machine-scope-enforcement" title="Link to this section">&para;</a></h2>
+<p><code>ScopeEnforcementMiddleware</code> is added in <code>src/api/main.py</code> when <code>security.api_key_scope_enforcement</code> is true. It checks requests with <code>X-API-Key</code> before the router executes.</p>
+<p>Process:</p>
+<ol>
+<li>Validate the key as a user API key or service-account credential.</li>
+<li>Save <code>MachinePrincipal</code> on <code>request.state.machine_principal</code>.</li>
+<li>Resolve requested project scope from <code>X-Project-Id</code>.</li>
+<li>Validate optional machine contract header.</li>
+<li>Validate optional mTLS binding for service accounts.</li>
+<li>Run <code>authorize_machine_request()</code>.</li>
+<li>Emit a machine audit event.</li>
+<li>Return <code>403 insufficient_scope</code> on denial.</li>
+</ol>
+<p>API route scope map excerpt:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Prefix</th>
+<th>Required scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/scenarios</code></td>
+<td><code>scenarios:read</code></td>
+</tr>
 <tr>
 <td><code>/query</code></td>
 <td><code>query:execute</code></td>
@@ -1262,131 +1112,206 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 <td><code>review:execute</code></td>
 </tr>
 <tr>
-<td><code>/scenarios</code></td>
-<td><code>scenarios:read</code></td>
+<td><code>/sessions</code></td>
+<td><code>sessions:read</code></td>
 </tr>
 <tr>
-<td><code>/security</code></td>
-<td><code>scenarios:execute</code></td>
-</tr>
-<tr>
-<td><code>/gocpg</code></td>
-<td><code>query:execute</code></td>
-</tr>
-<tr>
-<td><code>/import</code></td>
-<td><code>scenarios:execute</code></td>
+<td><code>/history</code></td>
+<td><code>history:read</code></td>
 </tr>
 <tr>
 <td><code>/stats</code></td>
 <td><code>stats:read</code></td>
 </tr>
 <tr>
-<td><code>/groups</code></td>
+<td><code>/metrics</code></td>
+<td><code>metrics:read</code></td>
+</tr>
+<tr>
+<td><code>/security</code>, <code>/import</code>, <code>/documentation</code>, <code>/edit</code>, <code>/optimize</code>, <code>/standards</code>, <code>/composition</code>, <code>/changelog</code>, <code>/acp</code>, <code>/chat</code></td>
+<td><code>scenarios:execute</code></td>
+</tr>
+<tr>
+<td><code>/gocpg</code>, <code>/context</code>, <code>/patterns</code></td>
+<td><code>query:execute</code></td>
+</tr>
+<tr>
+<td><code>/deps</code></td>
+<td><code>scenarios:read</code></td>
+</tr>
+<tr>
+<td><code>/dashboard</code></td>
+<td><code>stats:read</code></td>
+</tr>
+<tr>
+<td><code>/digital-employees</code></td>
+<td><code>digital_employees:read</code></td>
+</tr>
+<tr>
+<td><code>/groups</code>, <code>/projects</code></td>
 <td><code>admin:all</code></td>
 </tr>
 <tr>
-<td><code>/projects</code></td>
-<td><code>admin:all</code></td>
-</tr>
-<tr>
-<td><code>/health</code></td>
-<td><code>None</code> (public)</td>
-</tr>
-<tr>
-<td><code>/auth</code></td>
-<td><code>None</code> (public)</td>
+<td><code>/webhooks</code>, <code>/health</code>, <code>/auth</code>, <code>/demo</code>, <code>/ws</code></td>
+<td>public for middleware scope purposes</td>
 </tr>
 </tbody>
 </table></div>
-<p>Keys with <code>admin:all</code> scope bypass all enforcement. JWT and IAM-authenticated users are not affected (permissions checked via role-based access control).</p>
-<p>Configuration:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
-<span class="nt">security</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">api_key_scope_enforcement</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">   </span><span class="c1"># Default: enabled</span>
-</code></pre></div>
-
-<p><strong>2. Explicit per-endpoint enforcement</strong> &ndash; The <code>require_scope()</code> dependency factory checks if the authenticated caller has a specific scope string in their <code>scopes</code> list. This is separate from role-based permission checks &ndash; it operates on raw scope strings.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.scope_enforcement</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_scope</span>
-
-<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin/stats&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">admin_stats</span><span class="p">(</span><span class="n">auth</span><span class="p">:</span> <span class="n">AuthContext</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_scope</span><span class="p">(</span><span class="s2">&quot;admin:read&quot;</span><span class="p">))):</span>
-    <span class="o">...</span>
-</code></pre></div>
-
-<p><strong>Signature:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">require_scope</span><span class="p">(</span><span class="n">scope</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;FastAPI dependency factory that checks if the authenticated caller has a scope.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        HTTPException(401) if not authenticated</span>
-<span class="sd">        HTTPException(403) if scope is missing</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-</code></pre></div>
-
-<p><strong>Helper function:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">check_api_key_scope</span><span class="p">(</span><span class="n">auth</span><span class="p">:</span> <span class="n">AuthContext</span><span class="p">,</span> <span class="n">request_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if an API-key-authenticated request has the required scope.</span>
-
-<span class="sd">    Returns None if scope is satisfied, or an error message string if missing.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-</code></pre></div>
-
-<h3  id="webhook-authentication"><span id="webhook_authentication"></span>Webhook Authentication<a class="heading-anchor" href="#webhook-authentication" title="Link to this section">&para;</a></h3>
-<p>The <code>verify_webhook_signature()</code> function in <code>src/api/auth/webhook_auth.py</code> provides HMAC-SHA256 signature verification for platform webhook events with replay attack prevention.</p>
-<p><strong>Signature:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">verify_webhook_signature</span><span class="p">(</span>
-    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
-    <span class="n">secret</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">platform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;sourcecraft&quot;</span><span class="p">,</span>
-    <span class="n">max_age_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong>Parameters:</strong></p>
+<p>MCP route scope map:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Description</th>
+<th>Prefix</th>
+<th>Required scope</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>request</code></td>
-<td><code>Request</code></td>
-<td>required</td>
-<td>FastAPI request object</td>
+<td><code>/mcp</code></td>
+<td><code>mcp:access</code></td>
 </tr>
 <tr>
-<td><code>secret</code></td>
-<td><code>Optional[str]</code></td>
-<td><code>None</code></td>
-<td>Webhook secret for HMAC verification. <code>None</code> skips verification</td>
+<td><code>/sse</code></td>
+<td><code>mcp:access</code></td>
 </tr>
 <tr>
-<td><code>platform</code></td>
-<td><code>str</code></td>
-<td><code>"sourcecraft"</code></td>
-<td>Platform name</td>
-</tr>
-<tr>
-<td><code>max_age_seconds</code></td>
-<td><code>int</code></td>
-<td><code>300</code></td>
-<td>Maximum webhook age in seconds (replay protection)</td>
+<td><code>/messages</code></td>
+<td><code>mcp:access</code></td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Supported platforms and headers:</strong></p>
+<p>For MCP only, <code>mcp:access</code> can be satisfied by aliases including <code>query:execute</code>, <code>scenarios:read</code>, <code>scenarios:execute</code>, <code>review:execute</code>, <code>stats:read</code>, <code>history:read</code>, and <code>admin:all</code>.</p>
+<p>Explicit endpoint scope checks can use:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.tokens.scope_enforcement</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_scope</span>
+
+<span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/example&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">example</span><span class="p">(</span><span class="n">auth</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_scope</span><span class="p">(</span><span class="s2">&quot;query:execute&quot;</span><span class="p">))):</span>
+    <span class="o">...</span>
+</code></pre></div>
+
+<p><code>require_scope()</code> checks raw <code>AuthContext.scopes</code>; <code>admin:all</code> bypasses it.</p>
+<h2  id="tenant-and-project-access"><span id="tenant_and_project_access"></span>Tenant and Project Access<a class="heading-anchor" href="#tenant-and-project-access" title="Link to this section">&para;</a></h2>
+<p>Tenant/project authorization is modeled separately from global user roles.</p>
+<p>Enums and tables:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Values or purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GroupRole</code></td>
+<td><code>viewer</code>, <code>editor</code>, <code>admin</code></td>
+</tr>
+<tr>
+<td><code>ProjectScopeMode</code></td>
+<td><code>all</code>, <code>selected</code></td>
+</tr>
+<tr>
+<td><code>project_groups</code></td>
+<td>Tenant/group records</td>
+</tr>
+<tr>
+<td><code>user_group_access</code></td>
+<td>User membership and tenant role</td>
+</tr>
+<tr>
+<td><code>user_project_access</code></td>
+<td>Selected project allowlist when membership uses <code>selected</code> mode</td>
+</tr>
+<tr>
+<td><code>api_keys.group_id</code></td>
+<td>Optional tenant restriction for user API keys</td>
+</tr>
+<tr>
+<td><code>service_accounts.group_id</code> / <code>project_id</code></td>
+<td>Optional tenant/project restriction for service accounts</td>
+</tr>
+</tbody>
+</table></div>
+<p>Admin access-management routes:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/v1/admin/identity/users/{user_id}/access</code></td>
+<td>Read unified system role plus tenant/project assignments</td>
+</tr>
+<tr>
+<td><code>PUT /api/v1/admin/identity/users/{user_id}/access</code></td>
+<td>Replace system role and tenant/project assignments</td>
+</tr>
+</tbody>
+</table></div>
+<p>Guardrails:</p>
+<ul>
+<li>A platform admin cannot deactivate their own account.</li>
+<li>The last active platform admin cannot be deactivated or downgraded.</li>
+<li>The last tenant admin cannot be removed or downgraded without another tenant admin.</li>
+<li><code>selected</code> project scope must include at least one project, and all selected projects must belong to the assigned tenant.</li>
+<li><code>all</code> project scope cannot include explicit project ids.</li>
+</ul>
+<p>Project resolution and tenant-sensitive runtime paths must use <code>ProjectContext</code> and resolved project scope, not user-provided database paths.</p>
+<h2  id="path-validation-middleware"><span id="path_validation_middleware"></span>Path Validation Middleware<a class="heading-anchor" href="#path-validation-middleware" title="Link to this section">&para;</a></h2>
+<p><code>PathValidationMiddleware</code> validates <code>db_path</code> and <code>source_path</code> fields in JSON bodies for <code>POST</code>, <code>PUT</code>, and <code>PATCH</code> requests.</p>
+<p>Rules:</p>
+<ul>
+<li>Empty strings and NUL bytes are rejected.</li>
+<li>Relative paths are rejected when <code>path_validation_deny_relative</code> is true.</li>
+<li><code>..</code> path components are rejected.</li>
+<li>Paths are resolved with <code>os.path.realpath()</code>.</li>
+<li>The resolved path must be under an allowed base directory.</li>
+</ul>
+<p>Allowed directories are built from:</p>
+<ul>
+<li><code>security.path_validation_allowed_base_dirs</code></li>
+<li>registered project <code>db_path</code> parent directories</li>
+<li>registered project <code>source_path</code> directories</li>
+</ul>
+<p>Config fields are defined in <code>SecurityConfig</code>:</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>path_validation_enabled</code></td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>path_validation_deny_symlinks</code></td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>path_validation_deny_relative</code></td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>path_validation_allowed_base_dirs</code></td>
+<td><code>["data/projects/"]</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="webhook-authentication"><span id="webhook_authentication"></span>Webhook Authentication<a class="heading-anchor" href="#webhook-authentication" title="Link to this section">&para;</a></h2>
+<p>Webhook verification lives in <code>src/api/auth/machine/webhook_auth.py</code>.
+The main verification function is <code>verify_webhook_signature()</code>.</p>
+<p>Supported platforms:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
 <th>Platform</th>
-<th>Signature Header</th>
-<th>Timestamp Header</th>
+<th>Signature/token header</th>
+<th>Timestamp header</th>
 </tr>
 </thead>
 <tbody>
@@ -1397,7 +1322,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 </tr>
 <tr>
 <td><code>gitverse</code></td>
-<td><code>X-GitVerse-Signature</code></td>
+<td><code>X-GitVerse-Signature</code>; fallbacks include <code>X-Gitea-Signature</code>, <code>X-Gogs-Signature</code>, <code>X-Hub-Signature-256</code>, <code>X-Hub-Signature</code></td>
 <td><code>X-GitVerse-Timestamp</code></td>
 </tr>
 <tr>
@@ -1405,412 +1330,158 @@ curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span
 <td><code>X-Hub-Signature-256</code></td>
 <td><code>X-Hub-Timestamp</code></td>
 </tr>
+<tr>
+<td><code>gitlab</code></td>
+<td><code>X-Gitlab-Token</code></td>
+<td>none</td>
+</tr>
 </tbody>
 </table></div>
-<p><strong>Replay protection:</strong> The function validates the timestamp header against the current time. If the difference exceeds <code>max_age_seconds</code> (default 300 seconds / 5 minutes), the request is rejected with HTTP 400 and the rejection is recorded in the audit log.</p>
-<p><strong>GitVerse fallback:</strong> If <code>X-GitVerse-Signature</code> is missing, the function also checks <code>X-Hub-Signature-256</code> for backward compatibility.</p>
-<p><strong>Usage example:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.webhook_auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify_webhook_signature</span>
-
-<span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/webhooks/sourcecraft&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_sourcecraft_webhook</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
-    <span class="n">body</span> <span class="o">=</span> <span class="k">await</span> <span class="n">verify_webhook_signature</span><span class="p">(</span>
-        <span class="n">request</span><span class="p">,</span>
-        <span class="n">secret</span><span class="o">=</span><span class="s2">&quot;your-webhook-secret&quot;</span><span class="p">,</span>
-        <span class="n">platform</span><span class="o">=</span><span class="s2">&quot;sourcecraft&quot;</span><span class="p">,</span>
-        <span class="n">max_age_seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">payload</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
-    <span class="o">...</span>
-</code></pre></div>
-
-<hr />
-<h2  id="token-blacklist-api"><span id="token_blacklist_api"></span>Token Blacklist API<a class="heading-anchor" href="#token-blacklist-api" title="Link to this section">&para;</a></h2>
-<p>The token blacklist provides instant revocation of JWT tokens. It uses PostgreSQL for persistence with an in-memory cache for fast lookups. Source: <code>src/api/auth/jwt_handler.py</code>.</p>
-<h3 id="functions">Functions<a class="heading-anchor" href="#functions" title="Link to this section">&para;</a></h3>
-<p><strong><code>blacklist_token(jti, expires_at=None) -&gt; None</code></strong></p>
-<p>Adds a token to the blacklist. Stores the JTI in both the in-memory cache (for immediate effect) and PostgreSQL (for persistence across restarts).</p>
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">blacklist_token</span><span class="p">(</span><span class="n">jti</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">expires_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong><code>is_token_blacklisted(jti) -&gt; bool</code></strong></p>
-<p>Checks if a token is blacklisted. Uses the in-memory cache first (fast path), then falls back to the database (slow path). Tokens found in the database are added to the cache for subsequent lookups.</p>
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">is_token_blacklisted</span><span class="p">(</span><span class="n">jti</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong><code>load_blacklist_cache() -&gt; int</code></strong></p>
-<p>Loads non-expired blacklisted tokens from PostgreSQL into the in-memory cache. Should be called during application startup. Returns the number of tokens loaded.</p>
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_blacklist_cache</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</code></pre></div>
-
-<p><strong><code>_blacklist_sync_task(interval_seconds=60) -&gt; None</code></strong></p>
-<p>Background asyncio task that periodically refreshes the blacklist cache from the database. Catches all exceptions to prevent the task from dying on transient errors.</p>
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_blacklist_sync_task</span><span class="p">(</span><span class="n">interval_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</code></pre></div>
-
-<h3 id="architecture">Architecture<a class="heading-anchor" href="#architecture" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>Request                              blacklist_token()
-   |                                       |
-   v                                       v
-is_token_blacklisted()              _blacklisted_tokens (set)
-   |                                  +    |
-   |  1. check in-memory set          |    v
-   |  2. fallback to PostgreSQL        | PostgreSQL: TokenBlacklist table
-   |     (adds to cache if found)      |
-   v                                   |
- True/False                     _blacklist_sync_task()
-                                (periodic refresh)
-</code></pre></div>
-
-<hr />
-<h2  id="api-key-data-models"><span id="api_key_data_models"></span>API Key Data Models<a class="heading-anchor" href="#api-key-data-models" title="Link to this section">&para;</a></h2>
-<p>Source: <code>src/api/auth/api_keys.py</code></p>
-<h3 id="apikeyinfo">ApiKeyInfo<a class="heading-anchor" href="#apikeyinfo" title="Link to this section">&para;</a></h3>
-<p>Information model for API keys (without the secret key). Used for listing and inspecting keys.</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ApiKeyInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>                            <span class="c1"># Unique key identifier</span>
-    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>                          <span class="c1"># Human-readable name</span>
-    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span>                        <span class="c1"># Key prefix (e.g., &quot;rag_a1b2c3d4&quot;)</span>
-    <span class="n">scopes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                  <span class="c1"># Permission scopes</span>
-    <span class="n">created_at</span><span class="p">:</span> <span class="n">datetime</span>               <span class="c1"># Creation timestamp</span>
-    <span class="n">expires_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span>     <span class="c1"># Expiration (None = never)</span>
-    <span class="n">last_used_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span>   <span class="c1"># Last usage timestamp</span>
-    <span class="n">is_revoked</span><span class="p">:</span> <span class="nb">bool</span>                   <span class="c1"># Revocation status</span>
-</code></pre></div>
-
-<h3 id="apikeywithsecret">ApiKeyWithSecret<a class="heading-anchor" href="#apikeywithsecret" title="Link to this section">&para;</a></h3>
-<p>Extended model that includes the full key. Only returned at creation time.</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ApiKeyWithSecret</span><span class="p">(</span><span class="n">ApiKeyInfo</span><span class="p">):</span>
-    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span>    <span class="c1"># Full API key (e.g., &quot;rag_a1b2c3d4_&lt;48hex&gt;&quot;)</span>
-</code></pre></div>
-
-<h3  id="utility-functions"><span id="utility_functions"></span>Utility Functions<a class="heading-anchor" href="#utility-functions" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.api_keys</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">generate_api_key</span><span class="p">,</span>      <span class="c1"># -&gt; (full_key, prefix, key_hash)</span>
-    <span class="n">hash_api_key</span><span class="p">,</span>          <span class="c1"># key -&gt; SHA-256 hex digest</span>
-    <span class="n">verify_api_key</span><span class="p">,</span>        <span class="c1"># (key, stored_hash) -&gt; bool (constant-time)</span>
-    <span class="n">extract_prefix</span><span class="p">,</span>        <span class="c1"># key -&gt; prefix string</span>
-    <span class="n">is_key_expired</span><span class="p">,</span>        <span class="c1"># expires_at -&gt; bool</span>
-    <span class="n">calculate_expiration</span><span class="p">,</span>  <span class="c1"># days -&gt; Optional[datetime]</span>
-    <span class="n">validate_api_key</span><span class="p">,</span>      <span class="c1"># Full validation pipeline (hash + revoked + expired)</span>
-<span class="p">)</span>
-</code></pre></div>
-
-<hr />
-<h2  id="auditing-and-logging"><span id="auditing_and_logging"></span>Auditing and Logging<a class="heading-anchor" href="#auditing-and-logging" title="Link to this section">&para;</a></h2>
-<h3  id="authorization-events"><span id="authorization_events"></span>Authorization Events<a class="heading-anchor" href="#authorization-events" title="Link to this section">&para;</a></h3>
-<p>All authorization events are logged and sent to SIEM:</p>
+<p><code>sourcecraft</code>, <code>gitverse</code>, and <code>github</code> use HMAC signature validation. <code>gitlab</code> uses constant-time token comparison. Replay protection uses the configured <code>security.webhook_max_age_seconds</code> default when a platform timestamp header exists.</p>
+<h2  id="audit-and-siem-relevant-events"><span id="audit_and_siem_relevant_events"></span>Audit and SIEM-Relevant Events<a class="heading-anchor" href="#audit-and-siem-relevant-events" title="Link to this section">&para;</a></h2>
+<p>Audit actions are defined in <code>src/api/logging/audit_logger.py</code>.</p>
+<p>Relevant authorization actions include:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Event</th>
-<th>Severity</th>
-<th>Description</th>
+<th>Category</th>
+<th>Actions</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>AUTH_SUCCESS</code></td>
-<td>INFO</td>
-<td>Successful authentication</td>
+<td>Auth</td>
+<td><code>auth.login.success</code>, <code>auth.login.failure</code>, <code>auth.logout</code>, <code>auth.token.refresh</code>, <code>auth.token.revoked</code></td>
 </tr>
 <tr>
-<td><code>AUTH_FAILURE</code></td>
-<td>WARNING</td>
-<td>Failed attempt</td>
+<td>OAuth and LDAP</td>
+<td><code>oauth.login.*</code>, <code>ldap.login.*</code></td>
 </tr>
 <tr>
-<td><code>TOKEN_ISSUED</code></td>
-<td>INFO</td>
-<td>New token issued</td>
+<td>API keys</td>
+<td><code>api_key.created</code>, <code>api_key.revoked</code>, <code>api_key.deleted</code>, <code>api_key.used</code></td>
 </tr>
 <tr>
-<td><code>TOKEN_REVOKED</code></td>
-<td>INFO</td>
-<td>Token revoked (blacklisted)</td>
+<td>Service accounts</td>
+<td><code>service_account.created</code>, <code>service_account.rotated</code>, <code>service_account.credential_revoked</code>, <code>service_account.disabled</code></td>
 </tr>
 <tr>
-<td><code>PERMISSION_DENIED</code></td>
-<td>WARNING</td>
-<td>Access denied</td>
+<td>Machine access</td>
+<td><code>machine.access</code></td>
 </tr>
 <tr>
-<td><code>API_KEY_CREATED</code></td>
-<td>INFO</td>
-<td>API key created</td>
+<td>User and tenant admin</td>
+<td><code>user.created</code>, <code>user.updated</code>, <code>user.role.changed</code>, <code>user.tenant.*</code>, <code>user.project.scope.changed</code></td>
 </tr>
 <tr>
-<td><code>API_KEY_REVOKED</code></td>
-<td>INFO</td>
-<td>API key revoked</td>
-</tr>
-<tr>
-<td><code>WEBHOOK_REPLAY_REJECTED</code></td>
-<td>WARNING</td>
-<td>Webhook replay attack detected</td>
+<td>Security</td>
+<td><code>security.permission.denied</code>, <code>security.rate_limit.exceeded</code>, <code>security.token.invalid</code>, <code>security.path_violation</code>, <code>security.idor_attempt</code>, <code>security.webhook.replay_rejected</code>, <code>security.mcp.auth_failure</code></td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="log-format"><span id="log_format"></span>Log Format<a class="heading-anchor" href="#log-format" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-07T10:30:00.000Z&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;event_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AUTH_SUCCESS&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;user_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user_123&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;analyst@company.com&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;analyst&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;auth_method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jwt&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;group_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;ip_address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10.0.0.50&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;user_agent&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Mozilla/5.0...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;request_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/v1/scenarios&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;request_method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GET&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<hr />
-<h2  id="group-level-rbac-multi-tenant"><span id="group_level_rbac_multi_tenant"></span>Group-Level RBAC (Multi-Tenant)<a class="heading-anchor" href="#group-level-rbac-multi-tenant" title="Link to this section">&para;</a></h2>
-<p>When <code>multi_tenant.enabled: true</code> in <code>config.yaml</code>, CodeGraph enforces <strong>group-level access control</strong> on all data endpoints. Projects belong to groups, and users have per-group roles.</p>
-<h3  id="group-roles"><span id="group_roles"></span>Group Roles<a class="heading-anchor" href="#group-roles" title="Link to this section">&para;</a></h3>
-<p>Source: <code>src/api/database/models.py</code> (<code>GroupRole</code> enum)</p>
+<p>Machine audit records include subject type/id, interface, operation, resource, result, credential id, optional service-account id, optional contract version, project id, and group id.</p>
+<h2  id="configuration-reference"><span id="configuration_reference"></span>Configuration Reference<a class="heading-anchor" href="#configuration-reference" title="Link to this section">&para;</a></h2>
+<p>Selected current config fields:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
-<th>Role</th>
-<th>Permissions</th>
+<th>Field</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>VIEWER</code></td>
-<td>Read-only: query, stats, list</td>
+<td><code>security.api_key_scope_enforcement</code></td>
+<td>Enables machine API-key scope middleware</td>
 </tr>
 <tr>
-<td><code>EDITOR</code></td>
-<td>Read + write: import, edit, activate</td>
+<td><code>security.local_dev_unauthenticated_surfaces_enabled</code></td>
+<td>Enables guarded loopback local-plugin auth bypass</td>
 </tr>
 <tr>
-<td><code>ADMIN</code></td>
-<td>Full access: delete projects, manage group members</td>
+<td><code>security.webhook_max_age_seconds</code></td>
+<td>Replay window for timestamped webhook signatures</td>
+</tr>
+<tr>
+<td><code>security.auth_rate_limit_*</code></td>
+<td>Login/register/refresh/LDAP rate-limit settings</td>
+</tr>
+<tr>
+<td><code>security.service_account_token_ttl_days</code></td>
+<td>Default service-account account and credential TTL</td>
+</tr>
+<tr>
+<td><code>security.service_account_default_interfaces</code></td>
+<td>Default interfaces for service accounts</td>
+</tr>
+<tr>
+<td><code>security.service_account_max_active_credentials</code></td>
+<td>Rotation quota</td>
+</tr>
+<tr>
+<td><code>security.service_account_rotation_overlap_seconds</code></td>
+<td>Intended overlap window for rotations</td>
+</tr>
+<tr>
+<td><code>security.service_account_rotation_warning_days</code></td>
+<td>Warning window for credential age/expiry</td>
+</tr>
+<tr>
+<td><code>security.service_account_revoke_sla_seconds</code></td>
+<td>Revocation SLA reference</td>
+</tr>
+<tr>
+<td><code>security.service_account_mtls_enabled</code></td>
+<td>Enables service-account mTLS binding checks</td>
+</tr>
+<tr>
+<td><code>security.service_account_mtls_required_interfaces</code></td>
+<td>Interfaces requiring mTLS when enabled</td>
+</tr>
+<tr>
+<td><code>security.service_account_mtls_subject_header</code></td>
+<td>Proxy header for certificate subject</td>
+</tr>
+<tr>
+<td><code>security.service_account_mtls_fingerprint_header</code></td>
+<td>Proxy header for certificate fingerprint</td>
+</tr>
+<tr>
+<td><code>security.service_account_mtls_bindings</code></td>
+<td>Allowed fingerprints by service-account id</td>
 </tr>
 </tbody>
 </table></div>
-<p>System administrators (<code>Role.ADMIN</code>) bypass all group checks.</p>
-<h3  id="how-it-works_1"><span id="how_it_works_1"></span>How It Works<a class="heading-anchor" href="#how-it-works_1" title="Link to this section">&para;</a></h3>
-<p>Every API request resolves a <code>ProjectContext</code> containing <code>project_id</code>, <code>group_id</code>, and <code>db_path</code>. The <code>require_project_access(min_group_role)</code> dependency checks:</p>
+<h2  id="operational-guidance"><span id="operational_guidance"></span>Operational Guidance<a class="heading-anchor" href="#operational-guidance" title="Link to this section">&para;</a></h2>
+<p>For administrators:</p>
 <ol>
-<li>If <code>multi_tenant.enabled</code> is <code>false</code> -&gt; pass-through (no enforcement)</li>
-<li>If user is system admin -&gt; bypass group checks</li>
-<li>Otherwise -&gt; verify <code>user_group_access</code> table for minimum role</li>
+<li>Use <code>admin</code> only for platform administration.</li>
+<li>Prefer tenant <code>GroupRole</code> and selected project access for day-to-day segregation.</li>
+<li>Use service accounts for CI, bots, portals, MCP clients, and long-lived machine access.</li>
+<li>Use policy templates as a baseline and add only the scopes needed by the caller.</li>
+<li>Rotate service-account credentials before revoking old credentials.</li>
+<li>Keep JWT blacklist cache loading enabled during application startup.</li>
+<li>Keep path validation and API-key scope enforcement enabled in shared environments.</li>
 </ol>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.project_auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_project_access</span>
-
-<span class="c1"># Require at least editor role within the project group</span>
-<span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/projects/</span><span class="si">{project_id}</span><span class="s2">/import&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">import_project</span><span class="p">(</span>
-    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">auth</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_project_access</span><span class="p">(</span><span class="s2">&quot;editor&quot;</span><span class="p">))</span>
-<span class="p">):</span>
-    <span class="o">...</span>
-</code></pre></div>
-
-<p>Group ID is resolved from: <code>X-Group-Id</code> header (priority) -&gt; <code>auth.group_id</code> (from JWT/API key).</p>
-<h3  id="api-key-group-scoping"><span id="api_key_group_scoping"></span>API Key Group Scoping<a class="heading-anchor" href="#api-key-group-scoping" title="Link to this section">&para;</a></h3>
-<p>API keys can optionally be scoped to a specific group via the <code>group_id</code> column:
-- <code>NULL</code> &ndash; access all groups the user belongs to (backward compatible)
-- Set &ndash; restricts project resolution to that group only</p>
-<h3  id="audit-context"><span id="audit_context"></span>Audit Context<a class="heading-anchor" href="#audit-context" title="Link to this section">&para;</a></h3>
-<p>When multi-tenant is enabled, audit log entries include <code>project_id</code> and <code>group_id</code> fields for tenant-aware audit trails.</p>
-<h3  id="effective-active-project-resolution"><span id="effective_active_project_resolution"></span>Effective Active Project Resolution<a class="heading-anchor" href="#effective-active-project-resolution" title="Link to this section">&para;</a></h3>
-<p>Multi-tenant routing now distinguishes three different concepts:</p>
-<ul>
-<li><code>group default active project</code> &ndash; the tenant-wide default stored on <code>Project.is_active</code></li>
-<li><code>user-selected active project</code> &ndash; a per-user preference inside one group</li>
-<li><code>effective active project</code> &ndash; the final runtime result after precedence and access checks</li>
-</ul>
-<p>Resolution precedence for user-facing runtime surfaces is:</p>
+<p>For developers:</p>
 <ol>
-<li>explicit project hint</li>
-<li>workspace-derived match</li>
-<li>persisted user preference</li>
-<li>group default project</li>
-<li>global fallback for local single-project compatibility only</li>
+<li>Use <code>require_permission()</code> or <code>require_role()</code> for human user route checks.</li>
+<li>Use <code>require_scope()</code> only when raw scope strings are the intended contract.</li>
+<li>Add new machine routes to <code>API_ROUTE_SCOPE_MAP</code> or <code>MCP_ROUTE_SCOPE_MAP</code>.</li>
+<li>Preserve REST/MCP parity by calling shared services rather than duplicating auth logic.</li>
+<li>Never authorize tenant-sensitive operations from user-provided <code>db_path</code>.</li>
+<li>For local-plugin mutating routes, require named actor and task evidence.</li>
+<li>Do not log bearer tokens, API keys, service-account secrets, raw webhook secrets, or raw prompts.</li>
 </ol>
-<p>If the workspace matches a project the user cannot access, CodeGraph returns a structured denied state instead of silently opening the wrong project. The denied payload includes a remediation path:</p>
-<ul>
-<li><code>workspace_admin_remediation</code> &ndash; same-tenant admin should adjust project scope</li>
-<li><code>platform_admin_override</code> &ndash; platform admin must handle cross-tenant or guarded cases</li>
-<li><code>explicit_project_selection_required</code> &ndash; caller must disambiguate multiple valid matches</li>
-</ul>
-<p>Tenant-scoped remediation surfaces:</p>
-<ul>
-<li><code>GET/PUT /api/v1/groups/{group_id}/users/{user_id}/project-access</code></li>
-</ul>
-<p>Platform-scoped remediation surface:</p>
-<ul>
-<li><code>GET/PUT /api/v1/auth/users/{user_id}/access</code></li>
-</ul>
-<h3  id="implementation-status"><span id="implementation_status"></span>Implementation Status<a class="heading-anchor" href="#implementation-status" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Component</th>
-<th>File</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>GroupRole</code> enum</td>
-<td><code>src/api/database/models.py</code></td>
-<td>Implemented</td>
-</tr>
-<tr>
-<td><code>ProjectGroup</code> model</td>
-<td><code>src/api/database/models.py</code></td>
-<td>Implemented</td>
-</tr>
-<tr>
-<td><code>UserGroupAccess</code> model</td>
-<td><code>src/api/database/models.py</code></td>
-<td>Implemented</td>
-</tr>
-<tr>
-<td><code>require_project_access()</code></td>
-<td><code>src/api/auth/project_auth.py</code></td>
-<td>Implemented</td>
-</tr>
-<tr>
-<td><code>_is_multi_tenant_enabled()</code></td>
-<td><code>src/api/auth/project_auth.py</code></td>
-<td>Implemented</td>
-</tr>
-<tr>
-<td><code>_resolve_group_id()</code></td>
-<td><code>src/api/auth/project_auth.py</code></td>
-<td>Implemented</td>
-</tr>
-</tbody>
-</table></div>
-<h3  id="group-rbac-configuration"><span id="group_rbac_configuration"></span>Group RBAC Configuration<a class="heading-anchor" href="#group-rbac-configuration" title="Link to this section">&para;</a></h3>
-<p>When <code>multi_tenant.enabled: false</code> (default), all group-level checks are no-ops.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
-<span class="nt">multi_tenant</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">    </span><span class="c1"># Default: disabled</span>
-</code></pre></div>
-
-<h3 id="migration">Migration<a class="heading-anchor" href="#migration" title="Link to this section">&para;</a></h3>
-<p>For existing single-tenant installations, run the migration script once:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/migrate_default_group.py<span class="w">          </span><span class="c1"># Creates &quot;default&quot; group, assigns all users as ADMIN</span>
-python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> </span>--dry-run<span class="w"> </span><span class="c1"># Preview changes without applying</span>
-</code></pre></div>
-
-<hr />
-<h2  id="path-validation-middleware"><span id="path_validation_middleware"></span>Path Validation Middleware<a class="heading-anchor" href="#path-validation-middleware" title="Link to this section">&para;</a></h2>
-<p>Source: <code>src/api/middleware/path_validation.py</code></p>
-<p>The <code>PathValidationMiddleware</code> prevents path traversal attacks by validating <code>db_path</code> and <code>source_path</code> parameters in JSON request bodies against a whitelist of allowed directories.</p>
-<h3  id="how-it-works_2"><span id="how_it_works_2"></span>How It Works<a class="heading-anchor" href="#how-it-works_2" title="Link to this section">&para;</a></h3>
-<ol>
-<li>Intercepts <code>POST</code>/<code>PUT</code>/<code>PATCH</code> requests with JSON bodies</li>
-<li>Extracts <code>db_path</code> and <code>source_path</code> fields if present</li>
-<li>Normalizes the path (<code>os.path.realpath()</code>, symlink resolution)</li>
-<li>Verifies the path falls within the whitelist</li>
-<li>Rejects invalid paths with <code>403 Forbidden</code></li>
-</ol>
-<h3  id="validation-rules"><span id="validation_rules"></span>Validation Rules<a class="heading-anchor" href="#validation-rules" title="Link to this section">&para;</a></h3>
-<ul>
-<li>Path must be absolute after normalization</li>
-<li><code>..</code> path components are rejected</li>
-<li>Symlinks that resolve outside the whitelist are rejected (configurable)</li>
-<li>Path must start with one of the allowed base directories</li>
-</ul>
-<h3  id="whitelist-sources"><span id="whitelist_sources"></span>Whitelist Sources<a class="heading-anchor" href="#whitelist-sources" title="Link to this section">&para;</a></h3>
-<p>The whitelist is built automatically from:</p>
-<ul>
-<li><code>security.path_validation_allowed_base_dirs</code> in <code>config.yaml</code> (e.g. <code>data/projects/</code>)</li>
-<li><code>projects.registry.*.db_path</code> &ndash; directories of all registered project databases</li>
-<li><code>projects.registry.*.source_path</code> &ndash; all registered source directories</li>
-</ul>
-<h3  id="path-validation-configuration"><span id="path_validation_configuration"></span>Path Validation Configuration<a class="heading-anchor" href="#path-validation-configuration" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># config.yaml</span>
-<span class="nt">security</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">path_validation_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">       </span><span class="c1"># Default: enabled</span>
-<span class="w">  </span><span class="nt">path_validation_deny_symlinks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">  </span><span class="c1"># Reject symlinks outside whitelist</span>
-<span class="w">  </span><span class="nt">path_validation_deny_relative</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">  </span><span class="c1"># Reject relative paths</span>
-<span class="w">  </span><span class="nt">path_validation_allowed_base_dirs</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;data/projects/&quot;</span>
-</code></pre></div>
-
-<p>When <code>path_validation_enabled: false</code>, the middleware is a no-op.</p>
-<h3  id="attack-vectors-blocked"><span id="attack_vectors_blocked"></span>Attack Vectors Blocked<a class="heading-anchor" href="#attack-vectors-blocked" title="Link to this section">&para;</a></h3>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Attack</th>
-<th>Example</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Directory traversal</td>
-<td><code>{"db_path": "../../etc/passwd"}</code></td>
-<td>403</td>
-</tr>
-<tr>
-<td>Absolute path escape</td>
-<td><code>{"db_path": "/etc/shadow"}</code></td>
-<td>403</td>
-</tr>
-<tr>
-<td>Symlink escape</td>
-<td><code>{"db_path": "/data/projects/link-to-root"}</code></td>
-<td>403</td>
-</tr>
-<tr>
-<td>Type confusion</td>
-<td><code>{"db_path": 12345}</code></td>
-<td>403</td>
-</tr>
-<tr>
-<td>Relative path</td>
-<td><code>{"db_path": "relative/path.db"}</code></td>
-<td>403</td>
-</tr>
-</tbody>
-</table></div>
-<hr />
-<h2  id="best-practices"><span id="best_practices"></span>Best Practices<a class="heading-anchor" href="#best-practices" title="Link to this section">&para;</a></h2>
-<h3  id="for-administrators"><span id="for_administrators"></span>For Administrators<a class="heading-anchor" href="#for-administrators" title="Link to this section">&para;</a></h3>
-<ol>
-<li><strong>Least privilege principle</strong> &ndash; assign minimum necessary roles</li>
-<li><strong>Use API keys with limited scopes</strong> for automation; use <code>get_default_scopes_for_api_key()</code> as a baseline</li>
-<li><strong>Configure LDAP/AD sync</strong> for centralized management</li>
-<li><strong>Enable SIEM integration</strong> for security event monitoring</li>
-<li><strong>Regularly audit</strong> active sessions and API keys</li>
-<li><strong>Use webhook secrets</strong> with replay protection for all platform integrations</li>
-<li><strong>Call <code>load_blacklist_cache()</code></strong> during application startup to restore blacklisted tokens</li>
-</ol>
-<h3  id="for-developers"><span id="for_developers"></span>For Developers<a class="heading-anchor" href="#for-developers" title="Link to this section">&para;</a></h3>
-<ol>
-<li><strong>Use JWT for web apps</strong>, API keys for CI/CD, IAM for Yandex Cloud services</li>
-<li><strong>Store refresh tokens securely</strong> (httpOnly cookies)</li>
-<li><strong>Handle 401/403</strong> correctly in UI</li>
-<li><strong>Never log tokens or keys</strong> in plain text</li>
-<li><strong>Use <code>require_scope()</code></strong> for fine-grained scope checks on API key endpoints</li>
-<li><strong>Use <code>validate_scopes()</code></strong> to filter user-provided scope lists before storing</li>
-<li><strong>Prefer <code>require_permission()</code></strong> over manual <code>has_permission()</code> checks in route handlers</li>
-</ol>
-<hr />
 <h2  id="related-documents"><span id="related_documents"></span>Related Documents<a class="heading-anchor" href="#related-documents" title="Link to this section">&para;</a></h2>
 <ul>
-<li><a href="./SECURITY_BRIEF.html">Enterprise Security Brief</a> &ndash; Security overview</li>
-<li><a href="./DLP_SECURITY.html">DLP Security</a> &ndash; Data loss prevention</li>
-<li><a href="./SIEM.html">SIEM Integration</a> &ndash; SIEM integration</li>
-<li><a href="./OAUTH_LDAP.html">OAuth2/OIDC &amp; LDAP/AD Integration</a> &ndash; Full auth provider configuration</li>
-<li><a href="../api/REST_API.html">REST API Reference</a> &ndash; API reference</li>
+<li><a href="./SECURITY_BRIEF.html">Enterprise Security Brief</a></li>
+<li><a href="./OAUTH_LDAP.html">OAuth2/OIDC and LDAP/AD Integration</a></li>
+<li><a href="./SIEM.html">SIEM Integration</a></li>
+<li><a href="./DLP_SECURITY.html">DLP Security</a></li>
+<li><a href="../api/REST_API.html">REST API Reference</a></li>
 </ul>
-<hr />
-<p><em>Version: 2.0 | March 2026</em></p>
+<p><em>Version: 3.0 | May 2026</em></p>
       </article>
 
       <!-- Page Navigation -->
@@ -1829,7 +1500,7 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/enterprise/RBAC.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1838,56 +1509,29 @@ python<span class="w"> </span>scripts/migrate_default_group.py<span class="w"> <
     <aside class="doc-toc">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#table-of-contents" class="level-2">Table of Contents</a></li>
-<li><a href="#overview" class="level-2">Overview</a></li>
-<li><a href="#key-capabilities" class="level-3">Key Capabilities</a></li>
-<li><a href="#rbac-architecture" class="level-2">RBAC Architecture</a></li>
-<li><a href="#role-hierarchy" class="level-3">Role Hierarchy</a></li>
-<li><a href="#permission-inheritance" class="level-3">Permission Inheritance</a></li>
-<li><a href="#permission-catalog" class="level-2">Permission Catalog</a></li>
-<li><a href="#permissions-by-category" class="level-3">Permissions by Category</a></li>
+        <li><a href="#scope-and-source-of-truth" class="level-2">Scope and Source of Truth</a></li>
+<li><a href="#runtime-model" class="level-2">Runtime Model</a></li>
+<li><a href="#user-roles-and-permissions" class="level-2">User Roles and Permissions</a></li>
+<li><a href="#roles" class="level-3">Roles</a></li>
+<li><a href="#permission-behavior" class="level-3">Permission Behavior</a></li>
+<li><a href="#permission-catalog" class="level-3">Permission Catalog</a></li>
+<li><a href="#permission-helpers" class="level-3">Permission Helpers</a></li>
+<li><a href="#fastapi-auth-context" class="level-2">FastAPI Auth Context</a></li>
 <li><a href="#authentication-methods" class="level-2">Authentication Methods</a></li>
-<li><a href="#1-jwt-bearer-token" class="level-3">1. JWT Bearer Token</a></li>
-<li><a href="#2-api-keys" class="level-3">2. API Keys</a></li>
-<li><a href="#service-accounts-and-machine-access" class="level-3">Service Accounts and Machine Access</a></li>
-<li><a href="#3-oauth2oidc" class="level-3">3. OAuth2/OIDC</a></li>
-<li><a href="#4-ldapactive-directory" class="level-3">4. LDAP/Active Directory</a></li>
-<li><a href="#5-iam-yandex-cloud" class="level-3">5. IAM (Yandex Cloud)</a></li>
-<li><a href="#api-reference" class="level-2">API Reference</a></li>
-<li><a href="#middleware-dependencies" class="level-3">Middleware Dependencies</a></li>
-<li><a href="#fastapi-usage-examples" class="level-3">FastAPI Usage Examples</a></li>
-<li><a href="#authcontext" class="level-3">AuthContext</a></li>
-<li><a href="#permission-helper-functions" class="level-3">Permission Helper Functions</a></li>
-<li><a href="#scope-enforcement" class="level-3">Scope Enforcement</a></li>
-<li><a href="#webhook-authentication" class="level-3">Webhook Authentication</a></li>
-<li><a href="#token-blacklist-api" class="level-2">Token Blacklist API</a></li>
-<li><a href="#functions" class="level-3">Functions</a></li>
-<li><a href="#architecture" class="level-3">Architecture</a></li>
-<li><a href="#api-key-data-models" class="level-2">API Key Data Models</a></li>
-<li><a href="#apikeyinfo" class="level-3">ApiKeyInfo</a></li>
-<li><a href="#apikeywithsecret" class="level-3">ApiKeyWithSecret</a></li>
-<li><a href="#utility-functions" class="level-3">Utility Functions</a></li>
-<li><a href="#auditing-and-logging" class="level-2">Auditing and Logging</a></li>
-<li><a href="#authorization-events" class="level-3">Authorization Events</a></li>
-<li><a href="#log-format" class="level-3">Log Format</a></li>
-<li><a href="#group-level-rbac-multi-tenant" class="level-2">Group-Level RBAC (Multi-Tenant)</a></li>
-<li><a href="#group-roles" class="level-3">Group Roles</a></li>
-<li><a href="#how-it-works" class="level-3">How It Works</a></li>
-<li><a href="#api-key-group-scoping" class="level-3">API Key Group Scoping</a></li>
-<li><a href="#audit-context" class="level-3">Audit Context</a></li>
-<li><a href="#effective-active-project-resolution" class="level-3">Effective Active Project Resolution</a></li>
-<li><a href="#implementation-status" class="level-3">Implementation Status</a></li>
-<li><a href="#group-rbac-configuration" class="level-3">Group RBAC Configuration</a></li>
-<li><a href="#migration" class="level-3">Migration</a></li>
+<li><a href="#local-username-and-password" class="level-3">Local Username and Password</a></li>
+<li><a href="#jwt-bearer-tokens" class="level-3">JWT Bearer Tokens</a></li>
+<li><a href="#user-api-keys" class="level-3">User API Keys</a></li>
+<li><a href="#service-accounts" class="level-3">Service Accounts</a></li>
+<li><a href="#oauth2oidc" class="level-3">OAuth2/OIDC</a></li>
+<li><a href="#ldapactive-directory" class="level-3">LDAP/Active Directory</a></li>
+<li><a href="#yandex-cloud-iam" class="level-3">Yandex Cloud IAM</a></li>
+<li><a href="#machine-scope-enforcement" class="level-2">Machine Scope Enforcement</a></li>
+<li><a href="#tenant-and-project-access" class="level-2">Tenant and Project Access</a></li>
 <li><a href="#path-validation-middleware" class="level-2">Path Validation Middleware</a></li>
-<li><a href="#how-it-works" class="level-3">How It Works</a></li>
-<li><a href="#validation-rules" class="level-3">Validation Rules</a></li>
-<li><a href="#whitelist-sources" class="level-3">Whitelist Sources</a></li>
-<li><a href="#path-validation-configuration" class="level-3">Path Validation Configuration</a></li>
-<li><a href="#attack-vectors-blocked" class="level-3">Attack Vectors Blocked</a></li>
-<li><a href="#best-practices" class="level-2">Best Practices</a></li>
-<li><a href="#for-administrators" class="level-3">For Administrators</a></li>
-<li><a href="#for-developers" class="level-3">For Developers</a></li>
+<li><a href="#webhook-authentication" class="level-2">Webhook Authentication</a></li>
+<li><a href="#audit-and-siem-relevant-events" class="level-2">Audit and SIEM-Relevant Events</a></li>
+<li><a href="#configuration-reference" class="level-2">Configuration Reference</a></li>
+<li><a href="#operational-guidance" class="level-2">Operational Guidance</a></li>
 <li><a href="#related-documents" class="level-2">Related Documents</a></li>
       </ul>
     </aside>

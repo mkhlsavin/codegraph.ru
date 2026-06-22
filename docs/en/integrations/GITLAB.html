@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Overview</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Agent Client Protocol (ACP) Integration</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">WebSocket API Reference</a></li>
-        <li><a href="../api/DEMO_API.html">Demo API</a></li>
         <li><a href="../api/GRPC_API.html">gRPC API Reference</a></li>
         <li><a href="../api/MCP_TOOLS.html">Built-in MCP Tools</a></li>
         <li><a href="../api/REST_API.html">REST API Reference</a></li>
@@ -211,6 +209,7 @@
 <li><a href="#overview">Overview</a></li>
 <li><a href="#local-contour-profile">Local Contour Profile</a></li>
 <li><a href="#provider-connection-and-trust">Provider Connection and Trust</a></li>
+<li><a href="#config-backed-import-through-repositories-center">Config-Backed Import through Repositories Center</a></li>
 <li><a href="#webhook-setup-and-recovery">Webhook Setup and Recovery</a></li>
 <li><a href="#ci-template-for-local-runners">CI Template for Local Runners</a></li>
 <li><a href="#rest-cli-and-mcp-surfaces">REST, CLI, and MCP Surfaces</a></li>
@@ -235,7 +234,7 @@
 <ol>
 <li>GitLab CE is exposed on an internal hostname such as <code>gitlab.internal</code>.</li>
 <li>CodeGraph API is exposed on an internal hostname such as <code>codegraph.internal</code>.</li>
-<li>A reverse proxy forwards <code>POST /api/v1/webhooks/gitlab</code> to CodeGraph without rewriting the body or dropping <code>X-Gitlab-*</code> headers.</li>
+<li>A reverse proxy forwards <code>POST /api/v1/admin/runtime/webhooks/gitlab</code> to CodeGraph without rewriting the body or dropping <code>X-Gitlab-*</code> headers.</li>
 <li>GitLab runners pull a preloaded CodeGraph image from an internal container registry such as <code>registry.internal/platform/codegraph-runner:stable</code>.</li>
 <li>CodeGraph containers trust the same private CA bundle that signs the GitLab CE and reverse-proxy certificates.</li>
 </ol>
@@ -302,15 +301,52 @@
   <span class="p">-</span><span class="n">-sync-mode</span> <span class="n">webhook</span>
 </code></pre></div>
 
+<h2  id="config-backed-import-through-repositories-center"><span id="config_backed_import_through_repositories_center"></span>Config-Backed Import through Repositories Center<a class="heading-anchor" href="#config-backed-import-through-repositories-center" title="Link to this section">&para;</a></h2>
+<p>In corporate deployments, declare one or more GitLab CE installations in <code>config.yaml</code> so they appear automatically on <code>http://127.0.0.1:3100/dashboard/repositories</code>.</p>
+<p>Minimal example without committing secrets to config:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">repository_providers</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sync_configured_connections_on_startup</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">gitlab_ce</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gitlab-ce-local</span>
+<span class="w">      </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="w">      </span><span class="nt">provider_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gitlab.internal</span>
+<span class="w">      </span><span class="nt">base_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://gitlab.internal</span>
+<span class="w">      </span><span class="nt">api_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v4</span>
+<span class="w">      </span><span class="nt">token_env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GITLAB_TOKEN</span>
+<span class="w">      </span><span class="nt">webhook_secret_env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GITLAB_WEBHOOK_SECRET</span>
+<span class="w">      </span><span class="nt">ca_bundle_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C:\certs\gitlab-root-ca.pem</span>
+<span class="w">      </span><span class="nt">request_timeout_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span>
+<span class="w">      </span><span class="nt">default_sync_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">webhook</span>
+<span class="w">      </span><span class="nt">is_active</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+
+<p>Set the runtime environment variables before starting CodeGraph:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env:GITLAB_TOKEN</span><span class="p">=</span><span class="s2">&quot;glpat-...&quot;</span>
+<span class="nv">$env:GITLAB_WEBHOOK_SECRET</span><span class="p">=</span><span class="s2">&quot;...&quot;</span>
+<span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_app_stack</span><span class="p">.</span><span class="n">py</span> <span class="n">restart</span> <span class="p">-</span><span class="n">-local</span> <span class="p">-</span><span class="n">-with-mcp</span>
+</code></pre></div>
+
+<p>UI process:</p>
+<ol>
+<li>Open <code>http://127.0.0.1:3100/dashboard/repositories</code>.</li>
+<li>Switch to <code>Discovered repositories</code>.</li>
+<li>Select the connection marked <code>from config</code>.</li>
+<li>Click <code>Check connection</code> and confirm the health check is healthy or returns an actionable degraded reason.</li>
+<li>Enter the namespace/group, for example <code>platform</code>, and run discovery.</li>
+<li>Import the target repository. Use <code>webhook</code> sync mode by default for this installation.</li>
+<li>Configure the GitLab project webhook to <code>POST /api/v1/admin/runtime/webhooks/gitlab</code> with the secret from <code>GITLAB_WEBHOOK_SECRET</code>.</li>
+<li>After the first push, or manually with <code>codegraph repos reconcile --group default --project &lt;project&gt;</code>, verify that <code>repository_head_sha</code> equals <code>cpg_head_sha</code> and <code>freshness_reason=commit_match</code>.</li>
+</ol>
+<p>Config sync only creates or updates managed <code>ProviderConnection</code> records. It never deletes manually created connections that are absent from <code>config.yaml</code>.</p>
 <h2  id="webhook-setup-and-recovery"><span id="webhook_setup_and_recovery"></span>Webhook Setup and Recovery<a class="heading-anchor" href="#webhook-setup-and-recovery" title="Link to this section">&para;</a></h2>
 <p>Webhook endpoint:</p>
 <ul>
-<li><code>POST /api/v1/webhooks/gitlab</code></li>
+<li><code>POST /api/v1/admin/runtime/webhooks/gitlab</code></li>
 </ul>
 <p>GitLab project setup:</p>
 <ol>
 <li>Open <code>Settings &gt; Webhooks</code>.</li>
-<li>Configure <code>https://codegraph.internal/api/v1/webhooks/gitlab</code>.</li>
+<li>Configure <code>https://codegraph.internal/api/v1/admin/runtime/webhooks/gitlab</code>.</li>
 <li>Set the same secret token used in the provider connection.</li>
 <li>Enable <code>Push events</code> and <code>Merge request events</code>.</li>
 <li>Keep SSL verification enabled. Do not disable TLS verification to work around a missing CA bundle.</li>
@@ -318,6 +354,7 @@
 <p>Webhook behavior:</p>
 <ul>
 <li>CodeGraph returns <code>202 Accepted</code> quickly and enqueues durable sync/review work asynchronously.</li>
+<li>Missing GitLab webhook secret returns <code>401 Unauthorized</code>; invalid secret returns <code>403 Forbidden</code>.</li>
 <li>Push events are deduplicated by binding and event identity.</li>
 <li>Merge request events participate in review-snapshot lifecycle and deduplication.</li>
 <li>Delivery diagnostics are stored on the repository binding and surfaced back to operators.</li>
@@ -330,7 +367,7 @@
 <span class="n">codegraph</span> <span class="n">repos</span> <span class="n">review-snapshots</span> <span class="p">-</span><span class="n">-group</span> <span class="k">default</span> <span class="p">-</span><span class="n">-project</span> <span class="n">api</span> <span class="p">-</span><span class="n">-status</span> <span class="n">failed</span>
 </code></pre></div>
 
-<p><code>GET /api/v1/webhooks/status/{project_id}</code> now returns both legacy update-pipeline state and GitLab binding diagnostics. <code>project_id</code> may be a project name or a project UUID.</p>
+<p><code>GET /api/v1/admin/runtime/webhooks/status/{project_id}</code> now returns both legacy update-pipeline state and GitLab binding diagnostics. <code>project_id</code> may be a project name or a project UUID.</p>
 <p>Example response:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
@@ -339,7 +376,7 @@
 <span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;9f21f4e&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2310</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;gocpg_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;chromadb_synced&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;openviking_synced&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;last_webhook_received_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-04-19T12:03:10+00:00&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;last_webhook_delivery_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-04-19T12:03:10+00:00&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;last_webhook_delivery_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;accepted&quot;</span><span class="p">,</span>
@@ -416,8 +453,8 @@
 <h2  id="rest-cli-and-mcp-surfaces"><span id="rest_cli_and_mcp_surfaces"></span>REST, CLI, and MCP Surfaces<a class="heading-anchor" href="#rest-cli-and-mcp-surfaces" title="Link to this section">&para;</a></h2>
 <p>REST surfaces:</p>
 <ul>
-<li><code>POST /api/v1/webhooks/gitlab</code></li>
-<li><code>GET /api/v1/webhooks/status/{project_id}</code></li>
+<li><code>POST /api/v1/admin/runtime/webhooks/gitlab</code></li>
+<li><code>GET /api/v1/admin/runtime/webhooks/status/{project_id}</code></li>
 <li><code>POST /api/v1/review/mr</code></li>
 <li><code>POST /api/v1/security/scan-diff</code></li>
 <li><code>GET /api/v1/repositories/bindings</code></li>
@@ -433,7 +470,7 @@
 
 <p>MCP surfaces that remain relevant for GitLab-bound repositories:</p>
 <ul>
-<li><code>codegraph_repository_reconcile</code></li>
+<li><code>codegraph_repository_reconciliation_run</code></li>
 <li><code>codegraph_repository_status</code></li>
 <li><code>codegraph_repository_sync_jobs</code></li>
 <li><code>codegraph_review_snapshots</code></li>
@@ -502,9 +539,9 @@
 <h2  id="acceptance-artifacts"><span id="acceptance_artifacts"></span>Acceptance Artifacts<a class="heading-anchor" href="#acceptance-artifacts" title="Link to this section">&para;</a></h2>
 <p>The GitLab CE production-readiness rollout is tracked by:</p>
 <ul>
-<li><code>docs/development/PRD_GITLAB_CE_PRODUCTION_READINESS.md</code></li>
-<li><code>docs/development/GITLAB_CE_PRODUCTION_READINESS_ACCEPTANCE_CHECKLIST.md</code></li>
-<li><code>docs/development/GITLAB_CE_PRODUCTION_READINESS_ACCEPTANCE_REPORT.md</code></li>
+<li><code>docs/development/requirements/product/PRD_GITLAB_CE_PRODUCTION_READINESS.md</code></li>
+<li><code>docs/development/evidence/acceptance/GITLAB_CE_PRODUCTION_READINESS_ACCEPTANCE_CHECKLIST.md</code></li>
+<li><code>docs/development/evidence/acceptance/GITLAB_CE_PRODUCTION_READINESS_ACCEPTANCE_REPORT.md</code></li>
 </ul>
       </article>
 
@@ -524,7 +561,7 @@
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/GITLAB.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -537,6 +574,7 @@
 <li><a href="#overview" class="level-2">Overview</a></li>
 <li><a href="#local-contour-profile" class="level-2">Local Contour Profile</a></li>
 <li><a href="#provider-connection-and-trust" class="level-2">Provider Connection and Trust</a></li>
+<li><a href="#config-backed-import-through-repositories-center" class="level-2">Config-Backed Import through Repositories Center</a></li>
 <li><a href="#webhook-setup-and-recovery" class="level-2">Webhook Setup and Recovery</a></li>
 <li><a href="#ci-template-for-local-runners" class="level-2">CI Template for Local Runners</a></li>
 <li><a href="#rest-cli-and-mcp-surfaces" class="level-2">REST, CLI, and MCP Surfaces</a></li>

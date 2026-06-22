@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Automated Code Review</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Code Review Hooks</a></li>
         <li><a href="COMPLIANCE_REPORT.html">GOST R 56939-2024 Compliance Report</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Custom MCP Tools</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Dashboard Frontend Guide</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Dashboard Methodology Guide</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Dashboard Operations Guide</a></li>
@@ -203,7 +202,6 @@ simply register the project under <code>projects.registry.&lt;name&gt;.db_path</
 <li><a href="#docker-support">Docker Support</a></li>
 <li><a href="#project-management">Project Management</a></li>
 <li><a href="#import-jobs">Import Jobs</a></li>
-<li><a href="#import-comments">Import Comments</a></li>
 <li><a href="#step-by-step-import">Step-by-Step Import</a></li>
 <li><a href="#list-supported-languages">List Supported Languages</a></li>
 <li><a href="#rest-api-usage">REST API Usage</a></li>
@@ -260,9 +258,9 @@ simply register the project under <code>projects.registry.&lt;name&gt;.db_path</
 <li><strong>Detect Language</strong> — programming language detection</li>
 <li><strong>Create CPG</strong> — Code Property Graph creation (GoCPG outputs DuckDB directly)</li>
 <li><strong>Validate</strong> — CPG integrity validation</li>
-<li><strong>ChromaDB Sync</strong> — documentation indexing into ChromaDB</li>
 <li><strong>Doc Generation</strong> — auto-generate documentation from CPG</li>
-<li><strong>Vector Index</strong> — index vector collections for retrieval</li>
+<li><strong>OpenViking Sync</strong> — publish documentation and repository context into OpenViking</li>
+<li><strong>Project Memory Bootstrap</strong> — create the initial project memory record from synced resources</li>
 <li><strong>Domain Setup</strong> — Domain Plugin generation</li>
 </ol>
 <hr />
@@ -395,7 +393,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="c1"># Delete project with files (CPG, DuckDB)</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>projects<span class="w"> </span>delete<span class="w"> </span>my_project<span class="w"> </span>--delete-files
 
-<span class="c1"># Delete project with ChromaDB collections</span>
+<span class="c1"># Delete project with OpenViking collections</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>projects<span class="w"> </span>delete<span class="w"> </span>my_project<span class="w"> </span>--delete-collections
 
 <span class="c1"># Delete without confirmation prompt</span>
@@ -419,7 +417,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python_generic</span>
 </code></pre></div>
 
-<p>The <code>domain</code> field is optional. When set, switching to a project automatically activates the corresponding domain plugin (e.g., <code>postgresql_v2</code>, <code>python_generic</code>). ChromaDB vector collections are also isolated per project.</p>
+<p>The <code>domain</code> field is optional. When set, switching to a project automatically activates the corresponding domain plugin (e.g., <code>postgresql_v2</code>, <code>python_generic</code>). OpenViking resources are also isolated per project.</p>
 <h3  id="import-jobs"><span id="import_jobs"></span>Import Jobs<a class="heading-anchor" href="#import-jobs" title="Link to this section">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># List recent import jobs</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span><span class="nb">jobs</span>
@@ -427,14 +425,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <span class="c1"># With filters</span>
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">20</span><span class="w"> </span>--status<span class="w"> </span>completed
 python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>--status<span class="w"> </span>failed
-</code></pre></div>
-
-<h3  id="import-comments"><span id="import_comments"></span>Import Comments<a class="heading-anchor" href="#import-comments" title="Link to this section">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Import source code comments into existing DuckDB</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>import-comments<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb
-
-<span class="c1"># With explicit source path</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>import-comments<span class="w"> </span>--db<span class="w"> </span>data/projects/postgres.duckdb<span class="w"> </span>--source<span class="w"> </span>/path/to/source
 </code></pre></div>
 
 <h3  id="step-by-step-import"><span id="step_by_step_import"></span>Step-by-Step Import<a class="heading-anchor" href="#step-by-step-import" title="Link to this section">&para;</a></h3>
@@ -758,8 +748,8 @@ active-domain configuration rather than separate <code>docs</code> or <code>doma
 ├── postgres/               # Source code
 └── postgres.duckdb         # DuckDB database (CPG + graph)
 
-chroma_db/
-└── postgres_documentation/  # ChromaDB collection
+openviking_data/
+└── postgres_documentation/  # OpenViking resource subtree
 
 src/domains/
 └── postgres/               # Domain Plugin
@@ -774,8 +764,8 @@ src/domains/
 <span class="w">  </span><span class="nt">&quot;cpg_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/postgres.cpg&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;duckdb_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./workspace/postgres.duckdb&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;domain_plugin_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./src/domains/postgres&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;chromadb_collection&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;postgres_documentation&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;chromadb_stats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;openviking_collection&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;postgres_documentation&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;openviking_stats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;readme_indexed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;docs_indexed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">230</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;comments_indexed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1500</span>
@@ -1255,7 +1245,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-05-11</span>
+        <span>Last updated: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/PROJECT_IMPORT.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -1272,7 +1262,6 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<
 <li><a href="#docker-support" class="level-3">Docker Support</a></li>
 <li><a href="#project-management" class="level-3">Project Management</a></li>
 <li><a href="#import-jobs" class="level-3">Import Jobs</a></li>
-<li><a href="#import-comments" class="level-3">Import Comments</a></li>
 <li><a href="#step-by-step-import" class="level-3">Step-by-Step Import</a></li>
 <li><a href="#list-supported-languages" class="level-3">List Supported Languages</a></li>
 <li><a href="#rest-api-usage" class="level-2">REST API Usage</a></li>

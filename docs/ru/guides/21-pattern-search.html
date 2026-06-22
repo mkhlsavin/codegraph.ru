@@ -95,7 +95,6 @@
         <li><a href="CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -200,7 +199,7 @@
 <li><a href="#tipy-shablonov">Типы шаблонов</a></li>
 <li><a href="#yaml-pravila">YAML-правила</a></li>
 <li><a href="#ispolzovanie-cli">Использование CLI</a></li>
-<li><a href="#rest-api">REST API</a></li>
+<li><a href="#runtime-interfeysy">Runtime-интерфейсы</a></li>
 <li><a href="#mcp-instrumenty">MCP-инструменты</a></li>
 <li><a href="#modeli-dannyh">Модели данных</a></li>
 <li><a href="#generatsiya-pravil-cherez-llm">Генерация правил через LLM</a></li>
@@ -333,77 +332,10 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 </code></pre></div>
 
 <p>Форматы вывода: <code>text</code> (по умолчанию), <code>json</code>, <code>sarif</code>. Подкоманда <code>fix</code> использует <code>ApprovalEngine</code> для интерактивного подтверждения перед применением изменений.</p>
-<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<p>6 эндпоинтов, смонтированных на <code>/api/v1/patterns/</code>:</p>
-<div class="table-wrapper"><table>
-<thead>
-<tr>
-<th>Метод</th>
-<th>Эндпоинт</th>
-<th>Описание</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/patterns/search</code></td>
-<td>Ad-hoc структурный поиск шаблонов</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/patterns/findings</code></td>
-<td>Запрос сохранённых результатов (фильтры: rule_id, severity, filename, category)</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/patterns/stats</code></td>
-<td>Агрегированная статистика по серьёзности, категории, правилу</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/v1/patterns/rules</code></td>
-<td>Список загруженных правил из <code>cpg_pattern_rules</code></td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/patterns/generate</code></td>
-<td>Генерация YAML-правила через LLM</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/v1/patterns/fix</code></td>
-<td>Применение SSR-исправлений (dry_run=true по умолчанию, требуется подтверждение)</td>
-</tr>
-</tbody>
-</table></div>
-<p>Пример:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Поиск шаблонов</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/patterns/search<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;pattern&quot;: &quot;malloc($x)&quot;, &quot;language&quot;: &quot;c&quot;, &quot;max_results&quot;: 50}&#39;</span>
-
-<span class="c1"># Получить результаты по правилу</span>
-curl<span class="w"> </span><span class="s2">&quot;http://localhost:8000/api/v1/patterns/findings?rule_id=unchecked-return&quot;</span>
-
-<span class="c1"># Статистика</span>
-curl<span class="w"> </span>http://localhost:8000/api/v1/patterns/stats
-
-<span class="c1"># Список правил</span>
-curl<span class="w"> </span>http://localhost:8000/api/v1/patterns/rules
-
-<span class="c1"># Генерация правила</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/patterns/generate<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;description&quot;: &quot;найти непроверенные возвращаемые значения&quot;, &quot;language&quot;: &quot;c&quot;}&#39;</span>
-
-<span class="c1"># Применение исправления (предпросмотр)</span>
-curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/patterns/fix<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;rule_id&quot;: &quot;unchecked-return&quot;, &quot;dry_run&quot;: true}&#39;</span>
-</code></pre></div>
-
+<h2  id="runtime-interfeysy"><span id="runtime_interfeysy"></span>Runtime-интерфейсы<a class="heading-anchor" href="#runtime-interfeysy" title="Link to this section">&para;</a></h2>
+<p>REST-эндпоинты структурного поиска паттернов удалены. Для локального анализа используйте <code>python -m src.cli patterns ...</code>, а для автоматизации - governed MCP pattern tools.</p>
 <h2  id="mcp-instrumenty"><span id="mcp_instrumenty"></span>MCP-инструменты<a class="heading-anchor" href="#mcp-instrumenty" title="Link to this section">&para;</a></h2>
-<p>6 инструментов, зарегистрированных в <code>src/mcp/tools/patterns.py</code>:</p>
+<p>5 инструментов, зарегистрированных в <code>src/mcp/tools/query_suite/patterns.py</code>:</p>
 <div class="table-wrapper"><table>
 <thead>
 <tr>
@@ -414,22 +346,17 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 </thead>
 <tbody>
 <tr>
-<td><code>codegraph_code_pattern_search</code></td>
-<td>pattern, language, max_results</td>
-<td>AST-поиск структурных шаблонов</td>
-</tr>
-<tr>
-<td><code>codegraph_pattern_findings</code></td>
+<td><code>codegraph_code_pattern_finding_list</code></td>
 <td>rule_id?, severity?, filename?, category?, limit</td>
 <td>Запрос сохранённых результатов</td>
 </tr>
 <tr>
-<td><code>codegraph_pattern_stats</code></td>
+<td><code>codegraph_code_pattern_statistics_get</code></td>
 <td>(нет)</td>
 <td>Агрегированная статистика</td>
 </tr>
 <tr>
-<td><code>codegraph_pattern_fix</code></td>
+<td><code>codegraph_code_pattern_fix_apply</code></td>
 <td>rule_id?, dry_run</td>
 <td>Применение SSR-исправлений</td>
 </tr>
@@ -439,7 +366,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <td>Генерация YAML-правила через LLM</td>
 </tr>
 <tr>
-<td><code>codegraph_pattern_test</code></td>
+<td><code>codegraph_code_pattern_test_run</code></td>
 <td>rule_yaml, code_snippet, language</td>
 <td>Тестирование правила на фрагменте кода</td>
 </tr>
@@ -574,7 +501,7 @@ codegraph_code_pattern_generate<span class="o">(</span><span class="nv">descript
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/guides/21-pattern-search.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -590,7 +517,7 @@ codegraph_code_pattern_generate<span class="o">(</span><span class="nv">descript
 <li><a href="#tipy-shablonov" class="level-3">Типы шаблонов</a></li>
 <li><a href="#yaml-pravila" class="level-3">YAML-правила</a></li>
 <li><a href="#ispolzovanie-cli" class="level-2">Использование CLI</a></li>
-<li><a href="#rest-api" class="level-2">REST API</a></li>
+<li><a href="#runtime-interfeysy" class="level-2">Runtime-интерфейсы</a></li>
 <li><a href="#mcp-instrumenty" class="level-2">MCP-инструменты</a></li>
 <li><a href="#modeli-dannyh" class="level-2">Модели данных</a></li>
 <li><a href="#generatsiya-pravil-cherez-llm" class="level-2">Генерация правил через LLM</a></li>

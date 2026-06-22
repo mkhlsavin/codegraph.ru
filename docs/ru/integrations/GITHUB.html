@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
-        <li><a href="../api/DEMO_API.html">Демо API</a></li>
         <li><a href="../api/GRPC_API.html">Справочник gRPC API</a></li>
         <li><a href="../api/MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="../api/REST_API.html">Справочник REST API</a></li>
@@ -227,6 +225,12 @@
 <li><strong>Автономный режим</strong> &ndash; развёртывание рядом с GitHub, доступ через REST API / CLI / MCP</li>
 </ul>
 <p>Данные вебхуков GitHub нормализуются CodeGraph в унифицированные модели <code>UnifiedPushEvent</code> и <code>UnifiedMREvent</code>, общие для всех 4 поддерживаемых платформ.</p>
+<blockquote class="callout">
+<p><strong>Статус production-readiness:</strong> интеграция GitHub входит в доставленный gate
+story #933 по production-publication hardening. Для production используйте
+явные webhook secrets, шифрование provider secrets или external env references,
+group ACLs, URL/path policy и задокументированные runtime quota gates.</p>
+</blockquote>
 <h2  id="prerequisites"><span id="predvaritelnye-trebovaniya"></span><span id="predvaritelnye_trebovaniya"></span>Предварительные требования<a class="heading-anchor" href="#prerequisites" title="Link to this section">&para;</a></h2>
 <ul>
 <li>Экземпляр CodeGraph (Docker или автономный), доступный из GitHub (или самостоятельно размещённых раннеров)</li>
@@ -235,14 +239,17 @@
 <li>Ключ API LLM: <code>YANDEX_API_KEY</code>, <code>GIGACHAT_AUTH_KEY</code> или <code>OPENAI_API_KEY</code></li>
 </ul>
 <h2  id="webhook-configuration"><span id="nastroyka-vebhukov"></span><span id="nastroyka_vebhukov"></span><span id="webhook_configuration"></span>Настройка вебхуков<a class="heading-anchor" href="#webhook-configuration" title="Link to this section">&para;</a></h2>
-<p><strong>Конечная точка:</strong> <code>POST /api/v1/webhooks/github</code> (возвращает <code>202 Accepted</code>)</p>
+<p><strong>Конечная точка:</strong> <code>POST /api/v1/admin/runtime/webhooks/github</code> (возвращает <code>202 Accepted</code>)</p>
 <p><strong>Настройка в GitHub:</strong> Repository <strong>Settings &gt; Webhooks &gt; Add webhook</strong>:
-1. Payload URL: <code>https://&lt;codegraph-host&gt;/api/v1/webhooks/github</code>
+1. Payload URL: <code>https://&lt;codegraph-host&gt;/api/v1/admin/runtime/webhooks/github</code>
 2. Content type: <code>application/json</code>
 3. Secret: произвольная строка (для верификации HMAC-SHA256)
 4. Events: выберите <strong>Pushes</strong> и <strong>Pull requests</strong> (или &ldquo;Let me select individual events&rdquo;)</p>
 <h3  id="signature-verification"><span id="signature_verification"></span><span id="verifikatsiya-podpisi"></span><span id="verifikatsiya_podpisi"></span>Верификация подписи<a class="heading-anchor" href="#signature-verification" title="Link to this section">&para;</a></h3>
-<p>CodeGraph проверяет заголовок <code>X-Hub-Signature-256</code> (HMAC-SHA256, формат: <code>sha256=&lt;hex&gt;</code>).</p>
+<p>CodeGraph проверяет заголовок <code>X-Hub-Signature-256</code> (HMAC-SHA256, формат: <code>sha256=&lt;hex&gt;</code>).
+Для deployed environments секрет GitHub webhook должен быть настроен. Отсутствующий
+секрет приводит к fail-closed отказу; прием неподписанных webhook допустим только
+в явно включенных local-development bypass profiles.</p>
 <p>Коды ошибок:
 - <strong>401 Unauthorized</strong> &ndash; отсутствует заголовок <code>X-Hub-Signature-256</code>
 - <strong>403 Forbidden</strong> &ndash; недействительная подпись (несовпадение HMAC)</p>
@@ -277,6 +284,9 @@
 <span class="w">  </span><span class="nt">auto_update_on_push</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># trigger incremental CPG update on push events</span>
 </code></pre></div>
 
+<p>Маршруты provider connection и import проверяют group-level authorization и
+отклоняют небезопасные provider/repository URL. Публичный <code>local_path</code> import
+в production отключен, если явно не включен platform-admin local-import profile.</p>
 <h3  id="event-type-detection"><span id="event_type_detection"></span><span id="opredelenie-tipa-sobytiya"></span><span id="opredelenie_tipa_sobytiya"></span>Определение типа события<a class="heading-anchor" href="#event-type-detection" title="Link to this section">&para;</a></h3>
 <p>CodeGraph определяет тип события по заголовку <code>X-GitHub-Event</code>. Если заголовок отсутствует (например, при тестировании через curl), используется определение по структуре полезной нагрузки:</p>
 <ul>
@@ -373,7 +383,7 @@
 
 <p>Загрузите SARIF-файл с помощью <code>github/codeql-action/upload-sarif@v3</code>, чтобы результаты отобразились во вкладке Security репозитория GitHub.</p>
 <h2  id="rest-api-endpoints"><span id="konechnye-tochki-rest-api"></span><span id="konechnye_tochki_rest_api"></span><span id="rest_api_endpoints"></span>Конечные точки REST API<a class="heading-anchor" href="#rest-api-endpoints" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1webhooksgithub----webhook-receiver"><span id="post-apiv1webhooksgithub-ndash-priyomnik-vebhukov"></span><span id="post_apiv1webhooksgithub____webhook_receiver"></span><span id="post_apiv1webhooksgithub_ndash_priyomnik_vebhukov"></span><code>POST /api/v1/webhooks/github</code> &ndash; Приёмник вебхуков<a class="heading-anchor" href="#post-apiv1webhooksgithub----webhook-receiver" title="Link to this section">&para;</a></h3>
+<h3  id="post-apiv1webhooksgithub----webhook-receiver"><span id="post-apiv1adminruntimewebhooksgithub-ndash-priyomnik-vebhukov"></span><span id="post_apiv1adminruntimewebhooksgithub_ndash_priyomnik_vebhukov"></span><span id="post_apiv1webhooksgithub____webhook_receiver"></span><code>POST /api/v1/admin/runtime/webhooks/github</code> &ndash; Приёмник вебхуков<a class="heading-anchor" href="#post-apiv1webhooksgithub----webhook-receiver" title="Link to this section">&para;</a></h3>
 <p>См. <a href="#webhook-configuration">Настройка вебхуков</a>.</p>
 <h3  id="post-apiv1securityscan-diff----security-scan"><span id="post-apiv1securityscan-diff-ndash-skanirovanie-bezopasnosti"></span><span id="post_apiv1securityscan_diff____security_scan"></span><span id="post_apiv1securityscan_diff_ndash_skanirovanie_bezopasnosti"></span><code>POST /api/v1/security/scan-diff</code> &ndash; Сканирование безопасности<a class="heading-anchor" href="#post-apiv1securityscan-diff----security-scan" title="Link to this section">&para;</a></h3>
 <p>Сканирует необработанный унифицированный diff на наличие уязвимостей безопасности.</p>
@@ -467,7 +477,7 @@
 
 <p>Требует заголовок <code>X-GitHub-Token</code> с токеном доступа GitHub, имеющим права на чтение репозитория.</p>
 <p><strong>Ответ:</strong> <code>recommendation</code>, <code>score</code>, <code>findings[]</code>, <code>dod_validation[]</code>, <code>summary</code>, <code>processing_time_ms</code>, <code>request_id</code>.</p>
-<h3  id="get-apiv1webhooksstatusproject_id----update-status"><span id="get-apiv1webhooksstatusproject-id-ndash-status-obnovleniya"></span><span id="get_apiv1webhooksstatusproject_id____update_status"></span><span id="get_apiv1webhooksstatusproject_id_ndash_status_obnovleniya"></span><code>GET /api/v1/webhooks/status/{project_id}</code> &ndash; Статус обновления<a class="heading-anchor" href="#get-apiv1webhooksstatusproject_id----update-status" title="Link to this section">&para;</a></h3>
+<h3  id="get-apiv1webhooksstatusproject_id----update-status"><span id="get-apiv1adminruntimewebhooksstatusproject-id-ndash-status-obnovleniya"></span><span id="get_apiv1adminruntimewebhooksstatusproject_id_ndash_status_obnovleniya"></span><span id="get_apiv1webhooksstatusproject_id____update_status"></span><code>GET /api/v1/admin/runtime/webhooks/status/{project_id}</code> &ndash; Статус обновления<a class="heading-anchor" href="#get-apiv1webhooksstatusproject_id----update-status" title="Link to this section">&para;</a></h3>
 <p>Возвращает текущий статус конвейера обновления CPG для проекта.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span><span class="p">,</span>
@@ -476,7 +486,7 @@
 <span class="w">  </span><span class="nt">&quot;commit_sha&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc12345&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;duration_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1234</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;gocpg_status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;chromadb_synced&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;openviking_synced&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -511,9 +521,9 @@
 <td>Статус инкрементального обновления GoCPG</td>
 </tr>
 <tr>
-<td><code>chromadb_synced</code></td>
+<td><code>openviking_synced</code></td>
 <td>int</td>
-<td>Количество обновлённых коллекций ChromaDB</td>
+<td>Количество обновлённых коллекций OpenViking</td>
 </tr>
 </tbody>
 </table></div>
@@ -528,27 +538,27 @@
 </thead>
 <tbody>
 <tr>
-<td><code>codegraph_project_context</code></td>
-<td>Обзор проекта: статистика CPG, языки, горячие точки, результаты сканирования безопасности</td>
+<td><code>codegraph://project/context</code></td>
+<td>Ресурс обзора проекта: статистика CPG, языки, горячие точки, результаты сканирования безопасности</td>
 </tr>
 <tr>
-<td><code>codegraph_file_context</code></td>
+<td><code>codegraph_context_retrieval_file_read</code></td>
 <td>Информация по файлу: методы, метрики, вызывающие, вызываемые, мёртвый код, безопасность</td>
 </tr>
 <tr>
-<td><code>codegraph_diff_context</code></td>
+<td><code>codegraph_context_retrieval_diff_preview</code></td>
 <td>Анализ области воздействия изменённых файлов</td>
 </tr>
 <tr>
-<td><code>codegraph_query</code></td>
+<td><code>codegraph_code_query</code></td>
 <td>Выполнение произвольных SQL-запросов к CPG DuckDB</td>
 </tr>
 <tr>
-<td><code>codegraph_find_callers</code></td>
+<td><code>codegraph_code_find_callers</code></td>
 <td>Поиск всех вызывающих функцию</td>
 </tr>
 <tr>
-<td><code>codegraph_find_callees</code></td>
+<td><code>codegraph_code_find_callees</code></td>
 <td>Поиск всех функций, вызываемых данной функцией</td>
 </tr>
 <tr>
@@ -574,16 +584,19 @@
 <ol>
 <li><strong>Определение проекта</strong> &ndash; сопоставление по <code>project_id</code>, URL репозитория или активному проекту</li>
 <li><strong>Обновление GoCPG</strong> &ndash; инкрементальное обновление CPG через gRPC/подпроцесс (<code>from_commit</code> -&gt; <code>to_commit</code>)</li>
-<li><strong>Синхронизация ChromaDB</strong> &ndash; обновление коллекций векторного хранилища для изменённых файлов</li>
+<li><strong>Синхронизация OpenViking</strong> &ndash; обновление коллекций векторного хранилища для изменённых файлов</li>
 <li><strong>Уведомление через WebSocket</strong> &ndash; рассылка события <code>cpg.update.complete</code> подключённым клиентам</li>
 </ol>
 <p>Поведение конвейера:
 - Дублирующиеся события push (один проект + один SHA коммита) дедуплицируются
 - Быстрые последовательные push в один проект объединяются (слияние изменённых файлов, последний коммит)
 - При сбое GoCPG автоматически выполняется повторная попытка через 60 секунд
-- Синхронизация ChromaDB продолжается даже при сбое обновления GoCPG
+- Синхронизация OpenViking продолжается даже при сбое обновления GoCPG
 - Вебхук всегда немедленно возвращает <code>202 Accepted</code> (обработка выполняется асинхронно)</p>
-<p>Отслеживайте статус конвейера через <code>GET /api/v1/webhooks/status/{project_id}</code>.</p>
+<p>Ограничение runtime quota: story #933 добавляет durable import-job counting через
+database-backed import job repository и payload-size guards для dynamic imports.
+В production эти quota gates должны оставаться включенными.</p>
+<p>Отслеживайте статус конвейера через <code>GET /api/v1/admin/runtime/webhooks/status/{project_id}</code>.</p>
 <h2  id="docker-image-setup"><span id="docker_image_setup"></span><span id="nastroyka-docker-obraza"></span><span id="nastroyka_docker_obraza"></span>Настройка Docker-образа<a class="heading-anchor" href="#docker-image-setup" title="Link to this section">&para;</a></h2>
 <p>Образы публикуются в GHCR через <code>.github/workflows/publish-ghcr.yml</code>, тегируются по тегам версий (<code>v*</code>) и <code>latest</code>.</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/mkhlsavin/codegraph:latest
@@ -647,7 +660,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/GITHUB.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -669,12 +682,12 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <li><a href="#required-secretsvariables" class="level-3">Необходимые секреты и переменные</a></li>
 <li><a href="#sarif-integration" class="level-3">Интеграция с SARIF</a></li>
 <li><a href="#rest-api-endpoints" class="level-2">Конечные точки REST API</a></li>
-<li><a href="#post-apiv1webhooksgithub----webhook-receiver" class="level-3">`POST /api/v1/webhooks/github` -- Приёмник вебхуков</a></li>
+<li><a href="#post-apiv1webhooksgithub----webhook-receiver" class="level-3">`POST /api/v1/admin/runtime/webhooks/github` -- Приёмник вебхуков</a></li>
 <li><a href="#post-apiv1securityscan-diff----security-scan" class="level-3">`POST /api/v1/security/scan-diff` -- Сканирование безопасности</a></li>
 <li><a href="#post-apiv1reviewsummary----pr-summary" class="level-3">`POST /api/v1/review/summary` -- Сводка по PR</a></li>
 <li><a href="#post-apiv1reviewcommit-message----commit-message" class="level-3">`POST /api/v1/review/commit-message` -- Сообщение коммита</a></li>
 <li><a href="#post-apiv1reviewpr----github-pr-review" class="level-3">`POST /api/v1/review/pr` -- Ревью GitHub PR</a></li>
-<li><a href="#get-apiv1webhooksstatusproject_id----update-status" class="level-3">`GET /api/v1/webhooks/status/{project_id}` -- Статус обновления</a></li>
+<li><a href="#get-apiv1webhooksstatusproject_id----update-status" class="level-3">`GET /api/v1/admin/runtime/webhooks/status/{project_id}` -- Статус обновления</a></li>
 <li><a href="#mcp-tools" class="level-2">Инструменты MCP</a></li>
 <li><a href="#opencode-integration" class="level-3">Интеграция с OpenCode</a></li>
 <li><a href="#incremental-cpg-updates" class="level-2">Инкрементальное обновление CPG</a></li>

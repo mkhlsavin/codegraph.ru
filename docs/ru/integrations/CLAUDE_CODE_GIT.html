@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
-        <li><a href="../api/DEMO_API.html">Демо API</a></li>
         <li><a href="../api/GRPC_API.html">Справочник gRPC API</a></li>
         <li><a href="../api/MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="../api/REST_API.html">Справочник REST API</a></li>
@@ -262,22 +260,15 @@
 </code></pre></div>
 
 <h3  id="potok-dannyh"><span id="potok_dannyh"></span>Поток данных<a class="heading-anchor" href="#potok-dannyh" title="Link to this section">&para;</a></h3>
-<p>Все хуки запрашивают базу данных CPG одним из двух способов:</p>
+<p>Все хуки запрашивают CPG через subprocess boundary GoCPG:</p>
 <ol>
-<li>
-<p><strong>Подпроцесс GoCPG</strong> (<code>gocpg.exe query --sql "..."</code>) &ndash; используется большинством хуков через <code>_utils.run_gocpg_query()</code>. Не требует Python-зависимости от DuckDB.</p>
-</li>
-<li>
-<p><strong>Прямое подключение DuckDB</strong> (<code>import duckdb; con.execute(...)</code>) &ndash; используется <code>commit_analysis.py</code> для полного конвейера анализа (<code>CommitAnalyzer</code>, <code>CPGFreshnessChecker</code>). При неудаче импорта DuckDB переключается на подпроцесс.</p>
-</li>
+<li><strong>Подпроцесс GoCPG</strong> (<code>gocpg.exe query --sql "..."</code>) &ndash; используется хуками через <code>_utils.run_gocpg_query()</code>. Python-зависимость от DuckDB не требуется, и хуки не должны открывать project DuckDB file напрямую.</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="err">Скрипт</span><span class="w"> </span><span class="err">хука</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">_utils</span><span class="p">.</span><span class="n">get_active_project</span><span class="p">()</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">config</span><span class="p">.</span><span class="n">yaml</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">db_path</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">_utils</span><span class="p">.</span><span class="n">run_gocpg_query</span><span class="p">(</span><span class="kr">sql</span><span class="p">,</span><span class="w"> </span><span class="n">db_path</span><span class="p">)</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">gocpg</span><span class="p">.</span><span class="n">exe</span><span class="w"> </span><span class="n">query</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">stdout</span>
-<span class="w">    </span><span class="o">|</span><span class="w">   </span><span class="err">ИЛИ</span>
-<span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">duckdb</span><span class="p">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_path</span><span class="p">)</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="err">прямой</span><span class="w"> </span><span class="kr">SQL</span>
 <span class="w">    </span><span class="o">|</span>
 <span class="w">    </span><span class="o">+--</span><span class="w"> </span><span class="n">safe_json_output</span><span class="p">(</span><span class="n">markdown</span><span class="p">)</span><span class="w">  </span><span class="o">--&gt;</span><span class="w"> </span><span class="p">{</span><span class="s">&quot;additionalContext&quot;</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p">}</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">Claude</span><span class="w"> </span><span class="n">Code</span>
 </code></pre></div>
@@ -322,7 +313,7 @@
 </tr>
 <tr>
 <td><code>load_parse_scope(db_path)</code></td>
-<td>Загрузка scope парсинга из таблицы <code>cpg_parse_scope</code> в DuckDB</td>
+<td>Загрузка scope парсинга из <code>cpg_parse_scope</code> через subprocess-запрос GoCPG</td>
 </tr>
 <tr>
 <td><code>is_partial_scope(scope)</code></td>
@@ -831,7 +822,7 @@ gocpg/gocpg.exe<span class="w"> </span>hooks<span class="w"> </span>status<span 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/CLAUDE_CODE_GIT.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

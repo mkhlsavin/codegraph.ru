@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
-        <li><a href="../api/DEMO_API.html">Демо API</a></li>
         <li><a href="../api/GRPC_API.html">Справочник gRPC API</a></li>
         <li><a href="../api/MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="../api/REST_API.html">Справочник REST API</a></li>
@@ -215,7 +213,7 @@
 <li><a href="#ci-konveyer">CI-конвейер</a></li>
 <li><a href="#oauth-autentifikatsiya">OAuth-аутентификация</a></li>
 <li><a href="#yandex-cloud-iam">Yandex Cloud IAM</a></li>
-<li><a href="#rest-api">REST API</a></li>
+<li><a href="#review-workflows">Review Workflows</a></li>
 <li><a href="#mcp-instrumenty">MCP-инструменты</a></li>
 <li><a href="#razvertyovanie-cherez-helm">Развёртывание через Helm</a></li>
 <li><a href="#ustranenie-nepoladok">Устранение неполадок</a></li>
@@ -325,7 +323,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <ol>
 <li><strong>Сборка CPG</strong> (<code>cpg-update</code>) &ndash; <code>gocpg parse</code> в контейнере <code>cr.yandex/${YCR_REGISTRY}/codegraph:latest</code></li>
 <li><strong>Сканирование безопасности</strong> (<code>security-scan</code>) &ndash; анализ безопасности на основе diff через <code>/api/v1/security/scan-diff</code>, вывод в формате SARIF для панели безопасности</li>
-<li><strong>Рецензирование MR</strong> (<code>mr-review</code>) &ndash; структурный анализ через <code>/api/v1/review/sourcecraft</code></li>
+<li><strong>Рецензирование MR</strong> (<code>mr-review</code>) &ndash; структурный анализ через service, MCP или CLI workflow</li>
 <li><strong>Отчёт</strong> (<code>report</code>) &ndash; агрегированная сводка результатов</li>
 </ol>
 <p>Ключевой фрагмент конвейера (полная версия в <code>ci/sourcecraft/codegraph-review.yaml</code>):</p>
@@ -416,9 +414,9 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 </code></pre></div>
 
 <p>Токены кэшируются с TTL 5 минут для снижения нагрузки на API проверки.</p>
-<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1reviewsourcecraft-retsenzirovanie-mr"><span id="post-apiv1reviewsourcecraft-ndash-retsenzirovanie-mr"></span><span id="post_apiv1reviewsourcecraft_ndash_retsenzirovanie_mr"></span><span id="post_apiv1reviewsourcecraft_retsenzirovanie_mr"></span><code>POST /api/v1/review/sourcecraft</code> &ndash; Рецензирование MR<a class="heading-anchor" href="#post-apiv1reviewsourcecraft-retsenzirovanie-mr" title="Link to this section">&para;</a></h3>
-<p>Получает diff запроса на слияние из SourceCraft и выполняет структурный анализ кода (зона поражения, дельта сложности, мёртвый код, безопасность).</p>
+<h2  id="review-workflows"><span id="review_workflows"></span>Review Workflows<a class="heading-anchor" href="#review-workflows" title="Link to this section">&para;</a></h2>
+<h3  id="retired-direct-sourcecraft-review-rest-endpoint"><span id="retired_direct_sourcecraft_review_rest_endpoint"></span>Retired direct SourceCraft review REST endpoint<a class="heading-anchor" href="#retired-direct-sourcecraft-review-rest-endpoint" title="Link to this section">&para;</a></h3>
+<p>Direct SourceCraft review REST endpoints were retired under STORY-937. Use the review service through MCP, repository review snapshots, or CLI automation instead.</p>
 <p><strong>Заголовки:</strong> <code>Authorization: Bearer &lt;token&gt;</code>, <code>X-SourceCraft-Token: &lt;sourcecraft-or-iam-token&gt;</code></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;project_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;proj-123&quot;</span><span class="p">,</span>
@@ -596,35 +594,35 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 </thead>
 <tbody>
 <tr>
-<td><code>codegraph_sc_review</code></td>
+<td><code>codegraph_integration_sourcecraft_review</code></td>
 <td>Рецензирование MR SourceCraft (запускает полный процесс анализа кода)</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_suggestions</code></td>
+<td><code>codegraph_integration_sourcecraft_suggestions</code></td>
 <td>Контекстные предложения кода в позиции курсора</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_completion</code></td>
+<td><code>codegraph_integration_sourcecraft_completion</code></td>
 <td>Контекст автодополнения кода из CPG</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_navigate</code></td>
+<td><code>codegraph_integration_sourcecraft_navigate</code></td>
 <td>Навигация к определению символа</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_test_hints</code></td>
+<td><code>codegraph_integration_sourcecraft_test_hints</code></td>
 <td>Генерация подсказок для тестирования метода</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_mr_info</code></td>
+<td><code>codegraph_integration_sourcecraft_mr_info</code></td>
 <td>Получение информации о MR и diff</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_commit_status</code></td>
+<td><code>codegraph_integration_sourcecraft_commit_status</code></td>
 <td>Обновление статуса конвейера коммита</td>
 </tr>
 <tr>
-<td><code>codegraph_sc_summary</code></td>
+<td><code>codegraph_integration_sourcecraft_summary</code></td>
 <td>Генерация описания MR</td>
 </tr>
 </tbody>
@@ -714,7 +712,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/SOURCECRAFT.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -736,8 +734,8 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <li><a href="#yandex-cloud-iam" class="level-2">Yandex Cloud IAM</a></li>
 <li><a href="#konfiguratsiya" class="level-3">Конфигурация</a></li>
 <li><a href="#ispolzovanie" class="level-3">Использование</a></li>
-<li><a href="#rest-api" class="level-2">REST API</a></li>
-<li><a href="#post-apiv1reviewsourcecraft-retsenzirovanie-mr" class="level-3">`POST /api/v1/review/sourcecraft` -- Рецензирование MR</a></li>
+<li><a href="#review-workflows" class="level-2">Review Workflows</a></li>
+<li><a href="#retired-direct-sourcecraft-review-rest-endpoint" class="level-3">Retired direct SourceCraft review REST endpoint</a></li>
 <li><a href="#post-apiv1securityscan-diff-skanirovanie-bezopasnosti" class="level-3">`POST /api/v1/security/scan-diff` -- Сканирование безопасности</a></li>
 <li><a href="#post-apiv1webhookssourcecraft-priyom-vebhukov" class="level-3">`POST /api/v1/webhooks/sourcecraft` -- Приём вебхуков</a></li>
 <li><a href="#post-apiv1reviewsummary-opisanie-mr" class="level-3">`POST /api/v1/review/summary` -- Описание MR</a></li>

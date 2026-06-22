@@ -95,7 +95,6 @@
         <li><a href="../guides/CODE_REVIEW.html">Автоматическая проверка кода</a></li>
         <li><a href="../guides/CODE_REVIEW_HOOKS.html">Хуки автоматизированного ревью кода</a></li>
         <li><a href="../guides/COMPLIANCE_REPORT.html">Отчет о соответствии ГОСТ Р 56939-2024</a></li>
-        <li><a href="../guides/CUSTOM_MCP_TOOLS.html">Пользовательские MCP-инструменты</a></li>
         <li><a href="../guides/DASHBOARD_FRONTEND.html">Руководство по интерфейсу дашборда</a></li>
         <li><a href="../guides/DASHBOARD_METHODOLOGY.html">Руководство по методологии дашборда</a></li>
         <li><a href="../guides/DASHBOARD_OPERATIONS.html">Руководство по эксплуатации дашборда</a></li>
@@ -147,7 +146,6 @@
         <li><a href="../api/index.html">Обзор</a></li>
         <li><a href="../api/ACP_INTEGRATION.html">Интеграция Agent Client Protocol (ACP)</a></li>
         <li><a href="../api/DASHBOARD_WEBSOCKET_API.html">Справочник WebSocket API</a></li>
-        <li><a href="../api/DEMO_API.html">Демо API</a></li>
         <li><a href="../api/GRPC_API.html">Справочник gRPC API</a></li>
         <li><a href="../api/MCP_TOOLS.html">Встроенные инструменты MCP</a></li>
         <li><a href="../api/REST_API.html">Справочник REST API</a></li>
@@ -214,7 +212,7 @@
 <li><a href="#nastroyka-vebhukov">Настройка вебхуков</a></li>
 <li><a href="#ci-konveyer">CI-конвейер</a></li>
 <li><a href="#oauth-autentifikatsiya">OAuth-аутентификация</a></li>
-<li><a href="#rest-api">REST API</a></li>
+<li><a href="#review-workflows">Review Workflows</a></li>
 <li><a href="#razvyortyvanie-cherez-helm">Развёртывание через Helm</a></li>
 <li><a href="#ustranenie-nepoladok">Устранение неполадок</a></li>
 <li><a href="#sleduyuschie-shagi">Следующие шаги</a></li>
@@ -325,7 +323,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <ol>
 <li><strong>Сборка CPG</strong> &ndash; <code>gocpg parse</code> в контейнере <code>ghcr.io/mkhlsavin/codegraph:latest</code></li>
 <li><strong>Сканирование безопасности</strong> &ndash; межпроцедурный анализ потоков данных по diff</li>
-<li><strong>Рецензирование PR</strong> &ndash; структурный анализ через <code>/api/v1/review/gitverse</code></li>
+<li><strong>Рецензирование PR</strong> &ndash; структурный анализ через GitVerse CLI/dashboard operator workflow</li>
 <li><strong>Отчёт</strong> &ndash; сводка результатов в артефактах задания</li>
 </ol>
 <p>Ключевой фрагмент конвейера (полная версия в <code>ci/gitverse/codegraph-review.yaml</code>):</p>
@@ -353,12 +351,11 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Review PR</span>
 <span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">          </span><span class="no">curl -sf -X POST &quot;${CODEGRAPH_URL}/api/v1/review/gitverse&quot; \</span>
-<span class="w">            </span><span class="no">-H &quot;Authorization: Bearer ${CODEGRAPH_TOKEN}&quot; \</span>
-<span class="w">            </span><span class="no">-H &quot;X-GitVerse-Token: ${{ secrets.GITVERSE_TOKEN }}&quot; \</span>
-<span class="w">            </span><span class="no">-H &quot;Content-Type: application/json&quot; \</span>
-<span class="w">            </span><span class="no">-d &#39;{&quot;project_id&quot;: &quot;${{ github.repository }}&quot;, &quot;pr_number&quot;: ${{ github.event.pull_request.number }}, &quot;publish_review&quot;: true}&#39; \</span>
-<span class="w">            </span><span class="no">-o review-results.json</span>
+<span class="w">          </span><span class="no">codegraph gitverse review-dry-run \</span>
+<span class="w">            </span><span class="no">--project-id &quot;${{ github.repository }}&quot; \</span>
+<span class="w">            </span><span class="no">--pr-number &quot;${{ github.event.pull_request.number }}&quot; \</span>
+<span class="w">            </span><span class="no">--token &quot;${{ secrets.GITVERSE_TOKEN }}&quot; \</span>
+<span class="w">            </span><span class="no">--format json &gt; review-results.json</span>
 </code></pre></div>
 
 <h2  id="oauth-autentifikatsiya"><span id="oauth_autentifikatsiya"></span>OAuth-аутентификация<a class="heading-anchor" href="#oauth-autentifikatsiya" title="Link to this section">&para;</a></h2>
@@ -388,8 +385,53 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <td>Базовый URL сервера GitVerse</td>
 <td><code>https://gitverse.ru</code></td>
 </tr>
+<tr>
+<td><code>OAUTH_GITVERSE_VAULT_PATH</code></td>
+<td>Путь KV secret в Vault для GitVerse OAuth</td>
+<td>&ndash;</td>
+</tr>
+<tr>
+<td><code>OAUTH_GITVERSE_CLIENT_ID_VAULT_KEY</code></td>
+<td>Ключ client id внутри Vault secret</td>
+<td><code>client_id</code></td>
+</tr>
+<tr>
+<td><code>OAUTH_GITVERSE_CLIENT_SECRET_VAULT_KEY</code></td>
+<td>Ключ client secret внутри Vault secret</td>
+<td><code>client_secret</code></td>
+</tr>
+<tr>
+<td><code>OAUTH_GITVERSE_SERVER_URL_VAULT_KEY</code></td>
+<td>Ключ server URL внутри Vault secret</td>
+<td><code>server_url</code></td>
+</tr>
 </tbody>
 </table></div>
+<p>Если <code>OAUTH_GITVERSE_VAULT_PATH</code> задан, CodeGraph читает OAuth client id, secret и optional server URL из HashiCorp Vault. Явные <code>OAUTH_GITVERSE_CLIENT_ID</code>, <code>OAUTH_GITVERSE_CLIENT_SECRET</code> и <code>OAUTH_GITVERSE_SERVER_URL</code> имеют приоритет и подходят для аварийного override.</p>
+<p>Минимальная запись в Vault KV v2:</p>
+<div class="highlight"><pre><span></span><code>vault<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>secret/codegraph/oauth/gitverse<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">client_id</span><span class="o">=</span><span class="s2">&quot;&lt;gitverse-oauth-client-id&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">client_secret</span><span class="o">=</span><span class="s2">&quot;&lt;gitverse-oauth-client-secret&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">server_url</span><span class="o">=</span><span class="s2">&quot;https://gitverse.ru&quot;</span>
+</code></pre></div>
+
+<p>Runtime-переменные для Vault:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">VAULT_ENABLED</span><span class="o">=</span><span class="nb">true</span>
+<span class="nv">VAULT_ADDR</span><span class="o">=</span>http://vault.example.com:8200
+<span class="nv">VAULT_AUTH_METHOD</span><span class="o">=</span>token
+<span class="nv">VAULT_SECRETS_MOUNT</span><span class="o">=</span>secret
+<span class="nv">VAULT_TOKEN</span><span class="o">=</span>&lt;vault-token-with-read-access&gt;
+<span class="nv">OAUTH_GITVERSE_VAULT_PATH</span><span class="o">=</span>codegraph/oauth/gitverse
+</code></pre></div>
+
+<p>Для локальной проверки используйте callback URL:</p>
+<div class="highlight"><pre><span></span><code>http://127.0.0.1:8000/api/v1/auth/oauth/gitverse/callback
+</code></pre></div>
+
+<p>Для production runtime используйте публичный API origin:</p>
+<div class="highlight"><pre><span></span><code>https://&lt;codegraph-host&gt;/api/v1/auth/oauth/gitverse/callback
+</code></pre></div>
+
 <h3  id="konechnye-tochki"><span id="konechnye_tochki"></span>Конечные точки<a class="heading-anchor" href="#konechnye-tochki" title="Link to this section">&para;</a></h3>
 <p>OAuth использует параметризованные маршруты, работающие для любого настроенного провайдера:</p>
 <div class="table-wrapper"><table>
@@ -415,7 +457,7 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 - Обратный вызов: <code>GET /api/v1/auth/oauth/gitverse/callback</code>
 - Discoverability: <code>GET /api/v1/auth/oauth/providers</code> включает <code>gitverse</code>, если провайдер настроен</p>
 <h3  id="postroenie-url-avtorizatsii"><span id="postroenie_url_avtorizatsii"></span>Построение URL авторизации<a class="heading-anchor" href="#postroenie-url-avtorizatsii" title="Link to this section">&para;</a></h3>
-<p>OAuth автоматически включается при установке <code>OAUTH_GITVERSE_CLIENT_ID</code>. Провайдер строит URL из базового адреса сервера:</p>
+<p>OAuth автоматически включается при наличии client id и client secret из env или Vault. Провайдер строит URL из базового адреса сервера:</p>
 <ul>
 <li>Авторизация: <code>{server_url}/oauth/authorize</code></li>
 <li>Обмен токенов: <code>{server_url}/oauth/token</code></li>
@@ -426,15 +468,28 @@ cp<span class="w"> </span>ci/gitverse/codegraph-review.yaml<span class="w"> </sp
 <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">OAUTH_GITVERSE_SERVER_URL</span><span class="o">=</span><span class="s2">&quot;https://gitverse.company.ru&quot;</span>
 </code></pre></div>
 
+<h3  id="proverka-i-rotatsiya"><span id="proverka_i_rotatsiya"></span>Проверка и ротация<a class="heading-anchor" href="#proverka-i-rotatsiya" title="Link to this section">&para;</a></h3>
+<ol>
+<li>Перезапустите API после изменения <code>.env</code> или Vault access policy.</li>
+<li>Проверьте discoverability:</li>
+</ol>
+<p><code>bash
+   curl -sf http://127.0.0.1:8000/api/v1/auth/oauth/providers | jq '.[] | select(.name=="gitverse")'</code></p>
+<ol start="3">
+<li>Убедитесь, что <code>enabled=true</code> и <code>authorize_url</code> содержит <code>state=</code>.</li>
+<li>Откройте <code>/auth</code> и выполните вход через GitVerse.</li>
+<li>После ротации секрета обновите Vault secret теми же ключами, перезапустите API и повторите discoverability/login smoke.</li>
+</ol>
+<p>Вебхуки GitVerse и CPG auto-update не зависят от OAuth login: для автоматического отслеживания изменений продолжайте использовать <code>POST /api/v1/webhooks/gitverse</code> и HMAC secret из раздела <a href="#nastroyka-vebhukov">Настройка вебхуков</a>.</p>
 <h2  id="operator-surfaces"><span id="operator_surfaces"></span>Operator Surfaces<a class="heading-anchor" href="#operator-surfaces" title="Link to this section">&para;</a></h2>
 <ul>
 <li><strong>Web</strong>: <code>/dashboard/gitverse</code> собирает onboarding, project health и audit drill-down в единый GitVerse flow</li>
 <li><strong>CLI</strong>: <code>codegraph gitverse status|bindings|template|review-dry-run</code></li>
-<li><strong>MCP</strong>: <code>codegraph_gv_review</code>, <code>codegraph_gv_pr_info</code>, <code>codegraph_gv_commit_status</code>, <code>codegraph_gv_summary</code></li>
+<li><strong>MCP</strong>: <code>codegraph_integration_gitverse_review</code>, <code>codegraph_integration_gitverse_pr_info</code>, <code>codegraph_integration_gitverse_commit_status</code>, <code>codegraph_integration_gitverse_summary</code></li>
 </ul>
-<h2  id="rest-api"><span id="rest_api"></span>REST API<a class="heading-anchor" href="#rest-api" title="Link to this section">&para;</a></h2>
-<h3  id="post-apiv1reviewgitverse-retsenzirovanie-pr"><span id="post-apiv1reviewgitverse-ndash-retsenzirovanie-pr"></span><span id="post_apiv1reviewgitverse_ndash_retsenzirovanie_pr"></span><span id="post_apiv1reviewgitverse_retsenzirovanie_pr"></span><code>POST /api/v1/review/gitverse</code> &ndash; Рецензирование PR<a class="heading-anchor" href="#post-apiv1reviewgitverse-retsenzirovanie-pr" title="Link to this section">&para;</a></h3>
-<p>Получает diff запроса на слияние из GitVerse и выполняет структурный анализ кода (зона поражения, дельта сложности, мёртвый код, безопасность).</p>
+<h2  id="review-workflows"><span id="review_workflows"></span>Review Workflows<a class="heading-anchor" href="#review-workflows" title="Link to this section">&para;</a></h2>
+<h3  id="retired-direct-gitverse-review-rest-endpoint"><span id="retired_direct_gitverse_review_rest_endpoint"></span>Retired direct GitVerse review REST endpoint<a class="heading-anchor" href="#retired-direct-gitverse-review-rest-endpoint" title="Link to this section">&para;</a></h3>
+<p>Direct GitVerse review REST endpoints were retired under STORY-937. Use the GitVerse dashboard operator, repository review snapshot flow, MCP project-ops tool, or CLI command instead.</p>
 <p><strong>Заголовки:</strong> <code>Authorization: Bearer &lt;token&gt;</code>, <code>X-GitVerse-Token: &lt;gitverse-pat&gt;</code></p>
 <p><strong>Тело запроса:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -525,7 +580,7 @@ python<span class="w"> </span>scripts/validate_gitverse_deployment.py
 <ul>
 <li><code>service.type=ClusterIP</code> за ingress</li>
 <li>ingress route для <code>/api</code> и <code>/dashboard</code></li>
-<li>persistent PVC для CPG data и ChromaDB</li>
+<li>persistent PVC для CPG data и OpenViking</li>
 <li>GitVerse webhook secret и GitVerse OAuth client secret через Kubernetes Secret</li>
 <li>GitVerse OAuth client ID и server URL через ConfigMap</li>
 </ul>
@@ -598,7 +653,7 @@ python<span class="w"> </span>scripts/validate_gitverse_deployment.py
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-05-11</span>
+        <span>Обновлено: 2026-06-22</span>
         <a href="https://github.com/your-org/codegraph/edit/main/docs/integrations/GITVERSE.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>
@@ -622,9 +677,10 @@ python<span class="w"> </span>scripts/validate_gitverse_deployment.py
 <li><a href="#konechnye-tochki" class="level-3">Конечные точки</a></li>
 <li><a href="#postroenie-url-avtorizatsii" class="level-3">Построение URL авторизации</a></li>
 <li><a href="#podderzhka-sber-id" class="level-3">Поддержка Sber ID</a></li>
+<li><a href="#proverka-i-rotatsiya" class="level-3">Проверка и ротация</a></li>
 <li><a href="#operator-surfaces" class="level-2">Operator Surfaces</a></li>
-<li><a href="#rest-api" class="level-2">REST API</a></li>
-<li><a href="#post-apiv1reviewgitverse-retsenzirovanie-pr" class="level-3">`POST /api/v1/review/gitverse` -- Рецензирование PR</a></li>
+<li><a href="#review-workflows" class="level-2">Review Workflows</a></li>
+<li><a href="#retired-direct-gitverse-review-rest-endpoint" class="level-3">Retired direct GitVerse review REST endpoint</a></li>
 <li><a href="#post-apiv1webhooksgitverse-priyom-vebhukov" class="level-3">`POST /api/v1/webhooks/gitverse` -- Приём вебхуков</a></li>
 <li><a href="#post-apiv1reviewsummary-generatsiya-opisaniya-mr" class="level-3">`POST /api/v1/review/summary` -- Генерация описания MR</a></li>
 <li><a href="#razvyortyvanie-cherez-helm" class="level-2">Развёртывание через Helm</a></li>
