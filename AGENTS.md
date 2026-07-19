@@ -36,7 +36,8 @@ Agent guide for `D:\work\codegraph\docs\landing`.
 ## Critical rules
 1. Keep header and footer synchronized across all 7 root HTML pages.
 2. Keep docs footer templates synchronized in the docs builder sources as well as the landing templates.
-3. Preserve internal SEO links to all 5 vertical pages in footer and navigation.
+3. Preserve internal SEO links to every vertical page registered in
+   `scripts/build_landing.py`; do not maintain a second hard-coded count here.
 4. Keep landing user-facing content Russian-first.
 5. Regenerate minified assets when CSS or JS changes.
 6. Respect the separate submodule workflow when syncing this subproject with the parent repo.
