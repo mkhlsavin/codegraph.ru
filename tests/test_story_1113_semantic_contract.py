@@ -347,13 +347,17 @@ def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
         "traceability",
         "readiness",
         "architecture",
+        "runtime-topology",
+        "indexing-query",
+        "data-ownership",
+        "governed-closure",
         "portfolio-audit-release",
         "security-compliance",
         "scenarios",
         "pilot",
     } <= section_ids
     figures = soup.find_all("figure", attrs={"data-product-diagram": True})
-    assert len(figures) == 9
+    assert len(figures) == 13
     for figure in figures:
         svg = figure.find("svg", attrs={"role": "img"})
         assert svg is not None
@@ -361,6 +365,26 @@ def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
         assert len(labelled_by) == 2
         assert all(soup.find(id=identifier) is not None for identifier in labelled_by)
         assert max((len(text.find_all("tspan")) for text in svg.find_all("text")), default=0) <= 12
+
+
+def test_whitepaper_explains_the_implementation_architecture_for_cto_review() -> None:
+    """Keep the CTO architecture extension grounded in concrete runtime boundaries."""
+    page = _soup("whitepaper.html")
+    expected = {
+        "runtime-topology": ("FastAPI", "MCP", "GoCPG", "Исполнитель Temporal"),
+        "indexing-query": ("ProjectImportPipeline", "gRPC", "DuckDB", "OpenViking"),
+        "data-ownership": ("PostgreSQL", "DuckDB", "общей транзакции", "основное состояние"),
+        "governed-closure": ("контракт задачи", "передач", "Ева", "сервер"),
+    }
+    for section_id, required_terms in expected.items():
+        section = page.find("section", id=section_id)
+        assert section is not None, f"whitepaper is missing #{section_id}"
+        text = section.get_text(" ", strip=True)
+        for term in required_terms:
+            assert term in text, f"#{section_id} is missing {term}"
+        figure = section.find("figure", attrs={"data-product-diagram": True})
+        assert figure is not None
+        assert figure.find("svg", attrs={"role": "img"}) is not None
 
 
 def test_every_explanatory_product_figure_is_inline_svg() -> None:
