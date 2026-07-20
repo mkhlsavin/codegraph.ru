@@ -58,6 +58,11 @@ def _normalized_sha256(payload: bytes) -> str:
     return hashlib.sha256(payload.replace(b"\r\n", b"\n")).hexdigest()
 
 
+def _normalized_text(value: str) -> str:
+    """Collapse HTML whitespace, including non-breaking spaces, for semantic checks."""
+    return " ".join(value.split())
+
+
 def _fetch(base_url: str, route: str, release: str) -> bytes:
     """Fetch one public route with cache bypass headers and query marker."""
     url = urljoin(base_url.rstrip("/") + "/", route)
@@ -79,9 +84,9 @@ def verify_once(base_url: str, root: Path, release: str) -> dict[str, object]:
     homepage = remote["index.html"].decode("utf-8")
     parser.feed(homepage)
     failures: list[str] = []
-    if parser.title.strip() != EXPECTED_TITLE:
+    if _normalized_text(parser.title) != EXPECTED_TITLE:
         failures.append(f"title={parser.title.strip()!r}")
-    if parser.h1.strip() != EXPECTED_H1:
+    if _normalized_text(parser.h1) != EXPECTED_H1:
         failures.append(f"h1={parser.h1.strip()!r}")
     if parser.release.strip() != release:
         failures.append(f"release={parser.release.strip()!r}")

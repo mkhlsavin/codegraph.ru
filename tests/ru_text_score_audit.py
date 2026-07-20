@@ -196,7 +196,7 @@ def score_page(path: Path) -> PageResult:
 def main() -> int:
     """Print the complete score matrix and enforce the requested floor."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--minimum", type=float, default=8.0)
+    parser.add_argument("--minimum", type=float, default=8.5)
     args = parser.parse_args()
     results = [score_page(path) for path in _public_pages()]
     print("| Страница | Т | Ч | Г | С | Ц | Итог | Замечания |")
