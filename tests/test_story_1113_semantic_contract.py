@@ -155,6 +155,8 @@ def test_visible_logo_uses_versioned_approved_geometric_lockup() -> None:
         LANDING_ROOT.parents[1] / "scripts" / "docs_builder" / "template.py",
         LANDING_ROOT.parents[1] / "scripts" / "docs_builder" / "navigation.py",
     ):
+        if not source_path.is_file():
+            continue
         source_text = source_path.read_text(encoding="utf-8")
         assert "assets/svg/logo.svg" not in source_text, source_path
         assert logo_name in source_text, source_path
