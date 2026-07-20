@@ -112,6 +112,24 @@ def test_homepage_restores_product_scale_and_management_hierarchy() -> None:
         assert _normalized_text(required).casefold() in visible.casefold()
 
 
+def test_homepage_material_cards_link_to_matching_pages() -> None:
+    """Make every next-step material card an unambiguous navigation link."""
+    soup = _soup("index.html")
+    materials = soup.find("section", id="materials")
+    assert materials is not None
+
+    actual = {
+        link.find("h3").get_text(" ", strip=True): link.get("href")
+        for link in materials.select("a[href]")
+        if link.find("h3") is not None
+    }
+    assert actual == {
+        "Техническое описание": "whitepaper.html",
+        "Подтверждения": "evidence.html",
+        "Интеграции": "integrations.html",
+    }
+
+
 def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
     """Require the accepted visual models instead of a flat terminology table."""
     soup = _soup("whitepaper.html")
