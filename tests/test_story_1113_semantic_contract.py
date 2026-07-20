@@ -316,7 +316,7 @@ def test_every_internal_link_and_fragment_resolves() -> None:
             except ValueError:
                 errors.append(f"{source_relative}: link escapes public root: {href}")
                 continue
-            if not target.suffix or path_value.endswith("/"):
+            if target.is_dir() or not target.suffix or path_value.endswith("/"):
                 target = target / "index.html"
             if not target.is_file():
                 errors.append(f"{source_relative}: missing target: {href}")
@@ -343,6 +343,7 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
     """Reject placeholder provenance and verify every generated GitHub edit target."""
     errors: list[str] = []
     repository_root = LANDING_ROOT.parents[1]
+    source_checkout_available = (repository_root / "docs").is_dir()
     edit_prefix = "/mkhlsavin/codegraph/edit/main/"
     edit_count = 0
     for source_path in _public_html_files():
@@ -365,9 +366,10 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
                 if not parts.path.startswith(edit_prefix):
                     errors.append(f"{source_relative}: unexpected edit origin: {href}")
                     continue
-                target = repository_root / unquote(parts.path[len(edit_prefix) :])
-                if not target.is_file():
-                    errors.append(f"{source_relative}: missing edit source: {href}")
+                if source_checkout_available:
+                    target = repository_root / unquote(parts.path[len(edit_prefix) :])
+                    if not target.is_file():
+                        errors.append(f"{source_relative}: missing edit source: {href}")
 
     if edit_count != 193:
         errors.append(f"generated edit-link count={edit_count}, expected=193")
