@@ -177,18 +177,22 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
         assert any(ref and ref.startswith("FR-") for ref in refs)
         assert any(ref and ref.startswith("CNFR-") for ref in refs)
 
-    repository_root = LANDING_ROOT.parents[1]
-    registry_ids: set[str] = set()
-    for registry in (
-        "PRODUCT_FUNCTIONAL_REQUIREMENTS_MECE_FINAL_20260718.json",
-        "PRODUCT_NON_FUNCTIONAL_REQUIREMENTS_MECE_FINAL_20260718.json",
-    ):
-        payload = json.loads(
-            (repository_root / "docs" / "development" / "maps" / registry).read_text(encoding="utf-8")
-        )
-        registry_ids.update(item["requirement_id"] for item in payload["final_requirements"])
     asserted_refs = {ref for _route, refs in expected.values() for ref in refs}
-    assert asserted_refs <= registry_ids
+    projection = json.loads(
+        (LANDING_ROOT / "scenarios" / "requirement-basis.json").read_text(encoding="utf-8")
+    )
+    assert asserted_refs == set(projection["requirement_ids"])
+
+    repository_root = LANDING_ROOT.parents[1]
+    registry_dir = repository_root / "docs" / "development" / "maps"
+    if registry_dir.is_dir():
+        registry_ids: set[str] = set()
+        for registry in projection["source_registries"]:
+            payload = json.loads((registry_dir / registry).read_text(encoding="utf-8"))
+            registry_ids.update(
+                item["requirement_id"] for item in payload["final_requirements"]
+            )
+        assert asserted_refs <= registry_ids
 
     sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
     machine_maps = "\n".join(
@@ -252,6 +256,7 @@ def test_homepage_omits_removed_buyer_caveats() -> None:
         "Платформа не заявляет замену финансовому и ресурсному планированию.",
     )
     assert not [text for text in forbidden if _normalized_text(text).casefold() in visible]
+    assert "продуктовый поток" not in visible
 
 
 def _soup(relative: str) -> BeautifulSoup:
