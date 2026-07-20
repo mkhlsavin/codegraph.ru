@@ -265,7 +265,13 @@ def test_whitepaper_links_scenarios_and_shows_scalable_product_ui() -> None:
     interface = page.find("section", id="interface")
     assert interface is not None
     screenshots = interface.select('figure[data-visual-kind="ui-screenshot"]')
-    assert 3 <= len(screenshots) <= 6
+    assert len(screenshots) == 4
+    assert {figure.find("img")["src"] for figure in screenshots} == {
+        "assets/ui/portfolio-overview-20260720.png",
+        "assets/ui/project-delivery-20260720.png",
+        "assets/ui/compliance-center-20260720.png",
+        "assets/ui/digital-employee-handoff-map-20260720.png",
+    }
     for figure in screenshots:
         link = figure.find("a", href=True)
         image = figure.find("img")
@@ -276,6 +282,22 @@ def test_whitepaper_links_scenarios_and_shows_scalable_product_ui() -> None:
         assert image.get("loading") == "lazy"
         assert caption is not None and caption.get_text(" ", strip=True)
         assert (LANDING_ROOT / image["src"]).is_file()
+
+
+def test_homepage_documentation_action_uses_book_icon() -> None:
+    """Represent documentation with an open book instead of the retired video icon."""
+    page = _soup("index.html")
+    links = [
+        node
+        for node in page.find_all("a", href="docs/ru/index.html")
+        if "Изучить документацию" in node.get_text(" ", strip=True)
+    ]
+    assert len(links) == 1
+    link = links[0]
+    icon = link.find("svg", attrs={"data-icon": "book-open"})
+    assert icon is not None
+    assert len(icon.find_all("path")) == 2
+    assert icon.find("polygon") is None
 
 
 def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
