@@ -205,6 +205,36 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
         assert public_url in machine_maps
 
 
+def test_whitepaper_links_scenarios_and_shows_scalable_product_ui() -> None:
+    """Connect the whitepaper narrative to scenario details and real UI screens."""
+    page = _soup("whitepaper.html")
+    scenarios = page.find("section", id="scenarios")
+    assert scenarios is not None
+    assert {link.get("href") for link in scenarios.select("a[href]")} == {
+        "scenarios/portfolio-change-management.html",
+        "scenarios/feature-delivery.html",
+        "scenarios/codebase-audit.html",
+        "scenarios/release-readiness.html",
+        "scenarios/technical-controls.html",
+        "scenarios/ai-code-control.html",
+    }
+
+    interface = page.find("section", id="interface")
+    assert interface is not None
+    screenshots = interface.select('figure[data-visual-kind="ui-screenshot"]')
+    assert 3 <= len(screenshots) <= 6
+    for figure in screenshots:
+        link = figure.find("a", href=True)
+        image = figure.find("img")
+        caption = figure.find("figcaption")
+        assert link is not None and link.get("target") == "_blank"
+        assert image is not None and image.get("src") == link.get("href")
+        assert image.get("alt") and image.get("width") and image.get("height")
+        assert image.get("loading") == "lazy"
+        assert caption is not None and caption.get_text(" ", strip=True)
+        assert (LANDING_ROOT / image["src"]).is_file()
+
+
 def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
     """Require the accepted visual models instead of a flat terminology table."""
     soup = _soup("whitepaper.html")
