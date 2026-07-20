@@ -130,6 +130,77 @@ def test_homepage_material_cards_link_to_matching_pages() -> None:
     }
 
 
+def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
+    """Link each corporate scenario to a distinct FR/NFR-grounded page."""
+    expected = {
+        "Управление портфелем изменений": (
+            "scenarios/portfolio-change-management.html",
+            {"FR-P08-EXECUTIVE-CODE-PORTFOLIO-01", "FR-P08-PORTFOLIO-HEALTH-01", "CNFR-Q04-SCALE-THROUGHPUT-PROFILE-01"},
+        ),
+        "Разработка новой функции": (
+            "scenarios/feature-delivery.html",
+            {"FR-P04-DISCOVERY-READINESS-01", "FR-P04-TASK-CAPSULE-01", "CNFR-Q01-EVIDENCE-PROVENANCE-01"},
+        ),
+        "Аудит кодовой базы": (
+            "scenarios/codebase-audit.html",
+            {"FR-P03-ARCHITECTURE-EXPLORATION-01", "FR-P08-REVIEW-RESULT-01", "CNFR-Q01-EVIDENCE-PROVENANCE-01"},
+        ),
+        "Релизная проверка": (
+            "scenarios/release-readiness.html",
+            {"FR-P04-DELIVERY-READINESS-01", "FR-P04-PRECOMPLETION-GATE-01", "CNFR-Q02-TRANSITION-ROLLBACK-CONTINUITY-01"},
+        ),
+        "Технические контроли": (
+            "scenarios/technical-controls.html",
+            {"FR-P08-POLICY-WORKSPACE-01", "FR-P09-POLICY-CONSISTENCY-01", "CNFR-Q01-FAIL-CLOSED-GOVERNANCE-01"},
+        ),
+        "Контроль кода, созданного ИИ": (
+            "scenarios/ai-code-control.html",
+            {"FR-P07-GOVERNED-CLIENT-ACCESS-01", "FR-P06-AUDIT-MACHINE-OUTPUT-01", "CNFR-Q01-AI-IDENTITY-CLAIM-SAFETY-01"},
+        ),
+    }
+    homepage = _soup("index.html")
+    scenarios = homepage.find("section", id="scenarios")
+    assert scenarios is not None
+    actual = {
+        link.find("h3").get_text(" ", strip=True): link.get("href")
+        for link in scenarios.select("a[href]")
+        if link.find("h3") is not None
+    }
+    assert actual == {title: route for title, (route, _refs) in expected.items()}
+
+    required_sections = {"situation", "actions", "advantages", "benefits", "metrics", "human-decision", "requirement-basis"}
+    for _title, (route, expected_refs) in expected.items():
+        page = _soup(route)
+        assert required_sections <= {node.get("id") for node in page.find_all("section")}
+        refs = {node.get("data-requirement-ref") for node in page.select("[data-requirement-ref]")}
+        assert expected_refs <= refs
+        assert any(ref and ref.startswith("FR-") for ref in refs)
+        assert any(ref and ref.startswith("CNFR-") for ref in refs)
+
+    repository_root = LANDING_ROOT.parents[1]
+    registry_ids: set[str] = set()
+    for registry in (
+        "PRODUCT_FUNCTIONAL_REQUIREMENTS_MECE_FINAL_20260718.json",
+        "PRODUCT_NON_FUNCTIONAL_REQUIREMENTS_MECE_FINAL_20260718.json",
+    ):
+        payload = json.loads(
+            (repository_root / "docs" / "development" / "maps" / registry).read_text(encoding="utf-8")
+        )
+        registry_ids.update(item["requirement_id"] for item in payload["final_requirements"])
+    asserted_refs = {ref for _route, refs in expected.values() for ref in refs}
+    assert asserted_refs <= registry_ids
+
+    sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    machine_maps = "\n".join(
+        (LANDING_ROOT / name).read_text(encoding="utf-8")
+        for name in ("llms.txt", "llms-full.txt")
+    )
+    for route, _refs in expected.values():
+        public_url = f"https://codegraph.ru/{route}"
+        assert public_url in sitemap
+        assert public_url in machine_maps
+
+
 def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
     """Require the accepted visual models instead of a flat terminology table."""
     soup = _soup("whitepaper.html")
