@@ -137,6 +137,7 @@ def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
         labelled_by = str(svg.get("aria-labelledby") or "").split()
         assert len(labelled_by) == 2
         assert all(soup.find(id=identifier) is not None for identifier in labelled_by)
+        assert max((len(text.find_all("tspan")) for text in svg.find_all("text")), default=0) <= 12
 
 
 def test_every_explanatory_product_figure_is_inline_svg() -> None:
