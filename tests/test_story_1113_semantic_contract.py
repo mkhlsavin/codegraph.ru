@@ -127,6 +127,39 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
             assert stale_claim not in generator
 
 
+def test_visible_logo_uses_versioned_approved_geometric_lockup() -> None:
+    """Keep the approved geometric mark visible and cache-busted sitewide."""
+    logo_name = "logo-golden-ratio-lockup-20260720.svg"
+    logo_path = LANDING_ROOT / "assets" / "svg" / logo_name
+    source = logo_path.read_text(encoding="utf-8")
+    assert 'viewBox="0 0 256 64"' in source
+    assert "M216.204 83.447" in source
+    assert "CodeGraph" in source
+
+    pages = [
+        path
+        for path in LANDING_ROOT.rglob("*.html")
+        if "node_modules" not in path.parts
+        and "templates" not in path.parts
+        and 'alt="CodeGraph"' in path.read_text(encoding="utf-8")
+    ]
+    assert pages
+    for path in pages:
+        html = path.read_text(encoding="utf-8")
+        assert "assets/svg/logo.svg" not in html, path
+        assert f"assets/svg/{logo_name}" in html, path
+
+    for source_path in (
+        LANDING_ROOT / "templates" / "header.html",
+        LANDING_ROOT / "templates" / "footer.html",
+        LANDING_ROOT.parents[1] / "scripts" / "docs_builder" / "template.py",
+        LANDING_ROOT.parents[1] / "scripts" / "docs_builder" / "navigation.py",
+    ):
+        source_text = source_path.read_text(encoding="utf-8")
+        assert "assets/svg/logo.svg" not in source_text, source_path
+        assert logo_name in source_text, source_path
+
+
 def test_homepage_restores_product_scale_and_management_hierarchy() -> None:
     """Keep portfolio, architecture, audits and release readiness in the category story."""
     soup = _soup("index.html")
