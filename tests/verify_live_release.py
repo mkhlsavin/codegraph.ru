@@ -18,7 +18,12 @@ EXPECTED_TITLE = "CodeGraph — управление разработкой ци
 EXPECTED_H1 = "Управляйте разработкой — от продуктовой инициативы до готовности к выпуску"
 EXPECTED_RELEASE = "story-1113-corrective-20260720"
 FORBIDDEN_TEXT = ("21 сценарий", "0,83")
-HASH_ROUTES = ("index.html", "whitepaper.html", "sitemap.xml")
+HASH_ROUTES = (
+    "index.html",
+    "whitepaper.html",
+    "product-delivery.html",
+    "sitemap.xml",
+)
 
 
 class HomeContractParser(HTMLParser):

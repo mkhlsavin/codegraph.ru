@@ -129,7 +129,39 @@ def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
         "scenarios",
         "pilot",
     } <= section_ids
-    assert len(soup.find_all("figure")) >= 9
+    figures = soup.find_all("figure", attrs={"data-product-diagram": True})
+    assert len(figures) == 9
+    for figure in figures:
+        svg = figure.find("svg", attrs={"role": "img"})
+        assert svg is not None
+        labelled_by = str(svg.get("aria-labelledby") or "").split()
+        assert len(labelled_by) == 2
+        assert all(soup.find(id=identifier) is not None for identifier in labelled_by)
+
+
+def test_every_explanatory_product_figure_is_inline_svg() -> None:
+    """Allow HTML only for the homepage product-screen mockup, never for diagrams."""
+    errors: list[str] = []
+    for path in _public_html_files():
+        soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
+        for index, figure in enumerate(soup.find_all("figure"), 1):
+            if figure.get("data-visual-kind") == "product-screen":
+                continue
+            if figure.find("svg") is None and figure.find("img") is None:
+                errors.append(f"{path.relative_to(LANDING_ROOT)}: figure {index}")
+    assert not errors, "Non-SVG product diagrams remain:\n" + "\n".join(errors)
+
+
+def test_homepage_omits_removed_buyer_caveats() -> None:
+    """Keep the product-owner copy simplification in source projections."""
+    visible = _normalized_text(_soup("index.html").get_text(" ", strip=True)).casefold()
+    forbidden = (
+        "Это не обещание автоматически подготовить полную спецификацию.",
+        "Срок и экономический эффект зависят от выбранного потока.",
+        "CodeGraph не обещает универсальный процент экономии до исходного замера.",
+        "Платформа не заявляет замену финансовому и ресурсному планированию.",
+    )
+    assert not [text for text in forbidden if _normalized_text(text).casefold() in visible]
 
 
 def _soup(relative: str) -> BeautifulSoup:
