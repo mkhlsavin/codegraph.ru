@@ -24,77 +24,35 @@
 
   const METRIKA_COUNTER_ID = 107046651;
 
+  function initiativeContext(sourcePage, intent, useCase) {
+    return {
+      sourcePage,
+      intent,
+      useCase,
+      defaultCtaVariant: `${sourcePage}_initiative_cta`,
+      formTitle: 'Разобрать одну продуктовую инициативу',
+      formDescription: 'Результат встречи — черновая цепочка Product Intent → FR/NFR → Impact Scope → required evidence. Это не обещание автоматически подготовить полную спецификацию.',
+      formButton: 'Разобрать инициативу',
+      contextNote: sourcePage === 'index'
+        ? ''
+        : `Форма открыта со страницы «${sourcePage}»; source, intent и границы инициативы сохраняются в заявке.`
+    };
+  }
+
   const PAGE_CONTEXTS = {
-    index: {
-      sourcePage: 'index',
-      intent: 'general_demo',
-      useCase: 'general',
-      defaultCtaVariant: 'homepage_cta',
-      formTitle: 'Готовы попробовать CodeGraph?',
-      formDescription: 'Запросите демо и мы покажем, как CodeGraph работает на вашей кодовой базе',
-      formButton: 'Запросить демо',
-      contextNote: ''
-    },
-    security: {
-      sourcePage: 'security',
-      intent: 'security_demo',
-      useCase: 'security',
-      defaultCtaVariant: 'security_cta',
-      formTitle: 'Показать 3 верифицированные находки на вашем коде?',
-      formDescription: 'Покажем CodeGraph на задачах AppSec: приоритет находок, реальные потоки данных, SARIF и evidence для аудита.',
-      formButton: 'Показать 3 верифицированные находки',
-      contextNote: 'Форма открыта из vertical page «Безопасность». Сохраним контекст AppSec-запроса в лид.',
-    },
-    productivity: {
-      sourcePage: 'productivity',
-      intent: 'productivity_demo',
-      useCase: 'developer_productivity',
-      defaultCtaVariant: 'productivity_cta',
-      formTitle: 'Показать, как сократить onboarding на вашем репозитории?',
-      formDescription: 'Покажем, где команда теряет время на понимание кода, поиск зависимостей и разбор архитектуры.',
-      formButton: 'Показать, как сократить onboarding',
-      contextNote: 'Форма открыта из vertical page «Продуктивность». Сохраним контекст developer productivity в лид.',
-    },
-    compliance: {
-      sourcePage: 'compliance',
-      intent: 'compliance_migration',
-      useCase: 'compliance_and_migration',
-      defaultCtaVariant: 'compliance_cta',
-      formTitle: 'Обсудить миграцию и пакет документов?',
-      formDescription: 'Покажем целевой on-premise контур, сценарий миграции и набор evidence для требований ГОСТ и 152-ФЗ.',
-      formButton: 'Обсудить миграцию и пакет документов',
-      contextNote: 'Форма открыта из vertical page «Соответствие». Сохраним контекст migration/compliance запроса в лид.',
-    },
-    cpg: {
-      sourcePage: 'cpg',
-      intent: 'cpg_demo',
-      useCase: 'cpg_platform',
-      defaultCtaVariant: 'cpg_cta',
-      formTitle: 'Получить техническое демо CPG и анализ влияния?',
-      formDescription: 'Покажем, как единый граф свойств кода помогает с impact analysis, зависимостями и архитектурными вопросами.',
-      formButton: 'Получить демо CPG и анализ влияния',
-      contextNote: 'Форма открыта из vertical page «CPG». Сохраним технологический контекст интереса к платформе.',
-    },
-    'ai-engineering': {
-      sourcePage: 'ai-engineering',
-      intent: 'ai_engineering_demo',
-      useCase: 'ai_ml_engineering',
-      defaultCtaVariant: 'ai_engineering_cta',
-      formTitle: 'Показать анализ AI/ML-кодовой базы и конвейера данных?',
-      formDescription: 'Покажем трассировку данных, проверку AI-сгенерированного кода и разбор polyglot ML-инфраструктуры.',
-      formButton: 'Показать анализ AI/ML-кодовой базы',
-      contextNote: 'Форма открыта из vertical page «AI/ML Engineering». Сохраним контекст ML/AI Engineering в лид.',
-    },
-    whitepaper: {
-      sourcePage: 'whitepaper',
-      intent: 'whitepaper_followup',
-      useCase: 'research_and_evaluation',
-      defaultCtaVariant: 'whitepaper_cta',
-      formTitle: 'Продолжить знакомство с CodeGraph?',
-      formDescription: 'Оставьте заявку, и мы проведём демо на вашей кодовой базе после изучения whitepaper.',
-      formButton: 'Запросить демо',
-      contextNote: 'Форма открыта после перехода из whitepaper. Сохраним контекст research/evaluation в лид.',
-    }
+    index: initiativeContext('index', 'product_initiative_review', 'traceability'),
+    whitepaper: initiativeContext('whitepaper', 'canonical_model_review', 'traceability'),
+    'product-delivery': initiativeContext('product-delivery', 'product_delivery_review', 'requirements_traceability'),
+    evidence: initiativeContext('evidence', 'evidence_chain_review', 'conformance_evidence'),
+    'digital-team': initiativeContext('digital-team', 'role_contract_review', 'governed_execution'),
+    integrations: initiativeContext('integrations', 'integration_depth_review', 'integration_capabilities'),
+    security: initiativeContext('security', 'security_requirement_review', 'security_conformance'),
+    compliance: initiativeContext('compliance', 'data_boundary_review', 'technical_controls'),
+    'platform-operations': initiativeContext('platform-operations', 'runtime_readiness_review', 'operations'),
+    productivity: initiativeContext('productivity', 'engineering_conformance_review', 'engineering_management'),
+    'business-efficiency': initiativeContext('business-efficiency', 'pilot_measurement_review', 'pilot_economics'),
+    cpg: initiativeContext('cpg', 'impact_scope_review', 'code_impact'),
+    'ai-engineering': initiativeContext('ai-engineering', 'ai_change_conformance_review', 'ai_code_governance')
   };
 
   // ============================================
@@ -114,7 +72,7 @@
       processing_time_ms: 17000
     },
     'default': {
-      answer: 'CodeGraph анализирует собственную кодовую базу (само-анализ) с использованием Code Property Graph.\n\n87,000+ методов • 2,800,000+ узлов • 48,000,000+ рёбер в CPG.\n\nПопробуйте примеры из кнопок выше или задайте свой вопрос о коде.',
+      answer: 'CodeGraph использует Code Property Graph как один из механизмов impact analysis. Результат анализа требует версии, области проверки и evidence; демонстрационный ответ не является подтверждением реализации требования.',
       processing_time_ms: 500
     }
   };
@@ -334,11 +292,11 @@
   function cacheDOM() {
     DOM.html = document.documentElement;
     DOM.body = document.body;
-    DOM.header = document.querySelector('.header');
-    DOM.themeToggle = document.querySelector('.theme-toggle');
-    DOM.mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
-    DOM.mobileNav = document.querySelector('.mobile-nav');
-    DOM.navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
+    DOM.header = document.querySelector('[data-shell-header]');
+    DOM.themeToggle = document.querySelector('[data-theme-toggle]');
+    DOM.mobileMenuToggle = document.querySelector('[data-mobile-menu-toggle]');
+    DOM.mobileNav = document.querySelector('[data-mobile-nav]');
+    DOM.navLinks = document.querySelectorAll('[data-nav-link]');
     DOM.demoInput = document.getElementById('demo-input');
     DOM.demoOutput = document.getElementById('demo-output');
     DOM.demoCursor = document.querySelector('.demo-cursor');
@@ -353,7 +311,6 @@
     DOM.pipelineSteps = document.querySelectorAll('.pipeline-step');
     DOM.scenarioTabs = document.querySelectorAll('.scenario-tab');
     DOM.counters = document.querySelectorAll('[data-count]');
-    DOM.progressBars = document.querySelectorAll('.quality-metric-bar-fill');
     DOM.animatedElements = document.querySelectorAll('[data-animate]');
     DOM.demoForm = document.getElementById('demo-form');
     DOM.demoHeading = document.getElementById('demo-heading');
@@ -408,37 +365,34 @@
   function initMobileNav() {
     if (!DOM.mobileMenuToggle || !DOM.mobileNav) return;
 
-    const syncMobileNavState = () => {
-      const isOpen = DOM.mobileNav.classList.contains('open');
+    const setMobileNavState = (isOpen) => {
+      const state = isOpen ? 'open' : 'closed';
+      DOM.mobileMenuToggle.dataset.state = state;
+      DOM.mobileNav.dataset.state = state;
       DOM.mobileMenuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-      DOM.body.style.overflow = isOpen ? 'hidden' : '';
+      DOM.body.classList.toggle('overflow-hidden', isOpen);
     };
 
     DOM.mobileMenuToggle.addEventListener('click', () => {
-      DOM.mobileMenuToggle.classList.toggle('active');
-      DOM.mobileNav.classList.toggle('open');
-      syncMobileNavState();
+      setMobileNavState(DOM.mobileNav.dataset.state !== 'open');
     });
 
     // Close on link click
     DOM.navLinks.forEach(link => {
       link.addEventListener('click', () => {
-        DOM.mobileMenuToggle.classList.remove('active');
-        DOM.mobileNav.classList.remove('open');
-        syncMobileNavState();
+        setMobileNavState(false);
       });
     });
 
     // Close on escape
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && DOM.mobileNav.classList.contains('open')) {
-        DOM.mobileMenuToggle.classList.remove('active');
-        DOM.mobileNav.classList.remove('open');
-        syncMobileNavState();
+      if (e.key === 'Escape' && DOM.mobileNav.dataset.state === 'open') {
+        setMobileNavState(false);
+        DOM.mobileMenuToggle.focus();
       }
     });
 
-    syncMobileNavState();
+    setMobileNavState(false);
   }
 
   // ============================================
@@ -447,7 +401,6 @@
   function initHeaderScroll() {
     if (!DOM.header) return;
 
-    let lastScroll = 0;
     let ticking = false;
 
     window.addEventListener('scroll', () => {
@@ -455,13 +408,7 @@
         window.requestAnimationFrame(() => {
           const currentScroll = window.pageYOffset;
 
-          if (currentScroll > 50) {
-            DOM.header.classList.add('scrolled');
-          } else {
-            DOM.header.classList.remove('scrolled');
-          }
-
-          lastScroll = currentScroll;
+          DOM.header.dataset.scrolled = currentScroll > 50 ? 'true' : 'false';
           ticking = false;
         });
         ticking = true;
@@ -492,7 +439,7 @@
       viewer.setAttribute('aria-hidden', 'true');
       image.removeAttribute('src');
       image.alt = '';
-      DOM.body.style.overflow = '';
+      DOM.body.classList.remove('overflow-hidden');
       if (lastFocusedElement instanceof HTMLElement) {
         lastFocusedElement.focus();
       }
@@ -508,7 +455,7 @@
         description.textContent = trigger.dataset.screenDescription || '';
         viewer.hidden = false;
         viewer.setAttribute('aria-hidden', 'false');
-        DOM.body.style.overflow = 'hidden';
+        DOM.body.classList.add('overflow-hidden');
         closeButton?.focus();
       });
     });
@@ -585,7 +532,7 @@
 
     // Show loading state
     DOM.demoOutput.innerHTML = '<span class="highlight">Анализирую...</span>';
-    if (DOM.demoCursor) DOM.demoCursor.style.display = 'inline-block';
+    if (DOM.demoCursor) DOM.demoCursor.hidden = false;
 
     try {
       // Call the API
@@ -606,7 +553,7 @@
 
       if (response.status === 429) {
         DOM.demoOutput.innerHTML = '<span class="warning">Превышен лимит запросов. Подождите минуту.</span>';
-        if (DOM.demoCursor) DOM.demoCursor.style.display = 'none';
+        if (DOM.demoCursor) DOM.demoCursor.hidden = true;
         return;
       }
 
@@ -646,7 +593,7 @@
     }
 
     typeHTML(DOM.demoOutput, escapeHtml(displayText), () => {
-      if (DOM.demoCursor) DOM.demoCursor.style.display = 'none';
+      if (DOM.demoCursor) DOM.demoCursor.hidden = true;
       if (isTruncated) {
         const moreLink = document.createElement('a');
         moreLink.href = '#solution';
@@ -952,7 +899,7 @@
 
         DOM.faqItems.forEach(item => {
           const text = item.textContent.toLowerCase();
-          item.style.display = text.includes(query) ? '' : 'none';
+          item.hidden = !text.includes(query);
         });
       });
     }
@@ -974,10 +921,10 @@
           // Filter items
           DOM.faqItems.forEach(item => {
             if (category === 'all') {
-              item.style.display = '';
+              item.hidden = false;
             } else {
               const itemCategory = item.getAttribute('data-category');
-              item.style.display = itemCategory === category ? '' : 'none';
+              item.hidden = itemCategory !== category;
             }
           });
         });
@@ -1002,10 +949,10 @@
         // Filter cards
         DOM.integrationCards.forEach(card => {
           if (filter === 'all') {
-            card.style.display = '';
+            card.hidden = false;
           } else {
             const status = card.getAttribute('data-status');
-            card.style.display = status === filter ? '' : 'none';
+            card.hidden = status !== filter;
           }
         });
       });
@@ -1060,25 +1007,6 @@
   }
 
   // ============================================
-  // Progress Bar Animation
-  // ============================================
-  function initProgressBars() {
-    if (!DOM.progressBars || DOM.progressBars.length === 0) return;
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const target = entry.target.getAttribute('data-progress') || '0';
-          entry.target.style.width = target + '%';
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: CONFIG.observerThreshold });
-
-    DOM.progressBars.forEach(bar => observer.observe(bar));
-  }
-
-  // ============================================
   // Scroll Animations
   // ============================================
   function initScrollAnimations() {
@@ -1123,6 +1051,7 @@
     formInputs.forEach(input => {
       // Set custom message before validation
       input.addEventListener('invalid', (e) => {
+        input.setAttribute('aria-invalid', 'true');
         const validity = input.validity;
 
         if (validity.valueMissing) {
@@ -1142,11 +1071,13 @@
       // Clear custom validity on input to allow re-validation
       input.addEventListener('input', () => {
         input.setCustomValidity('');
+        input.removeAttribute('aria-invalid');
       });
 
       // Also clear on change for select elements
       input.addEventListener('change', () => {
         input.setCustomValidity('');
+        input.removeAttribute('aria-invalid');
       });
     });
 
@@ -1160,9 +1091,9 @@
       inputs.forEach(input => {
         if (!input.value.trim()) {
           isValid = false;
-          input.classList.add('error');
+          input.setAttribute('aria-invalid', 'true');
         } else {
-          input.classList.remove('error');
+          input.removeAttribute('aria-invalid');
         }
       });
 
@@ -1172,7 +1103,7 @@
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(emailInput.value)) {
           isValid = false;
-          emailInput.classList.add('error');
+          emailInput.setAttribute('aria-invalid', 'true');
         }
       }
 
@@ -1183,9 +1114,13 @@
 
         const originalText = submitBtn.textContent;
         const leadContext = getLeadContext();
+        const setSubmitState = (state, text, disabled) => {
+          submitBtn.dataset.submitState = state;
+          submitBtn.textContent = text;
+          submitBtn.disabled = disabled;
+        };
 
-        submitBtn.textContent = 'Отправка...';
-        submitBtn.disabled = true;
+        setSubmitState('sending', 'Отправка...', true);
         trackGoal('demo_form_submit', {
           source_page: leadContext.sourcePage,
           intent: leadContext.intent,
@@ -1230,37 +1165,28 @@
               use_case: leadContext.useCase,
               cta_variant: leadContext.ctaVariant
             });
-            submitBtn.textContent = 'Заявка отправлена!';
-            submitBtn.style.background = '#10B981';
+            setSubmitState('success', 'Заявка отправлена!', true);
             DOM.demoForm.reset();
             applyLeadContextToForm();
 
             setTimeout(() => {
-              submitBtn.textContent = originalText;
-              submitBtn.style.background = '';
-              submitBtn.disabled = false;
+              setSubmitState('idle', originalText, false);
             }, 3000);
           } else if (response.status === 429) {
-            submitBtn.textContent = 'Слишком много запросов';
-            submitBtn.style.background = '#EF4444';
+            setSubmitState('error', 'Слишком много запросов', true);
 
             setTimeout(() => {
-              submitBtn.textContent = originalText;
-              submitBtn.style.background = '';
-              submitBtn.disabled = false;
+              setSubmitState('idle', originalText, false);
             }, 3000);
           } else {
             throw new Error(`Server error: ${response.status}`);
           }
         } catch (error) {
           console.error('Form submission error:', error);
-          submitBtn.textContent = 'Ошибка отправки';
-          submitBtn.style.background = '#EF4444';
+          setSubmitState('error', 'Ошибка отправки', true);
 
           setTimeout(() => {
-            submitBtn.textContent = originalText;
-            submitBtn.style.background = '';
-            submitBtn.disabled = false;
+            setSubmitState('idle', originalText, false);
           }, 3000);
         }
       }
@@ -1280,9 +1206,9 @@
         if (entry.isIntersecting) {
           const id = entry.target.getAttribute('id');
           DOM.navLinks.forEach(link => {
-            link.classList.remove('active');
+            link.dataset.current = 'false';
             if (link.getAttribute('href') === `#${id}`) {
-              link.classList.add('active');
+              link.dataset.current = 'true';
             }
           });
         }
@@ -1411,7 +1337,6 @@
     initFAQ();
     initIntegrationFilters();
     initCounters();
-    initProgressBars();
     initScrollAnimations();
     initFormValidation();
     initActiveNavigation();

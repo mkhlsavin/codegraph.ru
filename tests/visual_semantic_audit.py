@@ -1,0 +1,657 @@
+#!/usr/bin/env python3
+"""Capture and compare Story 1113 semantic and visual evidence for every HTML route.
+
+The runner is intentionally independent from application JavaScript. It opens every
+generated public page in deterministic desktop and mobile contexts, records structural
+and accessibility signals, and saves a screenshot plus a machine-readable manifest.
+Use ``--enforce`` for closure evidence and ``--compare-to`` for migration parity.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import hashlib
+import json
+import mimetypes
+import os
+import re
+import socket
+import sys
+from pathlib import Path
+from typing import Any
+from urllib.parse import unquote, urlparse
+
+from playwright.async_api import BrowserContext, Route, async_playwright
+
+
+LANDING_ROOT = Path(__file__).resolve().parents[1]
+PROFILES: dict[str, dict[str, Any]] = {
+    "desktop": {
+        "context": {"viewport": {"width": 1440, "height": 900}, "is_mobile": False},
+        "media": "screen",
+    },
+    "mobile": {
+        "context": {"viewport": {"width": 390, "height": 844}, "is_mobile": True},
+        "media": "screen",
+    },
+    "tablet": {
+        "context": {"viewport": {"width": 768, "height": 1024}, "is_mobile": True},
+        "media": "screen",
+    },
+    "reduced-motion": {
+        "context": {
+            "viewport": {"width": 1440, "height": 900},
+            "is_mobile": False,
+            "reduced_motion": "reduce",
+        },
+        "media": "screen",
+    },
+    "print": {
+        "context": {"viewport": {"width": 1200, "height": 1600}, "is_mobile": False},
+        "media": "print",
+    },
+}
+HARD_FIELDS = (
+    "status",
+    "lang",
+    "title",
+    "description",
+    "buyer_question",
+    "main_buyer_question",
+    "canonical",
+    "canonical_count",
+    "h1_count",
+    "main_count",
+    "inline_styles",
+    "style_blocks",
+    "horizontal_overflow",
+    "broken_images",
+    "missing_image_dimensions",
+    "missing_alt",
+    "unnamed_buttons",
+    "unnamed_links",
+    "unlabelled_controls",
+    "duplicate_ids",
+    "heading_level_jumps",
+    "json_ld_errors",
+    "webpage_schema_parity",
+    "og_title",
+    "og_description",
+    "twitter_title",
+    "twitter_description",
+    "active_motion",
+    "h1_contrast_ratio",
+    "print_shell_chrome",
+    "print_form_controls",
+)
+
+
+def _install_windows_socketpair_fallback() -> None:
+    """Keep asyncio usable when a local proxy exhausts Windows dynamic TCP ports.
+
+    The standard Windows ``socketpair`` fallback asks the OS for an ephemeral port.
+    Some VPN/proxy drivers reserve that entire range, producing WinError 10055 before
+    Playwright starts. On that exact error only, use a free loopback port below the
+    dynamic range for the event-loop wakeup pair. Linux and healthy Windows hosts keep
+    the standard-library implementation unchanged.
+    """
+    if sys.platform != "win32":
+        return
+    original = socket.socketpair
+
+    def resilient_socketpair(
+        family: int = socket.AF_INET,
+        type: int = socket.SOCK_STREAM,
+        proto: int = 0,
+    ) -> tuple[socket.socket, socket.socket]:
+        try:
+            return original(family, type, proto)
+        except OSError as error:
+            if getattr(error, "winerror", None) != 10055 or family != socket.AF_INET:
+                raise
+
+        listener = socket.socket(family, type, proto)
+        client = socket.socket(family, type, proto)
+        try:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            first_port = 20_000 + (os.getpid() % 10_000)
+            candidates = [*range(first_port, 30_000), *range(20_000, first_port)]
+            for port in candidates:
+                try:
+                    listener.bind(("127.0.0.1", port))
+                    break
+                except OSError:
+                    continue
+            else:  # pragma: no cover - host resource exhaustion
+                raise OSError("no loopback port available for asyncio socketpair")
+            listener.listen(1)
+            client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            for port in reversed(candidates):
+                if port == listener.getsockname()[1]:
+                    continue
+                try:
+                    client.bind(("127.0.0.1", port))
+                    break
+                except OSError:
+                    continue
+            else:  # pragma: no cover - host resource exhaustion
+                raise OSError("no client loopback port available for asyncio socketpair")
+            client.setblocking(False)
+            try:
+                client.connect(listener.getsockname())
+            except (BlockingIOError, InterruptedError):
+                pass
+            server, _address = listener.accept()
+            client.setblocking(True)
+            return server, client
+        except Exception:
+            client.close()
+            raise
+        finally:
+            listener.close()
+
+    socket.socketpair = resilient_socketpair
+
+
+def _routes() -> list[str]:
+    """Return every public HTML projection except search-engine ownership tokens."""
+    return sorted(
+        path.relative_to(LANDING_ROOT).as_posix()
+        for path in LANDING_ROOT.rglob("*.html")
+        if "node_modules" not in path.parts
+        and "templates" not in path.relative_to(LANDING_ROOT).parts
+        and not path.name.startswith("yandex_")
+    )
+
+
+def _screenshot_name(profile: str, route: str) -> str:
+    """Return a stable flat screenshot name for a route/profile pair."""
+    safe_route = re.sub(r"[^A-Za-z0-9._-]+", "__", route)
+    return f"{profile}__{safe_route}.jpg"
+
+
+def _sha256(path: Path) -> str:
+    """Return the SHA-256 digest of a generated evidence file."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+async def _serve_local_request(route: Route, *, base_url: str) -> None:
+    """Fulfil same-origin audit requests from the bounded landing directory.
+
+    Browser routing keeps the evidence run deterministic and avoids consuming a TCP
+    client port for every page when a host VPN has exhausted the Windows dynamic range.
+    Requests outside the configured audit origin remain blocked, and resolved paths must
+    stay below ``LANDING_ROOT``.
+    """
+    request_url = route.request.url
+    if request_url.startswith(("data:", "blob:")):
+        await route.continue_()
+        return
+    if not request_url.startswith(base_url.rstrip("/") + "/"):
+        await route.abort()
+        return
+
+    relative_url = unquote(urlparse(request_url).path).lstrip("/")
+    candidate = (LANDING_ROOT / relative_url).resolve()
+    try:
+        candidate.relative_to(LANDING_ROOT.resolve())
+    except ValueError:
+        await route.fulfill(status=403, body="Forbidden")
+        return
+    if candidate.is_dir():
+        candidate /= "index.html"
+    if not candidate.is_file():
+        await route.fulfill(status=404, body="Not found")
+        return
+
+    content_type, _encoding = mimetypes.guess_type(candidate.name)
+    await route.fulfill(
+        status=200,
+        path=str(candidate),
+        content_type=content_type or "application/octet-stream",
+    )
+
+
+async def _inspect_route(
+    context: BrowserContext,
+    *,
+    base_url: str,
+    output: Path,
+    profile: str,
+    route: str,
+    semaphore: asyncio.Semaphore,
+) -> dict[str, Any]:
+    """Inspect one route and capture its deterministic visual projection."""
+    async with semaphore:
+        page = await context.new_page()
+        console_errors: list[str] = []
+        page.on(
+            "console",
+            lambda message: console_errors.append(message.text)
+            if message.type == "error"
+            and not message.text.startswith("Failed to load resource:")
+            else None,
+        )
+        page.on("pageerror", lambda error: console_errors.append(str(error)))
+        page.on(
+            "requestfailed",
+            lambda request: console_errors.append(
+                f"requestfailed:{request.url}:{request.failure}"
+            )
+            if request.url.startswith(base_url.rstrip("/"))
+            else None,
+        )
+        result: dict[str, Any] = {"profile": profile, "route": route}
+        try:
+            response = await page.goto(
+                f"{base_url.rstrip('/')}/{route}",
+                wait_until="domcontentloaded",
+                timeout=20_000,
+            )
+            await page.evaluate(
+                """async () => {
+                  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+                }"""
+            )
+            await page.wait_for_timeout(100)
+            if profile == "print":
+                await page.emulate_media(media="print")
+            result.update(
+                await page.evaluate(
+                    """(profile) => {
+                      const headings = [...document.querySelectorAll('main h1,main h2,main h3,main h4,main h5,main h6')]
+                        .map((node) => Number(node.tagName.slice(1)));
+                      const jsonLdErrors = [];
+                      const webPages = [];
+                      document.querySelectorAll('script[type="application/ld+json"]').forEach((node, index) => {
+                        try {
+                          const payload = JSON.parse(node.textContent);
+                          if (payload && payload['@type'] === 'WebPage') webPages.push(payload);
+                        }
+                        catch (error) { jsonLdErrors.push(`${index}:${error.message}`); }
+                      });
+                      const title = document.title.trim();
+                      const description = document.querySelector('meta[name="description"]')?.content?.trim() || '';
+                      const buyerQuestion = document.querySelector('meta[name="cg:buyer-question"]')?.content?.trim() || '';
+                      const mainBuyerQuestion = document.querySelector('main')?.dataset?.buyerQuestion?.trim() || '';
+                      const ids = [...document.querySelectorAll('[id]')].map((node) => node.id).filter(Boolean);
+                      const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+                      const hasAccessibleName = (node) => Boolean(
+                        node.getAttribute('aria-label')?.trim()
+                        || node.getAttribute('aria-labelledby')?.trim()
+                        || node.getAttribute('title')?.trim()
+                        || node.textContent?.trim()
+                        || node.querySelector('img[alt]')?.getAttribute('alt')?.trim()
+                      );
+                      const hasLabel = (control) => Boolean(
+                        control.getAttribute('aria-label')?.trim()
+                        || control.getAttribute('aria-labelledby')?.trim()
+                        || (control.id && document.querySelector(`label[for="${CSS.escape(control.id)}"]`))
+                        || control.closest('label')
+                      );
+                      const isVisible = (node) => {
+                        const style = getComputedStyle(node);
+                        const box = node.getBoundingClientRect();
+                        return style.display !== 'none'
+                          && style.visibility !== 'hidden'
+                          && Number.parseFloat(style.opacity || '1') > 0
+                          && box.width > 0
+                          && box.height > 0;
+                      };
+                      const rgb = (value) => {
+                        const match = value.match(/rgba?\\(([^)]+)\\)/);
+                        if (match) {
+                          const parts = match[1].split(',').map((part) => Number.parseFloat(part));
+                          return {r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1};
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 1;
+                        canvas.height = 1;
+                        const context = canvas.getContext('2d');
+                        context.clearRect(0, 0, 1, 1);
+                        context.fillStyle = value;
+                        context.fillRect(0, 0, 1, 1);
+                        const data = context.getImageData(0, 0, 1, 1).data;
+                        return {r: data[0], g: data[1], b: data[2], a: data[3] / 255};
+                      };
+                      const luminance = (color) => {
+                        const channels = [color.r, color.g, color.b].map((value) => {
+                          const normalized = value / 255;
+                          return normalized <= 0.03928
+                            ? normalized / 12.92
+                            : ((normalized + 0.055) / 1.055) ** 2.4;
+                        });
+                        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+                      };
+                      const h1 = document.querySelector('h1');
+                      let backgroundNode = h1;
+                      let background = null;
+                      while (backgroundNode && !background) {
+                        const candidate = rgb(getComputedStyle(backgroundNode).backgroundColor);
+                        if (candidate && candidate.a > 0.1) background = candidate;
+                        backgroundNode = backgroundNode.parentElement;
+                      }
+                      const foreground = h1 ? rgb(getComputedStyle(h1).color) : null;
+                      const contrast = foreground && background
+                        ? (() => {
+                            const first = luminance(foreground);
+                            const second = luminance(background);
+                            return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+                          })()
+                        : 0;
+                      const activeMotion = profile === 'reduced-motion'
+                        ? [...document.querySelectorAll('body *')].filter((node) => {
+                            const style = getComputedStyle(node);
+                            const seconds = (value) => value.split(',').some((part) => {
+                              const item = part.trim();
+                              return item.endsWith('ms')
+                                ? Number.parseFloat(item) > 20
+                                : Number.parseFloat(item) > 0.02;
+                            });
+                            return seconds(style.animationDuration) || seconds(style.transitionDuration);
+                          }).length
+                        : 0;
+                      const signature = [...document.querySelectorAll(
+                        'body > header, main, body > footer, h1, h2, table, form, nav'
+                      )].slice(0, 40).map((node) => {
+                        const box = node.getBoundingClientRect();
+                        const style = getComputedStyle(node);
+                        return {
+                          tag: node.tagName,
+                          class: node.className || '',
+                          box: [box.x, box.y, box.width, box.height].map((value) => Math.round(value * 10) / 10),
+                          display: style.display,
+                          position: style.position,
+                          color: style.color,
+                          background: style.backgroundColor,
+                          fontSize: style.fontSize,
+                        };
+                      });
+                      return {
+                        title,
+                        description,
+                        buyer_question: buyerQuestion,
+                        main_buyer_question: mainBuyerQuestion,
+                        canonical: document.querySelector('link[rel="canonical"]')?.href || '',
+                        canonical_count: document.querySelectorAll('link[rel="canonical"]').length,
+                        lang: document.documentElement.lang,
+                        h1_count: document.querySelectorAll('h1').length,
+                        main_count: document.querySelectorAll('main').length,
+                        header_count: document.querySelectorAll('body > header').length,
+                        footer_count: document.querySelectorAll('body > footer').length,
+                        inline_styles: document.querySelectorAll('[style]').length,
+                        style_blocks: document.querySelectorAll('style').length,
+                        horizontal_overflow: Math.max(
+                          0,
+                          document.documentElement.scrollWidth - document.documentElement.clientWidth
+                        ),
+                        broken_images: [...document.images]
+                          .filter((image) => image.complete && image.naturalWidth === 0)
+                          .map((image) => image.getAttribute('src')),
+                        missing_image_dimensions: [...document.images]
+                          .filter((image) => image.getAttribute('src')?.trim())
+                          .filter((image) => !image.hasAttribute('width') || !image.hasAttribute('height'))
+                          .map((image) => image.getAttribute('src')),
+                        missing_alt: [...document.images].filter((image) => !image.hasAttribute('alt')).length,
+                        unnamed_buttons: [...document.querySelectorAll('button')].filter(
+                          (button) => !hasAccessibleName(button)
+                        ).length,
+                        unnamed_links: [...document.querySelectorAll('a[href]')].filter(
+                          (link) => !hasAccessibleName(link)
+                        ).length,
+                        unlabelled_controls: [...document.querySelectorAll('input:not([type="hidden"]),select,textarea')]
+                          .filter((control) => !hasLabel(control)).length,
+                        duplicate_ids: duplicateIds,
+                        heading_level_jumps: headings.slice(1).filter(
+                          (level, index) => level - headings[index] > 1
+                        ).length,
+                        json_ld_errors: jsonLdErrors,
+                        webpage_schema_parity: webPages.length === 1
+                          && webPages[0].name === title
+                          && webPages[0].description === description
+                          && webPages[0].url === document.querySelector('link[rel="canonical"]')?.href,
+                        webpage_schema_count: webPages.length,
+                        og_title: document.querySelector('meta[property="og:title"]')?.content?.trim() || '',
+                        og_description: document.querySelector('meta[property="og:description"]')?.content?.trim() || '',
+                        twitter_title: document.querySelector('meta[name="twitter:title"]')?.content?.trim() || '',
+                        twitter_description: document.querySelector('meta[name="twitter:description"]')?.content?.trim() || '',
+                        active_motion: activeMotion,
+                        h1_contrast_ratio: Math.round(contrast * 100) / 100,
+                        print_shell_chrome: profile === 'print'
+                          ? [...document.querySelectorAll('[data-shell-header],[data-shell-footer],[data-shell-cta]')]
+                              .filter(isVisible).length
+                          : 0,
+                        print_form_controls: profile === 'print'
+                          ? [...document.querySelectorAll('form,input:not([type="hidden"]),select,textarea,button:not(.faq-question)')]
+                              .filter(isVisible).length
+                          : 0,
+                        stylesheet_links: [...document.querySelectorAll('link[rel="stylesheet"]')]
+                          .map((link) => link.getAttribute('href')),
+                        render_signature: signature,
+                      };
+                    }""",
+                    profile,
+                )
+            )
+            result["status"] = (
+                response.status
+                if response
+                else 200 if base_url.startswith("file:") else None
+            )
+            result["console_errors"] = console_errors
+            screenshot = output / _screenshot_name(profile, route)
+            await page.screenshot(
+                path=str(screenshot),
+                type="jpeg",
+                quality=55,
+                full_page=not route.startswith("docs/"),
+                animations="disabled",
+            )
+            result["screenshot"] = screenshot.name
+            result["screenshot_sha256"] = _sha256(screenshot)
+        except Exception as error:  # pragma: no cover - runtime evidence path
+            result["error"] = f"{type(error).__name__}: {error}"
+        finally:
+            await page.close()
+        return result
+
+
+def _compare(
+    baseline_path: Path,
+    current: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compare hard semantics and render signatures with a baseline manifest."""
+    baseline_payload = json.loads(baseline_path.read_text(encoding="utf-8"))
+    baseline = {
+        (row["profile"], row["route"]): row for row in baseline_payload["results"]
+    }
+    current_map = {(row["profile"], row["route"]): row for row in current}
+    missing = sorted(set(baseline) - set(current_map))
+    added = sorted(set(current_map) - set(baseline))
+    changes: list[dict[str, Any]] = []
+    for key in sorted(set(baseline) & set(current_map)):
+        before = baseline[key]
+        after = current_map[key]
+        changed_fields = {
+            field: {"before": before.get(field), "after": after.get(field)}
+            for field in (*HARD_FIELDS, "render_signature")
+            if before.get(field) != after.get(field)
+        }
+        if changed_fields:
+            changes.append(
+                {"profile": key[0], "route": key[1], "fields": changed_fields}
+            )
+    return {"missing": missing, "added": added, "changes": changes}
+
+
+def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, Any]]:
+    """Return fail-closed semantic, runtime and presentation defects."""
+    failures: list[dict[str, Any]] = []
+    for row in results:
+        reasons: list[str] = []
+        if row.get("error"):
+            reasons.append(str(row["error"]))
+        if row.get("status") != 200:
+            reasons.append(f"status={row.get('status')}")
+        if row.get("h1_count") != 1:
+            reasons.append(f"h1_count={row.get('h1_count')}")
+        if row.get("main_count") != 1:
+            reasons.append(f"main_count={row.get('main_count')}")
+        if not row.get("title") or not row.get("description"):
+            reasons.append("empty title/description")
+        if not row.get("buyer_question") or row.get("buyer_question") != row.get(
+            "main_buyer_question"
+        ):
+            reasons.append("buyer-question ownership mismatch")
+        if row.get("canonical_count") != 1 or not str(row.get("canonical", "")).startswith(
+            "https://codegraph.ru/"
+        ):
+            reasons.append(
+                f"canonical={row.get('canonical')} count={row.get('canonical_count')}"
+            )
+        if row.get("horizontal_overflow", 0) > 1:
+            reasons.append(f"horizontal_overflow={row.get('horizontal_overflow')}")
+        for field in (
+            "broken_images",
+            "missing_image_dimensions",
+            "console_errors",
+            "json_ld_errors",
+        ):
+            if row.get(field):
+                reasons.append(f"{field}={row[field]}")
+        for field in (
+            "missing_alt",
+            "unnamed_buttons",
+            "unnamed_links",
+            "unlabelled_controls",
+            "heading_level_jumps",
+        ):
+            if row.get(field, 0):
+                reasons.append(f"{field}={row[field]}")
+        if row.get("duplicate_ids"):
+            reasons.append(f"duplicate_ids={row['duplicate_ids']}")
+        if row.get("og_title") != row.get("title"):
+            reasons.append("og:title parity mismatch")
+        if row.get("og_description") != row.get("description"):
+            reasons.append("og:description parity mismatch")
+        if row.get("twitter_title") != row.get("title"):
+            reasons.append("twitter:title parity mismatch")
+        if row.get("twitter_description") != row.get("description"):
+            reasons.append("twitter:description parity mismatch")
+        if not row.get("webpage_schema_parity"):
+            reasons.append(
+                f"WebPage schema parity mismatch count={row.get('webpage_schema_count')}"
+            )
+        if row.get("h1_contrast_ratio", 0) < 3:
+            reasons.append(f"h1_contrast_ratio={row.get('h1_contrast_ratio')}")
+        if row.get("profile") == "reduced-motion" and row.get("active_motion", 0):
+            reasons.append(f"active_motion={row['active_motion']}")
+        if row.get("profile") == "print" and not row.get("render_signature"):
+            reasons.append("empty print render signature")
+        if row.get("profile") == "print" and row.get("print_shell_chrome", 0):
+            reasons.append(f"print_shell_chrome={row['print_shell_chrome']}")
+        if row.get("profile") == "print" and row.get("print_form_controls", 0):
+            reasons.append(f"print_form_controls={row['print_form_controls']}")
+        if enforce:
+            if row.get("inline_styles") != 0:
+                reasons.append(f"inline_styles={row.get('inline_styles')}")
+            if row.get("style_blocks") != 0:
+                reasons.append(f"style_blocks={row.get('style_blocks')}")
+            links = [
+                link
+                for link in (row.get("stylesheet_links") or [])
+                if link and not str(link).startswith(("http://", "https://"))
+            ]
+            if len(links) != 1 or not str(links[0]).split("?", 1)[0].endswith(
+                "css/tailwind.min.css"
+            ):
+                reasons.append(f"stylesheet_links={links}")
+        if reasons:
+            failures.append(
+                {"profile": row["profile"], "route": row["route"], "reasons": reasons}
+            )
+    return failures
+
+
+async def _run(args: argparse.Namespace) -> int:
+    """Run every configured route/profile capture and write the evidence manifest."""
+    output = args.output.resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    routes = _routes()
+    results: list[dict[str, Any]] = []
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(headless=True)
+        for profile, profile_options in PROFILES.items():
+            context = await browser.new_context(
+                **profile_options["context"],
+                color_scheme="light",
+            )
+            await context.route(
+                "**/*",
+                lambda route: _serve_local_request(route, base_url=args.base_url),
+            )
+            semaphore = asyncio.Semaphore(args.workers)
+            tasks = [
+                _inspect_route(
+                    context,
+                    base_url=args.base_url,
+                    output=output,
+                    profile=profile,
+                    route=route,
+                    semaphore=semaphore,
+                )
+                for route in routes
+            ]
+            for index, task in enumerate(asyncio.as_completed(tasks), 1):
+                results.append(await task)
+                if index % 25 == 0 or index == len(tasks):
+                    print(f"{profile}: {index}/{len(tasks)}", flush=True)
+            await context.close()
+        await browser.close()
+
+    results.sort(key=lambda row: (row["profile"], row["route"]))
+    failures = _failures(results, args.enforce)
+    comparison = _compare(args.compare_to, results) if args.compare_to else None
+    payload = {
+        "schema_version": "story1113.visual-semantic-audit.v2",
+        "label": args.label,
+        "base_url": args.base_url,
+        "route_count": len(routes),
+        "profile_count": len(PROFILES),
+        "result_count": len(results),
+        "enforce": args.enforce,
+        "failures": failures,
+        "comparison": comparison,
+        "results": results,
+    }
+    manifest = output / "manifest.json"
+    manifest.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    summary = {
+        "manifest": str(manifest),
+        "route_count": len(routes),
+        "result_count": len(results),
+        "failure_count": len(failures),
+        "comparison_changes": len(comparison["changes"]) if comparison else None,
+    }
+    print(json.dumps(summary, ensure_ascii=False), flush=True)
+    return 1 if failures else 0
+
+
+def main() -> int:
+    """Parse CLI arguments and execute the visual/semantic evidence runner."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base-url", default="http://127.0.0.1:8765")
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--label", required=True)
+    parser.add_argument("--compare-to", type=Path)
+    parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--enforce", action="store_true")
+    _install_windows_socketpair_fallback()
+    return asyncio.run(_run(parser.parse_args()))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
