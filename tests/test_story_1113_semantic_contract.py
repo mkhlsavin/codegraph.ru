@@ -4,34 +4,35 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 from urllib.parse import unquote, urlsplit
 
 from bs4 import BeautifulSoup
+from bs4.element import Comment, NavigableString
 
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_CATEGORY = (
-    "CodeGraph — платформа сквозной прослеживаемости и доказательного исполнения "
-    "требований в PDLC."
+    "CodeGraph — платформа управления разработкой цифровых продуктов."
 )
 KEY_PAGE_CONTRACTS = {
     "index.html": (
-        "От продуктового замысла до доказанной реализации",
-        "Что такое CodeGraph и почему он нужен CPO и CTO?",
+        "Управляйте разработкой — от продуктовой инициативы до готовности к выпуску",
+        "Как связать продуктовый и инженерный циклы разработки?",
         "release-1",
     ),
     "whitepaper.html": (
-        "Сквозная прослеживаемость требований и доказательное исполнение в PDLC",
-        "Как устроена каноническая модель продукта?",
+        "Как CodeGraph связывает PDLC, SDLC и портфель продуктов",
+        "Как устроен управляющий контур CodeGraph?",
         "release-1",
     ),
     "product-delivery.html": (
-        "От продуктового замысла до доказанной реализации",
-        "Как Product Intent превращается в requirements и доказанную реализацию?",
+        "Портфель и проекты: от инициативы до готовности",
+        "Как видеть основания статуса каждого проекта?",
         "release-1",
     ),
     "evidence.html": (
-        "Как CodeGraph доказывает реализацию требований",
+        "Какими данными подтверждается реализация требований",
         "Чем подтверждается реализация каждого требования?",
         "release-2",
     ),
@@ -41,8 +42,8 @@ KEY_PAGE_CONTRACTS = {
         "release-2",
     ),
     "ai-engineering.html": (
-        "Как доказать, что AI-код реализует требования",
-        "Чем governed requirement-bound work отличается от обычной AI-разработки?",
+        "Как контролировать код, созданный ИИ",
+        "Как проверить, что код, созданный ИИ, соответствует требованиям?",
         "release-2",
     ),
     "cpg.html": (
@@ -52,7 +53,7 @@ KEY_PAGE_CONTRACTS = {
     ),
     "security.html": (
         "Как требование безопасности проходит до решения о риске",
-        "Как security requirement проходит до решения о риске?",
+        "Как требование безопасности проходит до решения о риске?",
         "release-3",
     ),
     "compliance.html": (
@@ -66,8 +67,8 @@ KEY_PAGE_CONTRACTS = {
         "release-3",
     ),
     "integrations.html": (
-        "Интеграции CodeGraph: подтверждённая глубина подключения",
-        "Какая capability-depth реально доступна?",
+        "Интеграции CodeGraph: поддерживаемые операции и ограничения",
+        "Какие операции поддерживает каждая интеграция?",
         "release-3",
     ),
     "productivity.html": (
@@ -83,9 +84,62 @@ KEY_PAGE_CONTRACTS = {
 }
 
 
+def test_homepage_restores_product_scale_and_management_hierarchy() -> None:
+    """Keep portfolio, architecture, audits and release readiness in the category story."""
+    soup = _soup("index.html")
+    section_ids = {node.get("id") for node in soup.find_all("section")}
+    expected_sections = {
+        "problem",
+        "solution",
+        "digital-team",
+        "portfolio",
+        "architecture",
+        "scenarios",
+        "results",
+        "categories",
+        "pilot",
+    }
+    assert expected_sections <= section_ids
+    visible = _normalized_text(soup.get_text(" ", strip=True))
+    for required in (
+        "цикл разработки цифрового продукта (PDLC)",
+        "жизненный цикл разработки программного обеспечения (SDLC)",
+        "Портфель цифровых продуктов",
+        "Проверки и аудиты",
+        "Готовность к выпуску",
+        "решение ответственного архитектора",
+    ):
+        assert _normalized_text(required).casefold() in visible.casefold()
+
+
+def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
+    """Require the accepted visual models instead of a flat terminology table."""
+    soup = _soup("whitepaper.html")
+    section_ids = {node.get("id") for node in soup.find_all("section")}
+    assert {
+        "pdlc-sdlc",
+        "portfolio-model",
+        "workflow",
+        "team-map",
+        "traceability",
+        "readiness",
+        "architecture",
+        "portfolio-audit-release",
+        "security-compliance",
+        "scenarios",
+        "pilot",
+    } <= section_ids
+    assert len(soup.find_all("figure")) >= 9
+
+
 def _soup(relative: str) -> BeautifulSoup:
     """Parse one UTF-8 public projection."""
     return BeautifulSoup((LANDING_ROOT / relative).read_text(encoding="utf-8"), "html.parser")
+
+
+def _normalized_text(value: str) -> str:
+    """Normalize typographic spaces for semantic equality checks."""
+    return " ".join(value.replace("\xa0", " ").split())
 
 
 def _public_html_files() -> list[Path]:
@@ -111,22 +165,22 @@ def test_key_pages_own_exact_audit_question_and_h1() -> None:
         h1 = [node.get_text(" ", strip=True) for node in soup.find_all("h1")]
         meta = soup.find("meta", attrs={"name": "cg:buyer-question"})
         main = soup.find("main")
-        if h1 != [expected_h1]:
+        if [_normalized_text(value) for value in h1] != [_normalized_text(expected_h1)]:
             errors.append(f"{relative}: h1={h1!r}")
-        if not meta or meta.get("content") != expected_question:
+        if not meta or _normalized_text(meta.get("content", "")) != _normalized_text(expected_question):
             errors.append(f"{relative}: buyer meta mismatch")
-        if not main or main.get("data-buyer-question") != expected_question:
+        if not main or _normalized_text(main.get("data-buyer-question", "")) != _normalized_text(expected_question):
             errors.append(f"{relative}: main question mismatch")
         if not main or main.get("data-release") != expected_release:
             errors.append(f"{relative}: release mismatch")
-        if CANONICAL_CATEGORY not in soup.get_text(" ", strip=True):
+        if relative == "index.html" and _normalized_text(CANONICAL_CATEGORY) not in _normalized_text(soup.get_text(" ", strip=True)):
             errors.append(f"{relative}: canonical category absent from visible HTML")
 
     assert not errors, "\n".join(errors)
 
 
-def test_every_public_document_has_one_question_owner_and_canonical() -> None:
-    """Require one explicit page question and canonical URL on every public document."""
+def test_commercial_pages_own_questions_while_docs_do_not() -> None:
+    """Keep buyer questions on commercial pages and out of technical documentation."""
     errors: list[str] = []
     for path in _public_html_files():
         relative = path.relative_to(LANDING_ROOT).as_posix()
@@ -134,11 +188,14 @@ def test_every_public_document_has_one_question_owner_and_canonical() -> None:
         questions = soup.find_all("meta", attrs={"name": "cg:buyer-question"})
         mains = soup.find_all("main")
         canonicals = soup.find_all("link", rel="canonical")
-        if len(questions) != 1 or not questions[0].get("content", "").strip():
-            errors.append(f"{relative}: buyer-question meta count={len(questions)}")
-            continue
-        if len(mains) != 1 or mains[0].get("data-buyer-question") != questions[0]["content"]:
-            errors.append(f"{relative}: main question ownership mismatch")
+        if relative.startswith("docs/"):
+            if questions or any(main.get("data-buyer-question") for main in mains):
+                errors.append(f"{relative}: technical docs expose buyer-question")
+        else:
+            if len(questions) != 1 or not questions[0].get("content", "").strip():
+                errors.append(f"{relative}: buyer-question meta count={len(questions)}")
+            elif len(mains) != 1 or mains[0].get("data-buyer-question") != questions[0]["content"]:
+                errors.append(f"{relative}: main question ownership mismatch")
         if len(canonicals) != 1 or not canonicals[0].get("href", "").startswith(
             "https://codegraph.ru/"
         ):
@@ -172,13 +229,13 @@ def test_key_page_metadata_and_schema_match_visible_contract() -> None:
                 web_pages.append(payload)
         if not title or not description:
             errors.append(f"{relative}: empty title/description")
-        if og_title != title:
+        if _normalized_text(og_title) != _normalized_text(title):
             errors.append(f"{relative}: og:title mismatch")
-        if og_description != description or twitter_description != description:
+        if _normalized_text(og_description) != _normalized_text(description) or _normalized_text(twitter_description) != _normalized_text(description):
             errors.append(f"{relative}: description parity mismatch")
         if len(web_pages) != 1:
             errors.append(f"{relative}: WebPage schema count={len(web_pages)}")
-        elif web_pages[0].get("name") != title or web_pages[0].get("description") != description:
+        elif _normalized_text(web_pages[0].get("name", "")) != _normalized_text(title) or _normalized_text(web_pages[0].get("description", "")) != _normalized_text(description):
             errors.append(f"{relative}: WebPage schema parity mismatch")
 
     assert not errors, "\n".join(errors)
@@ -215,7 +272,7 @@ def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
             "twitter:title": title,
             "twitter:description": description,
         }
-        if parity != expected:
+        if {key: _normalized_text(value) for key, value in parity.items()} != {key: _normalized_text(value) for key, value in expected.items()}:
             errors.append(f"{relative}: social metadata parity mismatch")
 
         web_pages = []
@@ -230,8 +287,8 @@ def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
         if len(web_pages) != 1:
             errors.append(f"{relative}: WebPage schema count={len(web_pages)}")
         elif (
-            web_pages[0].get("name") != title
-            or web_pages[0].get("description") != description
+            _normalized_text(web_pages[0].get("name", "")) != _normalized_text(title)
+            or _normalized_text(web_pages[0].get("description", "")) != _normalized_text(description)
             or web_pages[0].get("url") != canonical
         ):
             errors.append(f"{relative}: WebPage schema parity mismatch")
@@ -257,8 +314,185 @@ def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
             )
             if style_src != "style-src 'self'":
                 errors.append(f"{relative}: unsafe authored-style CSP={style_src!r}")
+            if "'unsafe-inline'" in directives:
+                errors.append(f"{relative}: unsafe inline script CSP")
+        if soup.find("meta", attrs={"name": "keywords"}):
+            errors.append(f"{relative}: obsolete meta keywords")
+        for link in soup.find_all("link", href=True):
+            if "fonts.googleapis.com" in link["href"] or "fonts.gstatic.com" in link["href"]:
+                errors.append(f"{relative}: remote font dependency={link['href']}")
 
     assert not errors, "\n".join(errors[:100])
+
+
+def test_every_russian_page_meets_ru_text_typography_floor() -> None:
+    """Reject objective ru-text typography defects in visible and metadata copy."""
+    errors: list[str] = []
+    one_letter_break = re.compile(r"(?<![А-Яа-яЁё])([вксоуюияа]) (?=[А-Яа-яЁё0-9«])", re.IGNORECASE)
+    straight_quote = re.compile(r'"[А-Яа-яЁё][^"\n]{0,120}"')
+    for path in _public_html_files():
+        relative = path.relative_to(LANDING_ROOT).as_posix()
+        soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
+        if not soup.html or soup.html.get("lang") != "ru":
+            continue
+        fragments: list[str] = []
+        for node in soup.find_all(string=True):
+            if (
+                not isinstance(node, NavigableString)
+                or isinstance(node, Comment)
+                or node.find_parent(["script", "style", "code", "pre"])
+            ):
+                continue
+            fragments.append(str(node))
+        for node in soup.find_all(True):
+            fragments.extend(
+                str(node.get(attribute, ""))
+                for attribute in (
+                    "content",
+                    "title",
+                    "aria-label",
+                    "placeholder",
+                    "alt",
+                    "data-buyer-question",
+                )
+                if node.get(attribute)
+            )
+        text = "\n".join(fragments)
+        if one_letter_break.search(text):
+            errors.append(f"{relative}: breakable one-letter preposition/conjunction")
+        if straight_quote.search(text):
+            errors.append(f"{relative}: straight Russian quotes")
+        if " - " in text or " -- " in text:
+            errors.append(f"{relative}: hyphen used as punctuation dash")
+        if "..." in text:
+            errors.append(f"{relative}: three-dot ellipsis")
+        if " — " in text:
+            errors.append(f"{relative}: breakable space before em dash")
+    assert not errors, "\n".join(errors[:100])
+
+
+def test_russian_product_pages_use_customer_language() -> None:
+    """Reject internal English ontology terms from Russian product copy and metadata."""
+    forbidden = (
+        "Product Intent",
+        "Product Outcome",
+        "Functional Requirement",
+        "Non-functional Requirement",
+        "Acceptance Criteria",
+        "Provenance",
+        "Impact Scope",
+        "Code Change",
+        "Behavioral Test",
+        "Check Result",
+        "Requirement Implementation Status",
+        "Governed",
+        "Bounded",
+        "Versioned",
+        "Decision Owner",
+        "Residual Risk",
+        "Systems of Truth",
+        "Capability Depth",
+        "buyer question",
+    )
+    errors: list[str] = []
+    for relative in KEY_PAGE_CONTRACTS:
+        soup = _soup(relative)
+        text = soup.get_text(" ", strip=True)
+        metadata = " ".join(
+            node.get("content", "")
+            for node in soup.find_all("meta")
+            if node.get("content")
+        )
+        payload = f"{text} {metadata}"
+        for term in forbidden:
+            if term.casefold() in payload.casefold():
+                errors.append(f"{relative}: internal term={term}")
+    assert not errors, "\n".join(errors[:100])
+
+
+def test_audit_rejects_template_analogies_false_proof_and_self_ctas() -> None:
+    """Enforce the editorial anti-template and claims corrections from the release audit."""
+    errors: list[str] = []
+    analogy_terms = ("карта метро", "предполётная проверка", "запасной маршрут")
+    for directory in ("compare", "problems", "research"):
+        for path in sorted((LANDING_ROOT / directory).rglob("*.html")):
+            relative = path.relative_to(LANDING_ROOT).as_posix()
+            source = path.read_text(encoding="utf-8")
+            lowered = source.casefold()
+            if "FAB_BENEFITS_" in source:
+                errors.append(f"{relative}: generated FAB block remains")
+            for term in analogy_terms:
+                if term in lowered:
+                    errors.append(f"{relative}: repeated analogy={term}")
+
+    evidence_text = _soup("evidence.html").get_text(" ", strip=True)
+    if "Иллюстративный обезличенный пример" not in evidence_text:
+        errors.append("evidence.html: illustrative label missing")
+    if "Воспроизводимый обезличенный пример" in evidence_text:
+        errors.append("evidence.html: synthetic example called reproducible")
+
+    fortify_text = _soup("compare/codegraph-fortify.html").get_text(" ", strip=True)
+    if "уже используется рядом с Fortify" in fortify_text:
+        errors.append("compare/codegraph-fortify.html: unsupported usage claim")
+
+    for relative in KEY_PAGE_CONTRACTS:
+        soup = _soup(relative)
+        for link in soup.select("main a.inline-flex[href]"):
+            raw_href = link.get("href", "")
+            href = raw_href.split("?", 1)[0]
+            if "#" not in href and href == relative:
+                errors.append(f"{relative}: CTA points to current page")
+    assert not errors, "\n".join(errors[:100])
+
+
+def test_machine_readable_briefs_use_one_public_language() -> None:
+    """Keep the Russian machine-readable projections free of ontology-language drift."""
+    forbidden = (
+        "Canonical definition",
+        "Product Intent",
+        "Product Outcome",
+        "Acceptance Criterion",
+        "Impact Scope",
+        "Task Capsule — bounded",
+        "Behavioral Test",
+        "Check Result",
+        "Authority boundaries",
+        "Proof interpretation",
+        "Next step",
+    )
+    errors: list[str] = []
+    for name in ("llms.txt", "llms-full.txt"):
+        source = (LANDING_ROOT / name).read_text(encoding="utf-8")
+        for phrase in forbidden:
+            if phrase.casefold() in source.casefold():
+                errors.append(f"{name}: mixed-language phrase={phrase}")
+    assert not errors, "\n".join(errors)
+
+
+def test_comparison_pages_cite_current_official_primary_sources() -> None:
+    """Require a dated official source and reject the disproved PT AI contrast."""
+    expected = {
+        "compare/codegraph-checkmarx.html": "https://docs.checkmarx.com/",
+        "compare/codegraph-fortify.html": "https://www.opentext.com/",
+        "compare/codegraph-pt-application-inspector.html": "https://ptsecurity.com/",
+        "compare/codegraph-semgrep.html": "https://semgrep.dev/docs/",
+        "compare/codegraph-sonarqube.html": "https://docs.sonarsource.com/",
+    }
+    errors: list[str] = []
+    for relative, origin in expected.items():
+        soup = _soup(relative)
+        text = soup.get_text(" ", strip=True)
+        links = [link.get("href", "") for link in soup.select("main a[href]")]
+        if not any(link.startswith(origin) for link in links):
+            errors.append(f"{relative}: official source missing")
+        if "Проверено 20 июля 2026 года" not in text:
+            errors.append(f"{relative}: source verification date missing")
+    pt_source = (LANDING_ROOT / "compare/codegraph-pt-application-inspector.html").read_text(
+        encoding="utf-8"
+    )
+    if "PT Application Inspector использует сопоставление шаблонов" in pt_source:
+        errors.append("compare/codegraph-pt-application-inspector.html: disproved contrast")
+    assert not errors, "\n".join(errors)
 
 
 def test_images_and_link_labels_are_layout_and_context_safe() -> None:
@@ -379,27 +613,27 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
 def test_proof_role_and_integration_surfaces_are_evidence_bounded() -> None:
     """Validate the three approved new docs-public contracts."""
     evidence = _soup("evidence.html")
-    evidence_text = evidence.get_text(" ", strip=True)
+    evidence_text = evidence.get_text(" ", strip=True).casefold()
     for phrase in (
-        "Product Intent",
-        "Functional Requirement",
-        "Non-functional Requirement",
-        "Impact Scope",
-        "Code Change",
-        "Check Result",
+        "продуктовый замысел",
+        "функциональное требование",
+        "нефункциональное требование",
+        "область влияния",
+        "изменение кода",
+        "результат проверки",
         "Осталось непроверенным",
         "Не подтверждено",
     ):
-        assert phrase in evidence_text
+        assert phrase.casefold() in evidence_text
     assert len(evidence.select("[data-traceability-example]")) == 1
 
     team = _soup("digital-team.html")
     roles = team.select("[data-digital-role]")
     assert len(roles) == 13
     assert len({role["data-digital-role"] for role in roles}) == 13
-    team_text = team.get_text(" ", strip=True)
-    for phrase in ("Digital employee", "Functional role", "AI agent", "RBAC role", "Human owner"):
-        assert phrase in team_text
+    team_text = team.get_text(" ", strip=True).casefold()
+    for phrase in ("цифровой сотрудник", "функциональная роль", "ИИ-агент", "роль RBAC", "ответственный сотрудник"):
+        assert phrase.casefold() in team_text
 
     integrations = _soup("integrations.html")
     rows = integrations.select("tbody tr[data-capability-status]")

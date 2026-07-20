@@ -68,3 +68,31 @@ jobs:
           path: ${{ runner.temp }}/story-1113-public-site
           if-no-files-found: error
           retention-days: 14
+
+  live-release-smoke:
+    if: github.event_name == 'push'
+    needs: semantic-visual-tailwind
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout published artifact
+        uses: actions/checkout@v4
+
+      - name: Wait for the public CDN and verify exact release
+        run: |
+          python tests/verify_live_release.py \
+            --base-url "https://codegraph.ru/" \
+            --release "story-1113-corrective-20260720" \
+            --attempts 45 \
+            --interval 20 \
+            --output "${{ runner.temp }}/story-1113-live-release.json"
+
+      - name: Upload live release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-1113-live-release-evidence
+          path: ${{ runner.temp }}/story-1113-live-release.json
+          if-no-files-found: error
+          retention-days: 30

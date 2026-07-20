@@ -8,8 +8,7 @@ from pathlib import Path
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_CATEGORY = (
-    "CodeGraph — платформа сквозной прослеживаемости и доказательного исполнения "
-    "требований в PDLC."
+    "CodeGraph — платформа управления разработкой цифровых продуктов."
 )
 
 FORBIDDEN_MARKETING_PATTERNS = {
@@ -125,19 +124,18 @@ def test_sitewide_claims_patch_has_no_forbidden_public_claims() -> None:
     assert not findings, "Forbidden public claims remain:\n" + "\n".join(findings)
 
 
-def test_release_one_surfaces_use_the_canonical_category() -> None:
-    """Keep the first release surfaces anchored to one canonical category formula."""
+def test_home_and_shared_sources_use_the_canonical_category() -> None:
+    """Keep the category on the homepage and shared sources without serial hero repetition."""
     surfaces = (
         LANDING_ROOT / "index.html",
-        LANDING_ROOT / "whitepaper.html",
-        LANDING_ROOT / "product-delivery.html",
         LANDING_ROOT / "templates" / "head.html",
         LANDING_ROOT / "templates" / "footer.html",
     )
     missing = [
         str(path.relative_to(LANDING_ROOT))
         for path in surfaces
-        if CANONICAL_CATEGORY not in path.read_text(encoding="utf-8")
+        if CANONICAL_CATEGORY.replace(" ", "")
+        not in path.read_text(encoding="utf-8").replace(" ", "").replace("\xa0", "")
     ]
 
     assert not missing, f"Canonical category is missing from: {missing}"

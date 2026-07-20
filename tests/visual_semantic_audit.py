@@ -80,6 +80,8 @@ HARD_FIELDS = (
     "og_description",
     "twitter_title",
     "twitter_description",
+    "csp",
+    "remote_font_links",
     "active_motion",
     "h1_contrast_ratio",
     "print_shell_chrome",
@@ -273,6 +275,10 @@ async def _inspect_route(
                       });
                       const title = document.title.trim();
                       const description = document.querySelector('meta[name="description"]')?.content?.trim() || '';
+                      const normalizeSemanticText = (value) => String(value || '')
+                        .replace(/\u00a0/g, ' ')
+                        .replace(/\\s+/g, ' ')
+                        .trim();
                       const buyerQuestion = document.querySelector('meta[name="cg:buyer-question"]')?.content?.trim() || '';
                       const mainBuyerQuestion = document.querySelector('main')?.dataset?.buyerQuestion?.trim() || '';
                       const ids = [...document.querySelectorAll('[id]')].map((node) => node.id).filter(Boolean);
@@ -408,14 +414,18 @@ async def _inspect_route(
                         ).length,
                         json_ld_errors: jsonLdErrors,
                         webpage_schema_parity: webPages.length === 1
-                          && webPages[0].name === title
-                          && webPages[0].description === description
+                          && normalizeSemanticText(webPages[0].name) === normalizeSemanticText(title)
+                          && normalizeSemanticText(webPages[0].description) === normalizeSemanticText(description)
                           && webPages[0].url === document.querySelector('link[rel="canonical"]')?.href,
                         webpage_schema_count: webPages.length,
                         og_title: document.querySelector('meta[property="og:title"]')?.content?.trim() || '',
                         og_description: document.querySelector('meta[property="og:description"]')?.content?.trim() || '',
                         twitter_title: document.querySelector('meta[name="twitter:title"]')?.content?.trim() || '',
                         twitter_description: document.querySelector('meta[name="twitter:description"]')?.content?.trim() || '',
+                        csp: document.querySelector('meta[http-equiv="Content-Security-Policy" i]')?.content || '',
+                        remote_font_links: [...document.querySelectorAll('link[href]')]
+                          .map((link) => link.getAttribute('href') || '')
+                          .filter((href) => href.includes('fonts.googleapis.com') || href.includes('fonts.gstatic.com')),
                         active_motion: activeMotion,
                         h1_contrast_ratio: Math.round(contrast * 100) / 100,
                         print_shell_chrome: profile === 'print'
@@ -500,10 +510,17 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
             reasons.append(f"main_count={row.get('main_count')}")
         if not row.get("title") or not row.get("description"):
             reasons.append("empty title/description")
-        if not row.get("buyer_question") or row.get("buyer_question") != row.get(
+        if str(row.get("route", "")).startswith("docs/"):
+            if row.get("buyer_question") or row.get("main_buyer_question"):
+                reasons.append("technical docs expose buyer-question")
+        elif not row.get("buyer_question") or row.get("buyer_question") != row.get(
             "main_buyer_question"
         ):
             reasons.append("buyer-question ownership mismatch")
+        if "'unsafe-inline'" in str(row.get("csp", "")):
+            reasons.append("CSP contains unsafe-inline")
+        if row.get("remote_font_links"):
+            reasons.append(f"remote_font_links={row['remote_font_links']}")
         if row.get("canonical_count") != 1 or not str(row.get("canonical", "")).startswith(
             "https://codegraph.ru/"
         ):
