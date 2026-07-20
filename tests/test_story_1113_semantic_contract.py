@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+import struct
 from urllib.parse import unquote, urlsplit
 
 from bs4 import BeautifulSoup
@@ -82,6 +83,48 @@ KEY_PAGE_CONTRACTS = {
         "release-4",
     ),
 }
+
+
+def test_social_previews_use_current_brand_and_positioning() -> None:
+    """Keep every social card on the current category and cache-busted assets."""
+    expected = {
+        "index.html": (
+            "og-codegraph-platform-20260720.png",
+            "CodeGraph — платформа управления разработкой цифровых продуктов",
+        ),
+        "whitepaper.html": (
+            "og-codegraph-whitepaper-20260720.png",
+            "Техническое описание CodeGraph: портфель, PDLC, SDLC и готовность к выпуску",
+        ),
+    }
+    for route, (filename, alt) in expected.items():
+        soup = _soup(route)
+        image_url = soup.find("meta", property="og:image")["content"]
+        assert image_url == f"https://codegraph.ru/assets/{filename}"
+        assert soup.find("meta", attrs={"name": "twitter:image"})["content"] == image_url
+        og_alt = soup.find("meta", property="og:image:alt")["content"].replace("\xa0", " ")
+        twitter_alt = soup.find("meta", attrs={"name": "twitter:image:alt"})["content"].replace("\xa0", " ")
+        assert og_alt == alt
+        assert twitter_alt == alt
+        preview = (LANDING_ROOT / "assets" / filename).read_bytes()
+        assert preview.startswith(b"\x89PNG\r\n\x1a\n")
+        assert struct.unpack(">II", preview[16:24]) == (1200, 630)
+
+    for path in LANDING_ROOT.rglob("*.html"):
+        if "node_modules" in path.parts:
+            continue
+        source = path.read_text(encoding="utf-8")
+        if "og:image" not in source:
+            continue
+        assert "assets/og-image.png" not in source
+        assert "assets/og-whitepaper-v31.png" not in source
+
+    generator_path = LANDING_ROOT.parents[1] / "scripts" / "story_1113_public_pages.py"
+    if generator_path.is_file():
+        generator = generator_path.read_text(encoding="utf-8")
+        assert 'docs" / "business" / "brand" / "logo-golden-ratio-preview.png' in generator
+        for stale_claim in ("AI-копилот", "Hybrid RAG", "21 сценарий", "95.6% точность"):
+            assert stale_claim not in generator
 
 
 def test_homepage_restores_product_scale_and_management_hierarchy() -> None:
