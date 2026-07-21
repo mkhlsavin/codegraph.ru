@@ -289,6 +289,36 @@
     });
   }
 
+  function initFormJourneyTracking() {
+    if (!DOM.demoForm) return;
+
+    const leadContext = getLeadContext();
+    const params = {
+      source_page: leadContext.sourcePage,
+      intent: leadContext.intent,
+      use_case: leadContext.useCase,
+      cta_variant: leadContext.ctaVariant
+    };
+    let viewed = false;
+    const trackView = () => {
+      if (viewed) return;
+      viewed = true;
+      trackGoal('demo_form_view', params);
+    };
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          trackView();
+          observer.disconnect();
+        }
+      }, { threshold: 0.2 });
+      observer.observe(DOM.demoForm);
+    } else {
+      trackView();
+    }
+  }
+
   function cacheDOM() {
     DOM.html = document.documentElement;
     DOM.body = document.body;
@@ -317,6 +347,9 @@
     DOM.demoDescription = document.getElementById('demo-description');
     DOM.demoContextNote = document.getElementById('demo-context-note');
     DOM.demoSubmitBtn = document.getElementById('demo-submit-btn');
+    DOM.demoStatus = document.getElementById('demo-status');
+    DOM.buyerRoleInput = document.getElementById('buyer-role');
+    DOM.initiativeTaskInput = document.getElementById('initiative-task');
     DOM.sourcePageInput = document.getElementById('source-page');
     DOM.intentInput = document.getElementById('intent');
     DOM.ctaVariantInput = document.getElementById('cta-variant');
@@ -1048,11 +1081,38 @@
 
     // Apply Russian validation to all form inputs
     const formInputs = DOM.demoForm.querySelectorAll('input, select, textarea');
+    const submitBtn = DOM.demoForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn?.textContent || 'Разобрать инициативу';
+    let formStarted = false;
+    const leadContext = getLeadContext();
+    const eventContext = {
+      source_page: leadContext.sourcePage,
+      intent: leadContext.intent,
+      use_case: leadContext.useCase,
+      cta_variant: leadContext.ctaVariant
+    };
+    const setStatus = (text, state = '') => {
+      if (!DOM.demoStatus) return;
+      DOM.demoStatus.textContent = text;
+      DOM.demoStatus.dataset.status = state;
+    };
+    const setSubmitState = (state, text, disabled) => {
+      if (!submitBtn) return;
+      submitBtn.dataset.submitState = state;
+      submitBtn.textContent = text;
+      submitBtn.disabled = disabled;
+    };
+
     formInputs.forEach(input => {
       // Set custom message before validation
       input.addEventListener('invalid', (e) => {
         input.setAttribute('aria-invalid', 'true');
         const validity = input.validity;
+        trackGoal('demo_form_field_error', {
+          ...eventContext,
+          field: input.name || input.id,
+          reason: validity.valueMissing ? 'required' : validity.typeMismatch ? 'format' : 'invalid'
+        });
 
         if (validity.valueMissing) {
           input.setCustomValidity(validationMessages.valueMissing);
@@ -1070,12 +1130,20 @@
 
       // Clear custom validity on input to allow re-validation
       input.addEventListener('input', () => {
+        if (!formStarted && input.value.trim()) {
+          formStarted = true;
+          trackGoal('demo_form_start', eventContext);
+        }
         input.setCustomValidity('');
         input.removeAttribute('aria-invalid');
       });
 
       // Also clear on change for select elements
       input.addEventListener('change', () => {
+        if (!formStarted && input.value.trim()) {
+          formStarted = true;
+          trackGoal('demo_form_start', eventContext);
+        }
         input.setCustomValidity('');
         input.removeAttribute('aria-invalid');
       });
@@ -1107,20 +1175,21 @@
         }
       }
 
+      if (!isValid) {
+        trackGoal('demo_form_validation_error', eventContext);
+        setStatus('Проверьте отмеченные поля и повторите отправку.', 'error');
+        DOM.demoForm.querySelector('[aria-invalid="true"]')?.focus();
+        return;
+      }
+
       if (isValid) {
         // Submit form to leads API
-        const submitBtn = DOM.demoForm.querySelector('button[type="submit"]');
         if (!submitBtn) return;
 
-        const originalText = submitBtn.textContent;
         const leadContext = getLeadContext();
-        const setSubmitState = (state, text, disabled) => {
-          submitBtn.dataset.submitState = state;
-          submitBtn.textContent = text;
-          submitBtn.disabled = disabled;
-        };
 
         setSubmitState('sending', 'Отправка...', true);
+        setStatus('Передаём заявку. После ответа мы предложим следующий шаг.', 'sending');
         trackGoal('demo_form_submit', {
           source_page: leadContext.sourcePage,
           intent: leadContext.intent,
@@ -1133,7 +1202,9 @@
           name: DOM.demoForm.querySelector('#name').value.trim(),
           email: DOM.demoForm.querySelector('#email').value.trim(),
           company: DOM.demoForm.querySelector('#company').value.trim(),
-          position: DOM.demoForm.querySelector('#position')?.value.trim() || null,
+          position: DOM.demoForm.querySelector('#position')?.value.trim() || DOM.buyerRoleInput?.value || null,
+          buyer_role: DOM.buyerRoleInput?.value || null,
+          initiative_task: DOM.initiativeTaskInput?.value || null,
           team_size: DOM.demoForm.querySelector('#team-size')?.value || null,
           language: DOM.demoForm.querySelector('#language')?.value || null,
           source_page: leadContext.sourcePage,
@@ -1159,13 +1230,22 @@
           });
 
           if (response.ok) {
+            let responseData = {};
+            try {
+              responseData = await response.clone().json();
+            } catch (parseError) {
+              responseData = {};
+            }
+            const leadId = responseData.id || responseData.lead_id;
             trackGoal('demo_form_success', {
               source_page: leadContext.sourcePage,
               intent: leadContext.intent,
               use_case: leadContext.useCase,
-              cta_variant: leadContext.ctaVariant
+              cta_variant: leadContext.ctaVariant,
+              ...(leadId ? { lead_id: leadId } : {})
             });
             setSubmitState('success', 'Заявка отправлена!', true);
+            setStatus('Заявка отправлена. Следующий шаг — согласовать время и состав участников разбора.', 'success');
             DOM.demoForm.reset();
             applyLeadContextToForm();
 
@@ -1173,7 +1253,9 @@
               setSubmitState('idle', originalText, false);
             }, 3000);
           } else if (response.status === 429) {
+            trackGoal('demo_form_rate_limit', eventContext);
             setSubmitState('error', 'Слишком много запросов', true);
+            setStatus('Слишком много запросов. Подождите немного и повторите отправку; введённые данные сохранены.', 'error');
 
             setTimeout(() => {
               setSubmitState('idle', originalText, false);
@@ -1183,7 +1265,9 @@
           }
         } catch (error) {
           console.error('Form submission error:', error);
+          trackGoal('demo_form_error', eventContext);
           setSubmitState('error', 'Ошибка отправки', true);
+          setStatus('Не удалось отправить заявку. Проверьте соединение и повторите отправку; введённые данные сохранены.', 'error');
 
           setTimeout(() => {
             setSubmitState('idle', originalText, false);
@@ -1344,6 +1428,7 @@
     initPerformanceOptimizations();
     initAccessibility();
     initCtaTracking();
+    initFormJourneyTracking();
 
     console.log('CodeGraph Landing Page initialized');
   }

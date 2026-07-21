@@ -137,7 +137,6 @@ def score_page(path: Path) -> PageResult:
         bool(re.search(r'"[А-Яа-яЁё][^"\n]{0,120}"', text)),
         " - " in text or " -- " in text,
         "..." in text,
-        " — " in text,
     )
     if any(typography_defects):
         typography = max(0.0, 10.0 - 1.5 * sum(typography_defects))
