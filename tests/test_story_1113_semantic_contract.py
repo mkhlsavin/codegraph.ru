@@ -203,6 +203,7 @@ def test_homepage_material_cards_link_to_matching_pages() -> None:
     }
     assert actual == {
         "Техническое описание": "whitepaper.html",
+        "Сравнение с\u00a0альтернативами": "docs/ru/enterprise/COMPETITIVE_MATRIX.html",
         "Подтверждения": "evidence.html",
         "Интеграции": "integrations.html",
     }
@@ -295,6 +296,12 @@ def test_whitepaper_links_scenarios_and_shows_scalable_product_ui() -> None:
         "scenarios/release-readiness.html",
         "scenarios/technical-controls.html",
         "scenarios/ai-code-control.html",
+    }
+
+    comparison = page.find("section", id="competitive-comparison")
+    assert comparison is not None
+    assert {link.get("href") for link in comparison.select("a[href]")} == {
+        "docs/ru/enterprise/COMPETITIVE_MATRIX.html"
     }
 
     interface = page.find("section", id="interface")
