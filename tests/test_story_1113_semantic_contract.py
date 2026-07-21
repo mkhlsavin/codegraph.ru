@@ -369,6 +369,42 @@ def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
         assert max((len(text.find_all("tspan")) for text in svg.find_all("text")), default=0) <= 12
 
 
+def test_every_whitepaper_section_starts_with_a_compact_reader_description() -> None:
+    """Make every Story 1118 section understandable before its diagram or table."""
+    page = _soup("whitepaper.html")
+    errors: list[str] = []
+    for section in page.select("main > section"):
+        if not section.get("id"):
+            continue
+        heading = section.find("h2")
+        body = heading.find_next_sibling("div") if heading is not None else None
+        first_item = body.find(recursive=False) if body is not None else None
+        description = (
+            _normalized_text(first_item.get_text(" ", strip=True))
+            if first_item is not None and first_item.name == "p"
+            else ""
+        )
+        if len(description) < 80:
+            errors.append(
+                f"#{section.get('id')}: expected an introductory paragraph of at least "
+                f"80 characters before structured content"
+            )
+    assert not errors, "Whitepaper sections without compact descriptions:\n" + "\n".join(errors)
+
+    visible_fragments = [
+        str(node)
+        for node in page.find_all(string=True)
+        if isinstance(node, NavigableString)
+        and not isinstance(node, Comment)
+        and not node.find_parent(["script", "style", "code", "pre"])
+    ]
+    one_letter_break = re.compile(
+        r"(?<![А-Яа-яЁё])([вксоуюияа]) (?=[A-Za-zА-Яа-яЁё0-9«])",
+        re.IGNORECASE,
+    )
+    assert one_letter_break.search("\n".join(visible_fragments)) is None
+
+
 def test_whitepaper_explains_the_implementation_architecture_for_cto_review() -> None:
     """Keep the CTO architecture extension grounded in concrete runtime boundaries."""
     page = _soup("whitepaper.html")
