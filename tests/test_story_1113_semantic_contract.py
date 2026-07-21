@@ -344,6 +344,8 @@ def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
         "portfolio-model",
         "workflow",
         "team-map",
+        "role-passport",
+        "scheduled-processes",
         "traceability",
         "readiness",
         "architecture",
@@ -357,7 +359,7 @@ def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
         "pilot",
     } <= section_ids
     figures = soup.find_all("figure", attrs={"data-product-diagram": True})
-    assert len(figures) == 13
+    assert len(figures) == 15
     for figure in figures:
         svg = figure.find("svg", attrs={"role": "img"})
         assert svg is not None
@@ -382,6 +384,43 @@ def test_whitepaper_explains_the_implementation_architecture_for_cto_review() ->
         text = section.get_text(" ", strip=True)
         for term in required_terms:
             assert term in text, f"#{section_id} is missing {term}"
+        figure = section.find("figure", attrs={"data-product-diagram": True})
+        assert figure is not None
+        assert figure.find("svg", attrs={"role": "img"}) is not None
+
+
+def test_whitepaper_aligns_scheduled_work_and_role_passport_to_canonical_contracts() -> None:
+    """Keep Story 1117 grounded in the schedule runtime and role-passport template."""
+    page = _soup("whitepaper.html")
+    expected = {
+        "role-passport": (
+            "человек-владелец",
+            "событие запуска",
+            "запрещённые действия",
+            "критерии приёмки",
+            "получатель",
+            "передача работы",
+            "условия остановки",
+            "метрики",
+            "дата пересмотра",
+        ),
+        "scheduled-processes": (
+            "составного аудита",
+            "обновления документации",
+            "cron-выражение",
+            "Temporal Schedule",
+            "постоянный идентификатор операции",
+            "контракт задачи",
+            "без пересечений",
+            "видимой блокировкой",
+        ),
+    }
+    for section_id, required_terms in expected.items():
+        section = page.find("section", id=section_id)
+        assert section is not None, f"whitepaper is missing #{section_id}"
+        visible = _normalized_text(section.get_text(" ", strip=True)).casefold()
+        for term in required_terms:
+            assert term.casefold() in visible, f"#{section_id} is missing {term}"
         figure = section.find("figure", attrs={"data-product-diagram": True})
         assert figure is not None
         assert figure.find("svg", attrs={"role": "img"}) is not None
