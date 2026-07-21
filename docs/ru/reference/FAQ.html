@@ -247,7 +247,8 @@
 <h3  id="kak-rabotaet-orkestratsiya-stsenariev"><span id="kak_rabotaet_orkestratsiya_stsenariev"></span>Как работает оркестрация сценариев?<a class="heading-anchor" href="#kak-rabotaet-orkestratsiya-stsenariev" title="Link to this section">&para;</a></h3>
 <p>Оркестрация построена на графе LangGraph с тремя основными этапами: <code>classify_intent_node</code> → <code>pre_retrieval</code> → <code>route_by_intent</code>. Runtime-выполнение входит через <code>invoke_role_bound_scenario</code>, который сначала проверяет цифрового сотрудника, проект, namespace и task scope. После preflight маршрутизация выбирает маршрут из versioned registry S01-S21.</p>
 <h3  id="kakie-stsenarii-podderzhivaet-sistema"><span id="kakie_stsenarii_podderzhivaet_sistema"></span>Какие сценарии поддерживает система?<a class="heading-anchor" href="#kakie-stsenarii-podderzhivaet-sistema" title="Link to this section">&para;</a></h3>
-<p>Авторитетный registry сейчас охватывает S01 (онбординг), S02 (безопасность), S03 (документация), S04 (разработка фич), S05 (рефакторинг), S06 (производительность), S07 (покрытие тестами), S08 (соответствие требованиям), S09 (ревью кода), S10 (кросс-репозиторный анализ), S11 (архитектура), S12 (технический долг), S13 (массовый рефакторинг), S14 (инциденты безопасности), S15 (отладка), S16 (точки входа), S17 (редактирование файлов), S18 (оптимизация кода — композитный), S19 (проверка стандартов — композитный), S20 (зависимости) и S21 (структурный поиск паттернов). Это внутренний routing contract, а не счётчик продуктовой ценности.</p>
+<p>Авторитетный registry сейчас охватывает S01 (онбординг), S02 (безопасность), S03 (документация), S04 (разработка фич), S05 (рефакторинг), S06 (производительность), S07 (покрытие тестами), S08 (соответствие требованиям), S09 (ревью кода), S10 (кросс-репозиторный анализ) и S11 (архитектура).</p>
+<p>В него также входят S12 (технический долг), S13 (массовый рефакторинг), S14 (инциденты безопасности), S15 (отладка), S16 (точки входа), S17 (редактирование файлов), S18 (оптимизация кода — композитный), S19 (проверка стандартов — композитный), S20 (зависимости) и S21 (структурный поиск паттернов). Это внутренний routing contract, а не счётчик продуктовой ценности.</p>
 <h3  id="chto-takoe-route-by-intent-i-kak-on-rabotaet"><span id="chto_takoe_route_by_intent_i_kak_on_rabotaet"></span>Что такое <code>route_by_intent</code> и как он работает?<a class="heading-anchor" href="#chto-takoe-route-by-intent-i-kak-on-rabotaet" title="Link to this section">&para;</a></h3>
 <p>Функция <code>route_by_intent</code> (<code>src/workflow/orchestration/router.py:16</code>) принимает состояние <code>MultiScenarioState</code> с полем <code>intent</code> (заполненным на этапе классификации) и возвращает имя следующего узла рабочего процесса. Внутри используется словарь <code>routing_map</code>, который отображает значения intent на имена функций-обработчиков (например, <code>"onboarding"</code> → <code>"onboarding_workflow"</code>, <code>"tech_debt"</code> → <code>"tech_debt_workflow"</code>). Поддерживает составной режим для комплексных запросов.</p>
 <h3  id="chto-takoe-role-bound-scenario-invoker"><span id="chto_takoe_role_bound_scenario_invoker"></span>Что такое role-bound scenario invoker?<a class="heading-anchor" href="#chto-takoe-role-bound-scenario-invoker" title="Link to this section">&para;</a></h3>
@@ -297,7 +298,7 @@
 <h3  id="kakie-tablitsy-sozdayot-gocpg"><span id="kakie_tablitsy_sozdayot_gocpg"></span>Какие таблицы создаёт GoCPG?<a class="heading-anchor" href="#kakie-tablitsy-sozdayot-gocpg" title="Link to this section">&para;</a></h3>
 <p>GoCPG создаёт 43 таблицы узлов, 25 таблиц рёбер, 2 представления и несколько служебных таблиц. Ключевые: <code>nodes_method</code> (методы/функции), <code>nodes_call</code> (точки вызова), <code>nodes_type_decl</code> (объявления типов), <code>nodes_file</code> (файлы), <code>edges_call</code> (рёбра вызовов), <code>edges_ast</code> (структура AST), <code>edges_cfg</code> (поток управления), <code>edges_reaching_def</code> (достигающие определения потока данных), <code>edges_inherits_from</code> (наследование). Представления: <code>call_containment</code> (денормализованные вызывающий/вызываемый) и <code>method_docstrings</code>. Состояние: <code>cpg_git_state</code>, <code>cpg_file_state</code>, <code>cpg_fqn_index</code>. Полная схема в <code>docs/reference/ru/SCHEMA.md</code>.</p>
 <h3  id="chto-takoe-konveyer-prohodov-gocpg"><span id="chto_takoe_konveyer_prohodov_gocpg"></span>Что такое конвейер проходов GoCPG?<a class="heading-anchor" href="#chto-takoe-konveyer-prohodov-gocpg" title="Link to this section">&para;</a></h3>
-<p>GoCPG выполняет 31 аналитический проход в порядке DAG (направленного ациклического графа): базовые (MetaData, File, Namespace) → типы (TypeNode, TypeDecl, Inheritance) → CFG/Dominator/CDG → разрешение вызовов (CallGraph, CallResolution) → поток данных (Ref, AliasAnalysis, ReachingDef, InterproceduralReachingDef) → PDG/DDG → обогащение (MethodMetrics, FindingGeneration, PatternMatch). Каждый проход читает <code>CPGGraph</code> (в памяти), пишет <code>DiffGraph</code>, никогда не обращается к DuckDB напрямую.</p>
+<p>GoCPG выполняет 31 аналитический проход в порядке DAG (направленного ациклического графа): базовые (MetaData, File, Namespace) → типы (TypeNode, TypeDecl, Inheritance) → CFG/Dominator/CDG → разрешение вызовов (CallGraph, CallResolution) → поток данных (Ref, AliasAnalysis, ReachingDef, InterproceduralReachingDef) → PDG/DDG → обогащение (MethodMetrics, FindingGeneration, PatternMatch). Каждый проход читает <code>CPGGraph</code> (в памяти), пишет <code>DiffGraph</code> и не обращается к DuckDB напрямую.</p>
 <h3  id="chto-takoe-inkrementalnoe-obnovlenie-v-gocpg"><span id="chto_takoe_inkrementalnoe_obnovlenie_v_gocpg"></span>Что такое инкрементальное обновление в GoCPG?<a class="heading-anchor" href="#chto-takoe-inkrementalnoe-obnovlenie-v-gocpg" title="Link to this section">&para;</a></h3>
 <p>GoCPG поддерживает git-инкрементальное обновление через <code>gocpg update</code> или <code>gocpg ci-update</code>. Сравнивает хеши файлов в <code>cpg_file_state</code> с рабочим деревом, повторно парсит только изменённые файлы и перестраивает затронутые аналитические проходы. Для CI флаг <code>--base-ref</code> ограничивает анализ файлами, изменёнными с указанной git-ссылки. Откат к полному перепарсингу при превышении <code>--incremental-threshold</code> (по умолчанию: 30 файлов).</p>
 <h3  id="chto-takoe-tkb-type-knowledge-base"><span id="chto_takoe_tkb_type_knowledge_base"></span>Что такое TKB (Type Knowledge Base)?<a class="heading-anchor" href="#chto-takoe-tkb-type-knowledge-base" title="Link to this section">&para;</a></h3>
@@ -373,15 +374,17 @@
 <hr />
 <h2  id="moduli-analiza"><span id="moduli_analiza"></span>Модули анализа<a class="heading-anchor" href="#moduli-analiza" title="Link to this section">&para;</a></h2>
 <h3  id="kakie-moduli-analiza-dostupny"><span id="kakie_moduli_analiza_dostupny"></span>Какие модули анализа доступны?<a class="heading-anchor" href="#kakie-moduli-analiza-dostupny" title="Link to this section">&para;</a></h3>
-<p>CodeGraph включает несколько модулей анализа в <code>src/analysis/</code>:
-• <strong>Обнаружение клонов</strong> (<code>clone_detector.py</code>) — поиск дублированного кода по 4 типам клонов
-• <strong>Анализ помеченных данных</strong> (<code>dataflow/taint_analysis.py</code>) — отслеживание распространения ненадёжных данных
-• <strong>Символьное выполнение</strong> (<code>dataflow/symbolic_execution.py</code>) — проверка достижимости путей через Z3
-• <strong>Обнаружение состояний гонки</strong> (<code>race_detector.py</code>) — поиск TOCTOU и проблем синхронизации
-• <strong>Анализ параллелизма</strong> (<code>concurrency_analyzer.py</code>) — обнаружение взаимоблокировок и нарушений порядка блокировок
-• <strong>Маппинг соответствия</strong> (<code>compliance.py</code>) — сопоставление находок с CWE, OWASP, CERT, MISRA
-• <strong>Анализ графа вызовов</strong> (<code>callgraph/</code>) — PageRank, SCC, betweenness centrality, поиск путей
-• <strong>Движок автоисправлений</strong> (<code>autofix/</code>) — генерация исправлений уязвимостей на основе шаблонов и LLM</p>
+<p>CodeGraph включает несколько модулей анализа в <code>src/analysis/</code>.</p>
+<ul>
+<li><strong>Обнаружение клонов</strong> (<code>clone_detector.py</code>) — поиск дублированного кода по 4 типам клонов</li>
+<li><strong>Анализ помеченных данных</strong> (<code>dataflow/taint_analysis.py</code>) — отслеживание распространения ненадёжных данных</li>
+<li><strong>Символьное выполнение</strong> (<code>dataflow/symbolic_execution.py</code>) — проверка достижимости путей через Z3</li>
+<li><strong>Обнаружение состояний гонки</strong> (<code>race_detector.py</code>) — поиск TOCTOU и проблем синхронизации</li>
+<li><strong>Анализ параллелизма</strong> (<code>concurrency_analyzer.py</code>) — обнаружение взаимоблокировок и нарушений порядка блокировок</li>
+<li><strong>Маппинг соответствия</strong> (<code>compliance.py</code>) — сопоставление находок с CWE, OWASP, CERT, MISRA</li>
+<li><strong>Анализ графа вызовов</strong> (<code>callgraph/</code>) — PageRank, SCC, betweenness centrality, поиск путей</li>
+<li><strong>Движок автоисправлений</strong> (<code>autofix/</code>) — генерация исправлений уязвимостей на основе шаблонов и LLM</li>
+</ul>
 <h3  id="kak-rabotaet-obnaruzhenie-klonov"><span id="kak_rabotaet_obnaruzhenie_klonov"></span>Как работает обнаружение клонов?<a class="heading-anchor" href="#kak-rabotaet-obnaruzhenie-klonov" title="Link to this section">&para;</a></h3>
 <p><code>ASTCloneDetector</code> (<code>src/analysis/graph_core/clone_detector.py</code>) попарно сравнивает методы по 4 метрикам сходства: Жаккар по токенам (&gt;0.95 → Тип 1, точный), нормализованные токены (&gt;0.85 → Тип 2, переименованный), структура AST (&gt;0.75 → Тип 3, структурный), поток управления (&gt;0.70 → Тип 4, семантический). Возвращает объекты <code>CloneResult</code>, отсортированные по убыванию сходства. Ограничение по умолчанию: 300 методов (<code>max_methods_extended</code>). См. <code>docs/reference/ru/CLONE_DETECTION.md</code>.</p>
 <h3  id="kak-rabotaet-analiz-pomechennyh-dannyh"><span id="kak_rabotaet_analiz_pomechennyh_dannyh"></span>Как работает анализ помеченных данных?<a class="heading-anchor" href="#kak-rabotaet-analiz-pomechennyh-dannyh" title="Link to this section">&para;</a></h3>
@@ -499,7 +502,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> 
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Обновлено: 2026-07-21</span>
+        <span>Обновлено: 2026-07-22</span>
         <a href="https://github.com/mkhlsavin/codegraph/edit/main/docs/reference/ru/FAQ.md" target="_blank" rel="noopener">Редактировать на GitHub</a>
       </footer>
     </main>

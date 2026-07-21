@@ -598,13 +598,9 @@
       displayHeroDemoResult(data.answer);
 
     } catch (err) {
-      console.warn('API call failed, using mock response:', err.message);
-      // Fallback to mock response
-      const mockData = MOCK_RESPONSES[query] || MOCK_RESPONSES['default'];
-
-      // Simulate delay for realism
-      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
-      displayHeroDemoResult(mockData.answer);
+      console.warn('API call failed:', err.message);
+      DOM.demoOutput.innerHTML = '<span class="warning">Демо API недоступен. Попробуйте позже.</span>';
+      if (DOM.demoCursor) DOM.demoCursor.hidden = true;
     }
   }
 
@@ -767,16 +763,12 @@
       }
 
       const data = await response.json();
+      await ensureMarkedLoaded().catch(() => {});
       showApiResult(data.answer, data.processing_time_ms);
 
     } catch (err) {
-      console.warn('API call failed, using mock response:', err.message);
-      // Fallback to mock response
-      const mockData = MOCK_RESPONSES[query] || MOCK_RESPONSES['default'];
-
-      // Simulate delay for realism
-      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
-      showApiResult(mockData.answer, mockData.processing_time_ms);
+      console.warn('API call failed:', err.message);
+      showApiError();
     }
   }
 
@@ -799,6 +791,25 @@
   }
 
   // Render markdown safely (fallback to escaped text if marked unavailable)
+  let markedLoadPromise;
+
+  function ensureMarkedLoaded() {
+    if (typeof marked !== 'undefined' && marked.parse) {
+      return Promise.resolve();
+    }
+    if (!markedLoadPromise) {
+      markedLoadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js';
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    return markedLoadPromise;
+  }
+
   function renderMarkdown(text) {
     if (typeof marked !== 'undefined' && marked.parse) {
       return marked.parse(text, { breaks: true });
@@ -1244,6 +1255,13 @@
               cta_variant: leadContext.ctaVariant,
               ...(leadId ? { lead_id: leadId } : {})
             });
+            if (leadId) {
+              trackGoal('lead_created', {
+                lead_id: leadId,
+                source_page: leadContext.sourcePage,
+                intent: leadContext.intent,
+              });
+            }
             setSubmitState('success', 'Заявка отправлена!', true);
             setStatus('Заявка отправлена. Следующий шаг — согласовать время и состав участников разбора.', 'success');
             DOM.demoForm.reset();

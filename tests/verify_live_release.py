@@ -14,9 +14,9 @@ from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
 
-EXPECTED_TITLE = "CodeGraph — управление разработкой цифровых продуктов"
-EXPECTED_H1 = "Управляйте разработкой — от продуктовой инициативы до готовности к выпуску"
-EXPECTED_RELEASE = "story-1113-corrective-20260720"
+EXPECTED_TITLE = "CodeGraph — связь инициативы, кода и решения о выпуске"
+EXPECTED_H1 = "Свяжите продуктовую инициативу с кодом, проверками и решением о выпуске"
+EXPECTED_RELEASE = "landing-audit-20260722-v2"
 FORBIDDEN_TEXT = ("21 сценарий", "0,83")
 HASH_ROUTES = (
     "index.html",
@@ -87,7 +87,10 @@ def verify_once(base_url: str, root: Path, release: str) -> dict[str, object]:
     remote = {route: _fetch(base_url, route, release) for route in (*HASH_ROUTES, "evidence.html", "integrations.html")}
     parser = HomeContractParser()
     homepage = remote["index.html"].decode("utf-8")
+    root_parser = HomeContractParser()
+    root_homepage = _fetch(base_url, "", release).decode("utf-8")
     parser.feed(homepage)
+    root_parser.feed(root_homepage)
     failures: list[str] = []
     if _normalized_text(parser.title) != EXPECTED_TITLE:
         failures.append(f"title={parser.title.strip()!r}")
@@ -95,6 +98,14 @@ def verify_once(base_url: str, root: Path, release: str) -> dict[str, object]:
         failures.append(f"h1={parser.h1.strip()!r}")
     if parser.release.strip() != release:
         failures.append(f"release={parser.release.strip()!r}")
+    if (
+        _normalized_text(root_parser.title) != _normalized_text(parser.title)
+        or _normalized_text(root_parser.h1) != _normalized_text(parser.h1)
+        or root_parser.release.strip() != parser.release.strip()
+    ):
+        failures.append("root/index.html semantic mismatch")
+    if _normalized_sha256(root_homepage.encode("utf-8")) != _normalized_sha256(homepage.encode("utf-8")):
+        failures.append("root/index.html content hash mismatch")
     for text in FORBIDDEN_TEXT:
         if text.casefold() in homepage.casefold():
             failures.append(f"forbidden={text!r}")

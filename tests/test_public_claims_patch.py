@@ -8,7 +8,7 @@ from pathlib import Path
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_CATEGORY = (
-    "CodeGraph — платформа управления ИИ-разработкой цифровых продуктов."
+    "CodeGraph — решение для управления разработкой цифровых продуктов, выполняемой с помощью ИИ."
 )
 
 FORBIDDEN_MARKETING_PATTERNS = {
