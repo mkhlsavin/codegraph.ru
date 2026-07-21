@@ -14,7 +14,7 @@ from bs4.element import Comment, NavigableString
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_CATEGORY = (
-    "CodeGraph — платформа управления разработкой цифровых продуктов."
+    "CodeGraph — платформа управления ИИ-разработкой цифровых продуктов."
 )
 KEY_PAGE_CONTRACTS = {
     "index.html": (
@@ -89,8 +89,8 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
     """Keep every social card on the current category and cache-busted assets."""
     expected = {
         "index.html": (
-            "og-codegraph-platform-20260720.png",
-            "CodeGraph — платформа управления разработкой цифровых продуктов",
+                "og-codegraph-platform-20260720.png",
+                "CodeGraph — платформа управления ИИ-разработкой цифровых продуктов",
         ),
         "whitepaper.html": (
             "og-codegraph-whitepaper-20260720.png",
