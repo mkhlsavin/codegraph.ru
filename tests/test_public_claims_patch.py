@@ -162,6 +162,22 @@ def test_privacy_page_has_real_security_link_and_canonical_cta() -> None:
     assert 'href="/#demo"' in privacy
 
 
+def test_benchmark_page_is_a_reproducible_template_until_evidence_exists() -> None:
+    """Prevent a methodology page from quietly reintroducing unsupported results."""
+    benchmark = (
+        LANDING_ROOT / "research" / "tochnost-otvetov-i-skorost-razbora.html"
+    ).read_text(encoding="utf-8")
+    forbidden = (
+        "Высокое качество на опубликованном наборе",
+        "Ускорение отдельных задач на опубликованном стенде",
+        "Ускорение по сравнению с Joern на опубликованном стенде",
+        "153/160",
+    )
+    assert not [phrase for phrase in forbidden if phrase in benchmark]
+    for field in ("Dataset", "Protocol", "Environment", "Raw result", "Calculation", "Limitations", "Checksums"):
+        assert field in benchmark
+
+
 def test_all_non_documentation_pages_declare_form_context() -> None:
     """Require every public landing route to expose its declarative lead context."""
     required = (
