@@ -24,35 +24,49 @@
 
   const METRIKA_COUNTER_ID = 107046651;
 
-  function initiativeContext(sourcePage, intent, useCase) {
+  function initiativeContext(sourcePage, intent, useCase, options = {}) {
+    const {
+      pageLabel = sourcePage,
+      pageStage = 'commercial',
+      buyerRole = '',
+      initiativeTask = 'other',
+      formTitle = 'Разобрать одну продуктовую инициативу',
+      formDescription = 'На встрече зафиксируем задачу, требования, область влияния и необходимые подтверждения. Это не обещание автоматически подготовить полную спецификацию.',
+      formButton = 'Разобрать инициативу'
+    } = options;
     return {
+      pageId: sourcePage,
       sourcePage,
       intent,
       useCase,
+      pageStage,
+      pageLabel,
+      buyerRole,
+      initiativeTask,
       defaultCtaVariant: `${sourcePage}_initiative_cta`,
-      formTitle: 'Разобрать одну продуктовую инициативу',
-      formDescription: 'Результат встречи — черновая цепочка Product Intent → FR/NFR → Impact Scope → required evidence. Это не обещание автоматически подготовить полную спецификацию.',
-      formButton: 'Разобрать инициативу',
+      formTitle,
+      formDescription,
+      formButton,
       contextNote: sourcePage === 'index'
         ? ''
-        : `Форма открыта со страницы «${sourcePage}»; source, intent и границы инициативы сохраняются в заявке.`
+        : `Форма открыта со страницы «${pageLabel}». Источник, роль, задача и границы разбора сохраняются в заявке.`
     };
   }
 
   const PAGE_CONTEXTS = {
-    index: initiativeContext('index', 'product_initiative_review', 'traceability'),
-    whitepaper: initiativeContext('whitepaper', 'canonical_model_review', 'traceability'),
-    'product-delivery': initiativeContext('product-delivery', 'product_delivery_review', 'requirements_traceability'),
-    evidence: initiativeContext('evidence', 'evidence_chain_review', 'conformance_evidence'),
-    'digital-team': initiativeContext('digital-team', 'role_contract_review', 'governed_execution'),
-    integrations: initiativeContext('integrations', 'integration_depth_review', 'integration_capabilities'),
-    security: initiativeContext('security', 'security_requirement_review', 'security_conformance'),
-    compliance: initiativeContext('compliance', 'data_boundary_review', 'technical_controls'),
-    'platform-operations': initiativeContext('platform-operations', 'runtime_readiness_review', 'operations'),
-    productivity: initiativeContext('productivity', 'engineering_conformance_review', 'engineering_management'),
-    'business-efficiency': initiativeContext('business-efficiency', 'pilot_measurement_review', 'pilot_economics'),
-    cpg: initiativeContext('cpg', 'impact_scope_review', 'code_impact'),
-    'ai-engineering': initiativeContext('ai-engineering', 'ai_change_conformance_review', 'ai_code_governance')
+    index: initiativeContext('index', 'product_initiative_review', 'traceability', { pageLabel: 'Главная', pageStage: 'discovery' }),
+    whitepaper: initiativeContext('whitepaper', 'canonical_model_review', 'traceability', { pageLabel: 'Техническое описание', pageStage: 'architecture', buyerRole: 'architecture-security', initiativeTask: 'initiative-traceability', formTitle: 'Сверить архитектурный контур', formDescription: 'Сопоставим продуктовую модель, PDLC, SDLC, хранилища, полномочия и границы данных с вашим контуром.', formButton: 'Сверить архитектурный контур' }),
+    'product-delivery': initiativeContext('product-delivery', 'product_delivery_review', 'requirements_traceability', { pageLabel: 'Портфель и проекты', pageStage: 'portfolio', buyerRole: 'cpo', initiativeTask: 'initiative-traceability', formTitle: 'Разобрать статус одной инициативы', formDescription: 'Соберём основания статуса: продуктовый результат, требования, зависимости, проверки, риски и решение CPO.', formButton: 'Разобрать статус инициативы' }),
+    evidence: initiativeContext('evidence', 'evidence_chain_review', 'conformance_evidence', { pageLabel: 'Доказательства', pageStage: 'proof', buyerRole: 'delivery', initiativeTask: 'release-readiness', formTitle: 'Собрать цепочку подтверждений', formDescription: 'Определим, какие требования, изменения, тесты и решения должны войти в переносимый пакет подтверждений.', formButton: 'Собрать цепочку подтверждений' }),
+    'digital-team': initiativeContext('digital-team', 'role_contract_review', 'governed_execution', { pageLabel: 'Цифровая команда', pageStage: 'governance', buyerRole: 'delivery', initiativeTask: 'ai-code-governance', formTitle: 'Спроектировать одну цифровую роль', formDescription: 'Опишем функцию роли, разрешённые действия, результат, передачу и условие остановки для первого пилота.', formButton: 'Спроектировать цифровую роль' }),
+    integrations: initiativeContext('integrations', 'integration_depth_review', 'integration_capabilities', { pageLabel: 'Интеграции', pageStage: 'integration', buyerRole: 'cto', initiativeTask: 'other', formTitle: 'Проверить набор операций интеграции', formDescription: 'Разберём нужные операции, права, версии API, события, повторные попытки, очередь ошибок и границы исходящей передачи.', formButton: 'Проверить операции интеграции' }),
+    security: initiativeContext('security', 'security_requirement_review', 'security_conformance', { pageLabel: 'Безопасность', pageStage: 'security', buyerRole: 'architecture-security', initiativeTask: 'ai-code-governance', formTitle: 'Разобрать одно требование безопасности', formDescription: 'Свяжем требование безопасности с областью влияния, изменением, проверками, доказательствами и решением по риску.', formButton: 'Разобрать требование безопасности' }),
+    compliance: initiativeContext('compliance', 'data_boundary_review', 'technical_controls', { pageLabel: 'Технические контроли', pageStage: 'compliance', buyerRole: 'architecture-security', initiativeTask: 'release-readiness', formTitle: 'Проверить один технический контроль', formDescription: 'Определим требование контроля, доступное доказательство, ограничение и вопрос для независимой оценки.', formButton: 'Проверить технический контроль' }),
+    'platform-operations': initiativeContext('platform-operations', 'runtime_readiness_review', 'operations', { pageLabel: 'Платформенные операции', pageStage: 'operations', buyerRole: 'cto', initiativeTask: 'release-readiness', formTitle: 'Проверить схему развёртывания и восстановления', formDescription: 'Сверим топологию, сети, зависимости, резервирование, RTO/RPO, SLO, обновление, откат и аварийное восстановление.', formButton: 'Проверить развёртывание и восстановление' }),
+    productivity: initiativeContext('productivity', 'engineering_conformance_review', 'engineering_management', { pageLabel: 'Соответствие реализации', pageStage: 'engineering', buyerRole: 'cto', initiativeTask: 'initiative-traceability', formTitle: 'Проверить разрыв между требованием и реализацией', formDescription: 'Зафиксируем исходный уровень разрывов, повторной работы, ожиданий и полноты подтверждений на одной инициативе.', formButton: 'Проверить разрыв реализации' }),
+    'business-efficiency': initiativeContext('business-efficiency', 'pilot_measurement_review', 'pilot_economics', { pageLabel: 'Экономика пилота', pageStage: 'economics', buyerRole: 'cpo', initiativeTask: 'initiative-traceability', formTitle: 'Собрать план исходного замера', formDescription: 'Определим период, участников, формулы, исходные данные, guardrails и правило решения по пилоту без гарантии экономического эффекта.', formButton: 'Собрать план замера' }),
+    cpg: initiativeContext('cpg', 'impact_scope_review', 'code_impact', { pageLabel: 'Граф области влияния', pageStage: 'mechanism', buyerRole: 'architecture-security', initiativeTask: 'impact-analysis', formTitle: 'Построить область влияния одного изменения', formDescription: 'Свяжем требование, функцию, вызовы, путь данных, затронутый тест и неизвестный участок на выбранном снимке.', formButton: 'Построить область влияния' }),
+    'ai-engineering': initiativeContext('ai-engineering', 'ai_change_conformance_review', 'ai_code_governance', { pageLabel: 'ИИ-разработка', pageStage: 'ai-governance', buyerRole: 'cto', initiativeTask: 'ai-code-governance', formTitle: 'Проверить одно изменение, созданное ИИ', formDescription: 'Сопоставим контракт задания, идентичность исполнителя, разрешённую область, diff, влияние, тесты и независимое ревью.', formButton: 'Проверить изменение ИИ' })
   };
 
   // ============================================
@@ -125,9 +139,13 @@
 
   function buildDemoHref(pageContext, ctaVariant) {
     const params = new URLSearchParams({
+      page_id: pageContext.pageId,
       source_page: pageContext.sourcePage,
       intent: pageContext.intent,
       use_case: pageContext.useCase,
+      page_stage: pageContext.pageStage,
+      buyer_role: pageContext.buyerRole,
+      initiative_task: pageContext.initiativeTask,
       cta_variant: ctaVariant || pageContext.defaultCtaVariant
     });
 
@@ -137,24 +155,43 @@
   function getLeadContext() {
     const params = new URLSearchParams(window.location.search);
     const sourcePage = (
-      DOM.sourcePageInput?.value
-      || params.get('source_page')
+      params.get('source_page')
+      || DOM.sourcePageInput?.value
       || getCurrentPageName()
       || 'index'
     ).replace(/\.html$/u, '');
     const pageContext = getPageContextBySource(sourcePage);
 
     return {
+      pageId: params.get('page_id') || DOM.pageIdInput?.value || pageContext.pageId,
       sourcePage,
-      intent: DOM.intentInput?.value || params.get('intent') || pageContext.intent,
-      useCase: DOM.useCaseInput?.value || params.get('use_case') || pageContext.useCase,
-      ctaVariant: DOM.ctaVariantInput?.value || params.get('cta_variant') || pageContext.defaultCtaVariant,
+      intent: params.get('intent') || DOM.intentInput?.value || pageContext.intent,
+      useCase: params.get('use_case') || DOM.useCaseInput?.value || pageContext.useCase,
+      pageStage: params.get('page_stage') || DOM.pageStageInput?.value || pageContext.pageStage,
+      buyerRole: params.get('buyer_role') || DOM.buyerRoleInput?.value || pageContext.buyerRole,
+      initiativeTask: params.get('initiative_task') || DOM.initiativeTaskInput?.value || pageContext.initiativeTask,
+      ctaVariant: params.get('cta_variant') || DOM.ctaVariantInput?.value || pageContext.defaultCtaVariant,
       pageContext
+    };
+  }
+
+  function eventContext(leadContext) {
+    return {
+      page_id: leadContext.pageId,
+      page_stage: leadContext.pageStage,
+      buyer_role: leadContext.buyerRole,
+      initiative_task: leadContext.initiativeTask,
+      source_page: leadContext.sourcePage,
+      intent: leadContext.intent,
+      use_case: leadContext.useCase,
+      cta_variant: leadContext.ctaVariant
     };
   }
 
   function trackGoal(goalName, params = {}) {
     if (typeof window.ym !== 'function') {
+      window.__codegraphMetrikaQueue = window.__codegraphMetrikaQueue || [];
+      window.__codegraphMetrikaQueue.push([goalName, params]);
       return;
     }
 
@@ -208,6 +245,12 @@
     if (DOM.sourcePageInput) {
       DOM.sourcePageInput.value = leadContext.sourcePage;
     }
+    if (DOM.pageIdInput) {
+      DOM.pageIdInput.value = leadContext.pageId;
+    }
+    if (DOM.pageStageInput) {
+      DOM.pageStageInput.value = leadContext.pageStage;
+    }
 
     if (DOM.intentInput) {
       DOM.intentInput.value = leadContext.intent;
@@ -219,6 +262,12 @@
 
     if (DOM.useCaseInput) {
       DOM.useCaseInput.value = leadContext.useCase;
+    }
+    if (hasContext && DOM.buyerRoleInput && leadContext.buyerRole) {
+      DOM.buyerRoleInput.value = leadContext.buyerRole;
+    }
+    if (hasContext && DOM.initiativeTaskInput && leadContext.initiativeTask) {
+      DOM.initiativeTaskInput.value = leadContext.initiativeTask;
     }
 
     if (!hasContext) {
@@ -278,11 +327,19 @@
         }
 
         if (href.includes('#demo')) {
-          trackGoal(currentPageName === 'index' ? 'cta_click' : 'vertical_cta_click', {
-            source_page: link.dataset.sourcePage || pageContext.sourcePage,
+          const linkContext = {
+            ...pageContext,
+            pageId: link.dataset.pageId || pageContext.pageId,
+            pageStage: link.dataset.pageStage || pageContext.pageStage,
+            buyerRole: link.dataset.buyerRole || pageContext.buyerRole,
+            initiativeTask: link.dataset.initiativeTask || pageContext.initiativeTask,
+            sourcePage: link.dataset.sourcePage || pageContext.sourcePage,
             intent: link.dataset.intent || pageContext.intent,
-            use_case: link.dataset.useCase || pageContext.useCase,
-            cta_variant: ctaVariant
+            useCase: link.dataset.useCase || pageContext.useCase,
+            ctaVariant
+          };
+          trackGoal(currentPageName === 'index' ? 'cta_click' : 'vertical_cta_click', {
+            ...eventContext(linkContext)
           });
         }
       });
@@ -293,12 +350,7 @@
     if (!DOM.demoForm) return;
 
     const leadContext = getLeadContext();
-    const params = {
-      source_page: leadContext.sourcePage,
-      intent: leadContext.intent,
-      use_case: leadContext.useCase,
-      cta_variant: leadContext.ctaVariant
-    };
+    const params = eventContext(leadContext);
     let viewed = false;
     const trackView = () => {
       if (viewed) return;
@@ -338,6 +390,8 @@
     DOM.faqCategoryBtns = document.querySelectorAll('.faq-category-btn');
     DOM.integrationFilterBtns = document.querySelectorAll('.integration-filter-btn');
     DOM.integrationCards = document.querySelectorAll('.integration-card');
+    DOM.roleFilterBtns = document.querySelectorAll('[data-role-filter]');
+    DOM.roleCards = document.querySelectorAll('[data-digital-role]');
     DOM.pipelineSteps = document.querySelectorAll('.pipeline-step');
     DOM.scenarioTabs = document.querySelectorAll('.scenario-tab');
     DOM.counters = document.querySelectorAll('[data-count]');
@@ -350,6 +404,8 @@
     DOM.demoStatus = document.getElementById('demo-status');
     DOM.buyerRoleInput = document.getElementById('buyer-role');
     DOM.initiativeTaskInput = document.getElementById('initiative-task');
+    DOM.pageIdInput = document.getElementById('page-id');
+    DOM.pageStageInput = document.getElementById('page-stage');
     DOM.sourcePageInput = document.getElementById('source-page');
     DOM.intentInput = document.getElementById('intent');
     DOM.ctaVariantInput = document.getElementById('cta-variant');
@@ -1004,6 +1060,33 @@
   }
 
   // ============================================
+  // Digital role filters
+  // ============================================
+  function initDigitalRoleFilters() {
+    if (!DOM.roleFilterBtns || DOM.roleFilterBtns.length === 0) return;
+
+    DOM.roleFilterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filter = btn.getAttribute('data-role-filter') || 'all';
+        DOM.roleFilterBtns.forEach(item => {
+          const active = item === btn;
+          item.classList.toggle('bg-blue-600', active);
+          item.classList.toggle('text-white', active);
+          item.classList.toggle('border-blue-600', active);
+          item.classList.toggle('border-slate-300', !active);
+          item.classList.toggle('text-slate-700', !active);
+          item.classList.toggle('dark:border-slate-600', !active);
+          item.classList.toggle('dark:text-slate-200', !active);
+        });
+        DOM.roleCards.forEach(card => {
+          const group = card.getAttribute('data-role-group');
+          card.hidden = filter !== 'all' && group !== filter;
+        });
+      });
+    });
+  }
+
+  // ============================================
   // Counter Animation
   // ============================================
   function initCounters() {
@@ -1096,12 +1179,7 @@
     const originalText = submitBtn?.textContent || 'Разобрать инициативу';
     let formStarted = false;
     const leadContext = getLeadContext();
-    const eventContext = {
-      source_page: leadContext.sourcePage,
-      intent: leadContext.intent,
-      use_case: leadContext.useCase,
-      cta_variant: leadContext.ctaVariant
-    };
+    const formEventContext = eventContext(leadContext);
     const setStatus = (text, state = '') => {
       if (!DOM.demoStatus) return;
       DOM.demoStatus.textContent = text;
@@ -1120,7 +1198,7 @@
         input.setAttribute('aria-invalid', 'true');
         const validity = input.validity;
         trackGoal('demo_form_field_error', {
-          ...eventContext,
+          ...formEventContext,
           field: input.name || input.id,
           reason: validity.valueMissing ? 'required' : validity.typeMismatch ? 'format' : 'invalid'
         });
@@ -1143,7 +1221,7 @@
       input.addEventListener('input', () => {
         if (!formStarted && input.value.trim()) {
           formStarted = true;
-          trackGoal('demo_form_start', eventContext);
+          trackGoal('demo_form_start', formEventContext);
         }
         input.setCustomValidity('');
         input.removeAttribute('aria-invalid');
@@ -1153,7 +1231,7 @@
       input.addEventListener('change', () => {
         if (!formStarted && input.value.trim()) {
           formStarted = true;
-          trackGoal('demo_form_start', eventContext);
+          trackGoal('demo_form_start', formEventContext);
         }
         input.setCustomValidity('');
         input.removeAttribute('aria-invalid');
@@ -1187,7 +1265,7 @@
       }
 
       if (!isValid) {
-        trackGoal('demo_form_validation_error', eventContext);
+        trackGoal('demo_form_validation_error', formEventContext);
         setStatus('Проверьте отмеченные поля и повторите отправку.', 'error');
         DOM.demoForm.querySelector('[aria-invalid="true"]')?.focus();
         return;
@@ -1202,10 +1280,7 @@
         setSubmitState('sending', 'Отправка...', true);
         setStatus('Передаём заявку. После ответа мы предложим следующий шаг.', 'sending');
         trackGoal('demo_form_submit', {
-          source_page: leadContext.sourcePage,
-          intent: leadContext.intent,
-          use_case: leadContext.useCase,
-          cta_variant: leadContext.ctaVariant
+          ...eventContext(leadContext)
         });
 
         // Collect form data
@@ -1222,6 +1297,8 @@
           intent: leadContext.intent,
           cta_variant: leadContext.ctaVariant,
           use_case: leadContext.useCase,
+          page_id: leadContext.pageId,
+          page_stage: leadContext.pageStage,
         };
 
         // Determine API URL based on environment
@@ -1249,17 +1326,13 @@
             }
             const leadId = responseData.id || responseData.lead_id;
             trackGoal('demo_form_success', {
-              source_page: leadContext.sourcePage,
-              intent: leadContext.intent,
-              use_case: leadContext.useCase,
-              cta_variant: leadContext.ctaVariant,
+              ...eventContext(leadContext),
               ...(leadId ? { lead_id: leadId } : {})
             });
             if (leadId) {
               trackGoal('lead_created', {
                 lead_id: leadId,
-                source_page: leadContext.sourcePage,
-                intent: leadContext.intent,
+                ...eventContext(leadContext),
               });
             }
             setSubmitState('success', 'Заявка отправлена!', true);
@@ -1271,7 +1344,7 @@
               setSubmitState('idle', originalText, false);
             }, 3000);
           } else if (response.status === 429) {
-            trackGoal('demo_form_rate_limit', eventContext);
+            trackGoal('demo_form_rate_limit', formEventContext);
             setSubmitState('error', 'Слишком много запросов', true);
             setStatus('Слишком много запросов. Подождите немного и повторите отправку; введённые данные сохранены.', 'error');
 
@@ -1283,7 +1356,7 @@
           }
         } catch (error) {
           console.error('Form submission error:', error);
-          trackGoal('demo_form_error', eventContext);
+          trackGoal('demo_form_error', formEventContext);
           setSubmitState('error', 'Ошибка отправки', true);
           setStatus('Не удалось отправить заявку. Проверьте соединение и повторите отправку; введённые данные сохранены.', 'error');
 
@@ -1438,6 +1511,7 @@
     initScenarioTabs();
     initFAQ();
     initIntegrationFilters();
+    initDigitalRoleFilters();
     initCounters();
     initScrollAnimations();
     initFormValidation();
