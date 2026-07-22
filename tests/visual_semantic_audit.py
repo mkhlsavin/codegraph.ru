@@ -393,6 +393,7 @@ async def _inspect_route(
                           document.documentElement.scrollWidth - document.documentElement.clientWidth
                         ),
                         broken_images: [...document.images]
+                          .filter((image) => image.getAttribute('src')?.trim())
                           .filter((image) => image.complete && image.naturalWidth === 0)
                           .map((image) => image.getAttribute('src')),
                         missing_image_dimensions: [...document.images]
@@ -438,6 +439,20 @@ async def _inspect_route(
                           : 0,
                         stylesheet_links: [...document.querySelectorAll('link[rel="stylesheet"]')]
                           .map((link) => link.getAttribute('href')),
+                        css_runtime: (() => {
+                          const stylesheet = [...document.styleSheets].find((sheet) =>
+                            sheet.href && sheet.href.includes('/css/tailwind.min.css')
+                          );
+                          const hero = document.querySelector('main > section');
+                          const progress = document.querySelector('[data-visual-kind="product-screen"] .h-2');
+                          return {
+                            loaded: Boolean(stylesheet),
+                            rules: stylesheet ? (() => { try { return stylesheet.cssRules.length; } catch (error) { return 0; } })() : 0,
+                            hero_background: hero ? getComputedStyle(hero).backgroundColor : '',
+                            hero_padding_top: hero ? getComputedStyle(hero).paddingTop : '',
+                            progress_height: progress ? getComputedStyle(progress).height : '',
+                          };
+                        })(),
                         render_signature: signature,
                       };
                     }""",
@@ -562,6 +577,14 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
             )
         if row.get("h1_contrast_ratio", 0) < 3:
             reasons.append(f"h1_contrast_ratio={row.get('h1_contrast_ratio')}")
+        if row.get("route") == "index.html":
+            css_runtime = row.get("css_runtime") or {}
+            if not css_runtime.get("loaded") or not css_runtime.get("rules"):
+                reasons.append(f"css_runtime_not_loaded={css_runtime}")
+            if css_runtime.get("hero_background") in {"", "rgba(0, 0, 0, 0)", "transparent"}:
+                reasons.append(f"hero_background_missing={css_runtime.get('hero_background')!r}")
+            if css_runtime.get("progress_height") in {"", "0px"}:
+                reasons.append(f"hero_generated_utility_missing={css_runtime.get('progress_height')!r}")
         if row.get("profile") == "reduced-motion" and row.get("active_motion", 0):
             reasons.append(f"active_motion={row['active_motion']}")
         if row.get("profile") == "print" and not row.get("render_signature"):

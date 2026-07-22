@@ -14,7 +14,8 @@ INLINE_STYLE_BASELINE = 0
 STYLE_BLOCK_BASELINE = 0
 DOM_STYLE_MUTATION_BASELINE = 0
 LEGACY_CSS_FILE_BASELINE = 0
-TAILWIND_RAW_BUDGET = 150_000
+# Governed Python-rendered pages add utility classes after template scanning.
+TAILWIND_RAW_BUDGET = 155_000
 TAILWIND_GZIP_BUDGET = 25_000
 JAVASCRIPT_RAW_BUDGET = 50_000
 JAVASCRIPT_GZIP_BUDGET = 15_000
@@ -164,6 +165,14 @@ def test_tailwind_input_and_all_public_links_are_present() -> None:
             offenders[str(path.relative_to(LANDING_ROOT))] = links
 
     assert not offenders, f"Non-canonical stylesheet ownership remains: {offenders}"
+
+
+def test_generated_homepage_utility_classes_are_in_the_built_bundle() -> None:
+    """Ensure Python-generated hero markup is included in Tailwind content scanning."""
+    css = (LANDING_ROOT / "css" / "tailwind.min.css").read_text(encoding="utf-8")
+    required = (".h-2", ".h-full", ".w-4\\/5", ".bg-emerald-400")
+    missing = [selector for selector in required if selector not in css]
+    assert not missing, f"Generated homepage utilities are missing from CSS: {missing}"
 
 
 def test_public_stylesheet_and_preload_paths_resolve_to_built_asset() -> None:
