@@ -166,6 +166,38 @@ def test_tailwind_input_and_all_public_links_are_present() -> None:
     assert not offenders, f"Non-canonical stylesheet ownership remains: {offenders}"
 
 
+def test_public_stylesheet_and_preload_paths_resolve_to_built_asset() -> None:
+    """Catch relative CSS paths that look canonical but resolve outside the publication."""
+    root = LANDING_ROOT.resolve()
+    offenders: dict[str, object] = {}
+    for path in _public_html_files():
+        html = path.read_text(encoding="utf-8")
+        stylesheets = re.findall(
+            r'<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"',
+            html,
+            flags=re.IGNORECASE,
+        )
+        preloads = re.findall(
+            r'<link\b(?=[^>]*\brel="preload")(?=[^>]*\bas="style")[^>]*\bhref="([^"]+)"',
+            html,
+            flags=re.IGNORECASE,
+        )
+        if len(stylesheets) != 1 or (preloads and preloads != stylesheets):
+            offenders[str(path.relative_to(LANDING_ROOT))] = (stylesheets, preloads)
+            continue
+        href = stylesheets[0].split("?", 1)[0].split("#", 1)[0]
+        target = (root / href.lstrip("/")) if href.startswith("/") else (path.parent / href).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            offenders[str(path.relative_to(LANDING_ROOT))] = href
+            continue
+        if target != root / "css" / "tailwind.min.css" or not target.is_file():
+            offenders[str(path.relative_to(LANDING_ROOT))] = href
+
+    assert not offenders, f"Public CSS paths do not resolve to the built bundle: {offenders}"
+
+
 def test_shared_shell_templates_are_tailwind_owned() -> None:
     """Reject parallel legacy ownership of the shared header, footer and CTA form."""
     sources = {
