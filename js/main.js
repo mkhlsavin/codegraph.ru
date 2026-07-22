@@ -551,6 +551,7 @@
 
     closeButton?.addEventListener('click', closeViewer);
     backdrop?.addEventListener('click', closeViewer);
+    image.addEventListener('click', closeViewer);
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !viewer.hidden) {

@@ -318,7 +318,11 @@ def test_whitepaper_links_scenarios_and_shows_scalable_product_ui() -> None:
         link = figure.find("a", href=True)
         image = figure.find("img")
         caption = figure.find("figcaption")
-        assert link is not None and link.get("target") == "_blank"
+        assert link is not None
+        assert link.has_attr("data-screen-viewer")
+        assert link.get("target") is None
+        assert link.get("data-screen-title")
+        assert link.get("data-screen-description")
         assert image is not None and image.get("src") == link.get("href")
         assert image.get("alt") and image.get("width") and image.get("height")
         assert image.get("loading") == "lazy"
