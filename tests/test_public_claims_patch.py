@@ -204,6 +204,7 @@ def test_benchmark_metadata_matches_unpublished_evidence_status() -> None:
     benchmark = (LANDING_ROOT / "research" / "tochnost-otvetov-i-skorost-razbora.html").read_text(encoding="utf-8")
     for phrase in (
         "Точность ответов и скорость разбора CodeGraph",
+        "Как публиковать benchmark CodeGraph",
         "опубликованные цифры CodeGraph",
         "опубликованные на сайте CodeGraph контрольные измерения",
         '"articleSection": "Данные"',
@@ -211,8 +212,11 @@ def test_benchmark_metadata_matches_unpublished_evidence_status() -> None:
         "Эти цифры полезны как ориентир",
     ):
         assert phrase not in benchmark
-    assert "Как публиковать benchmark CodeGraph" in benchmark
-    assert "<h1>Как публиковать benchmark CodeGraph</h1>" in benchmark
+    assert "Методика оценки точности и скорости разбора CodeGraph" in benchmark
+    assert re.search(
+        r"<h1>Методика\s+оценки\s+точности\s+и\s+скорости\s+разбора\s+CodeGraph</h1>",
+        benchmark,
+    )
     assert "Шаблон доказательного пакета для будущих измерений CodeGraph." in benchmark
     assert '"articleSection": "Методология"' in benchmark
 
