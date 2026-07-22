@@ -274,6 +274,18 @@ def test_generated_release_one_pages_use_the_tailwind_shared_shell() -> None:
     assert "data-shell-cta" in index
 
 
+def test_generated_freshness_labels_stay_inside_the_final_cta() -> None:
+    """Keep generated update dates on the CTA background, not after ``main``."""
+    for relative in ("security.html", "whitepaper.html", "productivity.html"):
+        html = (LANDING_ROOT / relative).read_text(encoding="utf-8")
+        label_position = html.find("data-freshness-label")
+        main_end = html.find("</main>")
+        final_section_start = html.rfind("<section", 0, main_end)
+
+        assert label_position >= 0, relative
+        assert final_section_start < label_position < main_end, relative
+
+
 def test_release_one_has_no_inline_style_escape_hatch() -> None:
     """Keep every initial Tailwind surface free of inline and embedded styles."""
     targets = [
