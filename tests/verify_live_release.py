@@ -25,6 +25,7 @@ EXTRA_PUBLIC_ROUTES = (
     "downloads/digital-role-passport/role-passport.html",
 )
 REQUIRED_PUBLIC_ASSETS = (
+    "css/tailwind.min.css",
     "downloads/digital-role-passport/CODEGRAPH_DIGITAL_ROLE_PASSPORT.pdf",
 )
 ROBOTS_POLICY = {
@@ -45,6 +46,8 @@ class HomeContractParser(HTMLParser):
         self.release = ""
         self.canonical = ""
         self.robots = ""
+        self.stylesheet = ""
+        self.style_preload = ""
         self._capture = ""
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -58,6 +61,14 @@ class HomeContractParser(HTMLParser):
             self.robots = attributes.get("content") or ""
         if tag == "link" and attributes.get("rel", "").casefold() == "canonical":
             self.canonical = attributes.get("href") or ""
+        if tag == "link" and attributes.get("rel", "").casefold() == "stylesheet":
+            self.stylesheet = attributes.get("href") or ""
+        if (
+            tag == "link"
+            and attributes.get("rel", "").casefold() == "preload"
+            and attributes.get("as", "").casefold() == "style"
+        ):
+            self.style_preload = attributes.get("href") or ""
 
     def handle_endtag(self, tag: str) -> None:
         """Stop text capture at the matching closing element."""
@@ -168,6 +179,10 @@ def verify_once(base_url: str, root: Path, release: str) -> dict[str, object]:
             failures.append(f"{route}: title differs from local")
         if _normalized_text(public_parser.h1) != _normalized_text(local_parser.h1):
             failures.append(f"{route}: H1 differs from local")
+        if public_parser.stylesheet != local_parser.stylesheet:
+            failures.append(f"{route}: stylesheet link differs from local")
+        if public_parser.style_preload != local_parser.style_preload:
+            failures.append(f"{route}: stylesheet preload differs from local")
         expected_robots = ROBOTS_POLICY.get(route, "")
         if _normalized_robots(public_parser.robots) != expected_robots:
             failures.append(f"{route}: robots={public_parser.robots!r}, expected={expected_robots!r}")

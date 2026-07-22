@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_CATEGORY = (
-    "CodeGraph — решение для управления разработкой цифровых продуктов, выполняемой с помощью ИИ."
+    "CodeGraph — решение для управляемой разработки цифровых продуктов с участием ИИ."
 )
 
 FORBIDDEN_MARKETING_PATTERNS = {
@@ -198,3 +199,43 @@ def test_legacy_hero_copy_is_absent_from_all_templates() -> None:
             if phrase in source:
                 findings.append(f"{path.relative_to(LANDING_ROOT)}: {phrase}")
     assert not findings, "Legacy hero copy remains:\n" + "\n".join(findings)
+
+
+def test_legacy_category_copy_is_absent_from_public_html() -> None:
+    """Keep generated pages aligned with the canonical positioning sentence."""
+    legacy = "решение для управления разработкой цифровых продуктов, выполняемой с"
+    findings: list[str] = []
+    for path in LANDING_ROOT.rglob("*.html"):
+        relative = path.relative_to(LANDING_ROOT)
+        if "node_modules" in relative.parts or path.name.startswith("yandex_"):
+            continue
+        if legacy in path.read_text(encoding="utf-8"):
+            findings.append(str(relative))
+    assert not findings, "Legacy category copy remains:\n" + "\n".join(findings)
+
+
+def test_public_pages_use_the_generated_versioned_tailwind_bundle() -> None:
+    """Prevent HTML from pointing at an unversioned or stale CSS asset."""
+    css_path = LANDING_ROOT / "css" / "tailwind.min.css"
+    version = hashlib.sha256(css_path.read_bytes()).hexdigest()[:12]
+    offenders: list[str] = []
+    for path in LANDING_ROOT.rglob("*.html"):
+        relative = path.relative_to(LANDING_ROOT)
+        if "node_modules" in relative.parts or "templates" in relative.parts or path.name.startswith("yandex_"):
+            continue
+        source = path.read_text(encoding="utf-8")
+        stylesheets = re.findall(
+            r'<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"',
+            source,
+            flags=re.IGNORECASE,
+        )
+        preloads = re.findall(
+            r'<link\b(?=[^>]*\brel="preload")(?=[^>]*\bas="style")[^>]*\bhref="([^"]+)"',
+            source,
+            flags=re.IGNORECASE,
+        )
+        if len(stylesheets) != 1 or not stylesheets[0].endswith(f"?v={version}"):
+            offenders.append(f"{relative}: {stylesheets}")
+        if preloads and preloads != stylesheets:
+            offenders.append(f"{relative}: preload={preloads}, stylesheet={stylesheets}")
+    assert not offenders, "Unversioned or mismatched Tailwind links:\n" + "\n".join(offenders)
