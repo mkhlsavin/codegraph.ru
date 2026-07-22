@@ -131,7 +131,7 @@
       cta_variant: ctaVariant || pageContext.defaultCtaVariant
     });
 
-    return `index.html?${params.toString()}#demo`;
+    return `/?${params.toString()}#demo`;
   }
 
   function getLeadContext() {
@@ -173,7 +173,7 @@
     }
 
     const pageContext = getPageContextBySource(currentPageName);
-    const demoLinks = document.querySelectorAll('a[href="index.html#demo"], a[href^="index.html#demo"]');
+    const demoLinks = document.querySelectorAll('a[href="/#demo"]');
 
     demoLinks.forEach(link => {
       const ctaVariant = inferCtaVariant(link, pageContext.sourcePage);

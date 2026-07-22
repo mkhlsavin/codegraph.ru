@@ -8,7 +8,7 @@ from pathlib import Path
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_CATEGORY = (
-    "CodeGraph — решение для управления разработкой цифровых продуктов, выполняемой с помощью ИИ."
+    "CodeGraph — решение для управляемой разработки цифровых продуктов с участием ИИ."
 )
 
 FORBIDDEN_MARKETING_PATTERNS = {
@@ -139,3 +139,23 @@ def test_home_and_shared_sources_use_the_canonical_category() -> None:
     ]
 
     assert not missing, f"Canonical category is missing from: {missing}"
+
+
+def test_public_ctas_do_not_route_through_legacy_index_file() -> None:
+    """Keep every public CTA on the canonical root document."""
+    forbidden = ("index.html#demo", "../index.html#demo")
+    findings = []
+    for path in _public_projection_files():
+        text = path.read_text(encoding="utf-8")
+        if any(value in text for value in forbidden):
+            findings.append(str(path.relative_to(LANDING_ROOT)))
+    assert not findings, "Legacy homepage CTA targets remain: " + ", ".join(findings)
+
+
+def test_privacy_page_has_real_security_link_and_canonical_cta() -> None:
+    """Reject escaped markup and obsolete documentation paths in privacy.html."""
+    privacy = (LANDING_ROOT / "privacy.html").read_text(encoding="utf-8")
+    assert '&lt;a' not in privacy
+    assert '/документация/' not in privacy
+    assert 'href="/docs/ru/enterprise/SECURITY_BRIEF.html"' in privacy
+    assert 'href="/#demo"' in privacy
