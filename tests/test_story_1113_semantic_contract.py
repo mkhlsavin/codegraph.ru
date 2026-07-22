@@ -122,9 +122,28 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
     generator_path = LANDING_ROOT.parents[1] / "scripts" / "story_1113_public_pages.py"
     if generator_path.is_file():
         generator = generator_path.read_text(encoding="utf-8")
-        assert 'docs" / "business" / "brand" / "logo-golden-ratio-preview.png' in generator
+        assert "Draw the compact geometric mark directly" in generator
         for stale_claim in ("AI-копилот", "Hybrid RAG", "21 сценарий", "95.6% точность"):
             assert stale_claim not in generator
+
+
+def test_nested_pages_use_declared_context_for_cta_routing() -> None:
+    """Use the page contract, not only the last URL segment, for nested CTAs."""
+    source = (LANDING_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+    assert "document.querySelector('main[data-page-id]')?.dataset.pageId" in source
+    assert "if (declared) return declared;" in source
+
+    expected = {
+        "compare/codegraph-fortify.html": "compare-codegraph-fortify",
+        "scenarios/ai-code-control.html": "scenarios-ai-code-control",
+        "problems/kak-ponyat-chuzhuyu-kodovuyu-bazu.html": "problems-kak-ponyat-chuzhuyu-kodovuyu-bazu",
+        "research/tochnost-otvetov-i-skorost-razbora.html": "research-tochnost-otvetov-i-skorost-razbora",
+        "authors/mikhail-savin.html": "authors-mikhail-savin",
+    }
+    for route, page_id in expected.items():
+        main = _soup(route).find("main", attrs={"data-page-id": True})
+        assert main is not None
+        assert main["data-page-id"] == page_id
 
 
 def test_visible_logo_uses_versioned_approved_geometric_lockup() -> None:

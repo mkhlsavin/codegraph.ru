@@ -97,6 +97,9 @@
   const DOM = {};
 
   function getCurrentPageName() {
+    const declared = document.querySelector('main[data-page-id]')?.dataset.pageId;
+    if (declared) return declared;
+
     const pathname = window.location.pathname || '';
     const lastSegment = pathname.split('/').filter(Boolean).pop() || 'index.html';
     return lastSegment.replace(/\.html$/u, '') || 'index';
