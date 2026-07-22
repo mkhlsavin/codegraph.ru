@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 
 EXPECTED_TITLE = "CodeGraph — связь инициативы, кода и решения о выпуске"
 EXPECTED_H1 = "Свяжите продуктовую инициативу с кодом, проверками и решением о выпуске"
-EXPECTED_RELEASE = "landing-audit-20260722-v3"
+EXPECTED_RELEASE = "landing-audit-20260722-v4"
 FORBIDDEN_TEXT = ("21 сценарий", "0,83")
 EXTRA_PUBLIC_ROUTES = (
     "research/tochnost-otvetov-i-skorost-razbora.html",

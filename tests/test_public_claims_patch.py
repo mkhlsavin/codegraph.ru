@@ -188,6 +188,35 @@ def test_comparison_rows_link_to_their_source_scope() -> None:
         assert 'href="#source-scope"' in source
 
 
+def test_public_person_schema_does_not_repeat_unverified_tenure() -> None:
+    """Keep author authority claims aligned between visible copy and JSON-LD."""
+    forbidden = "Более 15 лет в кибербезопасности и анализе кода"
+    findings = []
+    for path in (LANDING_ROOT / "authors", LANDING_ROOT / "compare", LANDING_ROOT / "problems", LANDING_ROOT / "research"):
+        for page in path.rglob("*.html"):
+            if forbidden in page.read_text(encoding="utf-8"):
+                findings.append(str(page.relative_to(LANDING_ROOT)))
+    assert not findings, "Unverified author tenure remains: " + ", ".join(findings)
+
+
+def test_benchmark_metadata_matches_unpublished_evidence_status() -> None:
+    """Keep machine-readable benchmark metadata aligned with visible content."""
+    benchmark = (LANDING_ROOT / "research" / "tochnost-otvetov-i-skorost-razbora.html").read_text(encoding="utf-8")
+    for phrase in (
+        "Точность ответов и скорость разбора CodeGraph",
+        "опубликованные цифры CodeGraph",
+        "опубликованные на сайте CodeGraph контрольные измерения",
+        '"articleSection": "Данные"',
+        "Можно ли переносить эти цифры на любой контур без оговорок?",
+        "Эти цифры полезны как ориентир",
+    ):
+        assert phrase not in benchmark
+    assert "Как публиковать benchmark CodeGraph" in benchmark
+    assert "<h1>Как публиковать benchmark CodeGraph</h1>" in benchmark
+    assert "Шаблон доказательного пакета для будущих измерений CodeGraph." in benchmark
+    assert '"articleSection": "Методология"' in benchmark
+
+
 def test_all_non_documentation_pages_declare_form_context() -> None:
     """Require every public landing route to expose its declarative lead context."""
     required = (
