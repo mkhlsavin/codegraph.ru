@@ -178,6 +178,16 @@ def test_benchmark_page_is_a_reproducible_template_until_evidence_exists() -> No
         assert field in benchmark
 
 
+def test_comparison_rows_link_to_their_source_scope() -> None:
+    """Keep competitor claims navigable to the dated primary-source scope."""
+    comparison_paths = sorted((LANDING_ROOT / "compare").glob("*.html"))
+    assert comparison_paths
+    for path in comparison_paths:
+        source = path.read_text(encoding="utf-8")
+        assert 'id="source-scope"' in source
+        assert 'href="#source-scope"' in source
+
+
 def test_all_non_documentation_pages_declare_form_context() -> None:
     """Require every public landing route to expose its declarative lead context."""
     required = (
