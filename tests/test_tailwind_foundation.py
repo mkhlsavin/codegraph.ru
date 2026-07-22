@@ -65,7 +65,6 @@ LEGACY_SHARED_SHELL_CLASSES = {
     "form-group",
     "cta-alternatives",
     "cta-alt-btn",
-    "page-freshness-note",
     "btn",
     "btn-primary",
     "btn-outline",
