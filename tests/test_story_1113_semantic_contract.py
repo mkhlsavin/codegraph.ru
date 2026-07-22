@@ -89,11 +89,11 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
     """Keep every social card on the current category and cache-busted assets."""
     expected = {
         "index.html": (
-                "og-codegraph-platform-20260720.png",
+                "og-codegraph-platform-20260722.png",
                 "CodeGraph — решение для управляемой разработки цифровых продуктов с участием ИИ",
         ),
         "whitepaper.html": (
-            "og-codegraph-whitepaper-20260720.png",
+            "og-codegraph-platform-20260722.png",
             "Техническое описание CodeGraph: портфель, PDLC, SDLC и готовность к выпуску",
         ),
     }
