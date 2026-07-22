@@ -159,3 +159,42 @@ def test_privacy_page_has_real_security_link_and_canonical_cta() -> None:
     assert '/документация/' not in privacy
     assert 'href="/docs/ru/enterprise/SECURITY_BRIEF.html"' in privacy
     assert 'href="/#demo"' in privacy
+
+
+def test_all_non_documentation_pages_declare_form_context() -> None:
+    """Require every public landing route to expose its declarative lead context."""
+    required = (
+        "data-page-id",
+        "data-page-stage",
+        "data-buyer-role",
+        "data-initiative-task",
+        "data-intent",
+        "data-use-case",
+    )
+    offenders: list[str] = []
+    for path in _public_projection_files():
+        relative = path.relative_to(LANDING_ROOT)
+        if path.suffix.lower() != ".html" or "docs" in relative.parts or "templates" in relative.parts:
+            continue
+        source = path.read_text(encoding="utf-8")
+        main = re.search(r"<main\b[^>]*>", source, flags=re.IGNORECASE)
+        if main is None or any(attribute not in main.group(0) for attribute in required):
+            offenders.append(str(relative))
+    assert not offenders, "Pages without declarative form context: " + ", ".join(offenders)
+
+
+def test_legacy_hero_copy_is_absent_from_all_templates() -> None:
+    """Prevent an unused legacy hero fragment from reintroducing stale positioning."""
+    forbidden = (
+        "CodeGraph — цифровая команда для ИТ-бизнеса",
+        "Снижайте стоимость разработки",
+        "Сдерживание роста ФОТ",
+        "Больше результата тем же составом",
+    )
+    findings: list[str] = []
+    for path in (LANDING_ROOT / "templates").rglob("*.html"):
+        source = path.read_text(encoding="utf-8")
+        for phrase in forbidden:
+            if phrase in source:
+                findings.append(f"{path.relative_to(LANDING_ROOT)}: {phrase}")
+    assert not findings, "Legacy hero copy remains:\n" + "\n".join(findings)

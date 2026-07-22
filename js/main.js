@@ -102,9 +102,28 @@
     return lastSegment.replace(/\.html$/u, '') || 'index';
   }
 
+  function getDeclarativePageContext(sourcePage) {
+    const main = document.querySelector('main[data-page-id]');
+    if (!main || main.dataset.pageId !== sourcePage) {
+      return null;
+    }
+    const data = main.dataset;
+    return initiativeContext(
+      data.pageId,
+      data.intent || 'page_review',
+      data.useCase || data.pageId,
+      {
+        pageLabel: data.pageLabel || data.pageId,
+        pageStage: data.pageStage || 'commercial',
+        buyerRole: data.buyerRole || '',
+        initiativeTask: data.initiativeTask || 'other'
+      }
+    );
+  }
+
   function getPageContextBySource(sourcePage) {
     const normalizedSource = (sourcePage || 'index').replace(/\.html$/u, '');
-    return PAGE_CONTEXTS[normalizedSource] || PAGE_CONTEXTS.index;
+    return getDeclarativePageContext(normalizedSource) || PAGE_CONTEXTS[normalizedSource] || PAGE_CONTEXTS.index;
   }
 
   function inferCtaVariant(element, fallbackSource) {
