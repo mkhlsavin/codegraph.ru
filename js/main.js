@@ -807,6 +807,44 @@
     });
   }
 
+  // ============================================
+  // Effect Calculator
+  // ============================================
+  function initEffectCalculator() {
+    const form = document.getElementById('effect-calculator-form');
+    const result = document.getElementById('effect-calculator-result');
+    if (!form || !result) return;
+
+    const formatRubles = (value) => `${Math.round(value).toLocaleString('ru-RU')} ₽`;
+    const formatPeople = (value) => Math.round(value).toLocaleString('ru-RU');
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const team = Number(form.elements.team.value);
+      const monthlyCost = Number(form.elements.cost.value);
+      const commitments = Number(form.elements.commitments.value);
+      const delayRate = Number(form.elements.delay.value);
+      if (![team, monthlyCost, commitments, delayRate].every(Number.isFinite)) return;
+
+      const annualCost = team * monthlyCost * 12;
+      const targetMin = team * 0.6;
+      const targetMax = team * 0.7;
+      const savingMin = annualCost * 0.3;
+      const savingMax = annualCost * 0.4;
+      const currentDelays = Math.round(commitments * delayRate / 100);
+      const targetDelaysMin = Math.ceil(currentDelays / 4);
+      const targetDelaysMax = Math.ceil(currentDelays / 3);
+
+      result.querySelector('[data-calculator="current-cost"]').textContent = formatRubles(annualCost);
+      result.querySelector('[data-calculator="target-team"]').textContent = `${formatPeople(targetMin)}–${formatPeople(targetMax)}`;
+      result.querySelector('[data-calculator="saving"]').textContent = `${formatRubles(savingMin)}–${formatRubles(savingMax)}`;
+      result.querySelector('[data-calculator="delays"]').textContent = `${currentDelays} → ${targetDelaysMin}–${targetDelaysMax}`;
+      result.hidden = false;
+      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      trackGoal('effect_calculated', { team_size: team, commitments, delay_rate: delayRate });
+    });
+  }
+
   async function runSolutionDemo(query) {
     // Animate pipeline
     animatePipeline();
@@ -1535,6 +1573,7 @@
     initFAQ();
     initIntegrationFilters();
     initDigitalRoleFilters();
+    initEffectCalculator();
     initCounters();
     initScrollAnimations();
     initFormValidation();
