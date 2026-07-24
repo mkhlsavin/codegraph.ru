@@ -30,9 +30,9 @@
       pageStage = 'commercial',
       buyerRole = '',
       initiativeTask = 'other',
-      formTitle = 'Разобрать одну продуктовую инициативу',
+      formTitle = 'Получить расчёт пилота',
       formDescription = 'На встрече зафиксируем задачу, требования, область влияния и необходимые подтверждения. Это не обещание автоматически подготовить полную спецификацию.',
-      formButton = 'Разобрать инициативу'
+      formButton = 'Получить расчёт пилота'
     } = options;
     return {
       pageId: sourcePage,
@@ -432,6 +432,7 @@
     DOM.intentInput = document.getElementById('intent');
     DOM.ctaVariantInput = document.getElementById('cta-variant');
     DOM.useCaseInput = document.getElementById('use-case');
+    DOM.calculatorContextInput = document.getElementById('calculator-context');
     // Solution section demo
     DOM.questionInput = document.getElementById('question-input');
     DOM.askBtn = document.getElementById('ask-btn');
@@ -586,6 +587,7 @@
   // Smooth Scroll
   // ============================================
   function initSmoothScroll() {
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function(e) {
         e.preventDefault();
@@ -594,7 +596,7 @@
           const offsetTop = target.offsetTop - CONFIG.scrollOffset;
           window.scrollTo({
             top: offsetTop,
-            behavior: 'smooth'
+            behavior: prefersReducedMotion ? 'auto' : 'smooth'
           });
         }
       });
@@ -709,7 +711,7 @@
         moreLink.textContent = ' Подробнее →';
         moreLink.addEventListener('click', (e) => {
           e.preventDefault();
-          document.querySelector('#solution').scrollIntoView({ behavior: 'smooth' });
+          document.querySelector('#solution').scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         });
         DOM.demoOutput.appendChild(moreLink);
       }
@@ -817,6 +819,27 @@
 
     const formatRubles = (value) => `${Math.round(value).toLocaleString('ru-RU')} ₽`;
     const formatPeople = (value) => Math.round(value).toLocaleString('ru-RU');
+    const scenarios = {
+      conservative: { power: 0.10, delayFactor: 1.5, label: 'Консервативный' },
+      base: { power: 0.20, delayFactor: 2, label: 'Базовый' },
+      target: { power: 0.35, delayFactor: 3.5, label: 'Целевой' }
+    };
+    const saveSnapshot = (snapshot) => {
+      const serialized = JSON.stringify(snapshot);
+      if (DOM.calculatorContextInput) DOM.calculatorContextInput.value = serialized;
+      try {
+        sessionStorage.setItem('codegraph_pilot_scenario', serialized);
+      } catch (error) {
+        // Storage can be disabled; the hidden field still carries the context.
+      }
+    };
+
+    try {
+      const saved = sessionStorage.getItem('codegraph_pilot_scenario');
+      if (saved && DOM.calculatorContextInput) DOM.calculatorContextInput.value = saved;
+    } catch (error) {
+      // Continue without persisted calculator context.
+    }
 
     form.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -824,24 +847,35 @@
       const monthlyCost = Number(form.elements.cost.value);
       const commitments = Number(form.elements.commitments.value);
       const delayRate = Number(form.elements.delay.value);
+      const scenarioKey = form.elements.scenario.value || 'base';
+      const scenario = scenarios[scenarioKey] || scenarios.base;
       if (![team, monthlyCost, commitments, delayRate].every(Number.isFinite)) return;
 
       const annualCost = team * monthlyCost * 12;
-      const targetMin = team * 0.6;
-      const targetMax = team * 0.7;
-      const savingMin = annualCost * 0.3;
-      const savingMax = annualCost * 0.4;
+      const targetTeam = team * (1 - scenario.power);
+      const savingMin = annualCost * scenario.power;
       const currentDelays = Math.round(commitments * delayRate / 100);
-      const targetDelaysMin = Math.ceil(currentDelays / 4);
-      const targetDelaysMax = Math.ceil(currentDelays / 3);
+      const targetDelaysMin = Math.ceil(currentDelays / scenario.delayFactor);
+      const snapshot = {
+        scenario: scenarioKey,
+        scenario_label: scenario.label,
+        team,
+        monthly_cost: monthlyCost,
+        commitments,
+        delay_rate: delayRate,
+        annual_cost: Math.round(annualCost),
+        power_rate: scenario.power,
+        delay_factor: scenario.delayFactor
+      };
 
       result.querySelector('[data-calculator="current-cost"]').textContent = formatRubles(annualCost);
-      result.querySelector('[data-calculator="target-team"]').textContent = `${formatPeople(targetMin)}–${formatPeople(targetMax)}`;
-      result.querySelector('[data-calculator="saving"]').textContent = `${formatRubles(savingMin)}–${formatRubles(savingMax)}`;
-      result.querySelector('[data-calculator="delays"]').textContent = `${currentDelays} → ${targetDelaysMin}–${targetDelaysMax}`;
+      result.querySelector('[data-calculator="target-team"]').textContent = formatPeople(targetTeam);
+      result.querySelector('[data-calculator="saving"]').textContent = formatRubles(savingMin);
+      result.querySelector('[data-calculator="delays"]').textContent = `${currentDelays} → ${targetDelaysMin}`;
+      saveSnapshot(snapshot);
       result.hidden = false;
-      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      trackGoal('effect_calculated', { team_size: team, commitments, delay_rate: delayRate });
+      result.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+      trackGoal('effect_calculated', { team_size: team, commitments, delay_rate: delayRate, scenario: scenarioKey });
     });
   }
 
@@ -1237,7 +1271,7 @@
     // Apply Russian validation to all form inputs
     const formInputs = DOM.demoForm.querySelectorAll('input, select, textarea');
     const submitBtn = DOM.demoForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn?.textContent || 'Разобрать инициативу';
+    const originalText = submitBtn?.textContent || 'Получить расчёт пилота';
     let formStarted = false;
     const leadContext = getLeadContext();
     const formEventContext = eventContext(leadContext);
@@ -1345,15 +1379,23 @@
         });
 
         // Collect form data
+        const teamSize = DOM.demoForm.querySelector('#team-size')?.value || null;
+        const teamSegment = teamSize === '80-149' ? 'icp_80_149'
+          : teamSize === '150-299' ? 'icp_150_299'
+          : teamSize === '300-499' || teamSize === '500+' ? 'upper_market'
+          : teamSize ? 'non_icp' : null;
         const formData = {
           name: DOM.demoForm.querySelector('#name').value.trim(),
           email: DOM.demoForm.querySelector('#email').value.trim(),
-          company: DOM.demoForm.querySelector('#company').value.trim(),
+          company: DOM.demoForm.querySelector('#company')?.value.trim() || 'Не указана',
           position: DOM.demoForm.querySelector('#position')?.value.trim() || DOM.buyerRoleInput?.value || null,
           buyer_role: DOM.buyerRoleInput?.value || null,
           initiative_task: DOM.initiativeTaskInput?.value || null,
-          team_size: DOM.demoForm.querySelector('#team-size')?.value || null,
+          team_size: teamSize,
+          team_segment: teamSegment,
           language: DOM.demoForm.querySelector('#language')?.value || null,
+          consent: DOM.demoForm.querySelector('#consent')?.checked || false,
+          calculator_context: DOM.calculatorContextInput?.value || null,
           source_page: leadContext.sourcePage,
           intent: leadContext.intent,
           cta_variant: leadContext.ctaVariant,

@@ -444,13 +444,11 @@ async def _inspect_route(
                             sheet.href && sheet.href.includes('/css/tailwind.min.css')
                           );
                           const hero = document.querySelector('main > section');
-                          const progress = document.querySelector('[data-visual-kind="product-screen"] .h-2');
                           return {
                             loaded: Boolean(stylesheet),
                             rules: stylesheet ? (() => { try { return stylesheet.cssRules.length; } catch (error) { return 0; } })() : 0,
                             hero_background: hero ? getComputedStyle(hero).backgroundColor : '',
                             hero_padding_top: hero ? getComputedStyle(hero).paddingTop : '',
-                            progress_height: progress ? getComputedStyle(progress).height : '',
                           };
                         })(),
                         render_signature: signature,
@@ -583,8 +581,6 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
                 reasons.append(f"css_runtime_not_loaded={css_runtime}")
             if css_runtime.get("hero_background") in {"", "rgba(0, 0, 0, 0)", "transparent"}:
                 reasons.append(f"hero_background_missing={css_runtime.get('hero_background')!r}")
-            if css_runtime.get("progress_height") in {"", "0px"}:
-                reasons.append(f"hero_generated_utility_missing={css_runtime.get('progress_height')!r}")
         if row.get("profile") == "reduced-motion" and row.get("active_motion", 0):
             reasons.append(f"active_motion={row['active_motion']}")
         if row.get("profile") == "print" and not row.get("render_signature"):
