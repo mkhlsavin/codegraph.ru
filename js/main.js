@@ -23,6 +23,21 @@
   };
 
   const METRIKA_COUNTER_ID = 107046651;
+  const FORM_COPY = {
+    title: 'Получить план пилота',
+    description: 'Проверим исходные данные, выберем один проект и согласуем показатели.',
+    button: 'Получить план пилота'
+  };
+  const FORM_GOAL_BY_TASK = {
+    'initiative-traceability': 'cost-reduction',
+    'release-readiness': 'schedule-reliability',
+    'ai-code-governance': 'ai-control',
+    'impact-analysis': 'quality',
+    'security-conformance': 'quality',
+    'technical-controls': 'quality',
+    operations: 'schedule-reliability',
+    pilot_economics: 'cost-reduction'
+  };
 
   function initiativeContext(sourcePage, intent, useCase, options = {}) {
     const {
@@ -249,20 +264,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const leadContext = getLeadContext();
-    const { pageContext } = leadContext;
     const hasContext = params.has('source_page') && leadContext.sourcePage !== 'index';
-
-    if (DOM.demoHeading && !DOM.demoHeading.dataset.defaultText) {
-      DOM.demoHeading.dataset.defaultText = DOM.demoHeading.textContent.trim();
-    }
-
-    if (DOM.demoDescription && !DOM.demoDescription.dataset.defaultText) {
-      DOM.demoDescription.dataset.defaultText = DOM.demoDescription.textContent.trim();
-    }
-
-    if (DOM.demoSubmitBtn && !DOM.demoSubmitBtn.dataset.defaultText) {
-      DOM.demoSubmitBtn.dataset.defaultText = DOM.demoSubmitBtn.textContent.trim();
-    }
 
     if (DOM.sourcePageInput) {
       DOM.sourcePageInput.value = leadContext.sourcePage;
@@ -289,45 +291,27 @@
       DOM.buyerRoleInput.value = leadContext.buyerRole;
     }
     if (hasContext && DOM.initiativeTaskInput && leadContext.initiativeTask) {
-      DOM.initiativeTaskInput.value = leadContext.initiativeTask;
-    }
-
-    if (!hasContext) {
-      if (DOM.demoHeading?.dataset.defaultText) {
-        DOM.demoHeading.textContent = DOM.demoHeading.dataset.defaultText;
+      const taskValue = FORM_GOAL_BY_TASK[leadContext.initiativeTask] || leadContext.initiativeTask;
+      if ([...DOM.initiativeTaskInput.options].some(option => option.value === taskValue)) {
+        DOM.initiativeTaskInput.value = taskValue;
       }
-
-      if (DOM.demoDescription?.dataset.defaultText) {
-        DOM.demoDescription.textContent = DOM.demoDescription.dataset.defaultText;
-      }
-
-      if (DOM.demoSubmitBtn?.dataset.defaultText) {
-        DOM.demoSubmitBtn.textContent = DOM.demoSubmitBtn.dataset.defaultText;
-      }
-
-      if (DOM.demoContextNote) {
-        DOM.demoContextNote.textContent = '';
-        DOM.demoContextNote.hidden = true;
-      }
-
-      return;
     }
 
     if (DOM.demoHeading) {
-      DOM.demoHeading.textContent = pageContext.formTitle;
+      DOM.demoHeading.textContent = FORM_COPY.title;
     }
 
     if (DOM.demoDescription) {
-      DOM.demoDescription.textContent = pageContext.formDescription;
+      DOM.demoDescription.textContent = FORM_COPY.description;
     }
 
     if (DOM.demoSubmitBtn) {
-      DOM.demoSubmitBtn.textContent = pageContext.formButton;
+      DOM.demoSubmitBtn.textContent = FORM_COPY.button;
     }
 
     if (DOM.demoContextNote) {
-      DOM.demoContextNote.textContent = pageContext.contextNote;
-      DOM.demoContextNote.hidden = !pageContext.contextNote;
+      DOM.demoContextNote.textContent = '';
+      DOM.demoContextNote.hidden = true;
     }
   }
 
@@ -820,9 +804,9 @@
     const formatRubles = (value) => `${Math.round(value).toLocaleString('ru-RU')} ₽`;
     const formatPeople = (value) => Math.round(value).toLocaleString('ru-RU');
     const scenarios = {
-      conservative: { power: 0.10, delayFactor: 1.5, label: 'Консервативный' },
-      base: { power: 0.20, delayFactor: 2, label: 'Базовый' },
-      target: { power: 0.35, delayFactor: 3.5, label: 'Целевой' }
+      conservative: { teamReductionMin: 0.10, teamReductionMax: 0.10, delayFactorMin: 1.5, delayFactorMax: 1.5, label: 'Консервативный' },
+      base: { teamReductionMin: 0.20, teamReductionMax: 0.20, delayFactorMin: 2, delayFactorMax: 2, label: 'Базовый' },
+      target: { teamReductionMin: 0.30, teamReductionMax: 0.40, delayFactorMin: 3, delayFactorMax: 4, label: 'Целевой' }
     };
     const saveSnapshot = (snapshot) => {
       const serialized = JSON.stringify(snapshot);
@@ -852,9 +836,13 @@
       if (![team, monthlyCost, commitments, delayRate].every(Number.isFinite)) return;
 
       const annualCost = team * monthlyCost * 12;
-      const targetTeam = team * (1 - scenario.power);
+      const targetTeamMin = Math.round(team * (1 - scenario.teamReductionMax));
+      const targetTeamMax = Math.round(team * (1 - scenario.teamReductionMin));
       const currentDelays = Math.round(commitments * delayRate / 100);
-      const targetDelaysMin = Math.ceil(currentDelays / scenario.delayFactor);
+      const targetDelaysMin = Math.ceil(currentDelays / scenario.delayFactorMax);
+      const targetDelaysMax = Math.ceil(currentDelays / scenario.delayFactorMin);
+      const formatRange = (min, max) => min === max ? formatPeople(min) : `${formatPeople(min)}–${formatPeople(max)}`;
+      const formatPercentRange = (min, max) => min === max ? `${Math.round(min)}%` : `${Math.round(min)}–${Math.round(max)}%`;
       const snapshot = {
         scenario: scenarioKey,
         scenario_label: scenario.label,
@@ -863,14 +851,22 @@
         commitments,
         delay_rate: delayRate,
         annual_cost: Math.round(annualCost),
-        power_rate: scenario.power,
-        delay_factor: scenario.delayFactor
+        power_rate: scenario.teamReductionMin,
+        delay_factor: scenario.delayFactorMin === scenario.delayFactorMax ? scenario.delayFactorMin : null,
+        team_reduction_min: scenario.teamReductionMin,
+        team_reduction_max: scenario.teamReductionMax,
+        delay_factor_min: scenario.delayFactorMin,
+        delay_factor_max: scenario.delayFactorMax,
+        target_team_min: targetTeamMin,
+        target_team_max: targetTeamMax,
+        target_delays_min: targetDelaysMin,
+        target_delays_max: targetDelaysMax
       };
 
       result.querySelector('[data-calculator="current-cost"]').textContent = formatRubles(annualCost);
-      result.querySelector('[data-calculator="target-team"]').textContent = formatPeople(targetTeam);
-      result.querySelector('[data-calculator="saving"]').textContent = `${Math.round(scenario.power * 100)}%`;
-      result.querySelector('[data-calculator="delays"]').textContent = `${currentDelays} → ${targetDelaysMin}`;
+      result.querySelector('[data-calculator="target-team"]').textContent = formatRange(targetTeamMin, targetTeamMax);
+      result.querySelector('[data-calculator="saving"]').textContent = formatPercentRange(scenario.teamReductionMin * 100, scenario.teamReductionMax * 100);
+      result.querySelector('[data-calculator="delays"]').textContent = `${currentDelays} → ${formatRange(targetDelaysMin, targetDelaysMax)}`;
       saveSnapshot(snapshot);
       result.hidden = false;
       result.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
@@ -1437,7 +1433,7 @@
               });
             }
             setSubmitState('success', 'Заявка отправлена!', true);
-            setStatus('Заявка отправлена. Следующий шаг — согласовать время и состав участников разбора.', 'success');
+            setStatus('Заявка отправлена. Следующий шаг — согласовать встречу.', 'success');
             DOM.demoForm.reset();
             applyLeadContextToForm();
 
