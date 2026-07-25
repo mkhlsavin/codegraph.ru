@@ -30,9 +30,9 @@
       pageStage = 'commercial',
       buyerRole = '',
       initiativeTask = 'other',
-      formTitle = 'Получить расчёт пилота',
-      formDescription = 'На встрече зафиксируем задачу, требования, область влияния и необходимые подтверждения. Это не обещание автоматически подготовить полную спецификацию.',
-      formButton = 'Получить расчёт пилота'
+      formTitle = 'Получить план пилота',
+      formDescription = 'Проверим исходные данные, выберем один проект и согласуем показатели.',
+      formButton = 'Получить план пилота'
     } = options;
     return {
       pageId: sourcePage,
@@ -54,7 +54,7 @@
   }
 
   const PAGE_CONTEXTS = {
-    index: initiativeContext('index', 'product_initiative_review', 'traceability', { pageLabel: 'Главная', pageStage: 'discovery' }),
+    index: initiativeContext('index', 'product_initiative_review', 'traceability', { pageLabel: 'Главная', pageStage: 'discovery', formTitle: 'Получить план пилота', formDescription: 'Проверим исходные данные, выберем один проект и согласуем показатели.', formButton: 'Получить план пилота' }),
     whitepaper: initiativeContext('whitepaper', 'canonical_model_review', 'traceability', { pageLabel: 'Техническое описание', pageStage: 'architecture', buyerRole: 'architecture-security', initiativeTask: 'initiative-traceability', formTitle: 'Сверить архитектурный контур', formDescription: 'Сопоставим продуктовую модель, PDLC, SDLC, хранилища, полномочия и границы данных с вашим контуром.', formButton: 'Сверить архитектурный контур' }),
     'product-delivery': initiativeContext('product-delivery', 'product_delivery_review', 'requirements_traceability', { pageLabel: 'Портфель и проекты', pageStage: 'portfolio', buyerRole: 'cpo', initiativeTask: 'initiative-traceability', formTitle: 'Разобрать статус одной инициативы', formDescription: 'Соберём основания статуса: продуктовый результат, требования, зависимости, проверки, риски и решение CPO.', formButton: 'Разобрать статус инициативы' }),
     evidence: initiativeContext('evidence', 'evidence_chain_review', 'conformance_evidence', { pageLabel: 'Доказательства', pageStage: 'proof', buyerRole: 'delivery', initiativeTask: 'release-readiness', formTitle: 'Собрать цепочку подтверждений', formDescription: 'Определим, какие требования, изменения, тесты и решения должны войти в переносимый пакет подтверждений.', formButton: 'Собрать цепочку подтверждений' }),
@@ -853,7 +853,6 @@
 
       const annualCost = team * monthlyCost * 12;
       const targetTeam = team * (1 - scenario.power);
-      const savingMin = annualCost * scenario.power;
       const currentDelays = Math.round(commitments * delayRate / 100);
       const targetDelaysMin = Math.ceil(currentDelays / scenario.delayFactor);
       const snapshot = {
@@ -870,7 +869,7 @@
 
       result.querySelector('[data-calculator="current-cost"]').textContent = formatRubles(annualCost);
       result.querySelector('[data-calculator="target-team"]').textContent = formatPeople(targetTeam);
-      result.querySelector('[data-calculator="saving"]').textContent = formatRubles(savingMin);
+      result.querySelector('[data-calculator="saving"]').textContent = `${Math.round(scenario.power * 100)}%`;
       result.querySelector('[data-calculator="delays"]').textContent = `${currentDelays} → ${targetDelaysMin}`;
       saveSnapshot(snapshot);
       result.hidden = false;
@@ -1271,7 +1270,7 @@
     // Apply Russian validation to all form inputs
     const formInputs = DOM.demoForm.querySelectorAll('input, select, textarea');
     const submitBtn = DOM.demoForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn?.textContent || 'Получить расчёт пилота';
+    const originalText = submitBtn?.textContent || 'Получить план пилота';
     let formStarted = false;
     const leadContext = getLeadContext();
     const formEventContext = eventContext(leadContext);
@@ -1393,7 +1392,6 @@
           initiative_task: DOM.initiativeTaskInput?.value || null,
           team_size: teamSize,
           team_segment: teamSegment,
-          language: DOM.demoForm.querySelector('#language')?.value || null,
           consent: DOM.demoForm.querySelector('#consent')?.checked || false,
           calculator_context: DOM.calculatorContextInput?.value || null,
           source_page: leadContext.sourcePage,
