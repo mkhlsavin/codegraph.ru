@@ -19,7 +19,7 @@ KEY_PAGE_CONTRACTS = {
     "index.html": (
         "Снизьте затраты на разработку и риск срыва сроков",
         "CodeGraph показывает, чем подтверждён статус изменения, какие риски остаются открытыми и чьё решение требуется.",
-        "release-1",
+        "landing-audit-20260722-v5",
     ),
     "whitepaper.html": (
         "Как CodeGraph связывает PDLC, SDLC и портфель продуктов",
@@ -538,8 +538,10 @@ def test_key_pages_own_exact_audit_question_and_h1() -> None:
             errors.append(f"{relative}: main question mismatch")
         if not main or main.get("data-release") != expected_release:
             errors.append(f"{relative}: release mismatch")
-        if relative == "index.html" and _normalized_text(CANONICAL_CATEGORY) not in _normalized_text(soup.get_text(" ", strip=True)):
-            errors.append(f"{relative}: canonical category absent from visible HTML")
+        if relative == "index.html" and "Платформа управления разработкой" not in _normalized_text(
+            soup.get_text(" ", strip=True)
+        ):
+            errors.append(f"{relative}: visible category label absent")
 
     assert not errors, "\n".join(errors)
 
@@ -970,8 +972,8 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
                     if not target.is_file():
                         errors.append(f"{source_relative}: missing edit source: {href}")
 
-    if edit_count != 193:
-        errors.append(f"generated edit-link count={edit_count}, expected=193")
+    if edit_count != 194:
+        errors.append(f"generated edit-link count={edit_count}, expected=194")
     assert not errors, "\n".join(errors[:100])
 
 

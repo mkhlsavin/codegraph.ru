@@ -17,12 +17,12 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/enterprise/OAUTH_LDAP.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/svg/logo-compact.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=d559c4e7798d">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8d191d1fbcdd">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"OAuth2/OIDC and LDAP/AD Integration — Documentation","description":"CodeGraph documentation: OAuth2/OIDC and LDAP/AD Integration","url":"https://codegraph.ru/docs/en/enterprise/OAUTH_LDAP.html","inLanguage":"en"}</script>
 </head>
 <body>
   <!-- Header -->
-  <header class="header">
+  <header class="docs-shell-header">
     <nav class="nav container">
       <a href="../../../" class="logo">
         <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40">
@@ -41,7 +41,7 @@
         </li>
       </ul>
 
-      <div class="header-actions">
+      <div class="docs-shell-actions">
         <button class="theme-toggle" aria-label="Toggle theme">
           <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <circle cx="12" cy="12" r="5"/>
@@ -51,7 +51,7 @@
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
         </button>
-        <a href="/#demo" class="btn btn-primary">Review an initiative</a>
+        <a href="/#demo" class="cg-button cg-button-primary">Review an initiative</a>
       </div>
 
       <button class="mobile-menu-toggle" aria-label="Menu">
@@ -548,9 +548,7 @@
 </tr>
 </tbody>
 </table></div>
-<blockquote class="callout">
-<p><strong>Known issue:</strong> The <code>LDAPAuthenticator.map_groups_to_role()</code> method accesses <code>config.group_role_mapping</code> instead of the <code>role_mapping</code> field defined in <code>LDAPConfig</code>. This causes the mapping to silently fall through to the default <code>analyst</code> role. The fix requires aligning the attribute name in <code>ldap_auth.py</code> with the <code>LDAPConfig</code> field name.</p>
-</blockquote>
+<p><code>LDAPAuthenticator.map_groups_to_role()</code> reads the canonical <code>LDAPConfig.role_mapping</code> field and accepts both configured group DNs and their CN aliases. Roles are selected in priority order (admin &gt; reviewer &gt; analyst &gt; viewer), with <code>analyst</code> as the explicit fallback.</p>
 <h3  id="ldap-user-provisioning"><span id="ldap_user_provisioning"></span>LDAP User Provisioning<a class="heading-anchor" href="#ldap-user-provisioning" title="Link to this section">&para;</a></h3>
 <p>On first LDAP login, a user is created via <code>LDAPAuthenticator</code>:</p>
 <div class="table-wrapper"><table>
@@ -826,8 +824,8 @@ WARNING  LDAP initialization skipped: &lt;error&gt;
 ldapsearch<span class="w"> </span>-H<span class="w"> </span>ldaps://ldap.corp.example.com<span class="w"> </span>-x<span class="w"> </span>-D<span class="w"> </span><span class="s2">&quot;cn=codegraph-svc,...&quot;</span><span class="w"> </span>-w<span class="w"> </span>PASSWORD<span class="w"> </span>-b<span class="w"> </span><span class="s2">&quot;dc=corp,dc=example,dc=com&quot;</span><span class="w"> </span><span class="s2">&quot;(sAMAccountName=testuser)&quot;</span>
 </code></pre></div>
 
-<h3  id="ldap-role-mapping-always-returns-analyst"><span id="ldap_role_mapping_always_returns_analyst"></span>LDAP role mapping always returns <code>analyst</code><a class="heading-anchor" href="#ldap-role-mapping-always-returns-analyst" title="Link to this section">&para;</a></h3>
-<p>The <code>LDAPAuthenticator.map_groups_to_role()</code> method has a known attribute name mismatch: it accesses <code>config.group_role_mapping</code> instead of <code>config.role_mapping</code>. Until this is fixed in <code>ldap_auth.py</code>, all LDAP users receive the default <code>analyst</code> role regardless of <code>role_mapping</code> configuration.</p>
+<h3  id="ldap-role-mapping-returns-the-default-analyst"><span id="ldap_role_mapping_returns_the_default_analyst"></span>LDAP role mapping returns the default <code>analyst</code><a class="heading-anchor" href="#ldap-role-mapping-returns-the-default-analyst" title="Link to this section">&para;</a></h3>
+<p>Verify that <code>LDAPConfig.role_mapping</code> contains the directory group DN (or its CN) mapped to one of <code>admin</code>, <code>reviewer</code>, <code>analyst</code>, or <code>viewer</code>. Unmatched groups intentionally receive the least-privileged <code>analyst</code> fallback.</p>
 <h3  id="no-siem-events-appear"><span id="no_siem_events_appear"></span>No SIEM events appear<a class="heading-anchor" href="#no-siem-events-appear" title="Link to this section">&para;</a></h3>
 <p>Verify SIEM dispatcher is enabled in <code>config.yaml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">siem</span><span class="p">:</span>
@@ -868,7 +866,7 @@ ldapsearch<span class="w"> </span>-H<span class="w"> </span>ldaps://ldap.corp.ex
 
       <!-- Footer -->
       <footer class="doc-footer">
-        <span>Last updated: 2026-07-22</span>
+        <span>Last updated: 2026-07-29</span>
         <a href="https://github.com/mkhlsavin/codegraph/edit/main/docs/enterprise/en/OAUTH_LDAP.md" target="_blank" rel="noopener">Edit on GitHub</a>
       </footer>
     </main>
@@ -907,7 +905,7 @@ ldapsearch<span class="w"> </span>-H<span class="w"> </span>ldaps://ldap.corp.ex
 <li><a href="#oauth-callback-returns-invalid-state-parameter" class="level-3">OAuth callback returns `invalid_state_parameter`</a></li>
 <li><a href="#ldap-returns-503-ldap-not-configured" class="level-3">LDAP returns 503 `ldap_not_configured`</a></li>
 <li><a href="#ldap-connection-test-fails" class="level-3">LDAP connection test fails</a></li>
-<li><a href="#ldap-role-mapping-always-returns-analyst" class="level-3">LDAP role mapping always returns `analyst`</a></li>
+<li><a href="#ldap-role-mapping-returns-the-default-analyst" class="level-3">LDAP role mapping returns the default `analyst`</a></li>
 <li><a href="#no-siem-events-appear" class="level-3">No SIEM events appear</a></li>
 <li><a href="#startup-logs-show-initialization-warnings" class="level-3">Startup logs show initialization warnings</a></li>
 <li><a href="#related-documents" class="level-2">Related Documents</a></li>

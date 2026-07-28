@@ -391,9 +391,9 @@
     DOM.demoExampleBtns = document.querySelectorAll('.demo-example-btn');
     DOM.featureTabs = document.querySelectorAll('.feature-tab');
     DOM.featurePanels = document.querySelectorAll('.features-panel');
-    DOM.faqItems = document.querySelectorAll('.faq-item');
-    DOM.faqSearch = document.querySelector('.faq-search-input');
-    DOM.faqCategoryBtns = document.querySelectorAll('.faq-category-btn');
+    DOM.faqItems = document.querySelectorAll('.cg-faq-item');
+    DOM.faqSearch = document.querySelector('.cg-faq-search');
+    DOM.faqCategoryBtns = document.querySelectorAll('.cg-faq-category-btn');
     DOM.integrationFilterBtns = document.querySelectorAll('.integration-filter-btn');
     DOM.integrationCards = document.querySelectorAll('.integration-card');
     DOM.roleFilterBtns = document.querySelectorAll('[data-role-filter]');
@@ -1071,13 +1071,15 @@
     if (!DOM.faqItems || DOM.faqItems.length === 0) return;
 
     DOM.faqItems.forEach(item => {
-      const question = item.querySelector('.faq-question');
+      const question = item.querySelector('.cg-faq-question');
       if (question) {
         question.addEventListener('click', () => {
           // Toggle current
           item.classList.toggle('open');
           const isNowOpen = item.classList.contains('open');
           question.setAttribute('aria-expanded', String(isNowOpen));
+          const answer = item.querySelector('.cg-faq-answer');
+          if (answer) answer.classList.toggle('hidden', !isNowOpen);
         });
       }
     });
@@ -1471,6 +1473,14 @@
   function initActiveNavigation() {
     const sections = document.querySelectorAll('section[id]');
 
+    const currentPath = window.location.pathname.replace(/index\.html$/u, '') || '/';
+    DOM.navLinks.forEach(link => {
+      const linkUrl = new URL(link.href, window.location.href);
+      const linkPath = linkUrl.pathname.replace(/index\.html$/u, '') || '/';
+      const isCurrentPage = linkUrl.origin === window.location.origin && linkPath === currentPath && !linkUrl.hash;
+      link.setAttribute('aria-current', isCurrentPage ? 'page' : 'false');
+    });
+
     if (sections.length === 0) return;
 
     const observer = new IntersectionObserver((entries) => {
@@ -1503,10 +1513,10 @@
     document.addEventListener('keydown', (e) => {
       if (e.target.classList.contains('feature-tab') ||
           e.target.classList.contains('scenario-tab') ||
-          e.target.classList.contains('faq-question')) {
+          e.target.classList.contains('cg-faq-question')) {
 
         const parent = e.target.parentElement;
-        const items = Array.from(parent.querySelectorAll('[role="tab"], .faq-question'));
+        const items = Array.from(parent.querySelectorAll('[role="tab"], .cg-faq-question'));
         const currentIndex = items.indexOf(e.target);
 
         let newIndex;
@@ -1562,8 +1572,8 @@
   function initAccessibility() {
     // Add ARIA attributes dynamically
     DOM.faqItems.forEach((item, index) => {
-      const question = item.querySelector('.faq-question');
-      const answer = item.querySelector('.faq-answer');
+      const question = item.querySelector('.cg-faq-question');
+      const answer = item.querySelector('.cg-faq-answer');
 
       if (question && answer) {
         question.setAttribute('aria-expanded', 'false');
