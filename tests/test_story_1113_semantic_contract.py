@@ -10,15 +10,14 @@ from urllib.parse import unquote, urlsplit
 
 from bs4 import BeautifulSoup
 from bs4.element import Comment, NavigableString
+from scripts.landing_content import SITE_CONTENT
 
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_CATEGORY = (
-    "CodeGraph — решение для управляемой разработки цифровых продуктов с участием ИИ."
-)
+CANONICAL_CATEGORY = SITE_CONTENT["canonical_category"]
 KEY_PAGE_CONTRACTS = {
     "index.html": (
-        "Свяжите продуктовую инициативу с кодом, проверками и решением о выпуске",
+        "Снизьте затраты на разработку и риск срыва сроков",
         "CodeGraph показывает, чем подтверждён статус изменения, какие риски остаются открытыми и чьё решение требуется.",
         "release-1",
     ),
@@ -90,11 +89,11 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
     expected = {
         "index.html": (
                 "og-codegraph-platform-20260722.png",
-                "CodeGraph — решение для управляемой разработки цифровых продуктов с участием ИИ",
-        ),
+                SITE_CONTENT["social_image_alt"],
+            ),
         "whitepaper.html": (
             "og-codegraph-platform-20260722.png",
-            "Техническое описание CodeGraph: портфель, PDLC, SDLC и готовность к выпуску",
+            SITE_CONTENT["social_image_alt"],
         ),
     }
     for route, (filename, alt) in expected.items():
@@ -181,51 +180,37 @@ def test_visible_logo_uses_versioned_approved_geometric_lockup() -> None:
         assert logo_name in source_text, source_path
 
 
-def test_homepage_restores_product_scale_and_management_hierarchy() -> None:
-    """Keep portfolio, architecture, audits and release readiness in the category story."""
+def test_homepage_uses_current_product_and_management_hierarchy() -> None:
+    """Keep the current cost, delivery, quality, and release story on the homepage."""
     soup = _soup("index.html")
     section_ids = {node.get("id") for node in soup.find_all("section")}
     expected_sections = {
-        "problem",
+        "hero",
+        "problems",
         "solution",
-        "digital-team",
-        "portfolio",
-        "architecture",
-        "scenarios",
-        "results",
-        "categories",
+        "effect",
+        "workflow",
+        "integrations",
         "pilot",
+        "faq",
+        "demo",
     }
-    assert expected_sections <= section_ids
+    assert section_ids == expected_sections
     visible = _normalized_text(soup.get_text(" ", strip=True))
     for required in (
-        "цикл разработки цифрового продукта (PDLC)",
-        "жизненный цикл разработки программного обеспечения (SDLC)",
-        "Портфель цифровых продуктов",
-        "Проверки и аудиты",
+        "CodeGraph управляет разработкой от задачи до выпуска",
+        "Граф кода показывает затронутые компоненты, зависимости и риски до выпуска",
         "Готовность к выпуску",
-        "решение ответственного архитектора",
+        "Ответственный руководитель",
     ):
         assert _normalized_text(required).casefold() in visible.casefold()
 
 
-def test_homepage_material_cards_link_to_matching_pages() -> None:
-    """Make every next-step material card an unambiguous navigation link."""
+def test_homepage_does_not_reintroduce_removed_story_blocks() -> None:
+    """Keep the homepage concise and do not restore the removed story blocks."""
     soup = _soup("index.html")
-    materials = soup.find("section", id="materials")
-    assert materials is not None
-
-    actual = {
-        link.find("h3").get_text(" ", strip=True): link.get("href")
-        for link in materials.select("a[href]")
-        if link.find("h3") is not None
-    }
-    assert actual == {
-        "Техническое описание": "whitepaper.html",
-        "Сравнение с\u00a0альтернативами": "docs/ru/enterprise/COMPETITIVE_MATRIX.html",
-        "Подтверждения": "evidence.html",
-        "Интеграции": "integrations.html",
-    }
+    assert soup.find("section", id="materials") is None
+    assert soup.find("section", id="scenarios") is None
 
 
 def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
@@ -258,13 +243,7 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
     }
     homepage = _soup("index.html")
     scenarios = homepage.find("section", id="scenarios")
-    assert scenarios is not None
-    actual = {
-        link.find("h3").get_text(" ", strip=True): link.get("href")
-        for link in scenarios.select("a[href]")
-        if link.find("h3") is not None
-    }
-    assert actual == {title: route for title, (route, _refs) in expected.items()}
+    assert scenarios is None
 
     required_sections = {"situation", "actions", "advantages", "benefits", "metrics", "human-decision", "requirement-basis"}
     for _title, (route, expected_refs) in expected.items():

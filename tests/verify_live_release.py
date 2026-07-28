@@ -13,10 +13,11 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urljoin, urlsplit
 from urllib.request import Request, urlopen
+from scripts.landing_content import SITE_CONTENT
 
 
-EXPECTED_TITLE = "CodeGraph — связь инициативы, кода и решения о выпуске"
-EXPECTED_H1 = "Свяжите продуктовую инициативу с кодом, проверками и решением о выпуске"
+EXPECTED_TITLE = SITE_CONTENT["canonical_seo_title"]
+EXPECTED_H1 = SITE_CONTENT["home_h1"]
 EXPECTED_RELEASE = "landing-audit-20260722-v5"
 FORBIDDEN_TEXT = ("21 сценарий", "0,83")
 EXTRA_PUBLIC_ROUTES = (
