@@ -1160,13 +1160,13 @@
         const filter = btn.getAttribute('data-role-filter') || 'all';
         DOM.roleFilterBtns.forEach(item => {
           const active = item === btn;
-          item.classList.toggle('bg-blue-600', active);
-          item.classList.toggle('text-white', active);
-          item.classList.toggle('border-blue-600', active);
-          item.classList.toggle('border-slate-300', !active);
-          item.classList.toggle('text-slate-700', !active);
-          item.classList.toggle('dark:border-slate-600', !active);
-          item.classList.toggle('dark:text-slate-200', !active);
+          item.classList.toggle('bg-cg-primary', active);
+          item.classList.toggle('text-cg-inverse', active);
+          item.classList.toggle('border-cg-primary', active);
+          item.classList.toggle('border-cg-border-strong', !active);
+          item.classList.toggle('text-cg-muted', !active);
+          item.classList.toggle('dark:border-cg-border-strong', !active);
+          item.classList.toggle('dark:text-cg-inverse-secondary', !active);
         });
         DOM.roleCards.forEach(card => {
           const group = card.getAttribute('data-role-group');

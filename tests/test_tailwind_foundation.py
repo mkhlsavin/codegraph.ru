@@ -169,7 +169,7 @@ def test_tailwind_input_and_all_public_links_are_present() -> None:
 def test_generated_homepage_utility_classes_are_in_the_built_bundle() -> None:
     """Ensure Python-generated hero markup is included in Tailwind content scanning."""
     css = (LANDING_ROOT / "css" / "tailwind.min.css").read_text(encoding="utf-8")
-    required = (".h-2", ".h-full", ".w-4\\/5", ".bg-emerald-400")
+    required = (".h-2", ".h-full", ".w-4\\/5", ".bg-cg-success")
     missing = [selector for selector in required if selector not in css]
     assert not missing, f"Generated homepage utilities are missing from CSS: {missing}"
 
