@@ -94,6 +94,11 @@ HARD_FIELDS = (
     "drawer_focus_returned",
     "active_nav_visual",
     "editorial_card_shadows",
+    "diagram_text_contrast_light",
+    "diagram_text_contrast_dark",
+    "diagram_edge_contrast",
+    "diagram_active_node_count",
+    "diagram_unclassified_text",
 )
 
 
@@ -399,6 +404,72 @@ async def _inspect_route(
                             });
                           }).filter((value) => value > 0))
                         : 0;
+                      const contrastRatio = (foregroundColor, backgroundColor) => {
+                        if (!foregroundColor || !backgroundColor || foregroundColor.a < 0.1 || backgroundColor.a < 0.1) {
+                          return 0;
+                        }
+                        const first = luminance(foregroundColor);
+                        const second = luminance(backgroundColor);
+                        return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+                      };
+                      const measureDiagrams = () => {
+                        const measurements = [];
+                        let activeNodeCount = 0;
+                        let unclassifiedText = 0;
+                        diagrams.forEach((figure) => {
+                          const svg = figure.querySelector('svg');
+                          if (!svg) return;
+                          const surface = rgb(getComputedStyle(svg.parentElement || figure).backgroundColor);
+                          const activeNodes = [...svg.querySelectorAll('rect.cg-diagram-node-active')];
+                          activeNodeCount += activeNodes.length;
+                          activeNodes.forEach((node) => {
+                            const backgroundColor = rgb(getComputedStyle(node).fill);
+                            const group = node.parentElement;
+                            [...(group?.querySelectorAll('text.cg-diagram-title-active, text.cg-diagram-body-active') || [])]
+                              .forEach((textNode) => {
+                                measurements.push(contrastRatio(rgb(getComputedStyle(textNode).fill), backgroundColor));
+                              });
+                          });
+                          [...svg.querySelectorAll('text')].forEach((textNode) => {
+                            const classes = new Set(textNode.classList);
+                            if (![
+                              'cg-diagram-text',
+                              'cg-diagram-title',
+                              'cg-diagram-body',
+                              'cg-diagram-title-active',
+                              'cg-diagram-body-active',
+                            ].some((name) => classes.has(name))) {
+                              unclassifiedText += 1;
+                            }
+                          });
+                          [...svg.querySelectorAll('path.cg-diagram-edge, path.cg-diagram-edge-active')].forEach((edge) => {
+                            measurements.push({
+                              edge: contrastRatio(rgb(getComputedStyle(edge).stroke), surface),
+                              active: edge.classList.contains('cg-diagram-edge-active'),
+                            });
+                          });
+                        });
+                        const textValues = measurements.filter((value) => typeof value === 'number');
+                        const edgeValues = measurements.filter((value) => typeof value === 'object');
+                        return {
+                          textContrast: textValues.length ? Math.min(...textValues) : 0,
+                          edgeContrast: edgeValues.length
+                            ? Math.min(...edgeValues.map((value) => value.edge))
+                            : 0,
+                          activeNodeCount,
+                          unclassifiedText,
+                        };
+                      };
+                      const previousTheme = document.documentElement.getAttribute('data-theme');
+                      document.documentElement.setAttribute('data-theme', 'light');
+                      const diagramLight = measureDiagrams();
+                      document.documentElement.setAttribute('data-theme', 'dark');
+                      const diagramDark = measureDiagrams();
+                      if (previousTheme === null) {
+                        document.documentElement.removeAttribute('data-theme');
+                      } else {
+                        document.documentElement.setAttribute('data-theme', previousTheme);
+                      }
                       const activePageLink = document.querySelector('.cg-nav-link[aria-current="page"]');
                       const activePageStyle = activePageLink ? getComputedStyle(activePageLink) : null;
                       const drawerToggle = document.querySelector('[data-mobile-menu-toggle]');
@@ -482,9 +553,25 @@ async def _inspect_route(
                         data_density: document.body?.dataset?.density || '',
                         top_level_h2: document.querySelectorAll('main > section h2').length,
                         wide_diagrams_without_strategy: wideDiagrams.filter(
-                          (figure) => !figure.querySelector('.cg-diagram-mobile-summary, [data-screen-viewer]')
+                          (figure) => !figure.querySelector('.cg-diagram-mobile, [data-diagram-viewer], [data-screen-viewer]')
                         ).length,
                         diagram_min_text_px: diagramMinTextPx,
+                        diagram_text_contrast_light: Math.round(diagramLight.textContrast * 100) / 100,
+                        diagram_text_contrast_dark: Math.round(diagramDark.textContrast * 100) / 100,
+                        diagram_edge_contrast: (() => {
+                          const values = [diagramLight.edgeContrast, diagramDark.edgeContrast]
+                            .filter((value) => value > 0);
+                          return values.length ? Math.round(Math.min(...values) * 100) / 100 : 0;
+                        })(),
+                        diagram_active_node_count: Math.max(
+                          diagramLight.activeNodeCount,
+                          diagramDark.activeNodeCount
+                        ),
+                        diagram_unclassified_text: Math.max(
+                          diagramLight.unclassifiedText,
+                          diagramDark.unclassifiedText
+                        ),
+                        diagram_count: diagrams.length,
                         drawer_focus_inside: drawerFocusInside,
                         drawer_background_inert: drawerBackgroundInert,
                         drawer_focus_returned: drawerFocusReturned,
@@ -636,6 +723,15 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
             )
         if row.get("h1_contrast_ratio", 0) < 3:
             reasons.append(f"h1_contrast_ratio={row.get('h1_contrast_ratio')}")
+        if row.get("diagram_count", 0):
+            if row.get("diagram_text_contrast_light", 0) < 4.5:
+                reasons.append(f"diagram_text_contrast_light={row.get('diagram_text_contrast_light')}")
+            if row.get("diagram_text_contrast_dark", 0) < 4.5:
+                reasons.append(f"diagram_text_contrast_dark={row.get('diagram_text_contrast_dark')}")
+            if row.get("diagram_edge_contrast", 0) < 3:
+                reasons.append(f"diagram_edge_contrast={row.get('diagram_edge_contrast')}")
+            if row.get("diagram_active_node_count", 0) and row.get("diagram_unclassified_text", 0):
+                reasons.append(f"diagram_unclassified_text={row.get('diagram_unclassified_text')}")
         if not str(row.get("route", "")).startswith("docs/"):
             if row.get("data_density") != "expressive":
                 reasons.append(f"data_density={row.get('data_density')!r}")

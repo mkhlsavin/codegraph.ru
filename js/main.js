@@ -602,6 +602,66 @@
   }
 
   // ============================================
+  // Diagram Viewer
+  // ============================================
+  function initDiagramViewer() {
+    const viewer = document.getElementById('diagram-viewer');
+    const media = document.getElementById('diagram-viewer-media');
+    const title = document.getElementById('diagram-viewer-title');
+    const description = document.getElementById('diagram-viewer-description');
+    const closeButton = viewer?.querySelector('.diagram-viewer-close');
+    const backdrop = viewer?.querySelector('.diagram-viewer-backdrop');
+    const triggers = document.querySelectorAll('[data-diagram-viewer]');
+
+    if (!viewer || !media || !title || !description || triggers.length === 0) {
+      return;
+    }
+
+    let lastFocusedElement = null;
+
+    const closeViewer = () => {
+      viewer.hidden = true;
+      viewer.setAttribute('aria-hidden', 'true');
+      media.replaceChildren();
+      DOM.body.classList.remove('overflow-hidden');
+      if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+      }
+    };
+
+    triggers.forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        const source = document.getElementById(trigger.dataset.diagramId || '');
+        if (!source) return;
+
+        lastFocusedElement = trigger;
+        const copy = source.cloneNode(true);
+        copy.removeAttribute('id');
+        copy.setAttribute('aria-hidden', 'true');
+        copy.classList.remove('cg-svg-canvas');
+        copy.classList.add('diagram-viewer-svg');
+        media.replaceChildren(copy);
+        title.textContent = trigger.dataset.diagramTitle || '';
+        description.textContent = trigger.dataset.diagramDescription || '';
+        viewer.hidden = false;
+        viewer.setAttribute('aria-hidden', 'false');
+        DOM.body.classList.add('overflow-hidden');
+        closeButton?.focus();
+      });
+    });
+
+    closeButton?.addEventListener('click', closeViewer);
+    backdrop?.addEventListener('click', closeViewer);
+    media.addEventListener('click', closeViewer);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !viewer.hidden) {
+        closeViewer();
+      }
+    });
+  }
+
+  // ============================================
   // Smooth Scroll
   // ============================================
   function initSmoothScroll() {
@@ -1651,6 +1711,7 @@
     initMobileNav();
     initHeaderScroll();
     initScreenViewer();
+    initDiagramViewer();
     initSmoothScroll();
     initDemoTerminal();
     initSolutionDemo();

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 from pathlib import Path
 import re
@@ -81,6 +82,56 @@ def check_design_tokens_parity(errors: list[str]) -> None:
         errors.append("css: legacy token layer has no deprecation marker")
 
 
+def check_metadata_contract(pages: Iterable[Path], errors: list[str]) -> None:
+    """Require page-specific metadata and parity across social/schema surfaces."""
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    if not manifest.get("metadata_source") or not manifest.get("metadata_fields"):
+        errors.append("manifest: metadata source and fields are required")
+    titles: list[tuple[str, str]] = []
+    descriptions: list[tuple[str, str]] = []
+    normalize = lambda value: re.sub(r"\s+", " ", value.replace("\xa0", " ")).strip()
+    for path in pages:
+        route = _route(path)
+        soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
+        title = soup.title.get_text(" ", strip=True) if soup.title else ""
+        description_tag = soup.select_one('meta[name="description"]')
+        description = description_tag.get("content", "").strip() if description_tag else ""
+        og_title = soup.select_one('meta[property="og:title"]')
+        og_description = soup.select_one('meta[property="og:description"]')
+        twitter_title = soup.select_one('meta[name="twitter:title"]')
+        twitter_description = soup.select_one('meta[name="twitter:description"]')
+        webpage = []
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                payload = json.loads(script.string or script.get_text())
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict) and payload.get("@type") == "WebPage":
+                webpage.append(payload)
+        if not title or not description:
+            errors.append(f"{route}: title and description are required")
+        if og_title is None or normalize(og_title.get("content", "")) != normalize(title):
+            errors.append(f"{route}: og:title must equal title")
+        if og_description is None or normalize(og_description.get("content", "")) != normalize(description):
+            errors.append(f"{route}: og:description must equal description")
+        if twitter_title is None or normalize(twitter_title.get("content", "")) != normalize(title):
+            errors.append(f"{route}: twitter:title must equal title")
+        if twitter_description is None or normalize(twitter_description.get("content", "")) != normalize(description):
+            errors.append(f"{route}: twitter:description must equal description")
+        if len(webpage) != 1 or normalize(str(webpage[0].get("name", ""))) != normalize(title) or normalize(str(webpage[0].get("description", ""))) != normalize(description):
+            errors.append(f"{route}: WebPage metadata must match title and description")
+        titles.append((title, route))
+        descriptions.append((description, route))
+    for value, count in Counter(normalize(item[0]) for item in titles).items():
+        if value and count > 1:
+            routes = ", ".join(route for title, route in titles if normalize(title) == value)
+            errors.append(f"title duplicated on {routes}")
+    for value, count in Counter(normalize(item[0]) for item in descriptions).items():
+        if value and count > 1:
+            routes = ", ".join(route for description, route in descriptions if normalize(description) == value)
+            errors.append(f"description duplicated on {routes}")
+
+
 def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
     redundant_theme_utilities = {
         "dark:bg-cg-surface": "bg-cg-surface",
@@ -130,10 +181,48 @@ def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
             h2_count = len(soup.select("main > section h2"))
             if h2_count > 8:
                 errors.append(f"{route}: top-level section headings={h2_count}, expected <= 8")
+            if not soup.select_one("main .cg-process-track"):
+                errors.append(f"{route}: main process must use cg-process-track")
+            if soup.select_one("main .business-steps"):
+                errors.append(f"{route}: legacy business-steps process is still present")
 
 
 def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
+    css = CSS.read_text(encoding="utf-8")
+    required_css = (
+        "--cg-diagram-node-active",
+        "--cg-diagram-text-active",
+        "--cg-diagram-text-active-secondary",
+        "--cg-diagram-edge",
+        "--cg-diagram-edge-active",
+        ".cg-diagram-text",
+        ".cg-diagram-edge-active",
+    )
+    for fragment in required_css:
+        if fragment not in css:
+            errors.append(f"css: missing diagram contract {fragment}")
+    diagram_variables = {
+        "--cg-diagram-node-active",
+        "--cg-diagram-text-active",
+        "--cg-diagram-text-active-secondary",
+        "--cg-diagram-edge",
+        "--cg-diagram-edge-active",
+        "--cg-diagram-text",
+        "--cg-diagram-text-secondary",
+        "--cg-diagram-border",
+    }
+    defined = set(re.findall(r"(--cg-diagram-[a-z0-9-]+)\s*:", css))
+    used = set(re.findall(r"var\((--cg-diagram-[a-z0-9-]+)", css))
+    for token in sorted((used & diagram_variables) - defined):
+        errors.append(f"css: undefined diagram variable {token}")
     raw = re.compile(r"(?:fill|stroke)-(?:blue|slate)-|#[0-9a-fA-F]{6}")
+    text_classes = {
+        "cg-diagram-text",
+        "cg-diagram-title",
+        "cg-diagram-body",
+        "cg-diagram-title-active",
+        "cg-diagram-body-active",
+    }
     for path in pages:
         route = _route(path)
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
@@ -141,11 +230,31 @@ def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
             svg = figure.find("svg")
             if svg is None or not svg.find("title") or not svg.find("desc"):
                 errors.append(f"{route}: diagram lacks title/desc")
-            if not figure.select_one(".cg-diagram-mobile-summary") and not figure.select_one("[data-screen-viewer]"):
+            viewer = figure.select_one("[data-diagram-viewer]")
+            if viewer is None or not viewer.get("data-diagram-id") or not soup.find(id=viewer.get("data-diagram-id")):
+                errors.append(f"{route}: wide diagram lacks fullscreen viewer")
+            if not figure.select_one(".cg-diagram-mobile-summary, .cg-diagram-mobile"):
                 errors.append(f"{route}: wide diagram lacks mobile strategy")
+            if svg is None:
+                continue
+            active_nodes = svg.select("rect.cg-diagram-node-active")
+            for node in active_nodes:
+                group = node.parent
+                active_text = group.select("text.cg-diagram-title-active, text.cg-diagram-body-active") if group else []
+                if not active_text:
+                    errors.append(f"{route}: active diagram node has no active text")
+            for text_node in svg.find_all("text"):
+                if not text_classes.intersection(text_node.get("class", [])):
+                    errors.append(f"{route}: unclassified diagram text")
         for svg in soup.find_all("svg"):
-            if raw.search(" ".join(svg.get("class", []))):
-                errors.append(f"{route}: raw diagram color class")
+            for element in svg.find_all(True):
+                attributes = " ".join(
+                    str(element.get(name, ""))
+                    for name in ("class", "fill", "stroke", "style")
+                )
+                if raw.search(attributes):
+                    errors.append(f"{route}: raw diagram color declaration")
+                    break
 
 
 def check_public_shell(errors: list[str]) -> None:
@@ -232,6 +341,8 @@ def main() -> int:
         check_design_tokens_parity(errors)
     if args.check in {"all", "component-contracts"}:
         check_component_contracts(pages, errors)
+    if args.check in {"all", "component-contracts"}:
+        check_metadata_contract(pages, errors)
     if args.check in {"all", "diagram-tokens"}:
         check_diagram_tokens(pages, errors)
     if args.check in {"all", "public-shell"}:
