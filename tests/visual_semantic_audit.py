@@ -99,6 +99,14 @@ HARD_FIELDS = (
     "diagram_edge_contrast",
     "diagram_active_node_count",
     "diagram_unclassified_text",
+    "overlapping_elements",
+    "touching_text_blocks",
+    "article_zero_paragraph_gaps",
+    "same_surface_section_gap",
+    "hero_to_first_section_gap",
+    "card_first_child_offset",
+    "resource_shell_inner_padding",
+    "faq_item_gap",
 )
 
 
@@ -487,6 +495,124 @@ async def _inspect_route(
                         await new Promise((resolve) => requestAnimationFrame(resolve));
                         drawerFocusReturned = document.activeElement === drawerToggle;
                       }
+                      const boxGap = (first, second) => Math.round((second.top - first.bottom) * 10) / 10;
+                      const flowChildren = (node) => [...(node?.children || [])].filter((child) => {
+                        const style = getComputedStyle(child);
+                        return isVisible(child) && !['absolute', 'fixed', 'sticky'].includes(style.position);
+                      });
+                      const overlap = (first, second) => Math.max(
+                        0,
+                        Math.min(first.right, second.right) - Math.max(first.left, second.left),
+                      ) * Math.max(
+                        0,
+                        Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top),
+                      );
+                      const siblingGroups = [
+                        ...[...document.querySelectorAll('main')].map((node) => flowChildren(node)),
+                        ...[...document.querySelectorAll('.cg-article-section, .cg-resource-shell')]
+                          .map((node) => flowChildren(node)),
+                      ];
+                      let overlappingElements = 0;
+                      siblingGroups.forEach((group) => {
+                        group.forEach((first, firstIndex) => {
+                          group.slice(firstIndex + 1).forEach((second) => {
+                            if (overlap(first.getBoundingClientRect(), second.getBoundingClientRect()) > 1) {
+                              overlappingElements += 1;
+                            }
+                          });
+                        });
+                      });
+                      const textElement = (node) => /^(H[1-6]|P|LI|STRONG|SPAN)$/.test(node.tagName);
+                      let touchingTextBlocks = 0;
+                      [...document.querySelectorAll('.cg-article-section, .cg-article-hero, .cg-article-fact, .cg-article-related-link')]
+                        .map((node) => flowChildren(node).filter(textElement))
+                        .forEach((group) => {
+                          group.slice(1).forEach((node, index) => {
+                            if (boxGap(group[index].getBoundingClientRect(), node.getBoundingClientRect()) < 4) {
+                              touchingTextBlocks += 1;
+                            }
+                          });
+                        });
+                      let articleZeroParagraphGaps = 0;
+                      [...document.querySelectorAll('.cg-article-section')].forEach((section) => {
+                        const children = flowChildren(section);
+                        children.slice(1).forEach((node, index) => {
+                          const previous = children[index];
+                          const paragraphPair = (previous.matches('p') && node.matches('p'))
+                            || (previous.matches('p') && node.matches('ul, ol'))
+                            || (previous.matches('ul, ol') && node.matches('p'));
+                          if (paragraphPair && boxGap(previous.getBoundingClientRect(), node.getBoundingClientRect()) < 12) {
+                            articleZeroParagraphGaps += 1;
+                          }
+                        });
+                      });
+                      const contentBottom = (section) => {
+                        const contentRoot = section.querySelector(':scope > .cg-content-shell') || section;
+                        const candidates = flowChildren(contentRoot)
+                          .map((node) => node.getBoundingClientRect().bottom);
+                        return candidates.length ? Math.max(...candidates) : section.getBoundingClientRect().bottom;
+                      };
+                      const directSections = [...document.querySelectorAll('main > section')];
+                      let sameSurfaceSectionGap = 0;
+                      directSections.slice(1).forEach((section, index) => {
+                        const previous = directSections[index];
+                        const previousStyle = getComputedStyle(previous);
+                        const currentStyle = getComputedStyle(section);
+                        if (previousStyle.backgroundColor === currentStyle.backgroundColor) {
+                          const heading = section.querySelector('h2, h3');
+                          if (heading && isVisible(heading)) {
+                            sameSurfaceSectionGap = Math.max(
+                              sameSurfaceSectionGap,
+                              boxGap(
+                                {bottom: contentBottom(previous)},
+                                heading.getBoundingClientRect(),
+                              ),
+                            );
+                          }
+                        }
+                      });
+                      let heroToFirstSectionGap = 0;
+                      const heroCandidate = document.querySelector('main > #hero')
+                        || document.querySelector('main > section:first-child');
+                      const hero = heroCandidate && (
+                        heroCandidate.id === 'hero'
+                        || heroCandidate.querySelector('[data-visual-kind="product-preview"], [data-visual-kind="product-screen"]')
+                      )
+                        ? heroCandidate
+                        : null;
+                      const firstSection = hero?.nextElementSibling;
+                      const firstSectionHeading = firstSection?.querySelector('h2, h3');
+                      const heroProof = hero?.querySelector('[data-visual-kind="product-screen"], [data-visual-kind="product-preview"], .cg-product-preview') || hero;
+                      if (heroProof && firstSectionHeading && isVisible(firstSectionHeading)
+                        && !firstSection?.matches('.cg-whitepaper-layout')) {
+                        heroToFirstSectionGap = boxGap(heroProof.getBoundingClientRect(), firstSectionHeading.getBoundingClientRect());
+                      }
+                      const cardOffsets = [...document.querySelectorAll('.cg-article-list-card, .cg-resource-card')]
+                        .map((card) => {
+                          const firstChild = flowChildren(card)[0];
+                          return firstChild
+                            ? firstChild.getBoundingClientRect().top - card.getBoundingClientRect().top
+                            : 0;
+                        });
+                      const cardFirstChildOffset = cardOffsets.length ? Math.max(...cardOffsets) : 0;
+                      const resourcePaddingValues = [...document.querySelectorAll('.cg-resource-intro, .cg-resource-body')]
+                        .flatMap((section) => {
+                          const firstChild = flowChildren(section)[0];
+                          const sectionBox = section.getBoundingClientRect();
+                          const childBox = firstChild?.getBoundingClientRect();
+                          return firstChild && childBox
+                            ? [childBox.left - sectionBox.left, sectionBox.right - childBox.right]
+                            : [];
+                        });
+                      const resourceShellInnerPadding = resourcePaddingValues.length
+                        ? Math.round(Math.min(...resourcePaddingValues) * 10) / 10
+                        : 0;
+                      const faqItems = [...document.querySelectorAll('.cg-faq-item')].filter(isVisible);
+                      const faqGaps = faqItems.slice(1).map((item, index) => boxGap(
+                        faqItems[index].getBoundingClientRect(),
+                        item.getBoundingClientRect(),
+                      ));
+                      const faqItemGap = faqGaps.length ? Math.max(...faqGaps) : 0;
                       return {
                         title,
                         description,
@@ -572,6 +698,14 @@ async def _inspect_route(
                           diagramDark.unclassifiedText
                         ),
                         diagram_count: diagrams.length,
+                        overlapping_elements: overlappingElements,
+                        touching_text_blocks: touchingTextBlocks,
+                        article_zero_paragraph_gaps: articleZeroParagraphGaps,
+                        same_surface_section_gap: Math.round(sameSurfaceSectionGap * 10) / 10,
+                        hero_to_first_section_gap: Math.round(heroToFirstSectionGap * 10) / 10,
+                        card_first_child_offset: Math.round(cardFirstChildOffset * 10) / 10,
+                        resource_shell_inner_padding: resourceShellInnerPadding,
+                        faq_item_gap: Math.round(faqItemGap * 10) / 10,
                         drawer_focus_inside: drawerFocusInside,
                         drawer_background_inert: drawerBackgroundInert,
                         drawer_focus_returned: drawerFocusReturned,
@@ -747,6 +881,34 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
             for field in ("drawer_focus_inside", "drawer_background_inert", "drawer_focus_returned"):
                 if row.get(field) is not True:
                     reasons.append(f"{field}={row.get(field)!r}")
+        if row.get("profile") != "print":
+            if row.get("overlapping_elements", 0):
+                reasons.append(f"overlapping_elements={row['overlapping_elements']}")
+            if row.get("touching_text_blocks", 0):
+                reasons.append(f"touching_text_blocks={row['touching_text_blocks']}")
+            if row.get("article_zero_paragraph_gaps", 0):
+                reasons.append(
+                    f"article_zero_paragraph_gaps={row['article_zero_paragraph_gaps']}"
+                )
+            if row.get("same_surface_section_gap", 0) > 96:
+                reasons.append(
+                    f"same_surface_section_gap={row['same_surface_section_gap']}"
+                )
+            hero_gap = row.get("hero_to_first_section_gap", 0)
+            if hero_gap and not 80 <= hero_gap <= 112:
+                reasons.append(f"hero_to_first_section_gap={hero_gap}")
+            if row.get("card_first_child_offset", 0) > 28:
+                reasons.append(
+                    f"card_first_child_offset={row['card_first_child_offset']}"
+                )
+            if row.get("resource_shell_inner_padding", 0) and row.get(
+                "resource_shell_inner_padding", 0
+            ) < 20:
+                reasons.append(
+                    f"resource_shell_inner_padding={row['resource_shell_inner_padding']}"
+                )
+            if row.get("faq_item_gap", 0) > 1:
+                reasons.append(f"faq_item_gap={row['faq_item_gap']}")
         if row.get("active_nav_visual") is False and row.get("route") not in {"index.html"} and not str(row.get("route", "")).startswith("docs/"):
             reasons.append("active_nav_visual=false")
         if row.get("route") == "index.html":

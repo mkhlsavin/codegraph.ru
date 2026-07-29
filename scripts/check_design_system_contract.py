@@ -167,11 +167,28 @@ def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
         for sup in soup.find_all("sup"):
             if sup.find_parent("td") is None and sup.find_parent("th") is None:
                 errors.append(f"{route}: sup marker is outside a table cell")
+        for faq_list in soup.select(".cg-faq-list"):
+            faq_classes = set(faq_list.get("class", []))
+            if {"grid", "gap-3"}.issubset(faq_classes):
+                errors.append(f"{route}: FAQ list must use divider rhythm, not grid gap")
+        if soup.select_one(".cg-article-hero") and not soup.select_one(
+            ".cg-article-hero .cg-article-kicker"
+        ):
+            errors.append(f"{route}: ArticleShell hero lacks article kicker")
+        if route == "downloads/digital-role-passport/role-passport.html":
+            for selector in (".cg-resource-brand", ".cg-resource-intro", ".cg-resource-body"):
+                if not soup.select_one(f".cg-resource-shell {selector}"):
+                    errors.append(f"{route}: resource shell lacks {selector}")
         if route in PRODUCT_ROUTES:
             main = soup.find("main")
             if main is None:
                 errors.append(f"{route}: missing main landmark")
                 continue
+            classes = set(main.get("class", []))
+            if route == "index.html" and "cg-home-flow" not in classes:
+                errors.append(f"{route}: home flow contract is missing")
+            if route not in {"index.html", "whitepaper.html"} and "cg-page-flow" not in classes:
+                errors.append(f"{route}: page flow contract is missing")
             hero = main.find("section")
             if hero is None or not hero.find("a", class_=lambda value: value and "cg-button" in value):
                 errors.append(f"{route}: hero primary action must use cg-button")
