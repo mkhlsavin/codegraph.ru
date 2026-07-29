@@ -53,7 +53,7 @@ def main() -> int:
 
     for path in ROOT.rglob("*.html"):
         relative = path.relative_to(ROOT)
-        if "docs" in relative.parts or path.name.startswith("yandex_"):
+        if "docs" in relative.parts or "templates" in relative.parts or path.name.startswith("yandex_"):
             continue
         text = path.read_text(encoding="utf-8")
         for value in ISO_DATE.findall(text):
@@ -64,7 +64,7 @@ def main() -> int:
                 errors.append(f"{relative}: visible freshness={value}")
 
     cta = (ROOT / "templates" / "sections" / "cta.html").read_text(encoding="utf-8")
-    if expected_visible not in cta:
+    if "{{public_visible_date}}" not in cta and expected_visible not in cta:
         errors.append("templates/sections/cta.html: freshness date is stale")
 
     sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")

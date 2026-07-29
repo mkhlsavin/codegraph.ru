@@ -103,6 +103,9 @@ HARD_FIELDS = (
     "touching_text_blocks",
     "article_zero_paragraph_gaps",
     "same_surface_section_gap",
+    "new_surface_heading_inset",
+    "same_surface_continuation_inset",
+    "touch_target_min",
     "hero_to_first_section_gap",
     "card_first_child_offset",
     "resource_shell_inner_padding",
@@ -552,14 +555,26 @@ async def _inspect_route(
                           .map((node) => node.getBoundingClientRect().bottom);
                         return candidates.length ? Math.max(...candidates) : section.getBoundingClientRect().bottom;
                       };
-                      const directSections = [...document.querySelectorAll('main > section')];
+                      const directSections = [...document.querySelectorAll(
+                        'main > section, main > .cg-page-chapter > section'
+                      )];
                       let sameSurfaceSectionGap = 0;
+                      const newSurfaceHeadingInsets = [];
+                      let sameSurfaceContinuationInset = 0;
                       directSections.slice(1).forEach((section, index) => {
                         const previous = directSections[index];
                         const previousStyle = getComputedStyle(previous);
                         const currentStyle = getComputedStyle(section);
+                        const heading = section.querySelector('h2, h3');
+                        if (heading && isVisible(heading)) {
+                          const inset = heading.getBoundingClientRect().top - section.getBoundingClientRect().top;
+                          if (section.classList.contains('cg-section-new-surface')) {
+                            newSurfaceHeadingInsets.push(inset);
+                          } else if (section.classList.contains('cg-section-continuation')) {
+                            sameSurfaceContinuationInset = Math.max(sameSurfaceContinuationInset, inset);
+                          }
+                        }
                         if (previousStyle.backgroundColor === currentStyle.backgroundColor) {
-                          const heading = section.querySelector('h2, h3');
                           if (heading && isVisible(heading)) {
                             sameSurfaceSectionGap = Math.max(
                               sameSurfaceSectionGap,
@@ -613,6 +628,14 @@ async def _inspect_route(
                         item.getBoundingClientRect(),
                       ));
                       const faqItemGap = faqGaps.length ? Math.max(...faqGaps) : 0;
+                      const touchTargetSizes = [...document.querySelectorAll(
+                        '.cg-button-sm, .cg-button-icon, .cg-theme-toggle, .cg-mobile-toggle, .cg-footer-social-link'
+                      )]
+                        .filter(isVisible)
+                        .map((node) => {
+                          const box = node.getBoundingClientRect();
+                          return Math.min(box.width, box.height);
+                        });
                       return {
                         title,
                         description,
@@ -677,7 +700,9 @@ async def _inspect_route(
                               .filter(isVisible).length
                           : 0,
                         data_density: document.body?.dataset?.density || '',
-                        top_level_h2: document.querySelectorAll('main > section h2').length,
+                        top_level_h2: document.querySelectorAll(
+                          'main > section h2, main > .cg-page-chapter > section h2'
+                        ).length,
                         wide_diagrams_without_strategy: wideDiagrams.filter(
                           (figure) => !figure.querySelector('.cg-diagram-mobile, [data-diagram-viewer], [data-screen-viewer]')
                         ).length,
@@ -702,6 +727,13 @@ async def _inspect_route(
                         touching_text_blocks: touchingTextBlocks,
                         article_zero_paragraph_gaps: articleZeroParagraphGaps,
                         same_surface_section_gap: Math.round(sameSurfaceSectionGap * 10) / 10,
+                        new_surface_heading_inset: newSurfaceHeadingInsets.length
+                          ? Math.round(Math.min(...newSurfaceHeadingInsets) * 10) / 10
+                          : 0,
+                        same_surface_continuation_inset: Math.round(sameSurfaceContinuationInset * 10) / 10,
+                        touch_target_min: touchTargetSizes.length
+                          ? Math.round(Math.min(...touchTargetSizes) * 10) / 10
+                          : 0,
                         hero_to_first_section_gap: Math.round(heroToFirstSectionGap * 10) / 10,
                         card_first_child_offset: Math.round(cardFirstChildOffset * 10) / 10,
                         resource_shell_inner_padding: resourceShellInnerPadding,
@@ -894,6 +926,13 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
                 reasons.append(
                     f"same_surface_section_gap={row['same_surface_section_gap']}"
                 )
+            new_surface_inset = row.get("new_surface_heading_inset", 0)
+            if new_surface_inset and not 24 <= new_surface_inset <= 48:
+                reasons.append(f"new_surface_heading_inset={new_surface_inset}")
+            if row.get("same_surface_continuation_inset", 0) > 16:
+                reasons.append(
+                    f"same_surface_continuation_inset={row['same_surface_continuation_inset']}"
+                )
             hero_gap = row.get("hero_to_first_section_gap", 0)
             if hero_gap and not 80 <= hero_gap <= 112:
                 reasons.append(f"hero_to_first_section_gap={hero_gap}")
@@ -909,6 +948,13 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
                 )
             if row.get("faq_item_gap", 0) > 1:
                 reasons.append(f"faq_item_gap={row['faq_item_gap']}")
+            if (
+                row.get("profile") == "mobile"
+                and not str(row.get("route", "")).startswith("docs/")
+                and row.get("touch_target_min", 0)
+                and row.get("touch_target_min", 0) < 44
+            ):
+                reasons.append(f"touch_target_min={row['touch_target_min']}")
         if row.get("active_nav_visual") is False and row.get("route") not in {"index.html"} and not str(row.get("route", "")).startswith("docs/"):
             reasons.append("active_nav_visual=false")
         if row.get("route") == "index.html":

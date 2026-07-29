@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from pathlib import Path
 
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_CATEGORY = (
-    "CodeGraph — решение для управляемой разработки цифровых продуктов с участием ИИ."
-)
+CANONICAL_CATEGORY = json.loads(
+    (LANDING_ROOT / "site_content.json").read_text(encoding="utf-8")
+)["canonical_category"]
+FOOTER_DESCRIPTOR = CANONICAL_CATEGORY.split("—", 1)[1].strip()
 
 FORBIDDEN_MARKETING_PATTERNS = {
     "scenario_count": re.compile(r"\b(?:21|36)\s+(?:сценар\w*|карточ\w*)", re.IGNORECASE),
@@ -132,14 +134,16 @@ def test_home_and_shared_sources_use_the_canonical_category() -> None:
         LANDING_ROOT / "templates" / "head.html",
         LANDING_ROOT / "templates" / "footer.html",
     )
-    missing = [
+    missing_category = [
         str(path.relative_to(LANDING_ROOT))
-        for path in surfaces
+        for path in surfaces[:2]
         if CANONICAL_CATEGORY.replace(" ", "")
         not in path.read_text(encoding="utf-8").replace(" ", "").replace("\xa0", "")
     ]
+    footer = surfaces[2].read_text(encoding="utf-8").replace(" ", "").replace("\xa0", "")
 
-    assert not missing, f"Canonical category is missing from: {missing}"
+    assert not missing_category, f"Canonical category is missing from: {missing_category}"
+    assert FOOTER_DESCRIPTOR.replace(" ", "") in footer, "Footer descriptor is missing"
 
 
 def test_public_ctas_do_not_route_through_legacy_index_file() -> None:
