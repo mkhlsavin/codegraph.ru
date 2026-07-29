@@ -461,12 +461,46 @@
   function initMobileNav() {
     if (!DOM.mobileMenuToggle || !DOM.mobileNav) return;
 
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const main = document.querySelector('main');
+    const footer = document.querySelector('footer');
+    let lastFocusedElement = null;
+
+    const focusFirstItem = () => {
+      DOM.mobileNav.querySelector(focusableSelector)?.focus();
+    };
+
+    const trapFocus = (event) => {
+      if (DOM.mobileNav.dataset.state !== 'open' || event.key !== 'Tab') return;
+      const items = Array.from(DOM.mobileNav.querySelectorAll(focusableSelector));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
     const setMobileNavState = (isOpen) => {
       const state = isOpen ? 'open' : 'closed';
       DOM.mobileMenuToggle.dataset.state = state;
       DOM.mobileNav.dataset.state = state;
       DOM.mobileMenuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
       DOM.body.classList.toggle('overflow-hidden', isOpen);
+      DOM.mobileNav.hidden = !isOpen;
+      if (main) main.inert = isOpen;
+      if (footer) footer.inert = isOpen;
+      if (isOpen) {
+        lastFocusedElement = document.activeElement;
+        window.requestAnimationFrame(focusFirstItem);
+      } else if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+        lastFocusedElement = null;
+      }
     };
 
     DOM.mobileMenuToggle.addEventListener('click', () => {
@@ -482,9 +516,9 @@
 
     // Close on escape
     document.addEventListener('keydown', (e) => {
+      trapFocus(e);
       if (e.key === 'Escape' && DOM.mobileNav.dataset.state === 'open') {
         setMobileNavState(false);
-        DOM.mobileMenuToggle.focus();
       }
     });
 
@@ -1478,7 +1512,11 @@
       const linkUrl = new URL(link.href, window.location.href);
       const linkPath = linkUrl.pathname.replace(/index\.html$/u, '') || '/';
       const isCurrentPage = linkUrl.origin === window.location.origin && linkPath === currentPath && !linkUrl.hash;
-      link.setAttribute('aria-current', isCurrentPage ? 'page' : 'false');
+      if (isCurrentPage) {
+        link.setAttribute('aria-current', 'page');
+      } else {
+        link.removeAttribute('aria-current');
+      }
     });
 
     if (sections.length === 0) return;
@@ -1488,9 +1526,11 @@
         if (entry.isIntersecting) {
           const id = entry.target.getAttribute('id');
           DOM.navLinks.forEach(link => {
-            link.dataset.current = 'false';
-            if (link.getAttribute('href') === `#${id}`) {
-              link.dataset.current = 'true';
+            const isCurrentSection = link.getAttribute('href') === `#${id}`;
+            if (isCurrentSection) {
+              link.setAttribute('aria-current', 'location');
+            } else if (link.getAttribute('aria-current') === 'location') {
+              link.removeAttribute('aria-current');
             }
           });
         }

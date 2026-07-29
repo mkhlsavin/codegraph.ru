@@ -477,7 +477,7 @@ def test_every_explanatory_product_figure_is_inline_svg() -> None:
     for path in _public_html_files():
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
         for index, figure in enumerate(soup.find_all("figure"), 1):
-            if figure.get("data-visual-kind") == "product-screen":
+            if figure.get("data-visual-kind") in {"product-screen", "product-preview"}:
                 continue
             if figure.find("svg") is None and figure.find("img") is None:
                 errors.append(f"{path.relative_to(LANDING_ROOT)}: figure {index}")

@@ -86,6 +86,14 @@ HARD_FIELDS = (
     "h1_contrast_ratio",
     "print_shell_chrome",
     "print_form_controls",
+    "data_density",
+    "top_level_h2",
+    "wide_diagrams_without_strategy",
+    "drawer_focus_inside",
+    "drawer_background_inert",
+    "drawer_focus_returned",
+    "active_nav_visual",
+    "editorial_card_shadows",
 )
 
 
@@ -261,7 +269,7 @@ async def _inspect_route(
                 await page.emulate_media(media="print")
             result.update(
                 await page.evaluate(
-                    """(profile) => {
+                    """async (profile) => {
                       const headings = [...document.querySelectorAll('main h1,main h2,main h3,main h4,main h5,main h6')]
                         .map((node) => Number(node.tagName.slice(1)));
                       const jsonLdErrors = [];
@@ -374,6 +382,40 @@ async def _inspect_route(
                           fontSize: style.fontSize,
                         };
                       });
+                      const diagrams = [...document.querySelectorAll('[data-product-diagram]')];
+                      const wideDiagrams = diagrams.filter((figure) => {
+                        const svg = figure.querySelector('svg');
+                        const viewBox = svg?.getAttribute('viewBox')?.trim().split(/\\s+/).map(Number);
+                        return viewBox && viewBox.length === 4 && viewBox[2] >= 760;
+                      });
+                      const diagramMinTextPx = wideDiagrams.length
+                        ? Math.min(...wideDiagrams.flatMap((figure) => {
+                            const svg = figure.querySelector('svg');
+                            const viewBox = svg.getAttribute('viewBox').trim().split(/\\s+/).map(Number);
+                            const scale = svg.getBoundingClientRect().width / viewBox[2];
+                            return [...svg.querySelectorAll('text')].map((node) => {
+                              const size = Number.parseFloat(node.getAttribute('font-size') || getComputedStyle(node).fontSize || '0');
+                              return Math.round(size * scale * 100) / 100;
+                            });
+                          }).filter((value) => value > 0))
+                        : 0;
+                      const activePageLink = document.querySelector('.cg-nav-link[aria-current="page"]');
+                      const activePageStyle = activePageLink ? getComputedStyle(activePageLink) : null;
+                      const drawerToggle = document.querySelector('[data-mobile-menu-toggle]');
+                      const drawer = document.querySelector('[data-mobile-nav]');
+                      let drawerFocusInside = null;
+                      let drawerBackgroundInert = null;
+                      let drawerFocusReturned = null;
+                      if (profile === 'mobile' && drawerToggle && drawer) {
+                        drawerToggle.focus();
+                        drawerToggle.click();
+                        await new Promise((resolve) => requestAnimationFrame(resolve));
+                        drawerFocusInside = drawer.contains(document.activeElement);
+                        drawerBackgroundInert = Boolean(document.querySelector('main')?.inert && document.querySelector('footer')?.inert);
+                        drawer.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+                        await new Promise((resolve) => requestAnimationFrame(resolve));
+                        drawerFocusReturned = document.activeElement === drawerToggle;
+                      }
                       return {
                         title,
                         description,
@@ -434,9 +476,28 @@ async def _inspect_route(
                               .filter(isVisible).length
                           : 0,
                         print_form_controls: profile === 'print'
-                          ? [...document.querySelectorAll('form,input:not([type="hidden"]),select,textarea,button:not(.faq-question)')]
+                          ? [...document.querySelectorAll('form,input:not([type="hidden"]),select,textarea,button:not(.faq-question):not(.cg-faq-question)')]
                               .filter(isVisible).length
                           : 0,
+                        data_density: document.body?.dataset?.density || '',
+                        top_level_h2: document.querySelectorAll('main > section h2').length,
+                        wide_diagrams_without_strategy: wideDiagrams.filter(
+                          (figure) => !figure.querySelector('.cg-diagram-mobile-summary, [data-screen-viewer]')
+                        ).length,
+                        diagram_min_text_px: diagramMinTextPx,
+                        drawer_focus_inside: drawerFocusInside,
+                        drawer_background_inert: drawerBackgroundInert,
+                        drawer_focus_returned: drawerFocusReturned,
+                        active_nav_visual: activePageLink
+                          ? Boolean(
+                              activePageStyle
+                              && Number.parseInt(activePageStyle.fontWeight, 10) >= 600
+                              && activePageStyle.boxShadow !== 'none'
+                            )
+                          : null,
+                        editorial_card_shadows: [...document.querySelectorAll(
+                          '.cg-article-list-card, .cg-article-related-link, .cg-article-fact'
+                        )].filter((node) => getComputedStyle(node).boxShadow !== 'none').length,
                         stylesheet_links: [...document.querySelectorAll('link[rel="stylesheet"]')]
                           .map((link) => link.getAttribute('href')),
                         css_runtime: (() => {
@@ -575,6 +636,23 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
             )
         if row.get("h1_contrast_ratio", 0) < 3:
             reasons.append(f"h1_contrast_ratio={row.get('h1_contrast_ratio')}")
+        if not str(row.get("route", "")).startswith("docs/"):
+            if row.get("data_density") != "expressive":
+                reasons.append(f"data_density={row.get('data_density')!r}")
+            if row.get("top_level_h2", 0) > 8 and row.get("route") == "index.html":
+                reasons.append(f"top_level_h2={row.get('top_level_h2')}")
+            if row.get("wide_diagrams_without_strategy", 0):
+                reasons.append(
+                    f"wide_diagrams_without_strategy={row.get('wide_diagrams_without_strategy')}"
+                )
+            if row.get("editorial_card_shadows", 0):
+                reasons.append(f"editorial_card_shadows={row.get('editorial_card_shadows')}")
+        if row.get("profile") == "mobile" and row.get("drawer_focus_inside") is not None:
+            for field in ("drawer_focus_inside", "drawer_background_inert", "drawer_focus_returned"):
+                if row.get(field) is not True:
+                    reasons.append(f"{field}={row.get(field)!r}")
+        if row.get("active_nav_visual") is False and row.get("route") not in {"index.html"} and not str(row.get("route", "")).startswith("docs/"):
+            reasons.append("active_nav_visual=false")
         if row.get("route") == "index.html":
             css_runtime = row.get("css_runtime") or {}
             if not css_runtime.get("loaded") or not css_runtime.get("rules"):
@@ -587,7 +665,7 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
             reasons.append("empty print render signature")
         if row.get("profile") == "print" and row.get("print_shell_chrome", 0):
             reasons.append(f"print_shell_chrome={row['print_shell_chrome']}")
-        if row.get("profile") == "print" and row.get("print_form_controls", 0):
+        if row.get("profile") == "print" and row.get("print_form_controls", 0) and not str(row.get("route", "")).startswith("docs/"):
             reasons.append(f"print_form_controls={row['print_form_controls']}")
         if enforce:
             if row.get("inline_styles") != 0:

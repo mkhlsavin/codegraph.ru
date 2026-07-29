@@ -108,6 +108,26 @@ def _fetch(base_url: str, route: str, release: str) -> bytes:
         return response.read()
 
 
+def _fetch_plain(base_url: str, route: str) -> tuple[bytes, dict[str, str]]:
+    """Fetch an ordinary URL without cache-bypass parameters and retain headers."""
+    url = urljoin(base_url.rstrip("/") + "/", route)
+    request = Request(url, headers={"User-Agent": "CodeGraphReleaseGate/1.0"})
+    with urlopen(request, timeout=30) as response:
+        if response.status != 200:
+            raise RuntimeError(f"plain {route}: HTTP {response.status}")
+        headers = {
+            key: value
+            for key, value in (
+                ("ETag", response.headers.get("ETag", "")),
+                ("Age", response.headers.get("Age", "")),
+                ("Last-Modified", response.headers.get("Last-Modified", "")),
+                ("Cache-Control", response.headers.get("Cache-Control", "")),
+            )
+            if value
+        }
+        return response.read(), headers
+
+
 def _routes_from_sitemap(payload: bytes) -> tuple[str, ...]:
     """Extract HTML routes from the local sitemap without including documentation."""
     text = payload.decode("utf-8")
@@ -137,7 +157,12 @@ def _normalized_robots(value: str) -> str:
     return ", ".join(part.strip().casefold() for part in value.split(",") if part.strip())
 
 
-def verify_once(base_url: str, root: Path, release: str) -> dict[str, object]:
+def verify_once(
+    base_url: str,
+    root: Path,
+    release: str,
+    probe_urls: tuple[str, ...] = (),
+) -> dict[str, object]:
     """Verify semantics, required routes, forbidden claims, and artifact hashes once."""
     local_sitemap = (root / "sitemap.xml").read_bytes()
     sitemap = _fetch(base_url, "sitemap.xml", release)
@@ -149,7 +174,37 @@ def verify_once(base_url: str, root: Path, release: str) -> dict[str, object]:
     }
     homepage = remote["index.html"].decode("utf-8")
     root_homepage = _fetch(base_url, "", release).decode("utf-8")
+    plain_probes: dict[str, dict[str, object]] = {}
     failures: list[str] = []
+    for probe_url in (base_url, *probe_urls):
+        plain_root, root_headers = _fetch_plain(probe_url, "")
+        plain_index, index_headers = _fetch_plain(probe_url, "index.html")
+        root_contract = HomeContractParser()
+        root_contract.feed(plain_root.decode("utf-8"))
+        index_contract = HomeContractParser()
+        index_contract.feed(plain_index.decode("utf-8"))
+        root_hash = _normalized_sha256(plain_root)
+        index_hash = _normalized_sha256(plain_index)
+        plain_probes[probe_url] = {
+            "root": {
+                "sha256": root_hash,
+                "title": root_contract.title.strip(),
+                "h1": _normalized_text(root_contract.h1),
+                "css": root_contract.stylesheet,
+                **root_headers,
+            },
+            "index": {
+                "sha256": index_hash,
+                "title": index_contract.title.strip(),
+                "h1": _normalized_text(index_contract.h1),
+                "css": index_contract.stylesheet,
+                **index_headers,
+            },
+        }
+    for probe_url, probe in plain_probes.items():
+        for field in ("sha256", "title", "h1", "css"):
+            if probe["root"].get(field) != probe["index"].get(field):
+                failures.append(f"plain root/index {field} mismatch at {probe_url}")
     route_contracts: dict[str, dict[str, str]] = {}
     for route in routes:
         public_parser = HomeContractParser()
@@ -236,6 +291,7 @@ def verify_once(base_url: str, root: Path, release: str) -> dict[str, object]:
         "release": parser.release.strip(),
         "route_contracts": route_contracts,
         "assets": asset_hashes,
+        "plain_probes": plain_probes,
     }
 
 
@@ -248,11 +304,22 @@ def main() -> int:
     parser.add_argument("--attempts", type=int, default=1)
     parser.add_argument("--interval", type=float, default=20.0)
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--probe-base-url",
+        action="append",
+        default=[],
+        help="Additional base URL to verify with ordinary / and /index.html requests.",
+    )
     args = parser.parse_args()
     result: dict[str, object] = {"ok": False, "failures": ["not run"]}
     for attempt in range(1, args.attempts + 1):
         try:
-            result = verify_once(args.base_url, args.root.resolve(), args.release)
+            result = verify_once(
+                args.base_url,
+                args.root.resolve(),
+                args.release,
+                tuple(args.probe_base_url),
+            )
         except (HTTPError, URLError, TimeoutError, RuntimeError, UnicodeDecodeError) as error:
             result = {"ok": False, "failures": [f"{type(error).__name__}: {error}"]}
         result["attempt"] = attempt
