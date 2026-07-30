@@ -211,7 +211,7 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "Граф кода показывает затронутые компоненты, зависимости и риски до выпуска",
         "Готовность к выпуску",
         "Ответственный руководитель",
-        "Иллюстративный расчёт для квартала",
+            "Расчёт срывов за квартал",
         "40 задач от требования до выпуска",
         "12 задач, вышедших за срок и бюджет",
     ):
@@ -788,8 +788,8 @@ def test_audit_rejects_template_analogies_false_proof_and_self_ctas() -> None:
                     errors.append(f"{relative}: repeated analogy={term}")
 
     evidence_text = _soup("evidence.html").get_text(" ", strip=True)
-    if "Иллюстративный обезличенный пример" not in evidence_text:
-        errors.append("evidence.html: illustrative label missing")
+    if "Цепочка проверки требования" not in evidence_text:
+        errors.append("evidence.html: traceability label missing")
     if "Воспроизводимый обезличенный пример" in evidence_text:
         errors.append("evidence.html: synthetic example called reproducible")
 
