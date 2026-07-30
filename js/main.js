@@ -29,7 +29,6 @@
     description: 'Проверим исходные данные, выберем один проект и согласуем показатели.',
     button: 'Получить план пилота'
   };
-  const LEAD_SUBMISSION_TIMEOUT_MS = 20000;
   const FORM_GOAL_BY_TASK = {
     'initiative-traceability': 'cost-reduction',
     'release-readiness': 'schedule-reliability',

@@ -48,3 +48,10 @@ def test_lead_form_distinguishes_sent_and_not_sent_statuses() -> None:
         "fetchWithTimeout(leadsApiUrl",
     ):
         assert expected_branch in source
+
+
+def test_lead_form_script_has_single_timeout_constant() -> None:
+    """CNFR-Q1217-02: prevent script parse failures from duplicate declarations."""
+    source = (LANDING_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+
+    assert source.count("const LEAD_SUBMISSION_TIMEOUT_MS = 20000;") == 1
