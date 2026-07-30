@@ -211,8 +211,13 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "Граф кода показывает затронутые компоненты, зависимости и риски до выпуска",
         "Готовность к выпуску",
         "Ответственный руководитель",
+        "Иллюстративный расчёт для квартала",
+        "600 задач за квартал",
+        "180 задач могут выйти за срок и бюджет",
+        "Это сценарное допущение, а не отдельная статистика BCG",
     ):
         assert _normalized_text(required).casefold() in visible.casefold()
+    assert "40 задач с установленным сроком" not in visible
 
 
 def test_homepage_does_not_reintroduce_removed_story_blocks() -> None:
