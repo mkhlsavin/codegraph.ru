@@ -28,6 +28,7 @@
     description: 'Проверим исходные данные, выберем один проект и согласуем показатели.',
     button: 'Получить план пилота'
   };
+  const LEAD_SUBMISSION_TIMEOUT_MS = 20000;
   const FORM_GOAL_BY_TASK = {
     'initiative-traceability': 'cost-reduction',
     'release-readiness': 'schedule-reliability',
@@ -1030,6 +1031,73 @@
     }
   }
 
+  async function readLeadSubmissionError(response) {
+    try {
+      return await response.clone().json();
+    } catch (parseError) {
+      return {};
+    }
+  }
+
+  async function classifyLeadSubmissionResponse(response) {
+    await readLeadSubmissionError(response);
+    if (response.status === 400 || response.status === 422) {
+      return {
+        reason: 'validation',
+        goal: 'demo_form_validation_error',
+        buttonText: 'Проверьте поля',
+        statusText: 'Заявка не отправлена: проверьте обязательные поля и выбранные значения.'
+      };
+    }
+    if (response.status === 429) {
+      return {
+        reason: 'rate_limit',
+        goal: 'demo_form_rate_limit',
+        buttonText: 'Слишком много попыток',
+        statusText: 'Заявка не отправлена: слишком много попыток. Подождите немного и повторите отправку; введённые данные сохранены.'
+      };
+    }
+    if (response.status >= 500) {
+      return {
+        reason: 'server',
+        goal: 'demo_form_server_error',
+        buttonText: 'Сервер недоступен',
+        statusText: 'Заявка не отправлена: сервер временно недоступен. Повторите позже; введённые данные сохранены.'
+      };
+    }
+    return {
+      reason: 'unexpected_status',
+      goal: 'demo_form_error',
+      buttonText: 'Ошибка отправки',
+      statusText: 'Заявка не отправлена: произошла ошибка отправки. Повторите позже; введённые данные сохранены.'
+    };
+  }
+
+  function classifyLeadSubmissionException(error) {
+    if (error.name === 'AbortError') {
+      return {
+        reason: 'timeout',
+        goal: 'demo_form_timeout',
+        buttonText: 'Нет ответа сервера',
+        statusText: 'Заявка не отправлена: сервер не ответил вовремя. Повторите позже; введённые данные сохранены.'
+      };
+    }
+    if (error instanceof TypeError) {
+      return {
+        reason: 'network',
+        goal: 'demo_form_network_error',
+        buttonText: 'Нет соединения',
+        statusText: 'Заявка не отправлена: нет соединения с сервером. Проверьте интернет и повторите отправку; введённые данные сохранены.'
+      };
+    }
+    return {
+      reason: 'exception',
+      goal: 'demo_form_error',
+      buttonText: 'Ошибка отправки',
+      statusText: 'Заявка не отправлена: произошла ошибка отправки. Повторите позже; введённые данные сохранены.'
+    };
+  }
+
   // Render markdown safely (fallback to escaped text if marked unavailable)
   let markedLoadPromise;
 
@@ -1452,7 +1520,7 @@
 
       if (!isValid) {
         trackGoal('demo_form_validation_error', formEventContext);
-        setStatus('Проверьте отмеченные поля и повторите отправку.', 'error');
+        setStatus('Заявка не отправлена: проверьте отмеченные поля и повторите отправку.', 'error');
         DOM.demoForm.querySelector('[aria-invalid="true"]')?.focus();
         return;
       }
@@ -1502,13 +1570,13 @@
           : 'https://api.codegraph.ru/api/v1/leads';
 
         try {
-          const response = await fetch(leadsApiUrl, {
+          const response = await fetchWithTimeout(leadsApiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(formData),
-          });
+          }, LEAD_SUBMISSION_TIMEOUT_MS);
 
           if (response.ok) {
             let responseData = {};
@@ -1536,22 +1604,29 @@
             setTimeout(() => {
               setSubmitState('idle', originalText, false);
             }, 3000);
-          } else if (response.status === 429) {
-            trackGoal('demo_form_rate_limit', formEventContext);
-            setSubmitState('error', 'Слишком много запросов', true);
-            setStatus('Слишком много запросов. Подождите немного и повторите отправку; введённые данные сохранены.', 'error');
+          } else {
+            const failure = await classifyLeadSubmissionResponse(response);
+            trackGoal(failure.goal, {
+              ...formEventContext,
+              failure_reason: failure.reason,
+              status_code: response.status
+            });
+            setSubmitState('error', failure.buttonText, true);
+            setStatus(failure.statusText, 'error');
 
             setTimeout(() => {
               setSubmitState('idle', originalText, false);
             }, 3000);
-          } else {
-            throw new Error(`Server error: ${response.status}`);
           }
         } catch (error) {
           console.error('Form submission error:', error);
-          trackGoal('demo_form_error', formEventContext);
-          setSubmitState('error', 'Ошибка отправки', true);
-          setStatus('Не удалось отправить заявку. Проверьте соединение и повторите отправку; введённые данные сохранены.', 'error');
+          const failure = classifyLeadSubmissionException(error);
+          trackGoal(failure.goal, {
+            ...formEventContext,
+            failure_reason: failure.reason
+          });
+          setSubmitState('error', failure.buttonText, true);
+          setStatus(failure.statusText, 'error');
 
           setTimeout(() => {
             setSubmitState('idle', originalText, false);

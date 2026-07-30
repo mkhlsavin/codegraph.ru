@@ -35,7 +35,16 @@ ABSTRACT_PATTERNS = (
         "абстрактное описание",
         re.compile(
             r"\b(?:абстрактн\w*|управляемост\w*|прозрачност\w*|"
-            r"согласованност\w*|эффективност\w*|ценност\w*)\b",
+            r"согласованност\w*|эффективност\w*|ценност\w*|"
+            r"доказательн\w*\s+баз\w*|квалифицир\w*\s+вывод\w*|"
+            r"объясним\w*\s+статус\w*|статус\s+готовност\w*|"
+            r"пакет\s+(?:подтвержден\w*|готовност\w*)|"
+            r"живой\s+пакет\s+документаци\w*|"
+            r"управленческий\s+выигрыш|нехватк\w*\s+видимост\w*|"
+            r"портфельн\w*\s+контекст|рассчитать\s+состояни\w*|"
+            r"путь\s+к\s+основани\w*|локальн\w*\s+контур\w*|"
+            r"контур\s+(?:правил|понимани\w*|управлени\w*|контрол\w*)|"
+            r"состоян\w*\s+готовност\w*)",
             re.IGNORECASE,
         ),
     ),
@@ -296,10 +305,16 @@ def _check_six_adjacent_pages(pages: list[Page], findings: dict[str, list[str]])
                 f"повторён вопрос: {', '.join(routes)}: {question}"
             )
     for sentence, routes in sentence_owners.items():
-        # A shared disclosure is intentionally identical on product pages. It
-        # is a source-status label, not a page thesis; page-specific prose is
-        # still fail-closed when it repeats on two routes.
-        if len(routes) == 2:
+        # Genre and source disclosures are metadata, not page theses. Every
+        # other repeated sentence is a collision, including three or more
+        # owners; limiting this to exactly two used to hide recurring copy.
+        if (
+            "жанр материала" in sentence
+            or "ссылки ведут к публичным материалам" in sentence
+            or "это не независимое исследование" in sentence
+        ):
+            continue
+        if len(routes) >= 2:
             findings["6. соседняя страница не отвечает тем же вопросом"].append(
                 f"повторено предложение: {', '.join(routes)}: {sentence}"
             )
