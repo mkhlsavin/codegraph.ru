@@ -191,11 +191,20 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "effect",
         "workflow",
         "integrations",
-        "pilot",
         "faq",
         "demo",
     }
     assert section_ids == expected_sections
+    assert [node.get("id") for node in soup.find_all("section")] == [
+        "hero",
+        "problems",
+        "solution",
+        "workflow",
+        "integrations",
+        "effect",
+        "faq",
+        "demo",
+    ]
     visible = _normalized_text(soup.get_text(" ", strip=True))
     for required in (
         "CodeGraph управляет разработкой от задачи до выпуска",
