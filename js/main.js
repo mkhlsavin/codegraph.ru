@@ -21,6 +21,7 @@
       : 'https://api.codegraph.ru',  // Production API server with SSL
     apiTimeout: 180000  // 180 seconds timeout (LLM responses can take 60+ seconds)
   };
+  const LEAD_SUBMISSION_TIMEOUT_MS = 20000;
 
   const METRIKA_COUNTER_ID = 107046651;
   const FORM_COPY = {
