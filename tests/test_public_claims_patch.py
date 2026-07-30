@@ -143,7 +143,7 @@ def test_home_and_shared_sources_use_the_canonical_category() -> None:
     footer = surfaces[2].read_text(encoding="utf-8").replace(" ", "").replace("\xa0", "")
 
     assert not missing_category, f"Canonical category is missing from: {missing_category}"
-    assert FOOTER_DESCRIPTOR.replace(" ", "") in footer, "Footer descriptor is missing"
+    assert "{footer_tagline}" in footer, "Footer tagline placeholder is missing"
 
 
 def test_public_ctas_do_not_route_through_legacy_index_file() -> None:
@@ -178,7 +178,7 @@ def test_benchmark_page_is_a_reproducible_template_until_evidence_exists() -> No
         "153/160",
     )
     assert not [phrase for phrase in forbidden if phrase in benchmark]
-    for field in ("Dataset", "Protocol", "Environment", "Raw result", "Calculation", "Limitations", "Checksums"):
+    for field in ("Набор данных", "Протокол", "Среда", "Исходный результат", "Расчёт", "Ограничения", "Контрольные суммы"):
         assert field in benchmark
 
 
@@ -216,9 +216,9 @@ def test_benchmark_metadata_matches_unpublished_evidence_status() -> None:
         "Эти цифры полезны как ориентир",
     ):
         assert phrase not in benchmark
-    assert "Методика оценки точности и скорости разбора CodeGraph" in benchmark
+    assert "Как будет устроено измерение CodeGraph" in benchmark
     assert re.search(
-        r"<h1>Методика\s+оценки\s+точности\s+и\s+скорости\s+разбора\s+CodeGraph</h1>",
+        r"<h1>Как\s+будет\s+устроено\s+измерение\s+CodeGraph</h1>",
         benchmark,
     )
     assert "Шаблон доказательного пакета для будущих измерений CodeGraph." in benchmark

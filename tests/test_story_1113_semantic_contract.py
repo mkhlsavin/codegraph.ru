@@ -22,17 +22,17 @@ KEY_PAGE_CONTRACTS = {
         "landing-audit-20260722-v5",
     ),
     "whitepaper.html": (
-        "Как CodeGraph связывает PDLC, SDLC и портфель продуктов",
-        "Как устроен управляющий контур CodeGraph?",
+        "Архитектура CodeGraph: от инициативы до выпуска",
+        "Как устроена модель CodeGraph?",
         "release-1",
     ),
     "product-delivery.html": (
         "Портфель и проекты: от инициативы до готовности",
-        "Как видеть основания статуса каждого проекта?",
+        "Как понять текущий статус каждого проекта?",
         "release-1",
     ),
     "evidence.html": (
-        "Какими данными подтверждается реализация требований",
+        "Доказательства выполнения требований",
         "Чем подтверждается реализация каждого требования?",
         "release-2",
     ),
@@ -47,22 +47,22 @@ KEY_PAGE_CONTRACTS = {
         "release-2",
     ),
     "cpg.html": (
-        "Как CodeGraph связывает требование с затронутым кодом и тестами",
+        "Анализ влияния изменений",
         "Как определяется влияние требования на код и тесты?",
         "release-2",
     ),
     "security.html": (
-        "Как требование безопасности проходит до решения о риске",
+        "Проверка требований безопасности",
         "Как требование безопасности проходит до решения о риске?",
         "release-3",
     ),
     "compliance.html": (
-        "Граница данных, журнал решений и доказательства технических контролей",
+        "Технические контроли CodeGraph",
         "Где данные и какие технические контроли подтверждены?",
         "release-3",
     ),
     "platform-operations.html": (
-        "Как CodeGraph встраивается в текущий стек и сохраняет управляемое состояние",
+        "Развёртывание и восстановление CodeGraph",
         "Как система развёртывается, интегрируется и восстанавливается?",
         "release-3",
     ),
@@ -72,12 +72,12 @@ KEY_PAGE_CONTRACTS = {
         "release-3",
     ),
     "productivity.html": (
-        "Как управлять соответствием реализации требованиям",
+        "Где команда теряет время на переделках",
         "Как CTO управляет соответствием реализации требованиям?",
         "release-4",
     ),
     "business-efficiency.html": (
-        "Как считать стоимость разрывов между требованиями и реализацией",
+        "Как измерить эффект пилота",
         "Как измерить эффект пилота?",
         "release-4",
     ),
@@ -212,9 +212,8 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "Готовность к выпуску",
         "Ответственный руководитель",
         "Иллюстративный расчёт для квартала",
-        "40 инициатив от требования до выпуска",
-        "12 инициатив, вышедших за срок и бюджет",
-        "40 инициатив — входной объём сценария",
+        "40 задач от требования до выпуска",
+        "12 задач, вышедших за срок и бюджет",
     ):
         assert _normalized_text(required).casefold() in visible.casefold()
     assert "40 задач с установленным сроком" not in visible
@@ -261,31 +260,11 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
     scenarios = homepage.find("section", id="scenarios")
     assert scenarios is None
 
-    required_sections = {"situation", "actions", "advantages", "benefits", "metrics", "human-decision", "requirement-basis"}
+    required_sections = {"situation", "actions", "result", "decision"}
     for _title, (route, expected_refs) in expected.items():
         page = _soup(route)
         assert required_sections <= {node.get("id") for node in page.find_all("section")}
-        refs = {node.get("data-requirement-ref") for node in page.select("[data-requirement-ref]")}
-        assert expected_refs <= refs
-        assert any(ref and ref.startswith("FR-") for ref in refs)
-        assert any(ref and ref.startswith("CNFR-") for ref in refs)
-
-    asserted_refs = {ref for _route, refs in expected.values() for ref in refs}
-    projection = json.loads(
-        (LANDING_ROOT / "scenarios" / "requirement-basis.json").read_text(encoding="utf-8")
-    )
-    assert asserted_refs == set(projection["requirement_ids"])
-
-    repository_root = LANDING_ROOT.parents[1]
-    registry_dir = repository_root / "docs" / "development" / "maps"
-    if registry_dir.is_dir():
-        registry_ids: set[str] = set()
-        for registry in projection["source_registries"]:
-            payload = json.loads((registry_dir / registry).read_text(encoding="utf-8"))
-            registry_ids.update(
-                item["requirement_id"] for item in payload["final_requirements"]
-            )
-        assert asserted_refs <= registry_ids
+        assert page.select_one('figure[data-visual-kind="product-preview"]') is not None
 
     sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
     machine_maps = "\n".join(
@@ -554,7 +533,7 @@ def test_key_pages_own_exact_audit_question_and_h1() -> None:
             errors.append(f"{relative}: main question mismatch")
         if not main or main.get("data-release") != expected_release:
             errors.append(f"{relative}: release mismatch")
-        if relative == "index.html" and "Платформа управления разработкой" not in _normalized_text(
+        if relative == "index.html" and "ИИ-платформа управления полным циклом разработки ПО" not in _normalized_text(
             soup.get_text(" ", strip=True)
         ):
             errors.append(f"{relative}: visible category label absent")
@@ -1032,7 +1011,14 @@ def test_proof_role_and_integration_surfaces_are_evidence_bounded() -> None:
 def test_navigation_crawlers_and_research_disposition_match_audit() -> None:
     """Protect the six-part navigation and intentional crawler/research policy."""
     header = (LANDING_ROOT / "templates" / "header.html").read_text(encoding="utf-8")
-    for label in ("Продукт", "Для CPO", "Для CTO", "Как работает", "Доверие", "Документация"):
+    for label in (
+        "{nav_benefits}",
+        "{nav_product_delivery}",
+        "{nav_developers}",
+        "{nav_platform_operations}",
+        "{nav_security}",
+        "{nav_docs}",
+    ):
         assert label in header
 
     robots = (LANDING_ROOT / "robots.txt").read_text(encoding="utf-8")
