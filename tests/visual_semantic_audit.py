@@ -110,6 +110,8 @@ HARD_FIELDS = (
     "card_first_child_offset",
     "resource_shell_inner_padding",
     "faq_item_gap",
+    "freshness_note_count",
+    "freshness_min_gap",
 )
 
 
@@ -628,6 +630,15 @@ async def _inspect_route(
                         item.getBoundingClientRect(),
                       ));
                       const faqItemGap = faqGaps.length ? Math.max(...faqGaps) : 0;
+                      const freshnessNotes = [...document.querySelectorAll('[data-freshness-label]')]
+                        .filter(isVisible);
+                      const freshnessGaps = freshnessNotes
+                        .map((note) => {
+                          const previous = note.previousElementSibling;
+                          return previous && isVisible(previous)
+                            ? boxGap(previous.getBoundingClientRect(), note.getBoundingClientRect())
+                            : 0;
+                        });
                       const touchTargetSizes = [...document.querySelectorAll(
                         '.cg-button-sm, .cg-button-icon, .cg-theme-toggle, .cg-mobile-toggle, .cg-footer-social-link'
                       )]
@@ -738,6 +749,10 @@ async def _inspect_route(
                         card_first_child_offset: Math.round(cardFirstChildOffset * 10) / 10,
                         resource_shell_inner_padding: resourceShellInnerPadding,
                         faq_item_gap: Math.round(faqItemGap * 10) / 10,
+                        freshness_note_count: freshnessNotes.length,
+                        freshness_min_gap: freshnessGaps.length
+                          ? Math.round(Math.min(...freshnessGaps) * 10) / 10
+                          : 0,
                         drawer_focus_inside: drawerFocusInside,
                         drawer_background_inert: drawerBackgroundInert,
                         drawer_focus_returned: drawerFocusReturned,
@@ -948,6 +963,11 @@ def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, An
                 )
             if row.get("faq_item_gap", 0) > 1:
                 reasons.append(f"faq_item_gap={row['faq_item_gap']}")
+            if not str(row.get("route", "")).startswith("docs/") and row.get("freshness_note_count"):
+                if row.get("freshness_note_count") != 1:
+                    reasons.append(f"freshness_note_count={row['freshness_note_count']}")
+                if row.get("freshness_min_gap", 0) < 24:
+                    reasons.append(f"freshness_min_gap={row['freshness_min_gap']}")
             if (
                 row.get("profile") == "mobile"
                 and not str(row.get("route", "")).startswith("docs/")
