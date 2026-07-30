@@ -212,12 +212,14 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "Готовность к выпуску",
         "Ответственный руководитель",
         "Иллюстративный расчёт для квартала",
-        "600 задач за квартал",
-        "180 задач могут выйти за срок и бюджет",
-        "Это сценарное допущение, а не отдельная статистика BCG",
+        "40 инициатив от требования до выпуска",
+        "12 инициатив, вышедших за срок и бюджет",
+        "40 инициатив — входной объём сценария",
     ):
         assert _normalized_text(required).casefold() in visible.casefold()
     assert "40 задач с установленным сроком" not in visible
+    assert "600 задач за квартал" not in visible
+    assert "2 контрольные задачи на одного специалиста" not in visible
 
 
 def test_homepage_does_not_reintroduce_removed_story_blocks() -> None:
