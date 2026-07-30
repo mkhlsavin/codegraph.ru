@@ -49,6 +49,33 @@ ABSTRACT_PATTERNS = (
         ),
     ),
 )
+FORBIDDEN_COPY_PATTERNS = (
+    ("старое позиционирование", re.compile(r"решение для управляемой разработки цифровых продуктов", re.IGNORECASE)),
+    ("инициатива", re.compile(r"\bинициатив\w*", re.IGNORECASE)),
+    ("контур", re.compile(r"\bконтур\w*", re.IGNORECASE)),
+    ("доказательная база", re.compile(r"\bдоказательн\w*\s+баз\w*", re.IGNORECASE)),
+    ("пакет подтверждений", re.compile(r"\bпакет\s+подтвержден\w*", re.IGNORECASE)),
+    ("пакет готовности", re.compile(r"\bпакет\s+готовност\w*", re.IGNORECASE)),
+    ("прослеживаемость", re.compile(r"\bпрослеживаем\w*", re.IGNORECASE)),
+    ("продуктовый замысел", re.compile(r"\bпродуктов\w*\s+замыс\w*", re.IGNORECASE)),
+    ("управленческий выигрыш", re.compile(r"\bуправленческ\w*\s+выигрыш\w*", re.IGNORECASE)),
+    ("живой пакет документации", re.compile(r"\bжив\w*\s+пакет\w*\s+документаци\w*", re.IGNORECASE)),
+    ("метаописание страницы", re.compile(r"\b(?:на странице|описан\w*\s+отдельно\s+на\s+странице|начните\s+с\s+материала|ссылки\s+ведут\s+к\s+публичным\s+материалам|здесь\s+остают\w*)\b", re.IGNORECASE)),
+    ("отрицательное сравнение", re.compile(r"\bне\s+заменяет\b|\bдают\s+основу\b", re.IGNORECASE)),
+)
+GRAMMAR_REGRESSION_PATTERNS = (
+    "нужен локальная среда",
+    "не требует дополнительной результатов",
+    "к результатах проверок",
+    "в матрица версий поддержки",
+    "вместе с набор данных, протокол",
+    "после проверки набор данных",
+    "в локальном системае",
+    "единый система",
+    "локального средаа",
+    "локальном средае",
+    "как должен выглядеть проверка",
+)
 
 
 @dataclass(frozen=True)
@@ -108,6 +135,58 @@ def _clean_copy_without_links(node: Tag) -> str:
     ):
         card.decompose()
     return _clean_copy(clone)
+
+
+def _metadata_values(page: Page) -> list[str]:
+    values: list[str] = []
+    for node in page.soup.find_all(["title", "meta"]):
+        if node.name == "title":
+            values.append(node.get_text(" ", strip=True))
+        else:
+            content = node.get("content")
+            if content:
+                values.append(str(content))
+    for script in page.soup.select('script[type="application/ld+json"]'):
+        raw = script.get_text(strip=True)
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            values.append(raw)
+            continue
+
+        def collect(value: object) -> None:
+            if isinstance(value, str):
+                values.append(value)
+            elif isinstance(value, dict):
+                for item in value.values():
+                    collect(item)
+            elif isinstance(value, list):
+                for item in value:
+                    collect(item)
+
+        collect(payload)
+    return values
+
+
+def _editorial_scan_text(page: Page) -> str:
+    return " ".join([_clean_copy(page.main), *_metadata_values(page)])
+
+
+def _check_seven_regressions(pages: list[Page], findings: dict[str, list[str]]) -> None:
+    for page in pages:
+        text = _editorial_scan_text(page)
+        for label, pattern in FORBIDDEN_COPY_PATTERNS:
+            match = pattern.search(text)
+            if match:
+                findings["7. запрещённые термины и метаописания отсутствуют"].append(
+                    f"{page.route}: {label}: {match.group(0)}"
+                )
+        lower = text.casefold()
+        for phrase in GRAMMAR_REGRESSION_PATTERNS:
+            if phrase.casefold() in lower:
+                findings["7. запрещённые термины и метаописания отсутствуют"].append(
+                    f"{page.route}: грамматический регресс: {phrase}"
+                )
 
 
 def _sentences(value: str) -> list[str]:
@@ -329,6 +408,7 @@ def audit() -> tuple[list[Page], dict[str, list[str]]]:
     _check_four_concrete_language(pages, findings)
     _check_five_unique_proof(pages, findings)
     _check_six_adjacent_pages(pages, findings)
+    _check_seven_regressions(pages, findings)
     return pages, findings
 
 
@@ -350,6 +430,7 @@ def main() -> int:
             "4. абстрактное существительное заменено объектом или действием",
             "5. уникальный пример, таблица или результат",
             "6. соседняя страница не отвечает тем же вопросом",
+            "7. запрещённые термины и метаописания отсутствуют",
         ):
             print(f"{criterion}: {len(findings.get(criterion, []))} findings")
         for criterion, items in findings.items():

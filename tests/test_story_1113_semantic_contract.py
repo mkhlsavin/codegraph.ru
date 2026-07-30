@@ -22,12 +22,12 @@ KEY_PAGE_CONTRACTS = {
         "landing-audit-20260722-v5",
     ),
     "whitepaper.html": (
-        "Архитектура CodeGraph: от инициативы до выпуска",
+        "Архитектура CodeGraph",
         "Как устроена модель CodeGraph?",
         "release-1",
     ),
     "product-delivery.html": (
-        "Портфель и проекты: от инициативы до готовности",
+        "Портфель проектов и причины задержек",
         "Как понять текущий статус каждого проекта?",
         "release-1",
     ),
@@ -977,7 +977,7 @@ def test_proof_role_and_integration_surfaces_are_evidence_bounded() -> None:
     evidence = _soup("evidence.html")
     evidence_text = evidence.get_text(" ", strip=True).casefold()
     for phrase in (
-        "продуктовый замысел",
+        "цель продукта",
         "функциональное требование",
         "нефункциональное требование",
         "область влияния",
