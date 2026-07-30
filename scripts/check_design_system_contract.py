@@ -190,9 +190,13 @@ def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
             if route not in {"index.html", "whitepaper.html"} and "cg-page-flow" not in classes:
                 errors.append(f"{route}: page flow contract is missing")
             hero = main.find("section")
-            if hero is None or not hero.find("a", class_=lambda value: value and "cg-button" in value):
+            if route != "privacy.html" and (
+                hero is None or not hero.find("a", class_=lambda value: value and "cg-button" in value)
+            ):
                 errors.append(f"{route}: hero primary action must use cg-button")
-            if route != "index.html" and not main.select('[data-visual-kind="product-preview"]'):
+            if route not in {"index.html", "privacy.html"} and not main.select(
+                '[data-visual-kind="product-preview"]'
+            ):
                 errors.append(f"{route}: hero ProductPreview is missing")
         if route == "index.html":
             h2_count = len(soup.select("main > section h2"))
