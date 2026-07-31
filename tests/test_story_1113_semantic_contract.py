@@ -188,9 +188,10 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "hero",
         "problems",
         "solution",
-        "effect",
         "workflow",
+        "product-screen",
         "integrations",
+        "effect",
         "faq",
         "demo",
     }
@@ -200,6 +201,7 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "problems",
         "solution",
         "workflow",
+        "product-screen",
         "integrations",
         "effect",
         "faq",
@@ -207,13 +209,12 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
     ]
     visible = _normalized_text(soup.get_text(" ", strip=True))
     for required in (
-        "CodeGraph управляет разработкой от задачи до выпуска",
+        "CodeGraph управляет проектом от задачи до выпуска",
         "Граф кода показывает затронутые компоненты, зависимости и риски до выпуска",
         "Готовность к выпуску",
         "Ответственный руководитель",
-            "Расчёт срывов за квартал",
-        "40 задач от требования до выпуска",
-        "12 задач, вышедших за срок и бюджет",
+        "Пример: из 40 задач при доле срывов 30% двенадцать выходят за срок и бюджет",
+        "Условный расчёт на основе нижней границы из исследования BCG",
     ):
         assert _normalized_text(required).casefold() in visible.casefold()
     assert "40 задач с установленным сроком" not in visible
@@ -277,50 +278,26 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
         assert public_url in machine_maps
 
 
-def test_whitepaper_links_scenarios_and_shows_scalable_product_ui() -> None:
-    """Connect the whitepaper narrative to scenario details and real UI screens."""
+def test_whitepaper_uses_the_compact_architecture_narrative() -> None:
+    """Keep the whitepaper focused on one architecture story and its source links."""
     page = _soup("whitepaper.html")
-    scenarios = page.find("section", id="scenarios")
-    assert scenarios is not None
-    assert {link.get("href") for link in scenarios.select("a[href]")} == {
-        "scenarios/portfolio-change-management.html",
-        "scenarios/feature-delivery.html",
-        "scenarios/codebase-audit.html",
-        "scenarios/release-readiness.html",
-        "scenarios/technical-controls.html",
-        "scenarios/ai-code-control.html",
+    expected_sections = {
+        "answer",
+        "workflow",
+        "objects",
+        "roles",
+        "traceability",
+        "architecture",
+        "data",
+        "example",
+        "pilot",
     }
+    assert expected_sections <= {node.get("id") for node in page.find_all("section")}
+    assert page.find("section", id="scenarios") is None
+    assert "На узком экране" not in page.get_text(" ", strip=True)
 
-    comparison = page.find("section", id="competitive-comparison")
-    assert comparison is not None
-    assert {link.get("href") for link in comparison.select("a[href]")} == {
-        "docs/ru/enterprise/COMPETITIVE_MATRIX.html"
-    }
-
-    interface = page.find("section", id="interface")
-    assert interface is not None
-    screenshots = interface.select('figure[data-visual-kind="ui-screenshot"]')
-    assert len(screenshots) == 4
-    assert {figure.find("img")["src"] for figure in screenshots} == {
-        "assets/ui/portfolio-overview-20260720.png",
-        "assets/ui/project-delivery-20260720.png",
-        "assets/ui/compliance-center-20260720.png",
-        "assets/ui/digital-employee-handoff-map-20260720.png",
-    }
-    for figure in screenshots:
-        link = figure.find("a", href=True)
-        image = figure.find("img")
-        caption = figure.find("figcaption")
-        assert link is not None
-        assert link.has_attr("data-screen-viewer")
-        assert link.get("target") is None
-        assert link.get("data-screen-title")
-        assert link.get("data-screen-description")
-        assert image is not None and image.get("src") == link.get("href")
-        assert image.get("alt") and image.get("width") and image.get("height")
-        assert image.get("loading") == "lazy"
-        assert caption is not None and caption.get_text(" ", strip=True)
-        assert (LANDING_ROOT / image["src"]).is_file()
+    assert page.find("section", id="competitive-comparison") is None
+    assert page.find("section", id="interface") is None
 
 
 def test_homepage_documentation_action_uses_book_icon() -> None:
@@ -340,37 +317,22 @@ def test_homepage_documentation_action_uses_book_icon() -> None:
 
 
 def test_whitepaper_owns_visual_product_and_architecture_models() -> None:
-    """Require the accepted visual models instead of a flat terminology table."""
+    """Require the compact architecture sections instead of retired deep-runtime blocks."""
     soup = _soup("whitepaper.html")
     section_ids = {node.get("id") for node in soup.find_all("section")}
     assert {
-        "pdlc-sdlc",
-        "portfolio-model",
+        "answer",
         "workflow",
-        "team-map",
-        "role-passport",
-        "scheduled-processes",
+        "objects",
+        "roles",
         "traceability",
-        "readiness",
         "architecture",
-        "runtime-topology",
-        "indexing-query",
-        "data-ownership",
-        "governed-closure",
-        "portfolio-audit-release",
-        "security-compliance",
-        "scenarios",
+        "data",
+        "example",
         "pilot",
     } <= section_ids
-    figures = soup.find_all("figure", attrs={"data-product-diagram": True})
-    assert len(figures) == 15
-    for figure in figures:
-        svg = figure.find("svg", attrs={"role": "img"})
-        assert svg is not None
-        labelled_by = str(svg.get("aria-labelledby") or "").split()
-        assert len(labelled_by) == 2
-        assert all(soup.find(id=identifier) is not None for identifier in labelled_by)
-        assert max((len(text.find_all("tspan")) for text in svg.find_all("text")), default=0) <= 12
+    assert soup.find("section", id="runtime-topology") is None
+    assert soup.find("section", id="scheduled-processes") is None
 
 
 def test_every_whitepaper_section_starts_with_a_compact_reader_description() -> None:
@@ -410,60 +372,30 @@ def test_every_whitepaper_section_starts_with_a_compact_reader_description() -> 
 
 
 def test_whitepaper_explains_the_implementation_architecture_for_cto_review() -> None:
-    """Keep the CTO architecture extension grounded in concrete runtime boundaries."""
+    """Keep the architecture explanation grounded in product and code boundaries."""
     page = _soup("whitepaper.html")
     expected = {
-        "runtime-topology": ("FastAPI", "MCP", "GoCPG", "Исполнитель Temporal"),
-        "indexing-query": ("ProjectImportPipeline", "gRPC", "DuckDB", "OpenViking"),
-        "data-ownership": ("PostgreSQL", "DuckDB", "общей транзакции", "основное состояние"),
-        "governed-closure": ("контракт задачи", "передач", "Ева", "сервер"),
+        "architecture": ("Проекты и требования", "Выполнение задач", "Граф кода", "Интеграции", "Хранилища и аудит"),
+        "traceability": ("Граф свойств кода", "Динамические вызовы", "связанные тесты"),
     }
     for section_id, required_terms in expected.items():
         section = page.find("section", id=section_id)
         assert section is not None, f"whitepaper is missing #{section_id}"
-        text = section.get_text(" ", strip=True)
+        text = _normalized_text(section.get_text(" ", strip=True))
         for term in required_terms:
             assert term in text, f"#{section_id} is missing {term}"
-        figure = section.find("figure", attrs={"data-product-diagram": True})
-        assert figure is not None
-        assert figure.find("svg", attrs={"role": "img"}) is not None
 
 
-def test_whitepaper_aligns_scheduled_work_and_role_passport_to_canonical_contracts() -> None:
-    """Keep Story 1117 grounded in the schedule runtime and role-passport template."""
+def test_whitepaper_explains_roles_and_pilot_boundaries_without_runtime_meta() -> None:
+    """Keep the public whitepaper useful without exposing internal implementation detail."""
     page = _soup("whitepaper.html")
-    expected = {
-        "role-passport": (
-            "человек-владелец",
-            "событие запуска",
-            "запрещённые действия",
-            "критерии приёмки",
-            "получатель",
-            "передача работы",
-            "условия остановки",
-            "метрики",
-            "дата пересмотра",
-        ),
-        "scheduled-processes": (
-            "составного аудита",
-            "обновления документации",
-            "cron-выражение",
-            "Temporal Schedule",
-            "постоянный идентификатор операции",
-            "контракт задачи",
-            "без пересечений",
-            "видимой блокировкой",
-        ),
-    }
-    for section_id, required_terms in expected.items():
-        section = page.find("section", id=section_id)
-        assert section is not None, f"whitepaper is missing #{section_id}"
-        visible = _normalized_text(section.get_text(" ", strip=True)).casefold()
-        for term in required_terms:
-            assert term.casefold() in visible, f"#{section_id} is missing {term}"
-        figure = section.find("figure", attrs={"data-product-diagram": True})
-        assert figure is not None
-        assert figure.find("svg", attrs={"role": "img"}) is not None
+    roles = page.find("section", id="roles")
+    pilot = page.find("section", id="pilot")
+    assert roles is not None and "Для цифровой роли задаются владелец" in roles.get_text(" ", strip=True)
+    assert pilot is not None and "одного проекта" in pilot.get_text(" ", strip=True)
+    visible = _normalized_text(page.get_text(" ", strip=True)).casefold()
+    for term in ("cron", "temporal", "fastapi", "openviking", "на узком экране"):
+        assert term not in visible
 
 
 def test_every_explanatory_product_figure_is_inline_svg() -> None:
