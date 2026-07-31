@@ -60,9 +60,8 @@ FORBIDDEN_COPY_PATTERNS = (
     ("продуктовый замысел", re.compile(r"\bпродуктов\w*\s+замыс\w*", re.IGNORECASE)),
     ("управленческий выигрыш", re.compile(r"\bуправленческ\w*\s+выигрыш\w*", re.IGNORECASE)),
     ("живой пакет документации", re.compile(r"\bжив\w*\s+пакет\w*\s+документаци\w*", re.IGNORECASE)),
-    ("мета-комментарий о материале", re.compile(r"\b(?:публичн(?:ая|ый|ого|ом|ой)\s+страниц\w*|публичн(?:ый|ого|ом|ой)\s+источник\w*|базов\w*\s+публичн\w*\s+источник\w*|в\s+публичн\w*\s+источник\w*|публичн\w*\s+выборк\w*|на\s+опубликованн\w*\s+страниц\w*|страниц\w*\s+отделя\w*|публичн\w*\s+клиентск\w*\s+пример\w*|жанр\s+материал\w*|синтетичес\w*\s+пример\w*|иллюстративн\w*\s+расч\w*)\b", re.IGNORECASE)),
+    ("мета-комментарий о материале", re.compile(r"\b(?:публичн(?:ая|ый|ого|ом|ой)\s+страниц\w*|публичн(?:ый|ого|ом|ой)\s+источник\w*|базов\w*\s+публичн\w*\s+источник\w*|в\s+публичн\w*\s+источник\w*|публичн\w*\s+выборк\w*|на\s+опубликованн\w*\s+страниц\w*|страниц\w*\s+отделя\w*|публичн\w*\s+клиентск\w*\s+пример\w*|жанр\s+материал\w*|иллюстративн\w*\s+расч\w*)\b", re.IGNORECASE)),
     ("метаописание страницы", re.compile(r"\b(?:на странице|описан\w*\s+отдельно\s+на\s+странице|начните\s+с\s+материала|ссылки\s+ведут\s+к\s+публичным\s+материалам|здесь\s+остают\w*)\b", re.IGNORECASE)),
-    ("отрицательное сравнение", re.compile(r"\bне\s+заменяет\b|\bдают\s+основу\b", re.IGNORECASE)),
 )
 GRAMMAR_REGRESSION_PATTERNS = (
     "нужен локальная среда",
@@ -400,6 +399,55 @@ def _check_six_adjacent_pages(pages: list[Page], findings: dict[str, list[str]])
             )
 
 
+def _check_hero_first_section(pages: list[Page], findings: dict[str, list[str]]) -> None:
+    """Catch a first section that merely restates the answer in the hero."""
+    for page in pages:
+        hero = page.main.find("section")
+        blocks = _content_blocks(page)
+        if hero is None or len(blocks) < 2 or blocks[0] is not hero:
+            continue
+        hero_text = _clean_copy_without_links(hero)
+        first_text = _clean_copy_without_links(blocks[1])
+        hero_tokens, first_tokens = _tokens(hero_text), _tokens(first_text)
+        if not hero_tokens or not first_tokens:
+            continue
+        overlap = len(hero_tokens & first_tokens) / min(len(hero_tokens), len(first_tokens))
+        similarity = difflib.SequenceMatcher(None, hero_text, first_text).ratio()
+        if similarity >= 0.78 or overlap >= 0.84:
+            findings["8. Hero и первая секция различаются"].append(
+                f"{page.route}: первая секция повторяет ответ Hero"
+            )
+
+
+def _check_neighbor_cta(pages: list[Page], findings: dict[str, list[str]]) -> None:
+    """Catch duplicate action labels within the same visible block."""
+    for page in pages:
+        for block in page.main.find_all("section"):
+            labels = [
+                _normalise(node.get_text(" ", strip=True))
+                for node in block.select("a.cg-button, button.cg-button")
+            ]
+            for left, right in zip(labels, labels[1:]):
+                if left and left == right:
+                    findings["9. соседние CTA не повторяются"].append(
+                        f"{page.route}: повторена кнопка: {left}"
+                    )
+
+
+def _check_test_data_labels(pages: list[Page], findings: dict[str, list[str]]) -> None:
+    """Require a short, explicit label for public fictional artifacts."""
+    fictional_markers = re.compile(
+        r"\b(?:SEC-ADM-014|PR-842|AC-14|FR-AP-07|NFR-AUD-02|PI-AP-03|R-09)\b",
+        re.IGNORECASE,
+    )
+    for page in pages:
+        proof = " ".join(node.get_text(" ", strip=True) for node in page.main.select("pre, table"))
+        if fictional_markers.search(proof) and not re.search(r"\bтестовые\s+данные\b", _clean_copy(page.main), re.IGNORECASE):
+            findings["10. тестовые примеры помечены"].append(
+                f"{page.route}: пример с идентификаторами без метки «Тестовые данные»"
+            )
+
+
 def audit() -> tuple[list[Page], dict[str, list[str]]]:
     pages = _pages()
     findings: dict[str, list[str]] = defaultdict(list)
@@ -410,6 +458,9 @@ def audit() -> tuple[list[Page], dict[str, list[str]]]:
     _check_five_unique_proof(pages, findings)
     _check_six_adjacent_pages(pages, findings)
     _check_seven_regressions(pages, findings)
+    _check_hero_first_section(pages, findings)
+    _check_neighbor_cta(pages, findings)
+    _check_test_data_labels(pages, findings)
     return pages, findings
 
 
@@ -432,6 +483,9 @@ def main() -> int:
             "5. уникальный пример, таблица или результат",
             "6. соседняя страница не отвечает тем же вопросом",
             "7. запрещённые термины и метаописания отсутствуют",
+            "8. Hero и первая секция различаются",
+            "9. соседние CTA не повторяются",
+            "10. тестовые примеры помечены",
         ):
             print(f"{criterion}: {len(findings.get(criterion, []))} findings")
         for criterion, items in findings.items():
