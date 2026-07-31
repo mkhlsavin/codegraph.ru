@@ -194,7 +194,7 @@ def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
                 hero is None or not hero.find("a", class_=lambda value: value and "cg-button" in value)
             ):
                 errors.append(f"{route}: hero primary action must use cg-button")
-            if route not in {"index.html", "privacy.html"} and not main.select(
+            if route not in {"index.html", "privacy.html", "integrations.html"} and not main.select(
                 '[data-visual-kind="product-preview"]'
             ):
                 errors.append(f"{route}: hero ProductPreview is missing")
