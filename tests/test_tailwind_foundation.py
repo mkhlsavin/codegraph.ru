@@ -276,6 +276,18 @@ def test_generated_release_one_pages_use_the_tailwind_shared_shell() -> None:
     assert "data-shell-cta" in index
 
 
+def test_whitepaper_uses_shared_page_flow_rhythm() -> None:
+    """Keep the technical overview on the same section rhythm as public pages."""
+    html = (LANDING_ROOT / "whitepaper.html").read_text(encoding="utf-8")
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+
+    assert 'class="bg-cg-surface text-cg-ink' in html
+    assert "cg-page-flow" in html.split("</main>", 1)[0]
+    assert 'id="next-step"' in html and "cg-section-new-surface" in html
+    assert ".cg-whitepaper-body > section" in css
+    assert "padding-bottom: 48px" in css
+
+
 def test_generated_freshness_labels_stay_inside_the_final_cta() -> None:
     """Keep generated update dates on the CTA background, not after ``main``."""
     for relative in ("security.html", "whitepaper.html", "productivity.html"):
