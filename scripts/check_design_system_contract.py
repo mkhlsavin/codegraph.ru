@@ -254,8 +254,8 @@ def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
             viewer = figure.select_one("[data-diagram-viewer]")
             if viewer is None or not viewer.get("data-diagram-id") or not soup.find(id=viewer.get("data-diagram-id")):
                 errors.append(f"{route}: wide diagram lacks fullscreen viewer")
-            if not figure.select_one(".cg-diagram-mobile-summary, .cg-diagram-mobile"):
-                errors.append(f"{route}: wide diagram lacks mobile strategy")
+            if not figure.select_one(".cg-diagram-scroll, .overflow-x-auto, .cg-diagram-mobile"):
+                errors.append(f"{route}: wide diagram lacks mobile scroll strategy")
             if svg is None:
                 continue
             active_nodes = svg.select("rect.cg-diagram-node-active")

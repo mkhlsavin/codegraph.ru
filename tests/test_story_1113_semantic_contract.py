@@ -300,6 +300,31 @@ def test_whitepaper_uses_the_compact_architecture_narrative() -> None:
     assert page.find("section", id="interface") is None
 
 
+def test_whitepaper_diagrams_do_not_expose_responsive_meta_or_broken_tspans() -> None:
+    """Keep product diagrams readable without leaking implementation notes into copy."""
+    page = _soup("whitepaper.html")
+    visible = _normalized_text(page.get_text(" ", strip=True)).casefold()
+    forbidden_fragments = (
+        "на узком экране",
+        "горизонтальной прокруткой",
+        "схема доступна",
+    )
+    for fragment in forbidden_fragments:
+        assert fragment not in visible
+
+    errors: list[str] = []
+    one_character_line = re.compile(r"^[A-Za-zА-Яа-яЁё0-9,]$")
+    for figure in page.select("[data-product-diagram]"):
+        diagram_id = figure.get("data-product-diagram")
+        assert figure.select_one(".cg-diagram-scroll, .overflow-x-auto") is not None
+        assert figure.select_one("[data-diagram-viewer]") is not None
+        for tspan in figure.select("svg text tspan"):
+            value = _normalized_text(tspan.get_text(" ", strip=True))
+            if one_character_line.fullmatch(value):
+                errors.append(f"{diagram_id}: broken single-character tspan {value!r}")
+    assert not errors, "Broken SVG text layout remains:\n" + "\n".join(errors)
+
+
 def test_homepage_documentation_action_uses_book_icon() -> None:
     """Represent documentation with an open book instead of the retired video icon."""
     page = _soup("index.html")
