@@ -1341,6 +1341,246 @@
   }
 
   // ============================================
+  // Documentation Navigation and Components
+  // ============================================
+  function initDocsNavigation() {
+    const layout = document.querySelector('.doc-layout');
+    if (!layout || layout.dataset.docEnhanced === 'true') return;
+
+    layout.dataset.docEnhanced = 'true';
+    const sidebar = layout.querySelector('.doc-sidebar');
+    const toc = layout.querySelector('.doc-toc');
+    const article = layout.querySelector('.doc-content');
+    const isRussian = document.documentElement.lang === 'ru';
+    const labels = isRussian
+      ? { navigation: 'Навигация', toc: 'На этой странице', copy: 'Копировать', copied: 'Скопировано', close: 'Закрыть панель', link: 'Скопировать ссылку на раздел', linkCopied: 'Ссылка скопирована' }
+      : { navigation: 'Navigation', toc: 'On this page', copy: 'Copy', copied: 'Copied', close: 'Close panel', link: 'Copy link to section', linkCopied: 'Link copied' };
+
+    if (!sidebar || !toc || !article) return;
+
+    const controls = document.createElement('div');
+    controls.className = 'doc-mobile-controls';
+    const backdrop = document.createElement('button');
+    backdrop.type = 'button';
+    backdrop.className = 'doc-drawer-backdrop';
+    backdrop.setAttribute('aria-label', labels.close);
+    backdrop.hidden = true;
+
+    const openers = {};
+    [['sidebar', labels.navigation], ['toc', labels.toc]].forEach(([name, text]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'doc-drawer-toggle';
+      button.dataset.docOpen = name;
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-controls', `doc-${name}-panel`);
+      button.textContent = text;
+      controls.append(button);
+      openers[name] = button;
+    });
+    layout.parentNode.insertBefore(controls, layout);
+    layout.parentNode.insertBefore(backdrop, layout);
+
+    const drawerFor = { sidebar, toc };
+    Object.entries(drawerFor).forEach(([name, drawer]) => {
+      drawer.id = `doc-${name}-panel`;
+      drawer.setAttribute('aria-label', name === 'sidebar' ? labels.navigation : labels.toc);
+    });
+
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    let openDrawer = null;
+    let lastOpener = null;
+
+    const syncResponsiveDrawers = () => {
+      const tocDrawer = window.matchMedia('(max-width: 1279px)').matches;
+      const sidebarDrawer = window.matchMedia('(max-width: 959px)').matches;
+      if (tocDrawer) toc.dataset.docDrawer = 'toc';
+      else toc.removeAttribute('data-doc-drawer');
+      if (sidebarDrawer) sidebar.dataset.docDrawer = 'sidebar';
+      else sidebar.removeAttribute('data-doc-drawer');
+      if (openDrawer && !drawerFor[openDrawer].hasAttribute('data-doc-drawer')) {
+        openDrawer = null;
+        if (lastOpener instanceof HTMLElement) lastOpener.focus();
+      }
+      Object.values(drawerFor).forEach(drawer => {
+        if (drawer.hasAttribute('data-doc-drawer') && drawer.dataset.state !== 'open') drawer.dataset.state = 'closed';
+      });
+      if (!openDrawer) {
+        backdrop.hidden = true;
+        delete document.body.dataset.docLock;
+      }
+    };
+
+    const setDrawer = (name, isOpen) => {
+      const drawer = drawerFor[name];
+      if (!drawer.hasAttribute('data-doc-drawer')) return;
+      drawer.dataset.state = isOpen ? 'open' : 'closed';
+      openers[name].setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      if (isOpen) {
+        openDrawer = name;
+        lastOpener = openers[name];
+        backdrop.hidden = false;
+        document.body.dataset.docLock = 'true';
+        window.setTimeout(() => drawer.querySelector(focusableSelector)?.focus(), 0);
+      } else if (openDrawer === name) {
+        openDrawer = null;
+        if (!Object.values(drawerFor).some(item => item.dataset.state === 'open')) {
+          backdrop.hidden = true;
+          delete document.body.dataset.docLock;
+        }
+        if (lastOpener instanceof HTMLElement) lastOpener.focus();
+      }
+    };
+
+    function closeDrawer() {
+      if (openDrawer) setDrawer(openDrawer, false);
+    }
+
+    Object.entries(openers).forEach(([name, button]) => {
+      button.addEventListener('click', () => {
+        if (openDrawer && openDrawer !== name) setDrawer(openDrawer, false);
+        setDrawer(name, drawerFor[name].dataset.state !== 'open');
+      });
+    });
+    backdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && openDrawer) closeDrawer();
+    });
+    const mediaQueries = [
+      window.matchMedia('(max-width: 1279px)'),
+      window.matchMedia('(max-width: 959px)')
+    ];
+    mediaQueries.forEach(query => query.addEventListener?.('change', syncResponsiveDrawers));
+    syncResponsiveDrawers();
+
+    // Keep only the current navigation branch expanded while allowing keyboard toggling.
+    const currentPath = window.location.pathname.replace(/index\.html$/u, '') || '/';
+    sidebar.querySelectorAll('.doc-sidebar-section').forEach((section, index) => {
+      const title = section.querySelector('.doc-sidebar-title');
+      const nav = section.querySelector('.doc-sidebar-nav');
+      if (!title || !nav) return;
+      const activeLink = nav.querySelector('a.active, a[aria-current="page"]') || Array.from(nav.querySelectorAll('a')).find(link => {
+        const url = new URL(link.href, window.location.href);
+        return url.origin === window.location.origin && (url.pathname.replace(/index\.html$/u, '') || '/') === currentPath;
+      });
+      if (activeLink) activeLink.setAttribute('aria-current', 'page');
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'doc-sidebar-toggle';
+      toggle.textContent = title.textContent.trim();
+      toggle.setAttribute('aria-controls', `doc-section-${index}`);
+      nav.id = `doc-section-${index}`;
+      toggle.setAttribute('aria-expanded', activeLink ? 'true' : 'false');
+      section.dataset.docExpanded = activeLink ? 'true' : 'false';
+      title.replaceWith(toggle);
+      toggle.addEventListener('click', () => {
+        const expanded = section.dataset.docExpanded !== 'true';
+        section.dataset.docExpanded = expanded ? 'true' : 'false';
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      });
+    });
+
+    // Turn generated table wrappers into keyboard-focusable scroll regions.
+    article.querySelectorAll('.table-wrapper').forEach(wrapper => {
+      wrapper.classList.add('docs-table-scroll');
+      wrapper.tabIndex = 0;
+      wrapper.setAttribute('aria-label', isRussian ? 'Таблица с горизонтальной прокруткой' : 'Table with horizontal scrolling');
+      wrapper.querySelectorAll('th:not([scope])').forEach(cell => cell.setAttribute('scope', 'col'));
+    });
+
+    // Replace the theme permalink glyph with a copy action that does not shift headings.
+    article.querySelectorAll('.heading-anchor').forEach(anchor => {
+      anchor.textContent = '';
+      anchor.setAttribute('aria-label', labels.link);
+      anchor.title = labels.link;
+      anchor.addEventListener('click', event => {
+        event.preventDefault();
+        const url = new URL(anchor.getAttribute('href') || '', window.location.href).href;
+        const copy = navigator.clipboard?.writeText(url) || Promise.reject(new Error('Clipboard unavailable'));
+        copy.then(() => {
+          anchor.dataset.copyState = 'copied';
+          anchor.title = labels.linkCopied;
+          window.setTimeout(() => {
+            delete anchor.dataset.copyState;
+            anchor.title = labels.link;
+          }, 1400);
+        }).catch(() => { window.location.hash = anchor.hash; });
+      });
+    });
+
+    article.querySelectorAll('pre').forEach(pre => {
+      if (pre.querySelector('.doc-code-copy')) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'doc-code-copy';
+      button.dataset.copyState = 'idle';
+      button.textContent = labels.copy;
+      button.setAttribute('aria-label', isRussian ? 'Скопировать код' : 'Copy code');
+      pre.append(button);
+      button.addEventListener('click', () => {
+        const text = pre.querySelector('code')?.textContent || pre.textContent || '';
+        (navigator.clipboard?.writeText(text) || Promise.reject(new Error('Clipboard unavailable'))).then(() => {
+          button.dataset.copyState = 'copied';
+          button.textContent = labels.copied;
+          window.setTimeout(() => {
+            button.dataset.copyState = 'idle';
+            button.textContent = labels.copy;
+          }, 1400);
+        }).catch(() => {
+          button.dataset.copyState = 'idle';
+        });
+      });
+    });
+
+    // Keep the right rail useful on long pages: H3 is shown only for the active H2.
+    const tocLinks = Array.from(toc.querySelectorAll('.doc-toc-list a'));
+    const headings = Array.from(article.querySelectorAll('h2, h3'));
+    const headingParents = new Map();
+    let parentId = '';
+    headings.forEach(heading => {
+      if (heading.tagName === 'H2') parentId = heading.id;
+      headingParents.set(heading.id, parentId);
+    });
+    const setTocState = heading => {
+      const activeParent = headingParents.get(heading.id) || heading.id;
+      tocLinks.forEach(link => {
+        const linkId = (link.getAttribute('href') || '').slice(1);
+        const isH3 = link.classList.contains('level-3');
+        if (isH3) link.hidden = headingParents.get(linkId) !== activeParent;
+        const active = linkId === heading.id || (!isH3 && linkId === activeParent);
+        if (active) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
+    };
+    if (headings[0]) setTocState(headings[0]);
+    if ('IntersectionObserver' in window && headings.length) {
+      const observer = new IntersectionObserver(entries => {
+        const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setTocState(visible[0].target);
+      }, { rootMargin: `-${CONFIG.scrollOffset}px 0px -55% 0px`, threshold: [0, 1] });
+      headings.forEach(heading => observer.observe(heading));
+    }
+
+    const firstParagraph = article.firstElementChild;
+    if (firstParagraph?.tagName === 'P' && !firstParagraph.classList.contains('doc-lead')) {
+      firstParagraph.classList.add('doc-lead');
+    }
+    const hero = layout.querySelector('.doc-hero');
+    if (hero && !layout.querySelector('.doc-meta')) {
+      const meta = document.createElement('div');
+      meta.className = 'doc-meta';
+      const section = layout.querySelector('.doc-breadcrumb a:nth-of-type(2)');
+      const updated = layout.querySelector('.doc-footer span');
+      [section?.textContent, updated?.textContent].filter(Boolean).forEach(value => {
+        const item = document.createElement('span');
+        item.textContent = value.trim();
+        meta.append(item);
+      });
+      hero.after(meta);
+    }
+  }
+
+  // ============================================
   // Counter Animation
   // ============================================
   function initCounters() {
@@ -1785,6 +2025,7 @@
     initTheme();
     initMobileNav();
     initHeaderScroll();
+    initDocsNavigation();
     initScreenViewer();
     initDiagramViewer();
     initSmoothScroll();
