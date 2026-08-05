@@ -1345,14 +1345,13 @@
   // ============================================
   function initDocsNavigation() {
     const page = document.querySelector('.page-docs');
-    const layout = page?.querySelector('.doc-layout');
-    if (!page || !layout || layout.dataset.docEnhanced === 'true') return;
+    if (!page || page.dataset.docEnhanced === 'true') return;
 
-    layout.dataset.docEnhanced = 'true';
-    const sidebar = layout.querySelector('.doc-sidebar');
-    const toc = layout.querySelector('.doc-toc');
-    const article = layout.querySelector('.doc-content');
-    const controls = page.querySelector('.doc-mobile-controls');
+    page.dataset.docEnhanced = 'true';
+    const layout = page.querySelector('.doc-layout');
+    const sidebar = layout?.querySelector('.doc-sidebar');
+    const toc = layout?.querySelector('.doc-toc');
+    const article = layout?.querySelector('.doc-content');
     const backdrop = page.querySelector('[data-doc-backdrop]');
     const isRussian = document.documentElement.lang === 'ru';
     const labels = isRussian
@@ -1377,6 +1376,140 @@
         noResults: 'No results'
       };
 
+    const initDocsSearch = async () => {
+      const forms = Array.from(page.querySelectorAll('[data-doc-search-form]'));
+      if (!forms.length) return;
+      const language = isRussian ? 'ru' : 'en';
+      const fallbackItems = Array.from(page.querySelectorAll('.doc-sidebar a, .doc-section-list a, .doc-card'))
+        .map(link => ({ title: (link.textContent || '').trim(), section: '', headings: [], keywords: [], description: '', url: link.href }))
+        .filter(item => item.title);
+      let searchItems = fallbackItems;
+      try {
+        const response = await fetch(`/docs/${language}/search-index.json`, { cache: 'no-store', credentials: 'same-origin' });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) searchItems = data;
+        }
+      } catch (error) {
+        // The static DOM remains a usable fallback when the index is unavailable.
+      }
+
+      forms.forEach((form, formIndex) => {
+        const input = form.querySelector('[data-doc-search]');
+        const results = form.querySelector('[data-doc-search-results]');
+        if (!input || !results) return;
+        const resultsId = results.id || `doc-search-results-${formIndex}`;
+        results.id = resultsId;
+        input.setAttribute('role', 'combobox');
+        input.setAttribute('aria-autocomplete', 'list');
+        input.setAttribute('aria-controls', resultsId);
+        input.setAttribute('aria-expanded', 'false');
+        let matches = [];
+        let activeIndex = -1;
+
+        const setActive = index => {
+          activeIndex = index;
+          const options = Array.from(results.querySelectorAll('[role="option"]'));
+          options.forEach((option, optionIndex) => {
+            option.setAttribute('aria-selected', optionIndex === activeIndex ? 'true' : 'false');
+          });
+          const active = options[activeIndex];
+          if (active) {
+            input.setAttribute('aria-activedescendant', active.id);
+            active.scrollIntoView({ block: 'nearest' });
+          } else {
+            input.removeAttribute('aria-activedescendant');
+          }
+        };
+
+        const hide = () => {
+          results.hidden = true;
+          input.setAttribute('aria-expanded', 'false');
+          input.removeAttribute('aria-activedescendant');
+          activeIndex = -1;
+          matches = [];
+        };
+
+        const render = () => {
+          const query = input.value.trim().toLocaleLowerCase();
+          results.replaceChildren();
+          activeIndex = -1;
+          if (!query) {
+            hide();
+            return;
+          }
+          matches = searchItems
+            .map(item => ({
+              ...item,
+              searchText: [item.title, item.section, ...(item.headings || []), ...(item.keywords || []), item.description]
+                .filter(Boolean)
+                .join(' ')
+                .toLocaleLowerCase()
+            }))
+            .filter(item => item.searchText.includes(query))
+            .slice(0, 10);
+          results.hidden = false;
+          input.setAttribute('aria-expanded', 'true');
+          if (!matches.length) {
+            const empty = document.createElement('div');
+            empty.className = 'doc-search-empty';
+            empty.setAttribute('role', 'status');
+            empty.textContent = labels.noResults;
+            results.append(empty);
+            return;
+          }
+          matches.forEach((item, index) => {
+            const result = document.createElement('a');
+            result.id = `${resultsId}-option-${index}`;
+            result.href = item.url;
+            result.setAttribute('role', 'option');
+            result.setAttribute('aria-selected', 'false');
+            const title = document.createElement('span');
+            title.className = 'doc-search-result-title';
+            title.textContent = item.title || item.url;
+            result.append(title);
+            if (item.section) {
+              const section = document.createElement('span');
+              section.className = 'doc-search-result-section';
+              section.textContent = item.section;
+              result.append(section);
+            }
+            results.append(result);
+          });
+        };
+
+        input.addEventListener('input', render);
+        input.addEventListener('keydown', event => {
+          if (event.key === 'ArrowDown' && matches.length) {
+            event.preventDefault();
+            setActive((activeIndex + 1) % matches.length);
+          } else if (event.key === 'ArrowUp' && matches.length) {
+            event.preventDefault();
+            setActive((activeIndex - 1 + matches.length) % matches.length);
+          } else if (event.key === 'Enter' && matches.length) {
+            event.preventDefault();
+            window.location.assign(matches[activeIndex >= 0 ? activeIndex : 0].url);
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            input.value = '';
+            hide();
+            input.blur();
+          }
+        });
+        form.addEventListener('submit', event => {
+          if (!matches.length) return;
+          event.preventDefault();
+          window.location.assign(matches[activeIndex >= 0 ? activeIndex : 0].url);
+        });
+        document.addEventListener('click', event => {
+          if (!form.contains(event.target)) hide();
+        });
+      });
+    };
+    void initDocsSearch();
+
+    if (!layout) return;
+
     const openers = {};
     page.querySelectorAll('[data-doc-open]').forEach(button => {
       openers[button.dataset.docOpen] = button;
@@ -1384,17 +1517,43 @@
     const drawers = { sidebar: sidebar, toc: toc };
     if (openers.toc && !toc) openers.toc.hidden = true;
     const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const mobileQuery = window.matchMedia('(max-width: 959px)');
+    const sidebarQuery = window.matchMedia('(max-width: 959px)');
+    const tocQuery = window.matchMedia('(max-width: 1599px)');
     const backgroundNodes = [
       page.querySelector('header'),
       page.querySelector('footer'),
-      layout.querySelector('.doc-main'),
-      controls
+      layout.querySelector('.doc-main')
     ].filter(Boolean);
     const previousInert = new Map();
     const previousHidden = new Map();
     let openDrawer = null;
     let lastOpener = null;
+
+    const drawerCanOpen = name => name === 'sidebar' ? sidebarQuery.matches : tocQuery.matches;
+    const drawerIsResponsive = name => name === 'sidebar' ? sidebarQuery.matches : tocQuery.matches;
+    const setDrawerSemantics = (name, open) => {
+      const drawer = drawers[name];
+      if (!drawer) return;
+      if (open && drawerCanOpen(name)) {
+        drawer.setAttribute('role', 'dialog');
+        drawer.setAttribute('aria-modal', 'true');
+        drawer.setAttribute('aria-hidden', 'false');
+        drawer.dataset.state = 'open';
+      } else if (drawerIsResponsive(name)) {
+        drawer.removeAttribute('role');
+        drawer.removeAttribute('aria-modal');
+        drawer.setAttribute('aria-hidden', 'true');
+        drawer.dataset.state = 'closed';
+      } else {
+        drawer.removeAttribute('role');
+        drawer.removeAttribute('aria-modal');
+        drawer.removeAttribute('aria-hidden');
+        delete drawer.dataset.state;
+      }
+    };
+
+    const getFocusable = drawer => Array.from(drawer.querySelectorAll(focusableSelector))
+      .filter(element => !element.closest('[hidden]') && element.getClientRects().length > 0);
 
     const setBackgroundInert = (locked) => {
       if (locked) {
@@ -1422,8 +1581,7 @@
       if (!openDrawer) return;
       const drawer = drawers[openDrawer];
       const opener = lastOpener;
-      drawer?.setAttribute('aria-hidden', 'true');
-      if (drawer) drawer.dataset.state = 'closed';
+      setDrawerSemantics(openDrawer, false);
       if (openers[openDrawer]) openers[openDrawer].setAttribute('aria-expanded', 'false');
       if (openDrawer === 'sidebar') delete page.dataset.docSidebarOpen;
       if (openDrawer === 'toc') delete page.dataset.docTocOpen;
@@ -1435,18 +1593,17 @@
 
     const openDrawerPanel = (name) => {
       const drawer = drawers[name];
-      if (!drawer || !mobileQuery.matches) return;
+      if (!drawer || !drawerCanOpen(name)) return;
       if (openDrawer && openDrawer !== name) closeDrawer(false);
       openDrawer = name;
       lastOpener = openers[name];
-      drawer.dataset.state = 'open';
-      drawer.setAttribute('aria-hidden', 'false');
+      setDrawerSemantics(name, true);
       openers[name]?.setAttribute('aria-expanded', 'true');
       if (name === 'sidebar') page.dataset.docSidebarOpen = 'true';
       if (name === 'toc') page.dataset.docTocOpen = 'true';
       if (backdrop) backdrop.hidden = false;
       setBackgroundInert(true);
-      window.setTimeout(() => drawer.querySelector(focusableSelector)?.focus(), 0);
+      window.setTimeout(() => getFocusable(drawer)[0]?.focus(), 0);
     };
 
     Object.entries(openers).forEach(([name, button]) => {
@@ -1472,7 +1629,7 @@
       }
       if (event.key !== 'Tab') return;
       const drawer = drawers[openDrawer];
-      const focusable = Array.from(drawer.querySelectorAll(focusableSelector));
+      const focusable = getFocusable(drawer);
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -1486,18 +1643,12 @@
     });
 
     const syncResponsiveState = () => {
-      if (!mobileQuery.matches) closeDrawer(false);
-      [sidebar, toc].filter(Boolean).forEach(drawer => {
-        if (!mobileQuery.matches) {
-          drawer.removeAttribute('aria-hidden');
-          delete drawer.dataset.state;
-        } else if (!openDrawer) {
-          drawer.dataset.state = 'closed';
-          drawer.setAttribute('aria-hidden', 'true');
-        }
-      });
+      if (openDrawer && !drawerCanOpen(openDrawer)) closeDrawer(false);
+      if (sidebar) setDrawerSemantics('sidebar', openDrawer === 'sidebar');
+      if (toc) setDrawerSemantics('toc', openDrawer === 'toc');
     };
-    mobileQuery.addEventListener?.('change', syncResponsiveState);
+    sidebarQuery.addEventListener?.('change', syncResponsiveState);
+    tocQuery.addEventListener?.('change', syncResponsiveState);
     window.addEventListener('resize', syncResponsiveState);
     syncResponsiveState();
 
@@ -1517,8 +1668,9 @@
 
     const updateTableOverflow = () => {
       page.querySelectorAll('.doc-table-scroll, .table-wrapper').forEach(wrapper => {
-        wrapper.dataset.overflow = wrapper.scrollWidth > wrapper.clientWidth ? 'true' : 'false';
-        wrapper.tabIndex = 0;
+        const overflowed = wrapper.scrollWidth > wrapper.clientWidth;
+        wrapper.dataset.overflow = overflowed ? 'true' : 'false';
+        wrapper.tabIndex = overflowed ? 0 : -1;
       });
     };
     updateTableOverflow();
@@ -1600,47 +1752,6 @@
       headings.forEach(heading => observer.observe(heading));
     }
 
-    const searchItems = Array.from(page.querySelectorAll('.doc-sidebar a, .doc-section-list a, .doc-card'))
-      .map(link => ({ href: link.href, label: (link.textContent || '').trim() }))
-      .filter(item => item.label);
-    page.querySelectorAll('[data-doc-search-form]').forEach(form => {
-      const input = form.querySelector('[data-doc-search]');
-      const results = form.querySelector('[data-doc-search-results]');
-      if (!input || !results) return;
-      const renderSearch = () => {
-        const query = input.value.trim().toLocaleLowerCase();
-        results.replaceChildren();
-        if (!query) {
-          results.hidden = true;
-          return;
-        }
-        const matches = searchItems
-          .filter(item => item.label.toLocaleLowerCase().includes(query))
-          .slice(0, 10);
-        if (!matches.length) {
-          const empty = document.createElement('div');
-          empty.className = 'doc-search-empty';
-          empty.textContent = labels.noResults;
-          results.append(empty);
-        } else {
-          matches.forEach(item => {
-            const result = document.createElement('a');
-            result.href = item.href;
-            result.textContent = item.label;
-            results.append(result);
-          });
-        }
-        results.hidden = false;
-      };
-      input.addEventListener('input', renderSearch);
-      input.addEventListener('keydown', event => {
-        if (event.key === 'Escape') {
-          input.value = '';
-          renderSearch();
-          input.blur();
-        }
-      });
-    });
   }
   // Counter Animation
   // ============================================

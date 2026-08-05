@@ -25,10 +25,20 @@ EXTRA_PUBLIC_ROUTES = (
     "downloads/digital-role-passport/index.html",
     "downloads/digital-role-passport/role-passport.html",
 )
+DOC_PUBLIC_ROUTES = (
+    "docs/ru/index.html",
+    "docs/en/index.html",
+    "docs/ru/enterprise/index.html",
+    "docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html",
+    "docs/ru/getting-started/QUICK_START.html",
+    "docs/en/api/REST_API.html",
+)
 REQUIRED_PUBLIC_ASSETS = (
     "css/tailwind.min.css",
+    "js/main.min.js",
     "downloads/digital-role-passport/CODEGRAPH_DIGITAL_ROLE_PASSPORT.pdf",
 )
+PREVIOUS_DOC_CSS_HASHES = ("4adb3bb2edfa",)
 ROBOTS_POLICY = {
     EXTRA_PUBLIC_ROUTES[0]: "noindex, nofollow",
     EXTRA_PUBLIC_ROUTES[1]: "noindex, follow",
@@ -84,6 +94,40 @@ class HomeContractParser(HTMLParser):
             self.h1 += data
 
 
+class DocsContractParser(HTMLParser):
+    """Extract the static shell and provenance contract from a docs page."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.meta: dict[str, str] = {}
+        self.stylesheets: list[str] = []
+        self.scripts: list[str] = []
+        self.text: list[str] = []
+        self.classes: set[str] = set()
+        self.has_header = False
+        self.has_footer = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        self.classes.update((attributes.get("class") or "").split())
+        self.has_header = self.has_header or tag == "header"
+        self.has_footer = self.has_footer or tag == "footer"
+        if tag == "meta" and attributes.get("name", "").startswith("cg:"):
+            self.meta[attributes["name"]] = attributes.get("content") or ""
+        if tag == "link" and attributes.get("rel", "").casefold() == "stylesheet":
+            self.stylesheets.append(attributes.get("href") or "")
+        if tag == "script" and attributes.get("src"):
+            self.scripts.append(attributes["src"] or "")
+
+    def handle_data(self, data: str) -> None:
+        self.text.append(data)
+
+    @property
+    def visible_text(self) -> str:
+        """Return normalized text for language and stale-shell checks."""
+        return _normalized_text(" ".join(self.text))
+
+
 def _normalized_sha256(payload: bytes) -> str:
     """Hash a static payload after normalizing transport line endings."""
     return hashlib.sha256(payload.replace(b"\r\n", b"\n")).hexdigest()
@@ -137,12 +181,11 @@ def _routes_from_sitemap(payload: bytes) -> tuple[str, ...]:
     }
     routes.discard("")
     routes.update(EXTRA_PUBLIC_ROUTES)
+    routes.update(DOC_PUBLIC_ROUTES)
     routes.add("index.html")
     return tuple(
         sorted(
-            route
-            for route in routes
-            if route.endswith(".html") and not route.startswith("docs/")
+            route for route in routes if route.endswith(".html")
         )
     )
 
@@ -206,6 +249,7 @@ def verify_once(
             if probe["root"].get(field) != probe["index"].get(field):
                 failures.append(f"plain root/index {field} mismatch at {probe_url}")
     route_contracts: dict[str, dict[str, str]] = {}
+    docs_contracts: dict[str, dict[str, object]] = {}
     for route in routes:
         public_parser = HomeContractParser()
         public_parser.feed(remote[route].decode("utf-8"))
@@ -221,12 +265,18 @@ def verify_once(
             "release": public_parser.release.strip(),
             "robots": _normalized_robots(public_parser.robots),
         }
-        for label, actual, expected in (
+        contract_values = [
             ("canonical", public_parser.canonical, expected_canonical),
-            ("release", public_parser.release.strip(), release),
             ("local canonical", local_parser.canonical, expected_canonical),
-            ("local release", local_parser.release.strip(), release),
-        ):
+        ]
+        if not route.startswith("docs/"):
+            contract_values.extend(
+                (
+                    ("release", public_parser.release.strip(), release),
+                    ("local release", local_parser.release.strip(), release),
+                )
+            )
+        for label, actual, expected in contract_values:
             if actual != expected:
                 failures.append(f"{route}: {label}={actual!r}, expected={expected!r}")
         if not public_parser.title.strip() or not public_parser.h1.strip():
@@ -239,9 +289,48 @@ def verify_once(
             failures.append(f"{route}: stylesheet link differs from local")
         if public_parser.style_preload != local_parser.style_preload:
             failures.append(f"{route}: stylesheet preload differs from local")
-        expected_robots = ROBOTS_POLICY.get(route, "")
-        if _normalized_robots(public_parser.robots) != expected_robots:
-            failures.append(f"{route}: robots={public_parser.robots!r}, expected={expected_robots!r}")
+        if not route.startswith("docs/"):
+            expected_robots = ROBOTS_POLICY.get(route, "")
+            if _normalized_robots(public_parser.robots) != expected_robots:
+                failures.append(f"{route}: robots={public_parser.robots!r}, expected={expected_robots!r}")
+
+        if route.startswith("docs/"):
+            public_docs = DocsContractParser()
+            public_docs.feed(remote[route].decode("utf-8"))
+            local_docs = DocsContractParser()
+            local_docs.feed(local_path.read_text(encoding="utf-8"))
+            expected_security = "Безопасность" if route.startswith("docs/ru/") else "Security"
+            build_commit = public_docs.meta.get("cg:build-commit", "").strip()
+            css_build = public_docs.meta.get("cg:css-build", "").strip()
+            expected_css_build = _normalized_sha256((root / "css/tailwind.min.css").read_bytes())[:12]
+            stylesheet = public_docs.stylesheets[0] if public_docs.stylesheets else ""
+            script_paths = public_docs.scripts
+            if "page-docs" not in public_docs.classes:
+                failures.append(f"{route}: missing page-docs shell class")
+            if not public_docs.has_header or not public_docs.has_footer:
+                failures.append(f"{route}: missing shared header/footer")
+            if expected_security not in public_docs.visible_text:
+                failures.append(f"{route}: missing expected navigation label {expected_security!r}")
+            if not build_commit or build_commit.casefold() == "unknown":
+                failures.append(f"{route}: cg:build-commit is empty or unknown")
+            if css_build != expected_css_build:
+                failures.append(f"{route}: cg:css-build={css_build!r}, expected={expected_css_build!r}")
+            if "tailwind.min.css?v=" not in stylesheet:
+                failures.append(f"{route}: missing versioned Tailwind stylesheet link")
+            if not any(path.endswith("js/main.min.js") for path in script_paths):
+                failures.append(f"{route}: missing versioned main.min.js reference")
+            if css_build in PREVIOUS_DOC_CSS_HASHES:
+                failures.append(f"{route}: previous CSS build hash is still served: {css_build}")
+            raw_public = remote[route].decode("utf-8")
+            if "&para;" in raw_public or re.search(r">\s*(?:Доверие|Trust)\s*<", raw_public):
+                failures.append(f"{route}: stale Trust/paragraph shell marker found")
+            docs_contracts[route] = {
+                "build_commit": build_commit,
+                "css_build": css_build,
+                "stylesheet": stylesheet,
+                "scripts": script_paths,
+                "security_label": expected_security in public_docs.visible_text,
+            }
 
     parser = HomeContractParser()
     root_parser = HomeContractParser()
@@ -290,6 +379,7 @@ def verify_once(
         "routes": list(routes),
         "release": parser.release.strip(),
         "route_contracts": route_contracts,
+        "docs_contracts": docs_contracts,
         "assets": asset_hashes,
         "plain_probes": plain_probes,
     }
