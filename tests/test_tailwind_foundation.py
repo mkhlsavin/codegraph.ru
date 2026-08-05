@@ -147,7 +147,7 @@ def test_tailwind_input_and_all_public_links_are_present() -> None:
     source = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
     output = LANDING_ROOT / "css" / "tailwind.min.css"
 
-    assert "@layer theme, base, components, utilities;" in source
+    assert "@layer theme, base, components, docs, utilities;" in source
     assert "styles.min.css" not in source
     assert '@import "tailwindcss/theme.css" layer(theme);' in source
     assert '@import "tailwindcss/utilities.css" layer(utilities);' in source
