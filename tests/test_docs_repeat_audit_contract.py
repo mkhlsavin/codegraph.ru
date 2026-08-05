@@ -26,6 +26,7 @@ def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> N
         assert route in source
     assert '"js/main.min.js"' in source
     assert "DocsContractParser" in source
+    assert "source checkout commit used to generate the HTML" in source
 
 
 def test_static_search_indexes_have_the_required_fields() -> None:

@@ -39,6 +39,10 @@ REQUIRED_PUBLIC_ASSETS = (
     "downloads/digital-role-passport/CODEGRAPH_DIGITAL_ROLE_PASSPORT.pdf",
 )
 PREVIOUS_DOC_CSS_HASHES = ("4adb3bb2edfa", "fd24c80f711f")
+DOC_BUILD_COMMIT_SEMANTICS = (
+    "cg:build-commit is the source checkout commit used to generate the HTML; "
+    "the exact local/public HTML hashes certify the published release artifact."
+)
 ROBOTS_POLICY = {
     EXTRA_PUBLIC_ROUTES[0]: "noindex, nofollow",
     EXTRA_PUBLIC_ROUTES[1]: "noindex, follow",
@@ -326,6 +330,7 @@ def verify_once(
                 failures.append(f"{route}: stale Trust/paragraph shell marker found")
             docs_contracts[route] = {
                 "build_commit": build_commit,
+                "build_commit_semantics": DOC_BUILD_COMMIT_SEMANTICS,
                 "css_build": css_build,
                 "stylesheet": stylesheet,
                 "scripts": script_paths,
