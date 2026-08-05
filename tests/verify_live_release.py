@@ -38,7 +38,7 @@ REQUIRED_PUBLIC_ASSETS = (
     "js/main.min.js",
     "downloads/digital-role-passport/CODEGRAPH_DIGITAL_ROLE_PASSPORT.pdf",
 )
-PREVIOUS_DOC_CSS_HASHES = ("4adb3bb2edfa",)
+PREVIOUS_DOC_CSS_HASHES = ("4adb3bb2edfa", "fd24c80f711f")
 ROBOTS_POLICY = {
     EXTRA_PUBLIC_ROUTES[0]: "noindex, nofollow",
     EXTRA_PUBLIC_ROUTES[1]: "noindex, follow",
