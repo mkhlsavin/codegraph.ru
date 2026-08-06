@@ -68,7 +68,15 @@ def test_docs_drawers_remove_closed_panels_from_focus_tree(browser: Browser, sit
         page.wait_for_function("document.body.dataset.docEnhanced === 'true'")
         sidebar = page.locator(".doc-sidebar")
         toc = page.locator(".doc-toc")
+        toggles = page.locator(".doc-sidebar-toggle")
 
+        assert toggles.count() >= 5
+        for index in range(toggles.count()):
+            toggle = toggles.nth(index)
+            assert toggle.evaluate(
+                "node => { const style = getComputedStyle(node, '::after'); "
+                "return style.flexBasis === '8px' && parseFloat(style.width) >= 7; }"
+            )
         assert sidebar.evaluate("node => node.inert") is False
         assert toc.evaluate("node => node.inert") is True
 

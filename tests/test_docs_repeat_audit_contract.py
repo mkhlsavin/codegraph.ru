@@ -64,6 +64,10 @@ def test_docs_shell_and_keyboard_contracts_cover_repeat_audit_findings() -> None
     assert "data-doc-live" in js
     assert "position: absolute" in css.split(".page-docs .doc-code-copy", 1)[1].split("}", 1)[0]
     assert "padding: 48px 18px 18px" in css
+    toggle_css = css.split(".page-docs .doc-sidebar-toggle {", 1)[1].split("}", 1)[0]
+    toggle_icon_css = css.split(".page-docs .doc-sidebar-toggle::after {", 1)[1].split("}", 1)[0]
+    assert "padding: 0 6px 0 0" in toggle_css
+    assert "flex: 0 0 8px" in toggle_icon_css
 
 
 def test_generated_docs_use_heading_specific_table_labels_and_current_css() -> None:
