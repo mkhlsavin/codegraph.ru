@@ -1375,6 +1375,10 @@
         linkCopied: 'Link copied',
         noResults: 'No results'
       };
+    const liveRegion = page.querySelector('[data-doc-live]');
+    const announce = message => {
+      if (liveRegion) liveRegion.textContent = message;
+    };
 
     const initDocsSearch = async () => {
       const forms = Array.from(page.querySelectorAll('[data-doc-search-form]'));
@@ -1519,7 +1523,7 @@
     const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
     const sidebarQuery = window.matchMedia('(max-width: 959px)');
     const tocQuery = window.matchMedia('(max-width: 1599px)');
-    const backgroundNodes = [
+    const baseBackgroundNodes = [
       page.querySelector('header'),
       page.querySelector('footer'),
       layout.querySelector('.doc-main')
@@ -1535,16 +1539,19 @@
       const drawer = drawers[name];
       if (!drawer) return;
       if (open && drawerCanOpen(name)) {
+        drawer.inert = false;
         drawer.setAttribute('role', 'dialog');
         drawer.setAttribute('aria-modal', 'true');
         drawer.setAttribute('aria-hidden', 'false');
         drawer.dataset.state = 'open';
       } else if (drawerIsResponsive(name)) {
+        drawer.inert = true;
         drawer.removeAttribute('role');
         drawer.removeAttribute('aria-modal');
         drawer.setAttribute('aria-hidden', 'true');
         drawer.dataset.state = 'closed';
       } else {
+        drawer.inert = false;
         drawer.removeAttribute('role');
         drawer.removeAttribute('aria-modal');
         drawer.removeAttribute('aria-hidden');
@@ -1555,9 +1562,15 @@
     const getFocusable = drawer => Array.from(drawer.querySelectorAll(focusableSelector))
       .filter(element => !element.closest('[hidden]') && element.getClientRects().length > 0);
 
+    const getBackgroundNodes = () => {
+      const nodes = [...baseBackgroundNodes];
+      if (openDrawer === 'toc' && !sidebarQuery.matches && sidebar) nodes.push(sidebar);
+      return nodes;
+    };
+
     const setBackgroundInert = (locked) => {
       if (locked) {
-        backgroundNodes.forEach(node => {
+        getBackgroundNodes().forEach(node => {
           previousInert.set(node, node.inert);
           previousHidden.set(node, node.getAttribute('aria-hidden'));
           node.inert = true;
@@ -1565,7 +1578,7 @@
         });
         page.dataset.docLock = 'true';
       } else {
-        backgroundNodes.forEach(node => {
+        previousInert.forEach((value, node) => {
           if (previousInert.has(node)) node.inert = previousInert.get(node);
           const previous = previousHidden.get(node);
           if (previous === null || previous === undefined) node.removeAttribute('aria-hidden');
@@ -1686,10 +1699,14 @@
         const copy = navigator.clipboard?.writeText(url) || Promise.reject(new Error('Clipboard unavailable'));
         copy.then(() => {
           anchor.dataset.copyState = 'copied';
+          anchor.setAttribute('aria-label', labels.linkCopied);
           anchor.title = labels.linkCopied;
+          announce(labels.linkCopied);
           window.setTimeout(() => {
             delete anchor.dataset.copyState;
+            anchor.setAttribute('aria-label', labels.link);
             anchor.title = labels.link;
+            announce('');
           }, 1400);
         }).catch(() => { window.location.hash = anchor.hash; });
       });
@@ -1709,9 +1726,13 @@
         (navigator.clipboard?.writeText(text) || Promise.reject(new Error('Clipboard unavailable'))).then(() => {
           button.dataset.copyState = 'copied';
           button.textContent = labels.copied;
+          button.setAttribute('aria-label', labels.copied);
+          announce(labels.copied);
           window.setTimeout(() => {
             button.dataset.copyState = 'idle';
             button.textContent = labels.copy;
+            button.setAttribute('aria-label', labels.copy);
+            announce('');
           }, 1400);
         }).catch(() => { button.dataset.copyState = 'idle'; });
       });

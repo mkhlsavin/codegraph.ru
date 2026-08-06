@@ -55,3 +55,39 @@ def test_nested_cta_preserves_declared_page_context(browser: Browser, site_url: 
         assert "#demo" in href
     finally:
         page.close()
+
+
+def test_docs_drawers_remove_closed_panels_from_focus_tree(browser: Browser, site_url: str) -> None:
+    """Responsive drawers must inert closed panels and the background behind TOC."""
+    page = browser.new_page(viewport={"width": 1024, "height": 768})
+    try:
+        page.goto(
+            f"{site_url}/docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html",
+            wait_until="networkidle",
+        )
+        page.wait_for_function("document.body.dataset.docEnhanced === 'true'")
+        sidebar = page.locator(".doc-sidebar")
+        toc = page.locator(".doc-toc")
+
+        assert sidebar.evaluate("node => node.inert") is False
+        assert toc.evaluate("node => node.inert") is True
+
+        page.locator('[data-doc-open="toc"]').click()
+        assert toc.get_attribute("role") == "dialog"
+        assert sidebar.get_attribute("aria-hidden") == "true"
+        assert sidebar.evaluate("node => node.inert") is True
+
+        page.keyboard.press("Escape")
+        assert toc.evaluate("node => node.inert") is True
+        assert sidebar.evaluate("node => node.inert") is False
+
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.wait_for_timeout(100)
+        assert sidebar.evaluate("node => node.inert") is True
+        assert toc.evaluate("node => node.inert") is True
+        page.locator('[data-doc-open="sidebar"]').click()
+        assert sidebar.evaluate("node => node.inert") is False
+        page.keyboard.press("Escape")
+        assert sidebar.evaluate("node => node.inert") is True
+    finally:
+        page.close()

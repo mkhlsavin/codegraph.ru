@@ -25,6 +25,8 @@ def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> N
     ):
         assert route in source
     assert '"js/main.min.js"' in source
+    assert '"docs/ru/search-index.json"' in source
+    assert '"docs/en/search-index.json"' in source
     assert "DocsContractParser" in source
     assert "source checkout commit used to generate the HTML" in source
 
@@ -56,6 +58,12 @@ def test_docs_shell_and_keyboard_contracts_cover_repeat_audit_findings() -> None
     assert "event.key === 'ArrowDown'" in js
     assert "getClientRects()" in js
     assert "wrapper.tabIndex = overflowed ? 0 : -1" in js
+    assert "drawer.inert = true" in js
+    assert "drawer.inert = false" in js
+    assert "if (openDrawer === 'toc' && !sidebarQuery.matches && sidebar)" in js
+    assert "data-doc-live" in js
+    assert "position: absolute" in css.split(".page-docs .doc-code-copy", 1)[1].split("}", 1)[0]
+    assert "padding: 48px 18px 18px" in css
 
 
 def test_generated_docs_use_heading_specific_table_labels_and_current_css() -> None:
@@ -83,3 +91,16 @@ def test_section_index_items_have_visible_descriptions_and_ordered_links() -> No
     assert all(len(description) >= 60 for description in descriptions)
     hrefs = re.findall(r'<a href="([^"]+\.html)">', page)
     assert hrefs
+    assert "…" not in " ".join(descriptions)
+    assert any("инфраструктур" in description.casefold() for description in descriptions)
+
+
+def test_russian_search_index_uses_localized_descriptions_and_keywords() -> None:
+    """RU search metadata must not expose English frontmatter boilerplate."""
+    records = json.loads((LANDING_ROOT / "docs" / "ru" / "search-index.json").read_text(encoding="utf-8"))
+    serialized = json.dumps(records, ensure_ascii=False)
+    assert not re.search(r"\bTechnical Reference for\b", serialized)
+    assert not re.search(r"\bEnterprise Compliance Reference for\b", serialized)
+    acp = next(record for record in records if "ACP" in record["title"].upper())
+    assert "интеграции" in acp["description"].casefold()
+    assert any("ACP" in keyword for keyword in acp["keywords"])

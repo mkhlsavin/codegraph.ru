@@ -36,6 +36,8 @@ DOC_PUBLIC_ROUTES = (
 REQUIRED_PUBLIC_ASSETS = (
     "css/tailwind.min.css",
     "js/main.min.js",
+    "docs/ru/search-index.json",
+    "docs/en/search-index.json",
     "downloads/digital-role-passport/CODEGRAPH_DIGITAL_ROLE_PASSPORT.pdf",
 )
 PREVIOUS_DOC_CSS_HASHES = ("4adb3bb2edfa", "fd24c80f711f")
