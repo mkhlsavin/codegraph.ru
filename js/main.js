@@ -2087,10 +2087,14 @@
     const sections = document.querySelectorAll('section[id]');
 
     const currentPath = window.location.pathname.replace(/index\.html$/u, '') || '/';
+    const isDocumentationPage = currentPath.startsWith('/docs/ru/') || currentPath.startsWith('/docs/en/');
     DOM.navLinks.forEach(link => {
       const linkUrl = new URL(link.href, window.location.href);
       const linkPath = linkUrl.pathname.replace(/index\.html$/u, '') || '/';
-      const isCurrentPage = linkUrl.origin === window.location.origin && linkPath === currentPath && !linkUrl.hash;
+      const isDocumentationLink = linkPath === '/docs/ru/' || linkPath === '/docs/en/';
+      const isCurrentPage = linkUrl.origin === window.location.origin && !linkUrl.hash && (
+        linkPath === currentPath || (isDocumentationPage && isDocumentationLink)
+      );
       if (isCurrentPage) {
         link.setAttribute('aria-current', 'page');
       } else {

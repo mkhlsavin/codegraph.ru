@@ -70,6 +70,7 @@ def test_docs_drawers_remove_closed_panels_from_focus_tree(browser: Browser, sit
         toc = page.locator(".doc-toc")
         toggles = page.locator(".doc-sidebar-toggle")
 
+        assert page.locator('[data-nav-link][aria-current="page"]').count() == 2
         assert toggles.count() >= 5
         for index in range(toggles.count()):
             toggle = toggles.nth(index)
