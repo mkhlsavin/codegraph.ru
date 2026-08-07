@@ -85,6 +85,18 @@ def test_docs_drawers_remove_closed_panels_from_focus_tree(browser: Browser, sit
         assert sidebar.get_attribute("aria-hidden") == "true"
         assert sidebar.evaluate("node => node.inert") is True
 
+        toc_link = toc.locator("a[href^='#']").first
+        target_id = (toc_link.get_attribute("href") or "").lstrip("#")
+        assert target_id
+        toc_link.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(100)
+        assert toc.evaluate("node => node.inert") is True
+        assert page.evaluate("document.activeElement && document.activeElement.id") == target_id
+        assert page.locator(f"#{target_id}").get_attribute("tabindex") == "-1"
+        assert page.evaluate("document.activeElement.closest('[inert]') === null") is True
+
+        page.locator('[data-doc-open="toc"]').click()
         page.keyboard.press("Escape")
         assert toc.evaluate("node => node.inert") is True
         assert sidebar.evaluate("node => node.inert") is False

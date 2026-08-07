@@ -1629,6 +1629,17 @@
     backdrop?.addEventListener('click', () => closeDrawer());
     page.querySelectorAll('.doc-sidebar a, .doc-toc a').forEach(link => {
       link.addEventListener('click', () => {
+        const tocLink = link.closest('.doc-toc');
+        const target = tocLink && link.hash ? document.querySelector(link.hash) : null;
+        if (tocLink && openDrawer === 'toc') {
+          closeDrawer(false);
+          window.requestAnimationFrame(() => {
+            if (!(target instanceof HTMLElement)) return;
+            target.setAttribute('tabindex', '-1');
+            target.focus({ preventScroll: true });
+          });
+          return;
+        }
         if (openDrawer) closeDrawer(false);
       });
     });

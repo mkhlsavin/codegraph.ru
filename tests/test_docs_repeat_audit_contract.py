@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import json
 import re
+import xml.etree.ElementTree as ET
 from html import unescape
 from pathlib import Path
 
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 PARENT_ROOT = LANDING_ROOT.parents[1]
+FORBIDDEN_RU_SEARCH_PHRASES = (
+    "provides practical guidance",
+    "governed usage notes",
+    "callable codegraph tools",
+    "technical reference for",
+)
 
 
 def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> None:
@@ -61,6 +68,8 @@ def test_docs_shell_and_keyboard_contracts_cover_repeat_audit_findings() -> None
     assert "drawer.inert = true" in js
     assert "drawer.inert = false" in js
     assert "if (openDrawer === 'toc' && !sidebarQuery.matches && sidebar)" in js
+    assert "target.setAttribute('tabindex', '-1')" in js
+    assert "target.focus({ preventScroll: true })" in js
     assert "data-doc-live" in js
     assert "position: absolute" in css.split(".page-docs .doc-code-copy", 1)[1].split("}", 1)[0]
     assert "padding: 48px 18px 18px" in css
@@ -108,3 +117,66 @@ def test_russian_search_index_uses_localized_descriptions_and_keywords() -> None
     acp = next(record for record in records if "ACP" in record["title"].upper())
     assert "интеграции" in acp["description"].casefold()
     assert any("ACP" in keyword for keyword in acp["keywords"])
+    serialized_casefold = serialized.casefold()
+    assert not any(phrase in serialized_casefold for phrase in FORBIDDEN_RU_SEARCH_PHRASES)
+
+
+def test_sitemap_covers_indexable_documentation_pages_with_current_build_date() -> None:
+    """Every generated article is discoverable while README duplicates stay excluded."""
+    namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    sitemap = ET.parse(LANDING_ROOT / "sitemap.xml")
+    entries = {
+        row.findtext("sm:loc", namespaces=namespace): row
+        for row in sitemap.findall("sm:url", namespace)
+    }
+    expected_date = __import__("datetime").date.today().isoformat()
+    generated = []
+    for language in ("ru", "en"):
+        generated.extend((language, document) for document in (LANDING_ROOT / "docs" / language).rglob("*.html"))
+    for language, document in generated:
+        relative = document.relative_to(LANDING_ROOT).as_posix()
+        loc = f"https://codegraph.ru/{relative}"
+        if document.name.upper() == "README.HTML":
+            assert loc not in entries
+            continue
+        html = document.read_text(encoding="utf-8")
+        if re.search(r'<meta\s+[^>]*name=["\']robots["\'][^>]*content=["\'][^"\']*noindex', html, re.I):
+            assert loc not in entries
+            continue
+        assert loc in entries
+        assert entries[loc].findtext("sm:lastmod", namespaces=namespace) == expected_date
+        if document.name.lower() == "index.html":
+            expected_changefreq = "weekly" if document.parent == LANDING_ROOT / "docs" / language else "monthly"
+            expected_priority = "0.8" if language == "ru" and expected_changefreq == "weekly" else (
+                "0.7" if expected_changefreq == "weekly" else "0.7"
+            )
+        else:
+            expected_changefreq = "monthly"
+            expected_priority = "0.6"
+        assert entries[loc].findtext("sm:changefreq", namespaces=namespace) == expected_changefreq
+        assert entries[loc].findtext("sm:priority", namespaces=namespace) == expected_priority
+    assert "https://codegraph.ru/docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html" in entries
+    for route in (
+        "downloads/digital-role-passport/index.html",
+        "downloads/digital-role-passport/role-passport.html",
+        "research/tochnost-otvetov-i-skorost-razbora.html",
+    ):
+        assert f"https://codegraph.ru/{route}" not in entries
+
+
+def test_generated_docs_mark_documentation_as_the_current_global_section() -> None:
+    """The shared shell exposes the current documentation section to all users."""
+    page = (LANDING_ROOT / "docs" / "ru" / "enterprise" / "GOCPG_VS_JOERN_ANALYSIS.html").read_text(
+        encoding="utf-8"
+    )
+    assert page.count('data-nav-link aria-current="page"') == 2
+
+
+def test_service_typography_meets_documentation_scale() -> None:
+    """Search, sidebar and card metadata must not fall below the docs scale."""
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+    assert "font-size: 12px;" in css.split(".page-docs .doc-sidebar-title", 1)[1].split("}", 1)[0]
+    assert "font-size: 14px;" in css.split(".page-docs .doc-search-input", 1)[1].split("}", 1)[0]
+    assert ".page-docs .doc-search-result-title { font-size: 14px; }" in css
+    assert ".page-docs .doc-search-result-section { margin-top: 2px; color: var(--doc-text-muted); font-size: 12px; }" in css
+    assert "font-size: 12px;" in css.split(".page-docs .doc-card-count", 1)[1].split("}", 1)[0]
