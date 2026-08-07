@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 from html.parser import HTMLParser
 import json
@@ -178,6 +179,19 @@ def _fetch_plain(base_url: str, route: str) -> tuple[bytes, dict[str, str]]:
         return response.read(), headers
 
 
+def _fetch_many(base_url: str, routes: tuple[str, ...], release: str) -> dict[str, bytes]:
+    """Fetch the release route set concurrently without changing per-request checks."""
+    if not routes:
+        return {}
+    workers = min(16, len(routes))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            route: executor.submit(_fetch, base_url, route, release)
+            for route in routes
+        }
+        return {route: future.result() for route, future in futures.items()}
+
+
 def _routes_from_sitemap(payload: bytes) -> tuple[str, ...]:
     """Extract HTML routes from the local sitemap without including documentation."""
     text = payload.decode("utf-8")
@@ -216,11 +230,9 @@ def verify_once(
     local_sitemap = (root / "sitemap.xml").read_bytes()
     sitemap = _fetch(base_url, "sitemap.xml", release)
     routes = _routes_from_sitemap(local_sitemap)
-    remote = {route: _fetch(base_url, route, release) for route in routes}
+    remote = _fetch_many(base_url, routes, release)
     remote["sitemap.xml"] = sitemap
-    remote_assets = {
-        route: _fetch(base_url, route, release) for route in REQUIRED_PUBLIC_ASSETS
-    }
+    remote_assets = _fetch_many(base_url, REQUIRED_PUBLIC_ASSETS, release)
     homepage = remote["index.html"].decode("utf-8")
     root_homepage = _fetch(base_url, "", release).decode("utf-8")
     plain_probes: dict[str, dict[str, object]] = {}
@@ -328,7 +340,8 @@ def verify_once(
             if css_build in PREVIOUS_DOC_CSS_HASHES:
                 failures.append(f"{route}: previous CSS build hash is still served: {css_build}")
             raw_public = remote[route].decode("utf-8")
-            if "&para;" in raw_public or re.search(r">\s*(?:Доверие|Trust)\s*<", raw_public):
+            shell_html = raw_public.split("<main", 1)[0]
+            if "&para;" in shell_html or re.search(r">\s*(?:Доверие|Trust)\s*<", shell_html):
                 failures.append(f"{route}: stale Trust/paragraph shell marker found")
             docs_contracts[route] = {
                 "build_commit": build_commit,

@@ -35,6 +35,9 @@ def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> N
     assert '"docs/ru/search-index.json"' in source
     assert '"docs/en/search-index.json"' in source
     assert "DocsContractParser" in source
+    assert "ThreadPoolExecutor" in source
+    assert "_fetch_many" in source
+    assert 'raw_public.split("<main", 1)[0]' in source
     assert "source checkout commit used to generate the HTML" in source
 
 
