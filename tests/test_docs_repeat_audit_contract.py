@@ -180,3 +180,21 @@ def test_service_typography_meets_documentation_scale() -> None:
     assert ".page-docs .doc-search-result-title { font-size: 14px; }" in css
     assert ".page-docs .doc-search-result-section { margin-top: 2px; color: var(--doc-text-muted); font-size: 12px; }" in css
     assert "font-size: 12px;" in css.split(".page-docs .doc-card-count", 1)[1].split("}", 1)[0]
+
+
+def test_documentation_geometry_uses_shared_radius_and_shadow_tokens() -> None:
+    """Keep the remaining documentation controls on the shared design tokens."""
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+    assert "--cg-radius-micro: 4px;" in css
+    expected_tokens = {
+        ".page-docs .doc-search-input": "var(--cg-radius-control)",
+        ".page-docs .doc-search-results": "var(--cg-radius-control)",
+        ".page-docs .doc-card": "var(--cg-radius-card)",
+        ".page-docs .doc-code-copy": "var(--cg-radius-micro)",
+        ".page-docs .heading-anchor::before": "var(--cg-radius-micro)",
+    }
+    for selector, token in expected_tokens.items():
+        block = css.split(f"{selector} {{", 1)[1].split("}", 1)[0]
+        assert f"border-radius: {token};" in block
+    search_results = css.split(".page-docs .doc-search-results", 1)[1].split("}", 1)[0]
+    assert "box-shadow: var(--shadow-md);" in search_results
