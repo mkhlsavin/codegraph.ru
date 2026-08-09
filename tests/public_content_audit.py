@@ -20,7 +20,6 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup, Tag
 
-
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 MIN_WORDS = 7
 EXCLUDED_PREFIXES = ("docs/", "templates/", "node_modules/", "yandex_")
@@ -50,7 +49,12 @@ ABSTRACT_PATTERNS = (
     ),
 )
 FORBIDDEN_COPY_PATTERNS = (
-    ("старое позиционирование", re.compile(r"решение для управляемой разработки цифровых продуктов", re.IGNORECASE)),
+    (
+        "старое позиционирование",
+        re.compile(
+            r"решение для управляемой разработки цифровых продуктов", re.IGNORECASE
+        ),
+    ),
     ("инициатива", re.compile(r"\bинициатив\w*", re.IGNORECASE)),
     ("контур", re.compile(r"\bконтур\w*", re.IGNORECASE)),
     ("доказательная база", re.compile(r"\bдоказательн\w*\s+баз\w*", re.IGNORECASE)),
@@ -58,10 +62,28 @@ FORBIDDEN_COPY_PATTERNS = (
     ("пакет готовности", re.compile(r"\bпакет\s+готовност\w*", re.IGNORECASE)),
     ("прослеживаемость", re.compile(r"\bпрослеживаем\w*", re.IGNORECASE)),
     ("продуктовый замысел", re.compile(r"\bпродуктов\w*\s+замыс\w*", re.IGNORECASE)),
-    ("управленческий выигрыш", re.compile(r"\bуправленческ\w*\s+выигрыш\w*", re.IGNORECASE)),
-    ("живой пакет документации", re.compile(r"\bжив\w*\s+пакет\w*\s+документаци\w*", re.IGNORECASE)),
-    ("мета-комментарий о материале", re.compile(r"\b(?:публичн(?:ая|ый|ого|ом|ой)\s+страниц\w*|публичн(?:ый|ого|ом|ой)\s+источник\w*|базов\w*\s+публичн\w*\s+источник\w*|в\s+публичн\w*\s+источник\w*|публичн\w*\s+выборк\w*|на\s+опубликованн\w*\s+страниц\w*|страниц\w*\s+отделя\w*|публичн\w*\s+клиентск\w*\s+пример\w*|жанр\s+материал\w*|иллюстративн\w*\s+расч\w*)\b", re.IGNORECASE)),
-    ("метаописание страницы", re.compile(r"\b(?:на странице|описан\w*\s+отдельно\s+на\s+странице|начните\s+с\s+материала|ссылки\s+ведут\s+к\s+публичным\s+материалам|здесь\s+остают\w*)\b", re.IGNORECASE)),
+    (
+        "управленческий выигрыш",
+        re.compile(r"\bуправленческ\w*\s+выигрыш\w*", re.IGNORECASE),
+    ),
+    (
+        "живой пакет документации",
+        re.compile(r"\bжив\w*\s+пакет\w*\s+документаци\w*", re.IGNORECASE),
+    ),
+    (
+        "мета-комментарий о материале",
+        re.compile(
+            r"\b(?:публичн(?:ая|ый|ого|ом|ой)\s+страниц\w*|публичн(?:ый|ого|ом|ой)\s+источник\w*|базов\w*\s+публичн\w*\s+источник\w*|в\s+публичн\w*\s+источник\w*|публичн\w*\s+выборк\w*|на\s+опубликованн\w*\s+страниц\w*|страниц\w*\s+отделя\w*|публичн\w*\s+клиентск\w*\s+пример\w*|жанр\s+материал\w*|иллюстративн\w*\s+расч\w*)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "метаописание страницы",
+        re.compile(
+            r"\b(?:на странице|описан\w*\s+отдельно\s+на\s+странице|начните\s+с\s+материала|ссылки\s+ведут\s+к\s+публичным\s+материалам|здесь\s+остают\w*)\b",
+            re.IGNORECASE,
+        ),
+    ),
 )
 GRAMMAR_REGRESSION_PATTERNS = (
     "нужен локальная среда",
@@ -80,6 +102,8 @@ GRAMMAR_REGRESSION_PATTERNS = (
 
 @dataclass(frozen=True)
 class Page:
+    """One public route and its parsed source context."""
+
     route: str
     path: Path
     soup: BeautifulSoup
@@ -122,7 +146,9 @@ def _clean_copy(node: Tag) -> str:
     ):
         for item in clone.select(selector):
             item.decompose()
-    return re.sub(r"\s+", " ", clone.get_text(" ", strip=True).replace("\xa0", " ")).strip()
+    return re.sub(
+        r"\s+", " ", clone.get_text(" ", strip=True).replace("\xa0", " ")
+    ).strip()
 
 
 def _clean_copy_without_links(node: Tag) -> str:
@@ -222,7 +248,9 @@ def _check_one_thesis(pages: list[Page], findings: dict[str, list[str]]) -> None
         sentences: list[str] = []
         for block in _content_blocks(page):
             sentences.extend(_sentences(_clean_copy(block)))
-        duplicates = [sentence for sentence, count in Counter(sentences).items() if count > 1]
+        duplicates = [
+            sentence for sentence, count in Counter(sentences).items() if count > 1
+        ]
         for sentence in duplicates:
             findings["1. один тезис произносится один раз"].append(
                 f"{page.route}: повторён тезис: {sentence}"
@@ -232,13 +260,17 @@ def _check_one_thesis(pages: list[Page], findings: dict[str, list[str]]) -> None
             for block in _content_blocks(page)
             if (heading := block.find("h2")) is not None
         ]
-        for heading in [heading for heading, count in Counter(headings).items() if count > 1]:
+        for heading in [
+            heading for heading, count in Counter(headings).items() if count > 1
+        ]:
             findings["1. один тезис произносится один раз"].append(
                 f"{page.route}: повторён заголовок: {heading}"
             )
 
 
-def _check_two_h1_not_question(pages: list[Page], findings: dict[str, list[str]]) -> None:
+def _check_two_h1_not_question(
+    pages: list[Page], findings: dict[str, list[str]]
+) -> None:
     for page in pages:
         h1_nodes = page.main.find_all("h1")
         if len(h1_nodes) != 1:
@@ -263,7 +295,9 @@ def _check_two_h1_not_question(pages: list[Page], findings: dict[str, list[str]]
                 )
 
 
-def _check_three_sections_add_facts(pages: list[Page], findings: dict[str, list[str]]) -> None:
+def _check_three_sections_add_facts(
+    pages: list[Page], findings: dict[str, list[str]]
+) -> None:
     for page in pages:
         blocks = [
             block
@@ -297,7 +331,9 @@ def _check_three_sections_add_facts(pages: list[Page], findings: dict[str, list[
                 left_tokens, right_tokens = _tokens(left), _tokens(right)
                 if not left_tokens or not right_tokens:
                     continue
-                overlap = len(left_tokens & right_tokens) / min(len(left_tokens), len(right_tokens))
+                overlap = len(left_tokens & right_tokens) / min(
+                    len(left_tokens), len(right_tokens)
+                )
                 similarity = difflib.SequenceMatcher(None, left, right).ratio()
                 if similarity >= 0.9 or overlap >= 0.92:
                     findings["3. каждая секция добавляет новый факт"].append(
@@ -306,16 +342,20 @@ def _check_three_sections_add_facts(pages: list[Page], findings: dict[str, list[
                     break
 
 
-def _check_four_concrete_language(pages: list[Page], findings: dict[str, list[str]]) -> None:
+def _check_four_concrete_language(
+    pages: list[Page], findings: dict[str, list[str]]
+) -> None:
     for page in pages:
-        for node in page.main.find_all(["p", "li", "td", "th", "figcaption", "h2", "h3"]):
+        for node in page.main.find_all(
+            ["p", "li", "td", "th", "figcaption", "h2", "h3"]
+        ):
             text = node.get_text(" ", strip=True)
             for label, pattern in ABSTRACT_PATTERNS:
                 match = pattern.search(text)
                 if match:
-                    findings["4. абстрактное существительное заменено объектом или действием"].append(
-                        f"{page.route}: {label}: {text[:220]}"
-                    )
+                    findings[
+                        "4. абстрактное существительное заменено объектом или действием"
+                    ].append(f"{page.route}: {label}: {text[:220]}")
                     break
 
 
@@ -345,7 +385,10 @@ def _check_five_unique_proof(pages: list[Page], findings: dict[str, list[str]]) 
             signatures[signature].append(page.route)
         for caption in page.main.select(".cg-product-preview-caption"):
             value = _normalise(caption.get_text(" ", strip=True))
-            if not value or "синтетический пример результата на выбранном этапе" in value:
+            if (
+                not value
+                or "синтетический пример результата на выбранном этапе" in value
+            ):
                 findings["5. уникальный пример, таблица или результат"].append(
                     f"{page.route}: общая или пустая подпись демонстрации"
                 )
@@ -362,7 +405,9 @@ def _check_five_unique_proof(pages: list[Page], findings: dict[str, list[str]]) 
             )
 
 
-def _check_six_adjacent_pages(pages: list[Page], findings: dict[str, list[str]]) -> None:
+def _check_six_adjacent_pages(
+    pages: list[Page], findings: dict[str, list[str]]
+) -> None:
     questions: defaultdict[str, list[str]] = defaultdict(list)
     sentence_owners: defaultdict[str, list[str]] = defaultdict(list)
     for page in pages:
@@ -399,7 +444,9 @@ def _check_six_adjacent_pages(pages: list[Page], findings: dict[str, list[str]])
             )
 
 
-def _check_hero_first_section(pages: list[Page], findings: dict[str, list[str]]) -> None:
+def _check_hero_first_section(
+    pages: list[Page], findings: dict[str, list[str]]
+) -> None:
     """Catch a first section that merely restates the answer in the hero."""
     for page in pages:
         hero = page.main.find("section")
@@ -411,7 +458,9 @@ def _check_hero_first_section(pages: list[Page], findings: dict[str, list[str]])
         hero_tokens, first_tokens = _tokens(hero_text), _tokens(first_text)
         if not hero_tokens or not first_tokens:
             continue
-        overlap = len(hero_tokens & first_tokens) / min(len(hero_tokens), len(first_tokens))
+        overlap = len(hero_tokens & first_tokens) / min(
+            len(hero_tokens), len(first_tokens)
+        )
         similarity = difflib.SequenceMatcher(None, hero_text, first_text).ratio()
         if similarity >= 0.78 or overlap >= 0.84:
             findings["8. Hero и первая секция различаются"].append(
@@ -441,14 +490,19 @@ def _check_test_data_labels(pages: list[Page], findings: dict[str, list[str]]) -
         re.IGNORECASE,
     )
     for page in pages:
-        proof = " ".join(node.get_text(" ", strip=True) for node in page.main.select("pre, table"))
-        if fictional_markers.search(proof) and not re.search(r"\bтестовые\s+данные\b", _clean_copy(page.main), re.IGNORECASE):
+        proof = " ".join(
+            node.get_text(" ", strip=True) for node in page.main.select("pre, table")
+        )
+        if fictional_markers.search(proof) and not re.search(
+            r"\bтестовые\s+данные\b", _clean_copy(page.main), re.IGNORECASE
+        ):
             findings["10. тестовые примеры помечены"].append(
                 f"{page.route}: пример с идентификаторами без метки «Тестовые данные»"
             )
 
 
 def audit() -> tuple[list[Page], dict[str, list[str]]]:
+    """Run all editorial checks and return findings grouped by rule."""
     pages = _pages()
     findings: dict[str, list[str]] = defaultdict(list)
     _check_one_thesis(pages, findings)
@@ -465,14 +519,23 @@ def audit() -> tuple[list[Page], dict[str, list[str]]]:
 
 
 def main() -> int:
+    """Run the public content audit as a command-line check."""
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--json", action="store_true", help="print machine-readable findings")
+    parser.add_argument(
+        "--json", action="store_true", help="print machine-readable findings"
+    )
     args = parser.parse_args()
     pages, findings = audit()
     if args.json:
-        print(json.dumps({"pages": len(pages), "findings": findings}, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {"pages": len(pages), "findings": findings},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     else:
         print(f"Public non-documentation pages: {len(pages)}")
         for criterion in (
@@ -495,10 +558,13 @@ def main() -> int:
 
 
 def test_all_public_pages_pass_six_editorial_checks() -> None:
+    """Require every declared public page to pass all editorial checks."""
     pages, findings = audit()
     assert len(pages) == 40, f"Expected 40 public pages, found {len(pages)}"
     assert not findings, "Editorial audit findings:\n" + "\n".join(
-        f"[{criterion}] {item}" for criterion, items in findings.items() for item in items
+        f"[{criterion}] {item}"
+        for criterion, items in findings.items()
+        for item in items
     )
 
 

@@ -8,7 +8,6 @@ import sys
 from datetime import date
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 ISO_DATE = re.compile(r'"dateModified"\s*:\s*"([^"]+)"')
 VISIBLE_DATE = re.compile(r"Обновлено:\s*([^<]+)")
@@ -30,11 +29,13 @@ RU_MONTHS = (
 
 
 def visible_date(value: str) -> str:
+    """Render an ISO date as the canonical Russian public date."""
     parsed = date.fromisoformat(value)
     return f"{parsed.day} {RU_MONTHS[parsed.month - 1]} {parsed.year}"
 
 
 def main() -> int:
+    """Validate public release and sitemap freshness against today's date."""
     index = (ROOT / "index.html").read_text(encoding="utf-8")
     iso_matches = ISO_DATE.findall(index)
     visible_matches = [match.strip() for match in VISIBLE_DATE.findall(index)]
@@ -53,7 +54,11 @@ def main() -> int:
 
     for path in ROOT.rglob("*.html"):
         relative = path.relative_to(ROOT)
-        if "docs" in relative.parts or "templates" in relative.parts or path.name.startswith("yandex_"):
+        if (
+            "docs" in relative.parts
+            or "templates" in relative.parts
+            or path.name.startswith("yandex_")
+        ):
             continue
         text = path.read_text(encoding="utf-8")
         for value in ISO_DATE.findall(text):

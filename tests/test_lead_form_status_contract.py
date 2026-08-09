@@ -6,14 +6,15 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
-
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_cta_name_field_required_matches_leads_api_contract() -> None:
     """FR-P1217-02: keep visible required fields aligned with the leads API."""
     for relative in ("templates/sections/cta.html", "index.html"):
-        soup = BeautifulSoup((LANDING_ROOT / relative).read_text(encoding="utf-8"), "html.parser")
+        soup = BeautifulSoup(
+            (LANDING_ROOT / relative).read_text(encoding="utf-8"), "html.parser"
+        )
         label = soup.find("label", attrs={"for": "name"})
         field = soup.find("input", attrs={"id": "name", "name": "name"})
 

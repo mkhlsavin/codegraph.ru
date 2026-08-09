@@ -8,12 +8,11 @@ from collections import Counter
 import json
 from pathlib import Path
 import re
-from typing import Iterable
+from typing import Any, Iterable
 from urllib.parse import unquote, urlsplit
 import xml.etree.ElementTree as ET
 
 from bs4 import BeautifulSoup
-
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "public-pages.json"
@@ -44,6 +43,7 @@ PRODUCT_ROUTES = {
 
 
 def public_pages() -> list[Path]:
+    """Return every public HTML page declared by the publication manifest."""
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     paths: set[Path] = set()
     for pattern in manifest["include"]:
@@ -62,6 +62,7 @@ def _route(path: Path) -> str:
 
 
 def check_design_tokens_parity(errors: list[str]) -> None:
+    """Append errors when authored and generated design tokens diverge."""
     source = CSS.read_text(encoding="utf-8")
     for token in (
         "--cg-primary",
@@ -82,6 +83,89 @@ def check_design_tokens_parity(errors: list[str]) -> None:
         errors.append("css: legacy token layer has no deprecation marker")
 
 
+def _normalize_metadata(value: object) -> str:
+    """Normalize one metadata value for deterministic parity checks."""
+    return re.sub(r"\s+", " ", str(value).replace("\xa0", " ")).strip()
+
+
+def _metadata_content(node: Any) -> str:
+    """Return a scalar content attribute from an optional DOM node."""
+    return str(node.get("content", "")).strip() if node is not None else ""
+
+
+def _webpage_schemas(soup: Any) -> list[dict[str, Any]]:
+    """Extract valid WebPage JSON-LD objects from one parsed page."""
+    payloads: list[dict[str, Any]] = []
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            payload = json.loads(script.string or script.get_text())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("@type") == "WebPage":
+            payloads.append(payload)
+    return payloads
+
+
+def _append_page_metadata_errors(
+    route: str,
+    soup: Any,
+    title: str,
+    description: str,
+    errors: list[str],
+) -> None:
+    """Append social and schema parity errors for one page."""
+    pairs = (
+        ("og:title", soup.select_one('meta[property="og:title"]'), title),
+        (
+            "og:description",
+            soup.select_one('meta[property="og:description"]'),
+            description,
+        ),
+        ("twitter:title", soup.select_one('meta[name="twitter:title"]'), title),
+        (
+            "twitter:description",
+            soup.select_one('meta[name="twitter:description"]'),
+            description,
+        ),
+    )
+    for label, node, expected in pairs:
+        if _normalize_metadata(_metadata_content(node)) != _normalize_metadata(
+            expected
+        ):
+            errors.append(
+                f"{route}: {label} must equal {'title' if label.endswith('title') else 'description'}"
+            )
+    webpage = _webpage_schemas(soup)
+    if len(webpage) != 1:
+        errors.append(f"{route}: WebPage metadata must match title and description")
+        return
+    schema = webpage[0]
+    if _normalize_metadata(schema.get("name", "")) != _normalize_metadata(
+        title
+    ) or _normalize_metadata(schema.get("description", "")) != _normalize_metadata(
+        description
+    ):
+        errors.append(f"{route}: WebPage metadata must match title and description")
+
+
+def _append_duplicate_metadata_errors(
+    label: str,
+    values: list[tuple[str, str]],
+    errors: list[str],
+) -> None:
+    """Append duplicate title or description errors across public routes."""
+    counts = Counter(_normalize_metadata(value) for value, _route_name in values)
+    for value, count in counts.items():
+        if not value or count <= 1:
+            continue
+        routes = ", ".join(
+            route
+            for candidate, route in values
+            if _normalize_metadata(candidate) == value
+        )
+        errors.append(f"{label} duplicated on {routes}")
+
+
 def check_metadata_contract(pages: Iterable[Path], errors: list[str]) -> None:
     """Require page-specific metadata and parity across social/schema surfaces."""
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -89,50 +173,22 @@ def check_metadata_contract(pages: Iterable[Path], errors: list[str]) -> None:
         errors.append("manifest: metadata source and fields are required")
     titles: list[tuple[str, str]] = []
     descriptions: list[tuple[str, str]] = []
-    normalize = lambda value: re.sub(r"\s+", " ", value.replace("\xa0", " ")).strip()
     for path in pages:
         route = _route(path)
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
         title = soup.title.get_text(" ", strip=True) if soup.title else ""
-        description_tag = soup.select_one('meta[name="description"]')
-        description = description_tag.get("content", "").strip() if description_tag else ""
-        og_title = soup.select_one('meta[property="og:title"]')
-        og_description = soup.select_one('meta[property="og:description"]')
-        twitter_title = soup.select_one('meta[name="twitter:title"]')
-        twitter_description = soup.select_one('meta[name="twitter:description"]')
-        webpage = []
-        for script in soup.select('script[type="application/ld+json"]'):
-            try:
-                payload = json.loads(script.string or script.get_text())
-            except json.JSONDecodeError:
-                continue
-            if isinstance(payload, dict) and payload.get("@type") == "WebPage":
-                webpage.append(payload)
+        description = _metadata_content(soup.select_one('meta[name="description"]'))
         if not title or not description:
             errors.append(f"{route}: title and description are required")
-        if og_title is None or normalize(og_title.get("content", "")) != normalize(title):
-            errors.append(f"{route}: og:title must equal title")
-        if og_description is None or normalize(og_description.get("content", "")) != normalize(description):
-            errors.append(f"{route}: og:description must equal description")
-        if twitter_title is None or normalize(twitter_title.get("content", "")) != normalize(title):
-            errors.append(f"{route}: twitter:title must equal title")
-        if twitter_description is None or normalize(twitter_description.get("content", "")) != normalize(description):
-            errors.append(f"{route}: twitter:description must equal description")
-        if len(webpage) != 1 or normalize(str(webpage[0].get("name", ""))) != normalize(title) or normalize(str(webpage[0].get("description", ""))) != normalize(description):
-            errors.append(f"{route}: WebPage metadata must match title and description")
+        _append_page_metadata_errors(route, soup, title, description, errors)
         titles.append((title, route))
         descriptions.append((description, route))
-    for value, count in Counter(normalize(item[0]) for item in titles).items():
-        if value and count > 1:
-            routes = ", ".join(route for title, route in titles if normalize(title) == value)
-            errors.append(f"title duplicated on {routes}")
-    for value, count in Counter(normalize(item[0]) for item in descriptions).items():
-        if value and count > 1:
-            routes = ", ".join(route for description, route in descriptions if normalize(description) == value)
-            errors.append(f"description duplicated on {routes}")
+    _append_duplicate_metadata_errors("title", titles, errors)
+    _append_duplicate_metadata_errors("description", descriptions, errors)
 
 
-def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
+def _append_control_and_card_errors(route: str, soup: Any, errors: list[str]) -> None:
+    """Append control, card, theme, marker, and FAQ component errors."""
     redundant_theme_utilities = {
         "dark:bg-cg-surface": "bg-cg-surface",
         "dark:bg-cg-surface-subtle": "bg-cg-surface-subtle",
@@ -142,73 +198,99 @@ def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
         "dark:hover:bg-cg-surface-subtle": "hover:bg-cg-surface-subtle",
         "dark:hover:text-cg-ink": "hover:text-cg-ink",
     }
+    body = soup.body
+    if body and body.get("data-density") != "expressive":
+        errors.append(f"{route}: body must declare expressive density")
+    for control in soup.find_all(["button", "input", "select"]):
+        if {"rounded-cg-card", "rounded-cg-panel"} & set(control.get("class", [])):
+            errors.append(f"{route}: control uses a surface radius")
+    for card in soup.select(
+        ".cg-article-list-card, .cg-article-related-link, .cg-article-fact"
+    ):
+        if any(value.startswith("shadow-") for value in card.get("class", [])):
+            errors.append(f"{route}: editorial card has a shadow")
+    for node in soup.find_all(class_=True):
+        classes = set(node.get("class", []))
+        repeated = sorted(
+            token
+            for token, light_token in redundant_theme_utilities.items()
+            if token in classes and light_token in classes
+        )
+        if repeated:
+            errors.append(f"{route}: redundant theme utilities: {', '.join(repeated)}")
+    for sup in soup.find_all("sup"):
+        if sup.find_parent("td") is None and sup.find_parent("th") is None:
+            errors.append(f"{route}: sup marker is outside a table cell")
+    for faq_list in soup.select(".cg-faq-list"):
+        if {"grid", "gap-3"}.issubset(set(faq_list.get("class", []))):
+            errors.append(f"{route}: FAQ list must use divider rhythm, not grid gap")
+
+
+def _append_shell_component_errors(route: str, soup: Any, errors: list[str]) -> None:
+    """Append article and downloadable-resource shell errors."""
+    if soup.select_one(".cg-article-hero") and not soup.select_one(
+        ".cg-article-hero .cg-article-kicker"
+    ):
+        errors.append(f"{route}: ArticleShell hero lacks article kicker")
+    if route != "downloads/digital-role-passport/role-passport.html":
+        return
+    for selector in (".cg-resource-brand", ".cg-resource-intro", ".cg-resource-body"):
+        if not soup.select_one(f".cg-resource-shell {selector}"):
+            errors.append(f"{route}: resource shell lacks {selector}")
+
+
+def _append_product_flow_errors(route: str, soup: Any, errors: list[str]) -> None:
+    """Append product-page flow, hero action, and preview errors."""
+    if route not in PRODUCT_ROUTES:
+        return
+    main = soup.find("main")
+    if main is None:
+        errors.append(f"{route}: missing main landmark")
+        return
+    classes = set(main.get("class", []))
+    if route == "index.html" and "cg-home-flow" not in classes:
+        errors.append(f"{route}: home flow contract is missing")
+    if route not in {"index.html", "whitepaper.html"} and "cg-page-flow" not in classes:
+        errors.append(f"{route}: page flow contract is missing")
+    hero = main.find("section")
+    has_action = hero and hero.find(
+        "a", class_=lambda value: value and "cg-button" in value
+    )
+    if route != "privacy.html" and not has_action:
+        errors.append(f"{route}: hero primary action must use cg-button")
+    preview_exempt = {"index.html", "privacy.html", "integrations.html"}
+    if route not in preview_exempt and not main.select(
+        '[data-visual-kind="product-preview"]'
+    ):
+        errors.append(f"{route}: hero ProductPreview is missing")
+
+
+def _append_home_flow_errors(route: str, soup: Any, errors: list[str]) -> None:
+    """Append top-level homepage information-architecture errors."""
+    if route != "index.html":
+        return
+    h2_count = len(soup.select("main > section h2"))
+    if h2_count > 8:
+        errors.append(f"{route}: top-level section headings={h2_count}, expected <= 8")
+    if not soup.select_one("main .cg-process-track"):
+        errors.append(f"{route}: main process must use cg-process-track")
+    if soup.select_one("main .business-steps"):
+        errors.append(f"{route}: legacy business-steps process is still present")
+
+
+def check_component_contracts(pages: Iterable[Path], errors: list[str]) -> None:
+    """Append errors for components that violate the shared visual contract."""
     for path in pages:
         route = _route(path)
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
-        body = soup.body
-        if body and body.get("data-density") != "expressive":
-            errors.append(f"{route}: body must declare expressive density")
-        for control in soup.find_all(["button", "input", "select"]):
-            classes = set(control.get("class", []))
-            if {"rounded-cg-card", "rounded-cg-panel"} & classes:
-                errors.append(f"{route}: control uses a surface radius")
-        for card in soup.select(".cg-article-list-card, .cg-article-related-link, .cg-article-fact"):
-            if any(value.startswith("shadow-") for value in card.get("class", [])):
-                errors.append(f"{route}: editorial card has a shadow")
-        for node in soup.find_all(class_=True):
-            classes = set(node.get("class", []))
-            repeated = sorted(
-                token
-                for token, light_token in redundant_theme_utilities.items()
-                if token in classes and light_token in classes
-            )
-            if repeated:
-                errors.append(f"{route}: redundant theme utilities: {', '.join(repeated)}")
-        for sup in soup.find_all("sup"):
-            if sup.find_parent("td") is None and sup.find_parent("th") is None:
-                errors.append(f"{route}: sup marker is outside a table cell")
-        for faq_list in soup.select(".cg-faq-list"):
-            faq_classes = set(faq_list.get("class", []))
-            if {"grid", "gap-3"}.issubset(faq_classes):
-                errors.append(f"{route}: FAQ list must use divider rhythm, not grid gap")
-        if soup.select_one(".cg-article-hero") and not soup.select_one(
-            ".cg-article-hero .cg-article-kicker"
-        ):
-            errors.append(f"{route}: ArticleShell hero lacks article kicker")
-        if route == "downloads/digital-role-passport/role-passport.html":
-            for selector in (".cg-resource-brand", ".cg-resource-intro", ".cg-resource-body"):
-                if not soup.select_one(f".cg-resource-shell {selector}"):
-                    errors.append(f"{route}: resource shell lacks {selector}")
-        if route in PRODUCT_ROUTES:
-            main = soup.find("main")
-            if main is None:
-                errors.append(f"{route}: missing main landmark")
-                continue
-            classes = set(main.get("class", []))
-            if route == "index.html" and "cg-home-flow" not in classes:
-                errors.append(f"{route}: home flow contract is missing")
-            if route not in {"index.html", "whitepaper.html"} and "cg-page-flow" not in classes:
-                errors.append(f"{route}: page flow contract is missing")
-            hero = main.find("section")
-            if route != "privacy.html" and (
-                hero is None or not hero.find("a", class_=lambda value: value and "cg-button" in value)
-            ):
-                errors.append(f"{route}: hero primary action must use cg-button")
-            if route not in {"index.html", "privacy.html", "integrations.html"} and not main.select(
-                '[data-visual-kind="product-preview"]'
-            ):
-                errors.append(f"{route}: hero ProductPreview is missing")
-        if route == "index.html":
-            h2_count = len(soup.select("main > section h2"))
-            if h2_count > 8:
-                errors.append(f"{route}: top-level section headings={h2_count}, expected <= 8")
-            if not soup.select_one("main .cg-process-track"):
-                errors.append(f"{route}: main process must use cg-process-track")
-            if soup.select_one("main .business-steps"):
-                errors.append(f"{route}: legacy business-steps process is still present")
+        _append_control_and_card_errors(route, soup, errors)
+        _append_shell_component_errors(route, soup, errors)
+        _append_product_flow_errors(route, soup, errors)
+        _append_home_flow_errors(route, soup, errors)
 
 
 def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
+    """Append errors when diagrams bypass canonical design tokens."""
     css = CSS.read_text(encoding="utf-8")
     required_css = (
         "--cg-diagram-node-active",
@@ -252,16 +334,28 @@ def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
             if svg is None or not svg.find("title") or not svg.find("desc"):
                 errors.append(f"{route}: diagram lacks title/desc")
             viewer = figure.select_one("[data-diagram-viewer]")
-            if viewer is None or not viewer.get("data-diagram-id") or not soup.find(id=viewer.get("data-diagram-id")):
+            if (
+                viewer is None
+                or not viewer.get("data-diagram-id")
+                or not soup.find(id=viewer.get("data-diagram-id"))
+            ):
                 errors.append(f"{route}: wide diagram lacks fullscreen viewer")
-            if not figure.select_one(".cg-diagram-scroll, .overflow-x-auto, .cg-diagram-mobile"):
+            if not figure.select_one(
+                ".cg-diagram-scroll, .overflow-x-auto, .cg-diagram-mobile"
+            ):
                 errors.append(f"{route}: wide diagram lacks mobile scroll strategy")
             if svg is None:
                 continue
             active_nodes = svg.select("rect.cg-diagram-node-active")
             for node in active_nodes:
                 group = node.parent
-                active_text = group.select("text.cg-diagram-title-active, text.cg-diagram-body-active") if group else []
+                active_text = (
+                    group.select(
+                        "text.cg-diagram-title-active, text.cg-diagram-body-active"
+                    )
+                    if group
+                    else []
+                )
                 if not active_text:
                     errors.append(f"{route}: active diagram node has no active text")
             for text_node in svg.find_all("text"):
@@ -279,6 +373,7 @@ def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
 
 
 def check_public_shell(errors: list[str]) -> None:
+    """Append errors when shared public navigation or shell behavior drifts."""
     header = (ROOT / "templates" / "header.html").read_text(encoding="utf-8")
     javascript = JS.read_text(encoding="utf-8")
     css = CSS.read_text(encoding="utf-8")
@@ -290,7 +385,12 @@ def check_public_shell(errors: list[str]) -> None:
     for fragment in required:
         if fragment not in header:
             errors.append(f"header: missing drawer contract {fragment}")
-    for fragment in ("main.inert", "footer.inert", "event.key !== 'Tab'", "focusFirstItem"):
+    for fragment in (
+        "main.inert",
+        "footer.inert",
+        "event.key !== 'Tab'",
+        "focusFirstItem",
+    ):
         if fragment not in javascript:
             errors.append(f"js: missing drawer behavior {fragment}")
     if '.cg-nav-link[aria-current="page"]' not in css:
@@ -307,7 +407,9 @@ def check_release_surface(pages: Iterable[Path], errors: list[str]) -> None:
     if sitemap.is_file():
         try:
             root = ET.fromstring(sitemap.read_text(encoding="utf-8"))
-            locations = [element.text for element in root.iter() if element.tag.endswith("}loc")]
+            locations = [
+                element.text for element in root.iter() if element.tag.endswith("}loc")
+            ]
             if len(locations) != len(set(locations)):
                 errors.append("release: sitemap contains duplicate URLs")
         except ET.ParseError as error:
@@ -335,16 +437,33 @@ def check_release_surface(pages: Iterable[Path], errors: list[str]) -> None:
         for link in soup.select("a[href], link[href], img[src], script[src]"):
             attribute = "href" if link.has_attr("href") else "src"
             value = str(link.get(attribute, "")).strip()
-            if not value or value.startswith(("#", "//", "http://", "https://", "mailto:", "tel:", "data:", "javascript:")):
+            if not value or value.startswith(
+                (
+                    "#",
+                    "//",
+                    "http://",
+                    "https://",
+                    "mailto:",
+                    "tel:",
+                    "data:",
+                    "javascript:",
+                )
+            ):
                 continue
             parsed = urlsplit(value)
             target_value = unquote(parsed.path)
-            target = (ROOT / target_value.lstrip("/")) if target_value.startswith("/") else (path.parent / target_value)
+            target = (
+                (ROOT / target_value.lstrip("/"))
+                if target_value.startswith("/")
+                else (path.parent / target_value)
+            )
             target = target.resolve()
             try:
                 target.relative_to(ROOT.resolve())
             except ValueError:
-                errors.append(f"{_route(path)}: local link escapes landing root: {value}")
+                errors.append(
+                    f"{_route(path)}: local link escapes landing root: {value}"
+                )
                 continue
             if target.is_dir():
                 target /= "index.html"
@@ -353,8 +472,19 @@ def check_release_surface(pages: Iterable[Path], errors: list[str]) -> None:
 
 
 def main() -> int:
+    """Run the selected design-system contract checks."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check", choices=("all", "design-tokens-parity", "component-contracts", "diagram-tokens", "public-shell"), default="all")
+    parser.add_argument(
+        "--check",
+        choices=(
+            "all",
+            "design-tokens-parity",
+            "component-contracts",
+            "diagram-tokens",
+            "public-shell",
+        ),
+        default="all",
+    )
     args = parser.parse_args()
     errors: list[str] = []
     pages = public_pages()

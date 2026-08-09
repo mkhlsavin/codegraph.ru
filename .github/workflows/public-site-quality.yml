@@ -58,7 +58,21 @@ jobs:
       - name: Install semantic and browser checks
         run: |
           python -m pip install --disable-pip-version-check pytest beautifulsoup4 playwright
+          python -m pip install --disable-pip-version-check -r requirements-lint.txt
           python -m playwright install --with-deps chromium
+
+      - name: Enforce Python lint, typing, and complexity
+        shell: bash
+        run: |
+          python -m black --check scripts tests
+          python -m ruff check scripts tests
+          python -m mypy scripts tests --no-incremental --show-error-codes
+          radon_output="$(python -m radon cc scripts tests -n E -s)"
+          if [[ -n "${radon_output}" ]]; then
+            printf '%s\n' "${radon_output}"
+            exit 1
+          fi
+          echo "Radon E/F blocks: 0"
 
       - name: Run semantic, claims, Tailwind, and responsive contracts
         run: |
@@ -67,8 +81,10 @@ jobs:
             tests/test_public_claims_patch.py \
             tests/test_tailwind_foundation.py \
             tests/test_header_responsive_css.py \
+            tests/test_landing_build_contract.py \
             tests/test_nested_page_context_browser.py \
             tests/test_docs_repeat_audit_contract.py \
+            tests/test_visual_semantic_audit_failure_contract.py \
             -q
 
       - name: Enforce Russian copy score on every page

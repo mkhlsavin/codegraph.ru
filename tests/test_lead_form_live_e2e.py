@@ -35,18 +35,21 @@ def test_public_lead_form_creates_lead_and_reaches_terminal_success_status() -> 
         page.locator("#company").fill("CodeGraph Synthetic E2E")
         page.locator("#buyer-role").select_option("cto")
         page.locator("#initiative-task").select_option("quality")
-        page.locator("#team-size").evaluate(
-            """(el) => {
+        page.locator("#team-size").evaluate("""(el) => {
               el.value = '80-149';
               el.dispatchEvent(new Event('input', { bubbles: true }));
               el.dispatchEvent(new Event('change', { bubbles: true }));
-            }"""
-        )
+            }""")
         page.locator("#consent").check()
-        assert page.locator("#demo-form").evaluate("(form) => form.checkValidity()") is True
+        assert (
+            page.locator("#demo-form").evaluate("(form) => form.checkValidity()")
+            is True
+        )
 
         page.locator("#demo-submit-btn").scroll_into_view_if_needed()
         page.locator("#demo-submit-btn").click(force=True)
 
-        expect(page.locator("#demo-status")).to_contain_text("Заявка отправлена", timeout=10000)
+        expect(page.locator("#demo-status")).to_contain_text(
+            "Заявка отправлена", timeout=10000
+        )
         browser.close()

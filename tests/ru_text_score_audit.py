@@ -18,7 +18,6 @@ import re
 from bs4 import BeautifulSoup
 from bs4.element import Comment, NavigableString
 
-
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 WEIGHTS = (0.15, 0.25, 0.20, 0.20, 0.20)
 ONE_LETTER_BREAK = re.compile(
@@ -161,7 +160,9 @@ def score_page(path: Path) -> PageResult:
         notes.append(f"канцелярские маркеры: {bureaucratic}")
 
     grammar = 9.5
-    malformed = [fragment for fragment in MALFORMED_PUBLIC_COPY if fragment in text.casefold()]
+    malformed = [
+        fragment for fragment in MALFORMED_PUBLIC_COPY if fragment in text.casefold()
+    ]
     if malformed:
         grammar -= min(1.5, len(malformed) * 0.5)
         notes.append(f"нарушенные согласования: {len(malformed)}")
@@ -169,7 +170,9 @@ def score_page(path: Path) -> PageResult:
     structure = 9.4
     headings = [int(node.name[1]) for node in soup.find_all(re.compile(r"^h[1-6]$"))]
     h1_count = len(soup.find_all("h1"))
-    heading_skips = sum(1 for left, right in zip(headings, headings[1:]) if right > left + 1)
+    heading_skips = sum(
+        1 for left, right in zip(headings, headings[1:]) if right > left + 1
+    )
     antitheses = len(MANUFACTURED_ANTITHESIS.findall(text))
     if h1_count != 1:
         structure -= 1.5

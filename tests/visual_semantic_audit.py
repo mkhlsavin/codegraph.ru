@@ -24,7 +24,6 @@ from urllib.parse import unquote, urlparse
 
 from playwright.async_api import BrowserContext, Route, async_playwright
 
-
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 PROFILES: dict[str, dict[str, Any]] = {
     "desktop": {
@@ -164,7 +163,9 @@ def _install_windows_socketpair_fallback() -> None:
                 except OSError:
                     continue
             else:  # pragma: no cover - host resource exhaustion
-                raise OSError("no client loopback port available for asyncio socketpair")
+                raise OSError(
+                    "no client loopback port available for asyncio socketpair"
+                )
             client.setblocking(False)
             try:
                 client.connect(listener.getsockname())
@@ -256,19 +257,21 @@ async def _inspect_route(
         console_errors: list[str] = []
         page.on(
             "console",
-            lambda message: console_errors.append(message.text)
-            if message.type == "error"
-            and not message.text.startswith("Failed to load resource:")
-            else None,
+            lambda message: (
+                console_errors.append(message.text)
+                if message.type == "error"
+                and not message.text.startswith("Failed to load resource:")
+                else None
+            ),
         )
         page.on("pageerror", lambda error: console_errors.append(str(error)))
         page.on(
             "requestfailed",
-            lambda request: console_errors.append(
-                f"requestfailed:{request.url}:{request.failure}"
-            )
-            if request.url.startswith(base_url.rstrip("/"))
-            else None,
+            lambda request: (
+                console_errors.append(f"requestfailed:{request.url}:{request.failure}")
+                if request.url.startswith(base_url.rstrip("/"))
+                else None
+            ),
         )
         result: dict[str, Any] = {"profile": profile, "route": route}
         try:
@@ -277,11 +280,9 @@ async def _inspect_route(
                 wait_until="domcontentloaded",
                 timeout=20_000,
             )
-            await page.evaluate(
-                """async () => {
+            await page.evaluate("""async () => {
                   if (document.fonts && document.fonts.ready) await document.fonts.ready;
-                }"""
-            )
+                }""")
             await page.wait_for_timeout(100)
             if profile == "print":
                 await page.emulate_media(media="print")
@@ -837,174 +838,271 @@ def _compare(
     return {"missing": missing, "added": added, "changes": changes}
 
 
+def _core_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return core HTTP, document, ownership, security, and canonical errors."""
+    reasons: list[str] = []
+    if row.get("error"):
+        reasons.append(str(row["error"]))
+    if row.get("status") != 200:
+        reasons.append(f"status={row.get('status')}")
+    if row.get("h1_count") != 1:
+        reasons.append(f"h1_count={row.get('h1_count')}")
+    if row.get("main_count") != 1:
+        reasons.append(f"main_count={row.get('main_count')}")
+    if not row.get("title") or not row.get("description"):
+        reasons.append("empty title/description")
+    docs_route = str(row.get("route", "")).startswith("docs/")
+    if docs_route and (row.get("buyer_question") or row.get("main_buyer_question")):
+        reasons.append("technical docs expose buyer-question")
+    if not docs_route and (
+        not row.get("buyer_question")
+        or row.get("buyer_question") != row.get("main_buyer_question")
+    ):
+        reasons.append("buyer-question ownership mismatch")
+    if "'unsafe-inline'" in str(row.get("csp", "")):
+        reasons.append("CSP contains unsafe-inline")
+    if row.get("remote_font_links"):
+        reasons.append(f"remote_font_links={row['remote_font_links']}")
+    canonical = str(row.get("canonical", ""))
+    if row.get("canonical_count") != 1 or not canonical.startswith(
+        "https://codegraph.ru/"
+    ):
+        reasons.append(
+            f"canonical={row.get('canonical')} count={row.get('canonical_count')}"
+        )
+    if row.get("horizontal_overflow", 0) > 1:
+        reasons.append(f"horizontal_overflow={row.get('horizontal_overflow')}")
+    return reasons
+
+
+def _collection_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return resource, console, accessibility, heading, and identity errors."""
+    reasons: list[str] = []
+    for field in (
+        "broken_images",
+        "missing_image_dimensions",
+        "console_errors",
+        "json_ld_errors",
+    ):
+        if row.get(field):
+            reasons.append(f"{field}={row[field]}")
+    for field in (
+        "missing_alt",
+        "unnamed_buttons",
+        "unnamed_links",
+        "unlabelled_controls",
+        "heading_level_jumps",
+    ):
+        if row.get(field, 0):
+            reasons.append(f"{field}={row[field]}")
+    if row.get("duplicate_ids"):
+        reasons.append(f"duplicate_ids={row['duplicate_ids']}")
+    return reasons
+
+
+def _metadata_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return social and WebPage metadata parity errors."""
+    reasons: list[str] = []
+    parity_fields = (
+        ("og_title", "title", "og:title parity mismatch"),
+        ("og_description", "description", "og:description parity mismatch"),
+        ("twitter_title", "title", "twitter:title parity mismatch"),
+        ("twitter_description", "description", "twitter:description parity mismatch"),
+    )
+    for actual, expected, message in parity_fields:
+        if row.get(actual) != row.get(expected):
+            reasons.append(message)
+    if not row.get("webpage_schema_parity"):
+        reasons.append(
+            f"WebPage schema parity mismatch count={row.get('webpage_schema_count')}"
+        )
+    return reasons
+
+
+def _contrast_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return heading and diagram contrast or classification errors."""
+    reasons: list[str] = []
+    if row.get("h1_contrast_ratio", 0) < 3:
+        reasons.append(f"h1_contrast_ratio={row.get('h1_contrast_ratio')}")
+    if not row.get("diagram_count", 0):
+        return reasons
+    thresholds = (
+        ("diagram_text_contrast_light", 4.5),
+        ("diagram_text_contrast_dark", 4.5),
+        ("diagram_edge_contrast", 3),
+    )
+    for field, threshold in thresholds:
+        if row.get(field, 0) < threshold:
+            reasons.append(f"{field}={row.get(field)}")
+    if row.get("diagram_active_node_count", 0) and row.get(
+        "diagram_unclassified_text", 0
+    ):
+        reasons.append(
+            f"diagram_unclassified_text={row.get('diagram_unclassified_text')}"
+        )
+    return reasons
+
+
+def _public_layout_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return public-page density, hierarchy, diagram, and card errors."""
+    if str(row.get("route", "")).startswith("docs/"):
+        return []
+    reasons: list[str] = []
+    if row.get("data_density") != "expressive":
+        reasons.append(f"data_density={row.get('data_density')!r}")
+    if row.get("top_level_h2", 0) > 8 and row.get("route") == "index.html":
+        reasons.append(f"top_level_h2={row.get('top_level_h2')}")
+    if row.get("wide_diagrams_without_strategy", 0):
+        reasons.append(
+            f"wide_diagrams_without_strategy={row.get('wide_diagrams_without_strategy')}"
+        )
+    if row.get("editorial_card_shadows", 0):
+        reasons.append(f"editorial_card_shadows={row.get('editorial_card_shadows')}")
+    return reasons
+
+
+def _drawer_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return focus-trap and inert-background errors for exercised mobile drawers."""
+    if row.get("profile") != "mobile" or row.get("drawer_focus_inside") is None:
+        return []
+    reasons: list[str] = []
+    for field in (
+        "drawer_focus_inside",
+        "drawer_background_inert",
+        "drawer_focus_returned",
+    ):
+        if row.get(field) is not True:
+            reasons.append(f"{field}={row.get(field)!r}")
+    return reasons
+
+
+def _presentation_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return screen-layout spacing, collision, freshness, and touch errors."""
+    if row.get("profile") == "print":
+        return []
+    reasons: list[str] = []
+    for field in (
+        "overlapping_elements",
+        "touching_text_blocks",
+        "article_zero_paragraph_gaps",
+    ):
+        if row.get(field, 0):
+            reasons.append(f"{field}={row[field]}")
+    bounded_fields = (
+        ("same_surface_section_gap", 0, 96),
+        ("same_surface_continuation_inset", 0, 16),
+        ("card_first_child_offset", 0, 28),
+        ("faq_item_gap", 0, 1),
+    )
+    for field, _minimum, maximum in bounded_fields:
+        if row.get(field, 0) > maximum:
+            reasons.append(f"{field}={row[field]}")
+    new_surface_inset = row.get("new_surface_heading_inset", 0)
+    if new_surface_inset and not 24 <= new_surface_inset <= 48:
+        reasons.append(f"new_surface_heading_inset={new_surface_inset}")
+    hero_gap = row.get("hero_to_first_section_gap", 0)
+    if hero_gap and not 80 <= hero_gap <= 112:
+        reasons.append(f"hero_to_first_section_gap={hero_gap}")
+    resource_padding = row.get("resource_shell_inner_padding", 0)
+    if resource_padding and resource_padding < 20:
+        reasons.append(f"resource_shell_inner_padding={resource_padding}")
+    docs_route = str(row.get("route", "")).startswith("docs/")
+    if not docs_route and row.get("freshness_note_count"):
+        if row.get("freshness_note_count") != 1:
+            reasons.append(f"freshness_note_count={row['freshness_note_count']}")
+        if row.get("freshness_min_gap", 0) < 24:
+            reasons.append(f"freshness_min_gap={row['freshness_min_gap']}")
+    touch_target = row.get("touch_target_min", 0)
+    if (
+        row.get("profile") == "mobile"
+        and not docs_route
+        and touch_target
+        and touch_target < 44
+    ):
+        reasons.append(f"touch_target_min={touch_target}")
+    return reasons
+
+
+def _profile_failure_reasons(row: dict[str, Any]) -> list[str]:
+    """Return active-navigation, CSS-runtime, motion, and print-profile errors."""
+    reasons: list[str] = []
+    route = str(row.get("route", ""))
+    if (
+        row.get("active_nav_visual") is False
+        and route != "index.html"
+        and not route.startswith("docs/")
+    ):
+        reasons.append("active_nav_visual=false")
+    if route == "index.html":
+        css_runtime = row.get("css_runtime") or {}
+        if not css_runtime.get("loaded") or not css_runtime.get("rules"):
+            reasons.append(f"css_runtime_not_loaded={css_runtime}")
+        if css_runtime.get("hero_background") in {
+            "",
+            "rgba(0, 0, 0, 0)",
+            "transparent",
+        }:
+            reasons.append(
+                f"hero_background_missing={css_runtime.get('hero_background')!r}"
+            )
+    if row.get("profile") == "reduced-motion" and row.get("active_motion", 0):
+        reasons.append(f"active_motion={row['active_motion']}")
+    if row.get("profile") != "print":
+        return reasons
+    if not row.get("render_signature"):
+        reasons.append("empty print render signature")
+    if row.get("print_shell_chrome", 0):
+        reasons.append(f"print_shell_chrome={row['print_shell_chrome']}")
+    if row.get("print_form_controls", 0) and not route.startswith("docs/"):
+        reasons.append(f"print_form_controls={row['print_form_controls']}")
+    return reasons
+
+
+def _enforcement_failure_reasons(
+    row: dict[str, Any],
+    enforce: bool,
+) -> list[str]:
+    """Return fail-closed authored-style and stylesheet errors in enforce mode."""
+    if not enforce:
+        return []
+    reasons: list[str] = []
+    if row.get("inline_styles") != 0:
+        reasons.append(f"inline_styles={row.get('inline_styles')}")
+    if row.get("style_blocks") != 0:
+        reasons.append(f"style_blocks={row.get('style_blocks')}")
+    links = [
+        link
+        for link in (row.get("stylesheet_links") or [])
+        if link and not str(link).startswith(("http://", "https://"))
+    ]
+    valid_tailwind_link = len(links) == 1 and str(links[0]).split("?", 1)[0].endswith(
+        "css/tailwind.min.css"
+    )
+    if not valid_tailwind_link:
+        reasons.append(f"stylesheet_links={links}")
+    return reasons
+
+
+def _failure_reasons(row: dict[str, Any], enforce: bool) -> list[str]:
+    """Combine independent failure categories in stable reporting order."""
+    return (
+        _core_failure_reasons(row)
+        + _collection_failure_reasons(row)
+        + _metadata_failure_reasons(row)
+        + _contrast_failure_reasons(row)
+        + _public_layout_failure_reasons(row)
+        + _drawer_failure_reasons(row)
+        + _presentation_failure_reasons(row)
+        + _profile_failure_reasons(row)
+        + _enforcement_failure_reasons(row, enforce)
+    )
+
+
 def _failures(results: list[dict[str, Any]], enforce: bool) -> list[dict[str, Any]]:
     """Return fail-closed semantic, runtime and presentation defects."""
     failures: list[dict[str, Any]] = []
     for row in results:
-        reasons: list[str] = []
-        if row.get("error"):
-            reasons.append(str(row["error"]))
-        if row.get("status") != 200:
-            reasons.append(f"status={row.get('status')}")
-        if row.get("h1_count") != 1:
-            reasons.append(f"h1_count={row.get('h1_count')}")
-        if row.get("main_count") != 1:
-            reasons.append(f"main_count={row.get('main_count')}")
-        if not row.get("title") or not row.get("description"):
-            reasons.append("empty title/description")
-        if str(row.get("route", "")).startswith("docs/"):
-            if row.get("buyer_question") or row.get("main_buyer_question"):
-                reasons.append("technical docs expose buyer-question")
-        elif not row.get("buyer_question") or row.get("buyer_question") != row.get(
-            "main_buyer_question"
-        ):
-            reasons.append("buyer-question ownership mismatch")
-        if "'unsafe-inline'" in str(row.get("csp", "")):
-            reasons.append("CSP contains unsafe-inline")
-        if row.get("remote_font_links"):
-            reasons.append(f"remote_font_links={row['remote_font_links']}")
-        if row.get("canonical_count") != 1 or not str(row.get("canonical", "")).startswith(
-            "https://codegraph.ru/"
-        ):
-            reasons.append(
-                f"canonical={row.get('canonical')} count={row.get('canonical_count')}"
-            )
-        if row.get("horizontal_overflow", 0) > 1:
-            reasons.append(f"horizontal_overflow={row.get('horizontal_overflow')}")
-        for field in (
-            "broken_images",
-            "missing_image_dimensions",
-            "console_errors",
-            "json_ld_errors",
-        ):
-            if row.get(field):
-                reasons.append(f"{field}={row[field]}")
-        for field in (
-            "missing_alt",
-            "unnamed_buttons",
-            "unnamed_links",
-            "unlabelled_controls",
-            "heading_level_jumps",
-        ):
-            if row.get(field, 0):
-                reasons.append(f"{field}={row[field]}")
-        if row.get("duplicate_ids"):
-            reasons.append(f"duplicate_ids={row['duplicate_ids']}")
-        if row.get("og_title") != row.get("title"):
-            reasons.append("og:title parity mismatch")
-        if row.get("og_description") != row.get("description"):
-            reasons.append("og:description parity mismatch")
-        if row.get("twitter_title") != row.get("title"):
-            reasons.append("twitter:title parity mismatch")
-        if row.get("twitter_description") != row.get("description"):
-            reasons.append("twitter:description parity mismatch")
-        if not row.get("webpage_schema_parity"):
-            reasons.append(
-                f"WebPage schema parity mismatch count={row.get('webpage_schema_count')}"
-            )
-        if row.get("h1_contrast_ratio", 0) < 3:
-            reasons.append(f"h1_contrast_ratio={row.get('h1_contrast_ratio')}")
-        if row.get("diagram_count", 0):
-            if row.get("diagram_text_contrast_light", 0) < 4.5:
-                reasons.append(f"diagram_text_contrast_light={row.get('diagram_text_contrast_light')}")
-            if row.get("diagram_text_contrast_dark", 0) < 4.5:
-                reasons.append(f"diagram_text_contrast_dark={row.get('diagram_text_contrast_dark')}")
-            if row.get("diagram_edge_contrast", 0) < 3:
-                reasons.append(f"diagram_edge_contrast={row.get('diagram_edge_contrast')}")
-            if row.get("diagram_active_node_count", 0) and row.get("diagram_unclassified_text", 0):
-                reasons.append(f"diagram_unclassified_text={row.get('diagram_unclassified_text')}")
-        if not str(row.get("route", "")).startswith("docs/"):
-            if row.get("data_density") != "expressive":
-                reasons.append(f"data_density={row.get('data_density')!r}")
-            if row.get("top_level_h2", 0) > 8 and row.get("route") == "index.html":
-                reasons.append(f"top_level_h2={row.get('top_level_h2')}")
-            if row.get("wide_diagrams_without_strategy", 0):
-                reasons.append(
-                    f"wide_diagrams_without_strategy={row.get('wide_diagrams_without_strategy')}"
-                )
-            if row.get("editorial_card_shadows", 0):
-                reasons.append(f"editorial_card_shadows={row.get('editorial_card_shadows')}")
-        if row.get("profile") == "mobile" and row.get("drawer_focus_inside") is not None:
-            for field in ("drawer_focus_inside", "drawer_background_inert", "drawer_focus_returned"):
-                if row.get(field) is not True:
-                    reasons.append(f"{field}={row.get(field)!r}")
-        if row.get("profile") != "print":
-            if row.get("overlapping_elements", 0):
-                reasons.append(f"overlapping_elements={row['overlapping_elements']}")
-            if row.get("touching_text_blocks", 0):
-                reasons.append(f"touching_text_blocks={row['touching_text_blocks']}")
-            if row.get("article_zero_paragraph_gaps", 0):
-                reasons.append(
-                    f"article_zero_paragraph_gaps={row['article_zero_paragraph_gaps']}"
-                )
-            if row.get("same_surface_section_gap", 0) > 96:
-                reasons.append(
-                    f"same_surface_section_gap={row['same_surface_section_gap']}"
-                )
-            new_surface_inset = row.get("new_surface_heading_inset", 0)
-            if new_surface_inset and not 24 <= new_surface_inset <= 48:
-                reasons.append(f"new_surface_heading_inset={new_surface_inset}")
-            if row.get("same_surface_continuation_inset", 0) > 16:
-                reasons.append(
-                    f"same_surface_continuation_inset={row['same_surface_continuation_inset']}"
-                )
-            hero_gap = row.get("hero_to_first_section_gap", 0)
-            if hero_gap and not 80 <= hero_gap <= 112:
-                reasons.append(f"hero_to_first_section_gap={hero_gap}")
-            if row.get("card_first_child_offset", 0) > 28:
-                reasons.append(
-                    f"card_first_child_offset={row['card_first_child_offset']}"
-                )
-            if row.get("resource_shell_inner_padding", 0) and row.get(
-                "resource_shell_inner_padding", 0
-            ) < 20:
-                reasons.append(
-                    f"resource_shell_inner_padding={row['resource_shell_inner_padding']}"
-                )
-            if row.get("faq_item_gap", 0) > 1:
-                reasons.append(f"faq_item_gap={row['faq_item_gap']}")
-            if not str(row.get("route", "")).startswith("docs/") and row.get("freshness_note_count"):
-                if row.get("freshness_note_count") != 1:
-                    reasons.append(f"freshness_note_count={row['freshness_note_count']}")
-                if row.get("freshness_min_gap", 0) < 24:
-                    reasons.append(f"freshness_min_gap={row['freshness_min_gap']}")
-            if (
-                row.get("profile") == "mobile"
-                and not str(row.get("route", "")).startswith("docs/")
-                and row.get("touch_target_min", 0)
-                and row.get("touch_target_min", 0) < 44
-            ):
-                reasons.append(f"touch_target_min={row['touch_target_min']}")
-        if row.get("active_nav_visual") is False and row.get("route") not in {"index.html"} and not str(row.get("route", "")).startswith("docs/"):
-            reasons.append("active_nav_visual=false")
-        if row.get("route") == "index.html":
-            css_runtime = row.get("css_runtime") or {}
-            if not css_runtime.get("loaded") or not css_runtime.get("rules"):
-                reasons.append(f"css_runtime_not_loaded={css_runtime}")
-            if css_runtime.get("hero_background") in {"", "rgba(0, 0, 0, 0)", "transparent"}:
-                reasons.append(f"hero_background_missing={css_runtime.get('hero_background')!r}")
-        if row.get("profile") == "reduced-motion" and row.get("active_motion", 0):
-            reasons.append(f"active_motion={row['active_motion']}")
-        if row.get("profile") == "print" and not row.get("render_signature"):
-            reasons.append("empty print render signature")
-        if row.get("profile") == "print" and row.get("print_shell_chrome", 0):
-            reasons.append(f"print_shell_chrome={row['print_shell_chrome']}")
-        if row.get("profile") == "print" and row.get("print_form_controls", 0) and not str(row.get("route", "")).startswith("docs/"):
-            reasons.append(f"print_form_controls={row['print_form_controls']}")
-        if enforce:
-            if row.get("inline_styles") != 0:
-                reasons.append(f"inline_styles={row.get('inline_styles')}")
-            if row.get("style_blocks") != 0:
-                reasons.append(f"style_blocks={row.get('style_blocks')}")
-            links = [
-                link
-                for link in (row.get("stylesheet_links") or [])
-                if link and not str(link).startswith(("http://", "https://"))
-            ]
-            if len(links) != 1 or not str(links[0]).split("?", 1)[0].endswith(
-                "css/tailwind.min.css"
-            ):
-                reasons.append(f"stylesheet_links={links}")
+        reasons = _failure_reasons(row, enforce)
         if reasons:
             failures.append(
                 {"profile": row["profile"], "route": row["route"], "reasons": reasons}

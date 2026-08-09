@@ -7,9 +7,9 @@ import json
 import re
 from pathlib import Path
 
-
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 PINNED_TAILWIND_VERSION = "4.3.0"
+PINNED_TERSER_VERSION = "5.49.2"
 INLINE_STYLE_BASELINE = 0
 STYLE_BLOCK_BASELINE = 0
 DOM_STYLE_MUTATION_BASELINE = 0
@@ -76,9 +76,7 @@ LEGACY_SHARED_SHELL_CLASSES = {
 def _source_files(pattern: str) -> list[Path]:
     """Return landing source files while excluding installed dependencies."""
     return [
-        path
-        for path in LANDING_ROOT.rglob(pattern)
-        if "node_modules" not in path.parts
+        path for path in LANDING_ROOT.rglob(pattern) if "node_modules" not in path.parts
     ]
 
 
@@ -94,10 +92,7 @@ def _public_html_files() -> list[Path]:
 
 def _count_matches(pattern: re.Pattern[str], paths: list[Path]) -> int:
     """Count regex matches across UTF-8 source files."""
-    return sum(
-        len(pattern.findall(path.read_text(encoding="utf-8")))
-        for path in paths
-    )
+    return sum(len(pattern.findall(path.read_text(encoding="utf-8"))) for path in paths)
 
 
 def _class_tokens(source: str) -> set[str]:
@@ -109,8 +104,8 @@ def _class_tokens(source: str) -> set[str]:
     }
 
 
-def test_tailwind_dependencies_and_build_are_pinned() -> None:
-    """Require an exact local Tailwind CLI version and reproducible lockfile."""
+def test_asset_dependencies_and_builds_are_pinned() -> None:
+    """Require exact local CSS/JS build tools and a reproducible lockfile."""
     package = json.loads((LANDING_ROOT / "package.json").read_text(encoding="utf-8"))
     lock = json.loads((LANDING_ROOT / "package-lock.json").read_text(encoding="utf-8"))
 
@@ -118,8 +113,10 @@ def test_tailwind_dependencies_and_build_are_pinned() -> None:
     assert package["devDependencies"] == {
         "@tailwindcss/cli": PINNED_TAILWIND_VERSION,
         "tailwindcss": PINNED_TAILWIND_VERSION,
+        "terser": PINNED_TERSER_VERSION,
     }
     assert package["scripts"]["build:tailwind"].endswith("--minify")
+    assert package["scripts"]["build:js"].endswith("--output js/main.min.js.tmp")
     assert lock["packages"][""]["devDependencies"] == package["devDependencies"]
 
 
@@ -161,7 +158,9 @@ def test_tailwind_input_and_all_public_links_are_present() -> None:
     for path in _public_html_files():
         html = path.read_text(encoding="utf-8")
         links = re.findall(r'<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"', html)
-        if len(links) != 1 or not links[0].split("?", 1)[0].endswith("css/tailwind.min.css"):
+        if len(links) != 1 or not links[0].split("?", 1)[0].endswith(
+            "css/tailwind.min.css"
+        ):
             offenders[str(path.relative_to(LANDING_ROOT))] = links
 
     assert not offenders, f"Non-canonical stylesheet ownership remains: {offenders}"
@@ -195,7 +194,11 @@ def test_public_stylesheet_and_preload_paths_resolve_to_built_asset() -> None:
             offenders[str(path.relative_to(LANDING_ROOT))] = (stylesheets, preloads)
             continue
         href = stylesheets[0].split("?", 1)[0].split("#", 1)[0]
-        target = (root / href.lstrip("/")) if href.startswith("/") else (path.parent / href).resolve()
+        target = (
+            (root / href.lstrip("/"))
+            if href.startswith("/")
+            else (path.parent / href).resolve()
+        )
         try:
             target.relative_to(root)
         except ValueError:
@@ -204,7 +207,9 @@ def test_public_stylesheet_and_preload_paths_resolve_to_built_asset() -> None:
         if target != root / "css" / "tailwind.min.css" or not target.is_file():
             offenders[str(path.relative_to(LANDING_ROOT))] = href
 
-    assert not offenders, f"Public CSS paths do not resolve to the built bundle: {offenders}"
+    assert (
+        not offenders
+    ), f"Public CSS paths do not resolve to the built bundle: {offenders}"
 
 
 def test_shared_shell_templates_are_tailwind_owned() -> None:
@@ -224,14 +229,16 @@ def test_shared_shell_templates_are_tailwind_owned() -> None:
     assert "data-theme-toggle" in sources["templates/header.html"]
     assert "data-mobile-menu-toggle" in sources["templates/header.html"]
     assert "data-mobile-nav" in sources["templates/header.html"]
-    assert "data-state=\"closed\"" in sources["templates/header.html"]
+    assert 'data-state="closed"' in sources["templates/header.html"]
     assert "cg-mobile-nav" in sources["templates/header.html"]
     assert "cg-mobile-toggle-bar" in sources["templates/header.html"]
-    assert "data-[state=closed]:[translate:100%]" not in sources["templates/header.html"]
+    assert (
+        "data-[state=closed]:[translate:100%]" not in sources["templates/header.html"]
+    )
     assert "data-[state=open]:[translate:0]" not in sources["templates/header.html"]
     assert "data-shell-footer" in sources["templates/footer.html"]
     assert "data-shell-cta" in sources["templates/sections/cta.html"]
-    assert "data-submit-state=\"idle\"" in sources["templates/sections/cta.html"]
+    assert 'data-submit-state="idle"' in sources["templates/sections/cta.html"]
 
 
 def test_shared_shell_behavior_uses_data_and_aria_state() -> None:
@@ -329,7 +336,9 @@ def test_global_legacy_style_debt_is_zero() -> None:
         re.compile(r"<style(?:\s|>)", re.IGNORECASE), html_files
     )
     dom_mutation_count = _count_matches(
-        re.compile(r"\.style\.|style\.setProperty|setAttribute\([^\n]*style", re.IGNORECASE),
+        re.compile(
+            r"\.style\.|style\.setProperty|setAttribute\([^\n]*style", re.IGNORECASE
+        ),
         js_files,
     )
     legacy_css_files = [

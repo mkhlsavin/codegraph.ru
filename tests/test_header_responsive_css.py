@@ -3,7 +3,6 @@
 import re
 from pathlib import Path
 
-
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 HEADER_TEMPLATE = LANDING_ROOT / "templates" / "header.html"
 MINIFIED_CSS = LANDING_ROOT / "css" / "tailwind.min.css"

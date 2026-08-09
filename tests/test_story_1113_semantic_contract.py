@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 from bs4.element import Comment, NavigableString
 from scripts.landing_content import SITE_CONTENT
 
-
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_CATEGORY = SITE_CONTENT["canonical_category"]
 KEY_PAGE_CONTRACTS = {
@@ -88,9 +87,9 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
     """Keep every social card on the current category and cache-busted assets."""
     expected = {
         "index.html": (
-                "og-codegraph-platform-20260722.png",
-                SITE_CONTENT["social_image_alt"],
-            ),
+            "og-codegraph-platform-20260722.png",
+            SITE_CONTENT["social_image_alt"],
+        ),
         "whitepaper.html": (
             "og-codegraph-platform-20260722.png",
             SITE_CONTENT["social_image_alt"],
@@ -100,9 +99,15 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
         soup = _soup(route)
         image_url = soup.find("meta", property="og:image")["content"]
         assert image_url == f"https://codegraph.ru/assets/{filename}"
-        assert soup.find("meta", attrs={"name": "twitter:image"})["content"] == image_url
-        og_alt = soup.find("meta", property="og:image:alt")["content"].replace("\xa0", " ")
-        twitter_alt = soup.find("meta", attrs={"name": "twitter:image:alt"})["content"].replace("\xa0", " ")
+        assert (
+            soup.find("meta", attrs={"name": "twitter:image"})["content"] == image_url
+        )
+        og_alt = soup.find("meta", property="og:image:alt")["content"].replace(
+            "\xa0", " "
+        )
+        twitter_alt = soup.find("meta", attrs={"name": "twitter:image:alt"})[
+            "content"
+        ].replace("\xa0", " ")
         assert og_alt == alt
         assert twitter_alt == alt
         preview = (LANDING_ROOT / "assets" / filename).read_bytes()
@@ -122,7 +127,12 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
     if generator_path.is_file():
         generator = generator_path.read_text(encoding="utf-8")
         assert "Draw the compact geometric mark directly" in generator
-        for stale_claim in ("AI-копилот", "Hybrid RAG", "21 сценарий", "95.6% точность"):
+        for stale_claim in (
+            "AI-копилот",
+            "Hybrid RAG",
+            "21 сценарий",
+            "95.6% точность",
+        ):
             assert stale_claim not in generator
 
 
@@ -234,27 +244,51 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
     expected = {
         "Управление портфелем изменений": (
             "scenarios/portfolio-change-management.html",
-            {"FR-P08-EXECUTIVE-CODE-PORTFOLIO-01", "FR-P08-PORTFOLIO-HEALTH-01", "CNFR-Q04-SCALE-THROUGHPUT-PROFILE-01"},
+            {
+                "FR-P08-EXECUTIVE-CODE-PORTFOLIO-01",
+                "FR-P08-PORTFOLIO-HEALTH-01",
+                "CNFR-Q04-SCALE-THROUGHPUT-PROFILE-01",
+            },
         ),
         "Разработка новой функции": (
             "scenarios/feature-delivery.html",
-            {"FR-P04-DISCOVERY-READINESS-01", "FR-P04-TASK-CAPSULE-01", "CNFR-Q01-EVIDENCE-PROVENANCE-01"},
+            {
+                "FR-P04-DISCOVERY-READINESS-01",
+                "FR-P04-TASK-CAPSULE-01",
+                "CNFR-Q01-EVIDENCE-PROVENANCE-01",
+            },
         ),
         "Аудит кодовой базы": (
             "scenarios/codebase-audit.html",
-            {"FR-P03-ARCHITECTURE-EXPLORATION-01", "FR-P08-REVIEW-RESULT-01", "CNFR-Q01-EVIDENCE-PROVENANCE-01"},
+            {
+                "FR-P03-ARCHITECTURE-EXPLORATION-01",
+                "FR-P08-REVIEW-RESULT-01",
+                "CNFR-Q01-EVIDENCE-PROVENANCE-01",
+            },
         ),
         "Релизная проверка": (
             "scenarios/release-readiness.html",
-            {"FR-P04-DELIVERY-READINESS-01", "FR-P04-PRECOMPLETION-GATE-01", "CNFR-Q02-TRANSITION-ROLLBACK-CONTINUITY-01"},
+            {
+                "FR-P04-DELIVERY-READINESS-01",
+                "FR-P04-PRECOMPLETION-GATE-01",
+                "CNFR-Q02-TRANSITION-ROLLBACK-CONTINUITY-01",
+            },
         ),
         "Технические контроли": (
             "scenarios/technical-controls.html",
-            {"FR-P08-POLICY-WORKSPACE-01", "FR-P09-POLICY-CONSISTENCY-01", "CNFR-Q01-FAIL-CLOSED-GOVERNANCE-01"},
+            {
+                "FR-P08-POLICY-WORKSPACE-01",
+                "FR-P09-POLICY-CONSISTENCY-01",
+                "CNFR-Q01-FAIL-CLOSED-GOVERNANCE-01",
+            },
         ),
         "Контроль кода, созданного ИИ": (
             "scenarios/ai-code-control.html",
-            {"FR-P07-GOVERNED-CLIENT-ACCESS-01", "FR-P06-AUDIT-MACHINE-OUTPUT-01", "CNFR-Q01-AI-IDENTITY-CLAIM-SAFETY-01"},
+            {
+                "FR-P07-GOVERNED-CLIENT-ACCESS-01",
+                "FR-P06-AUDIT-MACHINE-OUTPUT-01",
+                "CNFR-Q01-AI-IDENTITY-CLAIM-SAFETY-01",
+            },
         ),
     }
     homepage = _soup("index.html")
@@ -264,7 +298,9 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
     required_sections = {"situation", "actions", "result", "decision"}
     for _title, (route, expected_refs) in expected.items():
         page = _soup(route)
-        assert required_sections <= {node.get("id") for node in page.find_all("section")}
+        assert required_sections <= {
+            node.get("id") for node in page.find_all("section")
+        }
         assert page.select_one('figure[data-visual-kind="product-preview"]') is not None
 
     sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
@@ -380,7 +416,9 @@ def test_every_whitepaper_section_starts_with_a_compact_reader_description() -> 
                 f"#{section.get('id')}: expected an introductory paragraph of at least "
                 f"80 characters before structured content"
             )
-    assert not errors, "Whitepaper sections without compact descriptions:\n" + "\n".join(errors)
+    assert (
+        not errors
+    ), "Whitepaper sections without compact descriptions:\n" + "\n".join(errors)
 
     visible_fragments = [
         str(node)
@@ -400,7 +438,13 @@ def test_whitepaper_explains_the_implementation_architecture_for_cto_review() ->
     """Keep the architecture explanation grounded in product and code boundaries."""
     page = _soup("whitepaper.html")
     expected = {
-        "architecture": ("Проекты и требования", "Выполнение задач", "Граф кода", "Интеграции", "Хранилища и аудит"),
+        "architecture": (
+            "Проекты и требования",
+            "Выполнение задач",
+            "Граф кода",
+            "Интеграции",
+            "Хранилища и аудит",
+        ),
         "traceability": ("Граф свойств кода", "Динамические вызовы", "связанные тесты"),
     }
     for section_id, required_terms in expected.items():
@@ -416,7 +460,10 @@ def test_whitepaper_explains_roles_and_pilot_boundaries_without_runtime_meta() -
     page = _soup("whitepaper.html")
     roles = page.find("section", id="roles")
     pilot = page.find("section", id="pilot")
-    assert roles is not None and "Для цифровой роли задаются владелец" in roles.get_text(" ", strip=True)
+    assert (
+        roles is not None
+        and "Для цифровой роли задаются владелец" in roles.get_text(" ", strip=True)
+    )
     assert pilot is not None and "одного проекта" in pilot.get_text(" ", strip=True)
     visible = _normalized_text(page.get_text(" ", strip=True)).casefold()
     for term in ("cron", "temporal", "fastapi", "openviking", "на узком экране"):
@@ -445,13 +492,17 @@ def test_homepage_omits_removed_buyer_caveats() -> None:
         "CodeGraph не обещает универсальный процент экономии до исходного замера.",
         "Платформа не заявляет замену финансовому и ресурсному планированию.",
     )
-    assert not [text for text in forbidden if _normalized_text(text).casefold() in visible]
+    assert not [
+        text for text in forbidden if _normalized_text(text).casefold() in visible
+    ]
     assert "продуктовый поток" not in visible
 
 
 def _soup(relative: str) -> BeautifulSoup:
     """Parse one UTF-8 public projection."""
-    return BeautifulSoup((LANDING_ROOT / relative).read_text(encoding="utf-8"), "html.parser")
+    return BeautifulSoup(
+        (LANDING_ROOT / relative).read_text(encoding="utf-8"), "html.parser"
+    )
 
 
 def _normalized_text(value: str) -> str:
@@ -473,7 +524,11 @@ def _public_html_files() -> list[Path]:
 def test_key_pages_own_exact_audit_question_and_h1() -> None:
     """Keep every product/trust/economics page on its accepted buyer question."""
     errors: list[str] = []
-    for relative, (expected_h1, expected_question, expected_release) in KEY_PAGE_CONTRACTS.items():
+    for relative, (
+        expected_h1,
+        expected_question,
+        expected_release,
+    ) in KEY_PAGE_CONTRACTS.items():
         path = LANDING_ROOT / relative
         if not path.is_file():
             errors.append(f"{relative}: missing")
@@ -484,14 +539,20 @@ def test_key_pages_own_exact_audit_question_and_h1() -> None:
         main = soup.find("main")
         if [_normalized_text(value) for value in h1] != [_normalized_text(expected_h1)]:
             errors.append(f"{relative}: h1={h1!r}")
-        if not meta or _normalized_text(meta.get("content", "")) != _normalized_text(expected_question):
+        if not meta or _normalized_text(meta.get("content", "")) != _normalized_text(
+            expected_question
+        ):
             errors.append(f"{relative}: buyer meta mismatch")
-        if not main or _normalized_text(main.get("data-buyer-question", "")) != _normalized_text(expected_question):
+        if not main or _normalized_text(
+            main.get("data-buyer-question", "")
+        ) != _normalized_text(expected_question):
             errors.append(f"{relative}: main question mismatch")
         if not main or main.get("data-release") != expected_release:
             errors.append(f"{relative}: release mismatch")
-        if relative == "index.html" and "ИИ-платформа управления полным циклом разработки ПО" not in _normalized_text(
-            soup.get_text(" ", strip=True)
+        if (
+            relative == "index.html"
+            and "ИИ-платформа управления полным циклом разработки ПО"
+            not in _normalized_text(soup.get_text(" ", strip=True))
         ):
             errors.append(f"{relative}: visible category label absent")
 
@@ -513,7 +574,10 @@ def test_commercial_pages_own_questions_while_docs_do_not() -> None:
         else:
             if len(questions) != 1 or not questions[0].get("content", "").strip():
                 errors.append(f"{relative}: buyer-question meta count={len(questions)}")
-            elif len(mains) != 1 or mains[0].get("data-buyer-question") != questions[0]["content"]:
+            elif (
+                len(mains) != 1
+                or mains[0].get("data-buyer-question") != questions[0]["content"]
+            ):
                 errors.append(f"{relative}: main question ownership mismatch")
         if len(canonicals) != 1 or not canonicals[0].get("href", "").startswith(
             "https://codegraph.ru/"
@@ -550,14 +614,128 @@ def test_key_page_metadata_and_schema_match_visible_contract() -> None:
             errors.append(f"{relative}: empty title/description")
         if _normalized_text(og_title) != _normalized_text(title):
             errors.append(f"{relative}: og:title mismatch")
-        if _normalized_text(og_description) != _normalized_text(description) or _normalized_text(twitter_description) != _normalized_text(description):
+        if _normalized_text(og_description) != _normalized_text(
+            description
+        ) or _normalized_text(twitter_description) != _normalized_text(description):
             errors.append(f"{relative}: description parity mismatch")
         if len(web_pages) != 1:
             errors.append(f"{relative}: WebPage schema count={len(web_pages)}")
-        elif _normalized_text(web_pages[0].get("name", "")) != _normalized_text(title) or _normalized_text(web_pages[0].get("description", "")) != _normalized_text(description):
+        elif _normalized_text(web_pages[0].get("name", "")) != _normalized_text(
+            title
+        ) or _normalized_text(web_pages[0].get("description", "")) != _normalized_text(
+            description
+        ):
             errors.append(f"{relative}: WebPage schema parity mismatch")
 
     assert not errors, "\n".join(errors)
+
+
+def _dom_attribute(node: object, attribute: str) -> str:
+    """Return one scalar DOM attribute from an optional BeautifulSoup node."""
+    if not hasattr(node, "get"):
+        return ""
+    return str(node.get(attribute, ""))
+
+
+def _social_metadata_errors(
+    relative: str,
+    soup: BeautifulSoup,
+    title: str,
+    description: str,
+) -> list[str]:
+    """Return social metadata parity errors for one public page."""
+    selectors = {
+        "og:title": ("property", "og:title"),
+        "og:description": ("property", "og:description"),
+        "twitter:title": ("name", "twitter:title"),
+        "twitter:description": ("name", "twitter:description"),
+    }
+    parity = {
+        key: _dom_attribute(soup.find("meta", attrs={attribute: value}), "content")
+        for key, (attribute, value) in selectors.items()
+    }
+    expected = {
+        "og:title": title,
+        "og:description": description,
+        "twitter:title": title,
+        "twitter:description": description,
+    }
+    if {key: _normalized_text(value) for key, value in parity.items()} == {
+        key: _normalized_text(value) for key, value in expected.items()
+    }:
+        return []
+    return [f"{relative}: social metadata parity mismatch"]
+
+
+def _webpage_schema_errors(
+    relative: str,
+    soup: BeautifulSoup,
+    title: str,
+    description: str,
+    canonical: str,
+) -> list[str]:
+    """Return JSON-LD parse, cardinality, and parity errors for one page."""
+    errors: list[str] = []
+    web_pages: list[dict[str, object]] = []
+    for node in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        try:
+            payload = json.loads(node.string or node.get_text())
+        except json.JSONDecodeError as error:
+            errors.append(f"{relative}: invalid JSON-LD: {error}")
+            continue
+        if isinstance(payload, dict) and payload.get("@type") == "WebPage":
+            web_pages.append(payload)
+    if len(web_pages) != 1:
+        errors.append(f"{relative}: WebPage schema count={len(web_pages)}")
+        return errors
+    webpage = web_pages[0]
+    parity_matches = (
+        _normalized_text(str(webpage.get("name", ""))) == _normalized_text(title)
+        and _normalized_text(str(webpage.get("description", "")))
+        == _normalized_text(description)
+        and webpage.get("url") == canonical
+    )
+    if not parity_matches:
+        errors.append(f"{relative}: WebPage schema parity mismatch")
+    return errors
+
+
+def _csp_and_dependency_errors(
+    relative: str,
+    soup: BeautifulSoup,
+) -> list[str]:
+    """Return CSP, obsolete metadata, and remote-font errors for one page."""
+    errors: list[str] = []
+    csp_nodes = soup.find_all(
+        "meta",
+        attrs={
+            "http-equiv": lambda value: value
+            and value.casefold() == "content-security-policy"
+        },
+    )
+    if len(csp_nodes) != 1:
+        errors.append(f"{relative}: CSP count={len(csp_nodes)}")
+    else:
+        directives = _dom_attribute(csp_nodes[0], "content")
+        style_src = next(
+            (
+                part.strip()
+                for part in directives.split(";")
+                if part.strip().startswith("style-src ")
+            ),
+            "",
+        )
+        if style_src != "style-src 'self'":
+            errors.append(f"{relative}: unsafe authored-style CSP={style_src!r}")
+        if "'unsafe-inline'" in directives:
+            errors.append(f"{relative}: unsafe inline script CSP")
+    if soup.find("meta", attrs={"name": "keywords"}):
+        errors.append(f"{relative}: obsolete meta keywords")
+    for link in soup.find_all("link", href=True):
+        href = _dom_attribute(link, "href")
+        if "fonts.googleapis.com" in href or "fonts.gstatic.com" in href:
+            errors.append(f"{relative}: remote font dependency={href}")
+    return errors
 
 
 def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
@@ -567,79 +745,15 @@ def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
         relative = path.relative_to(LANDING_ROOT).as_posix()
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
         title = soup.title.get_text(" ", strip=True) if soup.title else ""
-        description = (soup.find("meta", attrs={"name": "description"}) or {}).get(
-            "content", ""
+        description = _dom_attribute(
+            soup.find("meta", attrs={"name": "description"}), "content"
         )
-        canonical = (soup.find("link", rel="canonical") or {}).get("href", "")
-        parity = {
-            "og:title": (soup.find("meta", attrs={"property": "og:title"}) or {}).get(
-                "content", ""
-            ),
-            "og:description": (
-                soup.find("meta", attrs={"property": "og:description"}) or {}
-            ).get("content", ""),
-            "twitter:title": (
-                soup.find("meta", attrs={"name": "twitter:title"}) or {}
-            ).get("content", ""),
-            "twitter:description": (
-                soup.find("meta", attrs={"name": "twitter:description"}) or {}
-            ).get("content", ""),
-        }
-        expected = {
-            "og:title": title,
-            "og:description": description,
-            "twitter:title": title,
-            "twitter:description": description,
-        }
-        if {key: _normalized_text(value) for key, value in parity.items()} != {key: _normalized_text(value) for key, value in expected.items()}:
-            errors.append(f"{relative}: social metadata parity mismatch")
-
-        web_pages = []
-        for node in soup.find_all("script", attrs={"type": "application/ld+json"}):
-            try:
-                payload = json.loads(node.string or node.get_text())
-            except json.JSONDecodeError as error:
-                errors.append(f"{relative}: invalid JSON-LD: {error}")
-                continue
-            if isinstance(payload, dict) and payload.get("@type") == "WebPage":
-                web_pages.append(payload)
-        if len(web_pages) != 1:
-            errors.append(f"{relative}: WebPage schema count={len(web_pages)}")
-        elif (
-            _normalized_text(web_pages[0].get("name", "")) != _normalized_text(title)
-            or _normalized_text(web_pages[0].get("description", "")) != _normalized_text(description)
-            or web_pages[0].get("url") != canonical
-        ):
-            errors.append(f"{relative}: WebPage schema parity mismatch")
-
-        csp_nodes = soup.find_all(
-            "meta",
-            attrs={
-                "http-equiv": lambda value: value
-                and value.casefold() == "content-security-policy"
-            },
+        canonical = _dom_attribute(soup.find("link", rel="canonical"), "href")
+        errors.extend(_social_metadata_errors(relative, soup, title, description))
+        errors.extend(
+            _webpage_schema_errors(relative, soup, title, description, canonical)
         )
-        if len(csp_nodes) != 1:
-            errors.append(f"{relative}: CSP count={len(csp_nodes)}")
-        else:
-            directives = csp_nodes[0].get("content", "")
-            style_src = next(
-                (
-                    part.strip()
-                    for part in directives.split(";")
-                    if part.strip().startswith("style-src ")
-                ),
-                "",
-            )
-            if style_src != "style-src 'self'":
-                errors.append(f"{relative}: unsafe authored-style CSP={style_src!r}")
-            if "'unsafe-inline'" in directives:
-                errors.append(f"{relative}: unsafe inline script CSP")
-        if soup.find("meta", attrs={"name": "keywords"}):
-            errors.append(f"{relative}: obsolete meta keywords")
-        for link in soup.find_all("link", href=True):
-            if "fonts.googleapis.com" in link["href"] or "fonts.gstatic.com" in link["href"]:
-                errors.append(f"{relative}: remote font dependency={link['href']}")
+        errors.extend(_csp_and_dependency_errors(relative, soup))
 
     assert not errors, "\n".join(errors[:100])
 
@@ -647,7 +761,9 @@ def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
 def test_every_russian_page_meets_ru_text_typography_floor() -> None:
     """Reject objective ru-text typography defects in visible and metadata copy."""
     errors: list[str] = []
-    one_letter_break = re.compile(r"(?<![А-Яа-яЁё])([вксоуюияа]) (?=[А-Яа-яЁё0-9«])", re.IGNORECASE)
+    one_letter_break = re.compile(
+        r"(?<![А-Яа-яЁё])([вксоуюияа]) (?=[А-Яа-яЁё0-9«])", re.IGNORECASE
+    )
     straight_quote = re.compile(r'"[А-Яа-яЁё][^"\n]{0,120}"')
     for path in _public_html_files():
         relative = path.relative_to(LANDING_ROOT).as_posix()
@@ -806,11 +922,13 @@ def test_comparison_pages_cite_current_official_primary_sources() -> None:
             errors.append(f"{relative}: official source missing")
         if "Проверено 20 июля 2026 года" not in text:
             errors.append(f"{relative}: source verification date missing")
-    pt_source = (LANDING_ROOT / "compare/codegraph-pt-application-inspector.html").read_text(
-        encoding="utf-8"
-    )
+    pt_source = (
+        LANDING_ROOT / "compare/codegraph-pt-application-inspector.html"
+    ).read_text(encoding="utf-8")
     if "PT Application Inspector использует сопоставление шаблонов" in pt_source:
-        errors.append("compare/codegraph-pt-application-inspector.html: disproved contrast")
+        errors.append(
+            "compare/codegraph-pt-application-inspector.html: disproved contrast"
+        )
     assert not errors, "\n".join(errors)
 
 
@@ -826,7 +944,9 @@ def test_images_and_link_labels_are_layout_and_context_safe() -> None:
             if (image.get("src") or "").strip() and (
                 not image.get("width") or not image.get("height")
             ):
-                errors.append(f"{relative}: image dimensions missing: {image.get('src')}")
+                errors.append(
+                    f"{relative}: image dimensions missing: {image.get('src')}"
+                )
         for link in soup.find_all("a", href=True):
             if link.get_text(" ", strip=True).casefold() in generic_labels:
                 errors.append(f"{relative}: generic link label: {link.get('href')}")
@@ -851,7 +971,10 @@ def test_every_internal_link_and_fragment_resolves() -> None:
                 continue
             parts = urlsplit(href)
             if parts.scheme or parts.netloc:
-                if parts.scheme not in {"http", "https"} or parts.netloc.casefold() not in {
+                if parts.scheme not in {
+                    "http",
+                    "https",
+                } or parts.netloc.casefold() not in {
                     "codegraph.ru",
                     "www.codegraph.ru",
                 }:
@@ -951,7 +1074,13 @@ def test_proof_role_and_integration_surfaces_are_evidence_bounded() -> None:
     assert len(roles) == 13
     assert len({role["data-digital-role"] for role in roles}) == 13
     team_text = team.get_text(" ", strip=True).casefold()
-    for phrase in ("цифровой сотрудник", "функциональная роль", "ИИ-агент", "роль RBAC", "ответственный сотрудник"):
+    for phrase in (
+        "цифровой сотрудник",
+        "функциональная роль",
+        "ИИ-агент",
+        "роль RBAC",
+        "ответственный сотрудник",
+    ):
         assert phrase.casefold() in team_text
 
     integrations = _soup("integrations.html")
