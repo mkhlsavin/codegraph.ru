@@ -115,7 +115,10 @@ def test_asset_dependencies_and_builds_are_pinned() -> None:
         "tailwindcss": PINNED_TAILWIND_VERSION,
         "terser": PINNED_TERSER_VERSION,
     }
-    assert package["scripts"]["build:tailwind"].endswith("--minify")
+    assert package["scripts"]["build:tailwind"] == (
+        "tailwindcss -i ./css/tailwind.css -o ./css/tailwind.min.css --minify "
+        "&& node ./scripts/normalize_tailwind_projection.mjs ./css/tailwind.min.css"
+    )
     assert package["scripts"]["build:js"].endswith("--output js/main.min.js.tmp")
     assert lock["packages"][""]["devDependencies"] == package["devDependencies"]
 
