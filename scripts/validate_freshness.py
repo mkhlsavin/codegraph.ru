@@ -35,7 +35,7 @@ def visible_date(value: str) -> str:
 
 
 def main() -> int:
-    """Validate public release and sitemap freshness against today's date."""
+    """Validate public release and sitemap freshness against canonical index metadata."""
     index = (ROOT / "index.html").read_text(encoding="utf-8")
     iso_matches = ISO_DATE.findall(index)
     visible_matches = [match.strip() for match in VISIBLE_DATE.findall(index)]

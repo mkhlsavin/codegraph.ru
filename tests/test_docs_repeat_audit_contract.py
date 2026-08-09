@@ -147,7 +147,26 @@ def test_russian_search_index_uses_localized_descriptions_and_keywords() -> None
     )
 
 
-def test_sitemap_covers_indexable_documentation_pages_with_current_build_date() -> None:
+def _canonical_public_release_date(index_html: str) -> str:
+    """Return the single release date declared by the public projection."""
+
+    values = re.findall(r'"dateModified"\s*:\s*"([^"]+)"', index_html)
+    assert values
+    assert len(set(values)) == 1
+    return values[0]
+
+
+def test_public_release_date_is_independent_from_the_runner_clock() -> None:
+    """Use projection metadata even when its release date differs from the runner date."""
+
+    assert (
+        _canonical_public_release_date('{"dateModified": "2030-01-02"}') == "2030-01-02"
+    )
+
+
+def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_date() -> (
+    None
+):
     """Every generated article is discoverable while README duplicates stay excluded."""
     namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     sitemap = ET.parse(LANDING_ROOT / "sitemap.xml")
@@ -155,7 +174,9 @@ def test_sitemap_covers_indexable_documentation_pages_with_current_build_date() 
         row.findtext("sm:loc", namespaces=namespace): row
         for row in sitemap.findall("sm:url", namespace)
     }
-    expected_date = __import__("datetime").date.today().isoformat()
+    expected_date = _canonical_public_release_date(
+        (LANDING_ROOT / "index.html").read_text(encoding="utf-8")
+    )
     generated: list[tuple[str, Path]] = []
     for language in ("ru", "en"):
         generated.extend(
