@@ -123,6 +123,18 @@ def test_asset_dependencies_and_builds_are_pinned() -> None:
     assert lock["packages"][""]["devDependencies"] == package["devDependencies"]
 
 
+def test_python_quality_dependencies_pin_beautifulsoup_typing_contract() -> None:
+    """CI must not inherit incompatible Beautiful Soup annotations from latest PyPI."""
+
+    requirements = (
+        (LANDING_ROOT / "requirements-lint.txt")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    )
+
+    assert "beautifulsoup4==4.12.3" in requirements
+
+
 def test_public_asset_bundles_stay_inside_explicit_release_budgets() -> None:
     """Measure CSS, JS, and image bytes against the Story 1113 release budgets."""
     css = (LANDING_ROOT / "css" / "tailwind.min.css").read_bytes()
