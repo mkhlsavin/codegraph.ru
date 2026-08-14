@@ -160,6 +160,16 @@ def test_public_ctas_do_not_route_through_legacy_index_file() -> None:
     assert not findings, "Legacy homepage CTA targets remain: " + ", ".join(findings)
 
 
+def test_demo_route_redirects_to_the_canonical_home_form() -> None:
+    """Keep the externally shared /demo URL working on static GitHub Pages."""
+    demo_page = (LANDING_ROOT / "demo" / "index.html").read_text(encoding="utf-8")
+
+    assert 'http-equiv="refresh" content="0; url=/#demo"' in demo_page
+    assert '<meta name="robots" content="noindex,follow">' in demo_page
+    assert '<link rel="canonical" href="https://codegraph.ru/">' in demo_page
+    assert 'href="/#demo"' in demo_page
+
+
 def test_privacy_page_has_real_security_link_and_canonical_cta() -> None:
     """Reject escaped markup and obsolete documentation paths in privacy.html."""
     privacy = (LANDING_ROOT / "privacy.html").read_text(encoding="utf-8")
