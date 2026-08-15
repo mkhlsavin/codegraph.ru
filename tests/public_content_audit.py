@@ -22,7 +22,13 @@ from bs4 import BeautifulSoup, Tag
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 MIN_WORDS = 7
-EXCLUDED_PREFIXES = ("docs/", "templates/", "node_modules/", "yandex_")
+EXCLUDED_PREFIXES = (
+    "demo/",
+    "docs/",
+    "templates/",
+    "node_modules/",
+    "yandex_",
+)
 TECHNICAL_HELPERS = (
     ".cg-diagram-mobile-summary",
     ".screen-viewer",

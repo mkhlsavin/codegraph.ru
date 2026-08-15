@@ -66,3 +66,31 @@ def test_shared_positioning_contract_has_all_non_empty_values() -> None:
 
     assert set(SITE_CONTENT) == expected
     assert all(value.strip() for value in SITE_CONTENT.values())
+
+
+@pytest.mark.nfr(
+    "CNFR-Q05-RELIABILITY-NONREGRESSION-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_public_favicon_endpoint_is_backed_by_a_real_icon() -> None:
+    """Keep the browser fallback favicon request on a successful static route."""
+    favicon = LANDING_ROOT / "favicon.ico"
+    demo_html = (LANDING_ROOT / "demo" / "index.html").read_text(encoding="utf-8")
+
+    assert favicon.is_file()
+    assert favicon.stat().st_size > 0
+    assert 'rel="icon" href="/favicon.ico"' in demo_html
+
+
+@pytest.mark.nfr(
+    "CNFR-Q01-SECURE-BY-DESIGN-01",
+    "CNFR-Q05-RELIABILITY-NONREGRESSION-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_yandex_metrika_csp_allows_only_the_observed_runtime_endpoints() -> None:
+    """Allow Metrika websocket and frame traffic without broad CSP wildcards."""
+    head_html = (LANDING_ROOT / "templates" / "head.html").read_text(encoding="utf-8")
+
+    assert "wss://mc.yandex.ru" in head_html
+    assert "frame-src https://mc.yandex.ru https://mc.yandex.com" in head_html
+    assert "*.yandex" not in head_html
