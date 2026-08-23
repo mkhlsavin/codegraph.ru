@@ -57,6 +57,7 @@ PROFILES: dict[str, dict[str, Any]] = {
         "media": "print",
     },
 }
+REDIRECT_ROUTES = frozenset({"demo/index.html"})
 HARD_FIELDS = (
     "status",
     "lang",
@@ -973,7 +974,8 @@ def _contrast_failure_reasons(row: dict[str, Any]) -> list[str]:
 
 def _public_layout_failure_reasons(row: dict[str, Any]) -> list[str]:
     """Return public-page density, hierarchy, diagram, and card errors."""
-    if str(row.get("route", "")).startswith("docs/"):
+    route = str(row.get("route", ""))
+    if route.startswith("docs/") or route in REDIRECT_ROUTES:
         return []
     reasons: list[str] = []
     if row.get("data_density") != "expressive":
@@ -991,7 +993,11 @@ def _public_layout_failure_reasons(row: dict[str, Any]) -> list[str]:
 
 def _drawer_failure_reasons(row: dict[str, Any]) -> list[str]:
     """Return focus-trap and inert-background errors for exercised mobile drawers."""
-    if row.get("profile") != "mobile" or row.get("drawer_focus_inside") is None:
+    if (
+        str(row.get("route", "")) in REDIRECT_ROUTES
+        or row.get("profile") != "mobile"
+        or row.get("drawer_focus_inside") is None
+    ):
         return []
     reasons: list[str] = []
     for field in (

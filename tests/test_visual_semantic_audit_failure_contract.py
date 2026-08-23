@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from visual_semantic_audit import (
     PROFILES,
+    _drawer_failure_reasons,
     _evaluate_after_navigation,
     _failures,
     _inspect_route,
@@ -48,6 +49,21 @@ def test_navigation_evaluation_tolerates_two_consecutive_context_destructions() 
     assert result == "stable-result"
     assert page.evaluate_calls == 3
     assert page.load_waits == 2
+
+
+def test_redirect_route_has_no_interactive_layout_requirements() -> None:
+    """The legacy redirect stub must not inherit landing-page layout contracts."""
+    row = {
+        "route": "demo/index.html",
+        "profile": "mobile",
+        "data_density": "",
+        "drawer_focus_inside": False,
+        "drawer_background_inert": False,
+        "drawer_focus_returned": False,
+    }
+
+    assert _public_layout_failure_reasons(row) == []
+    assert _drawer_failure_reasons(row) == []
 
 
 def _valid_row() -> dict[str, object]:
