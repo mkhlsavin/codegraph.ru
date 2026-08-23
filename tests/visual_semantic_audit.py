@@ -254,12 +254,12 @@ async def _evaluate_after_navigation(
     argument: Any = None,
 ) -> Any:
     """Retry evaluation after a bounded same-page redirect finishes loading."""
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             return await page.evaluate(expression, argument)
         except PlaywrightError as error:
             navigation_race = "Execution context was destroyed" in str(error)
-            if not navigation_race or attempt == 1:
+            if not navigation_race or attempt == 2:
                 raise
             await page.wait_for_load_state("domcontentloaded", timeout=5_000)
     raise AssertionError("unreachable navigation retry state")

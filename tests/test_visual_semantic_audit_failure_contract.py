@@ -5,18 +5,49 @@ from __future__ import annotations
 import asyncio
 import sys
 from pathlib import Path
+from typing import Any, cast
 
+import pytest
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from visual_semantic_audit import (
     PROFILES,
+    _evaluate_after_navigation,
     _failures,
     _inspect_route,
     _public_layout_failure_reasons,
     _serve_local_request,
 )
+
+
+def test_navigation_evaluation_tolerates_two_consecutive_context_destructions() -> None:
+    """A chained redirect may destroy two execution contexts before it settles."""
+
+    class RepeatedNavigationPage:
+        def __init__(self) -> None:
+            self.evaluate_calls = 0
+            self.load_waits = 0
+
+        async def evaluate(self, expression: str, argument: object = None) -> str:
+            self.evaluate_calls += 1
+            if self.evaluate_calls <= 2:
+                raise PlaywrightError(
+                    "Execution context was destroyed, most likely because of a navigation"
+                )
+            return expression
+
+        async def wait_for_load_state(self, state: str, *, timeout: int) -> None:
+            self.load_waits += 1
+
+    page = RepeatedNavigationPage()
+    result = asyncio.run(_evaluate_after_navigation(cast(Any, page), "stable-result"))
+
+    assert result == "stable-result"
+    assert page.evaluate_calls == 3
+    assert page.load_waits == 2
 
 
 def _valid_row() -> dict[str, object]:
@@ -76,8 +107,10 @@ def test_invalid_visual_audit_row_preserves_cross_category_reasons() -> None:
     assert "inline_styles=1" in reasons
 
 
-def test_mobile_meta_refresh_route_is_inspected_after_navigation(
+@pytest.mark.parametrize("profile", ["mobile", "print", "reduced-motion"])
+def test_meta_refresh_route_is_inspected_after_navigation(
     tmp_path: Path,
+    profile: str,
 ) -> None:
     """The legacy demo redirect must not race semantic inspection or screenshots."""
 
@@ -86,7 +119,7 @@ def test_mobile_meta_refresh_route_is_inspected_after_navigation(
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(headless=True)
             context = await browser.new_context(
-                **PROFILES["mobile"]["context"],
+                **PROFILES[profile]["context"],
                 color_scheme="light",
             )
             await context.route(
@@ -99,7 +132,7 @@ def test_mobile_meta_refresh_route_is_inspected_after_navigation(
                         context,
                         base_url=base_url,
                         output=tmp_path,
-                        profile="mobile",
+                        profile=profile,
                         route="demo/index.html",
                         semaphore=asyncio.Semaphore(1),
                     ),
@@ -113,7 +146,7 @@ def test_mobile_meta_refresh_route_is_inspected_after_navigation(
 
     assert "error" not in result
     assert result["console_errors"] == []
-    assert result["screenshot"] == "mobile__demo__index.html.jpg"
+    assert result["screenshot"] == f"{profile}__demo__index.html.jpg"
     assert (tmp_path / str(result["screenshot"])).is_file()
 
 
