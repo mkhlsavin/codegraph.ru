@@ -99,15 +99,11 @@ def test_social_previews_use_current_brand_and_positioning() -> None:
         soup = _soup(route)
         image_url = soup.find("meta", property="og:image")["content"]
         assert image_url == f"https://codegraph.ru/assets/{filename}"
-        assert (
-            soup.find("meta", attrs={"name": "twitter:image"})["content"] == image_url
-        )
-        og_alt = soup.find("meta", property="og:image:alt")["content"].replace(
+        assert soup.find("meta", attrs={"name": "twitter:image"})["content"] == image_url
+        og_alt = soup.find("meta", property="og:image:alt")["content"].replace("\xa0", " ")
+        twitter_alt = soup.find("meta", attrs={"name": "twitter:image:alt"})["content"].replace(
             "\xa0", " "
         )
-        twitter_alt = soup.find("meta", attrs={"name": "twitter:image:alt"})[
-            "content"
-        ].replace("\xa0", " ")
         assert og_alt == alt
         assert twitter_alt == alt
         preview = (LANDING_ROOT / "assets" / filename).read_bytes()
@@ -198,6 +194,7 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "hero",
         "problems",
         "solution",
+        "fab-benefits",
         "workflow",
         "product-screen",
         "integrations",
@@ -210,6 +207,7 @@ def test_homepage_uses_current_product_and_management_hierarchy() -> None:
         "hero",
         "problems",
         "solution",
+        "fab-benefits",
         "workflow",
         "product-screen",
         "integrations",
@@ -298,15 +296,12 @@ def test_homepage_scenario_cards_own_six_traceable_pages() -> None:
     required_sections = {"situation", "actions", "result", "decision"}
     for _title, (route, expected_refs) in expected.items():
         page = _soup(route)
-        assert required_sections <= {
-            node.get("id") for node in page.find_all("section")
-        }
+        assert required_sections <= {node.get("id") for node in page.find_all("section")}
         assert page.select_one('figure[data-visual-kind="product-preview"]') is not None
 
     sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
     machine_maps = "\n".join(
-        (LANDING_ROOT / name).read_text(encoding="utf-8")
-        for name in ("llms.txt", "llms-full.txt")
+        (LANDING_ROOT / name).read_text(encoding="utf-8") for name in ("llms.txt", "llms-full.txt")
     )
     for route, _refs in expected.values():
         public_url = f"https://codegraph.ru/{route}"
@@ -416,9 +411,7 @@ def test_every_whitepaper_section_starts_with_a_compact_reader_description() -> 
                 f"#{section.get('id')}: expected an introductory paragraph of at least "
                 f"80 characters before structured content"
             )
-    assert (
-        not errors
-    ), "Whitepaper sections without compact descriptions:\n" + "\n".join(errors)
+    assert not errors, "Whitepaper sections without compact descriptions:\n" + "\n".join(errors)
 
     visible_fragments = [
         str(node)
@@ -460,9 +453,8 @@ def test_whitepaper_explains_roles_and_pilot_boundaries_without_runtime_meta() -
     page = _soup("whitepaper.html")
     roles = page.find("section", id="roles")
     pilot = page.find("section", id="pilot")
-    assert (
-        roles is not None
-        and "Для цифровой роли задаются владелец" in roles.get_text(" ", strip=True)
+    assert roles is not None and "Для цифровой роли задаются владелец" in roles.get_text(
+        " ", strip=True
     )
     assert pilot is not None and "одного проекта" in pilot.get_text(" ", strip=True)
     visible = _normalized_text(page.get_text(" ", strip=True)).casefold()
@@ -492,17 +484,13 @@ def test_homepage_omits_removed_buyer_caveats() -> None:
         "CodeGraph не обещает универсальный процент экономии до исходного замера.",
         "Платформа не заявляет замену финансовому и ресурсному планированию.",
     )
-    assert not [
-        text for text in forbidden if _normalized_text(text).casefold() in visible
-    ]
+    assert not [text for text in forbidden if _normalized_text(text).casefold() in visible]
     assert "продуктовый поток" not in visible
 
 
 def _soup(relative: str) -> BeautifulSoup:
     """Parse one UTF-8 public projection."""
-    return BeautifulSoup(
-        (LANDING_ROOT / relative).read_text(encoding="utf-8"), "html.parser"
-    )
+    return BeautifulSoup((LANDING_ROOT / relative).read_text(encoding="utf-8"), "html.parser")
 
 
 def _normalized_text(value: str) -> str:
@@ -543,9 +531,9 @@ def test_key_pages_own_exact_audit_question_and_h1() -> None:
             expected_question
         ):
             errors.append(f"{relative}: buyer meta mismatch")
-        if not main or _normalized_text(
-            main.get("data-buyer-question", "")
-        ) != _normalized_text(expected_question):
+        if not main or _normalized_text(main.get("data-buyer-question", "")) != _normalized_text(
+            expected_question
+        ):
             errors.append(f"{relative}: main question mismatch")
         if not main or main.get("data-release") != expected_release:
             errors.append(f"{relative}: release mismatch")
@@ -574,10 +562,7 @@ def test_commercial_pages_own_questions_while_docs_do_not() -> None:
         else:
             if len(questions) != 1 or not questions[0].get("content", "").strip():
                 errors.append(f"{relative}: buyer-question meta count={len(questions)}")
-            elif (
-                len(mains) != 1
-                or mains[0].get("data-buyer-question") != questions[0]["content"]
-            ):
+            elif len(mains) != 1 or mains[0].get("data-buyer-question") != questions[0]["content"]:
                 errors.append(f"{relative}: main question ownership mismatch")
         if len(canonicals) != 1 or not canonicals[0].get("href", "").startswith(
             "https://codegraph.ru/"
@@ -593,18 +578,14 @@ def test_key_page_metadata_and_schema_match_visible_contract() -> None:
     for relative in KEY_PAGE_CONTRACTS:
         soup = _soup(relative)
         title = soup.title.get_text(" ", strip=True) if soup.title else ""
-        description = (soup.find("meta", attrs={"name": "description"}) or {}).get(
+        description = (soup.find("meta", attrs={"name": "description"}) or {}).get("content", "")
+        og_title = (soup.find("meta", attrs={"property": "og:title"}) or {}).get("content", "")
+        og_description = (soup.find("meta", attrs={"property": "og:description"}) or {}).get(
             "content", ""
         )
-        og_title = (soup.find("meta", attrs={"property": "og:title"}) or {}).get(
+        twitter_description = (soup.find("meta", attrs={"name": "twitter:description"}) or {}).get(
             "content", ""
         )
-        og_description = (
-            soup.find("meta", attrs={"property": "og:description"}) or {}
-        ).get("content", "")
-        twitter_description = (
-            soup.find("meta", attrs={"name": "twitter:description"}) or {}
-        ).get("content", "")
         web_pages = []
         for node in soup.find_all("script", attrs={"type": "application/ld+json"}):
             payload = json.loads(node.string or node.get_text())
@@ -614,17 +595,15 @@ def test_key_page_metadata_and_schema_match_visible_contract() -> None:
             errors.append(f"{relative}: empty title/description")
         if _normalized_text(og_title) != _normalized_text(title):
             errors.append(f"{relative}: og:title mismatch")
-        if _normalized_text(og_description) != _normalized_text(
-            description
-        ) or _normalized_text(twitter_description) != _normalized_text(description):
+        if _normalized_text(og_description) != _normalized_text(description) or _normalized_text(
+            twitter_description
+        ) != _normalized_text(description):
             errors.append(f"{relative}: description parity mismatch")
         if len(web_pages) != 1:
             errors.append(f"{relative}: WebPage schema count={len(web_pages)}")
         elif _normalized_text(web_pages[0].get("name", "")) != _normalized_text(
             title
-        ) or _normalized_text(web_pages[0].get("description", "")) != _normalized_text(
-            description
-        ):
+        ) or _normalized_text(web_pages[0].get("description", "")) != _normalized_text(description):
             errors.append(f"{relative}: WebPage schema parity mismatch")
 
     assert not errors, "\n".join(errors)
@@ -691,8 +670,7 @@ def _webpage_schema_errors(
     webpage = web_pages[0]
     parity_matches = (
         _normalized_text(str(webpage.get("name", ""))) == _normalized_text(title)
-        and _normalized_text(str(webpage.get("description", "")))
-        == _normalized_text(description)
+        and _normalized_text(str(webpage.get("description", ""))) == _normalized_text(description)
         and webpage.get("url") == canonical
     )
     if not parity_matches:
@@ -708,10 +686,7 @@ def _csp_and_dependency_errors(
     errors: list[str] = []
     csp_nodes = soup.find_all(
         "meta",
-        attrs={
-            "http-equiv": lambda value: value
-            and value.casefold() == "content-security-policy"
-        },
+        attrs={"http-equiv": lambda value: value and value.casefold() == "content-security-policy"},
     )
     if len(csp_nodes) != 1:
         errors.append(f"{relative}: CSP count={len(csp_nodes)}")
@@ -745,14 +720,10 @@ def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
         relative = path.relative_to(LANDING_ROOT).as_posix()
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
         title = soup.title.get_text(" ", strip=True) if soup.title else ""
-        description = _dom_attribute(
-            soup.find("meta", attrs={"name": "description"}), "content"
-        )
+        description = _dom_attribute(soup.find("meta", attrs={"name": "description"}), "content")
         canonical = _dom_attribute(soup.find("link", rel="canonical"), "href")
         errors.extend(_social_metadata_errors(relative, soup, title, description))
-        errors.extend(
-            _webpage_schema_errors(relative, soup, title, description, canonical)
-        )
+        errors.extend(_webpage_schema_errors(relative, soup, title, description, canonical))
         errors.extend(_csp_and_dependency_errors(relative, soup))
 
     assert not errors, "\n".join(errors[:100])
@@ -761,9 +732,7 @@ def test_every_public_page_has_metadata_schema_and_csp_parity() -> None:
 def test_every_russian_page_meets_ru_text_typography_floor() -> None:
     """Reject objective ru-text typography defects in visible and metadata copy."""
     errors: list[str] = []
-    one_letter_break = re.compile(
-        r"(?<![А-Яа-яЁё])([вксоуюияа]) (?=[А-Яа-яЁё0-9«])", re.IGNORECASE
-    )
+    one_letter_break = re.compile(r"(?<![А-Яа-яЁё])([вксоуюияа]) (?=[А-Яа-яЁё0-9«])", re.IGNORECASE)
     straight_quote = re.compile(r'"[А-Яа-яЁё][^"\n]{0,120}"')
     for path in _public_html_files():
         relative = path.relative_to(LANDING_ROOT).as_posix()
@@ -834,9 +803,7 @@ def test_russian_product_pages_use_customer_language() -> None:
         soup = _soup(relative)
         text = soup.get_text(" ", strip=True)
         metadata = " ".join(
-            node.get("content", "")
-            for node in soup.find_all("meta")
-            if node.get("content")
+            node.get("content", "") for node in soup.find_all("meta") if node.get("content")
         )
         payload = f"{text} {metadata}"
         for term in forbidden:
@@ -922,13 +889,11 @@ def test_comparison_pages_cite_current_official_primary_sources() -> None:
             errors.append(f"{relative}: official source missing")
         if "Проверено 20 июля 2026 года" not in text:
             errors.append(f"{relative}: source verification date missing")
-    pt_source = (
-        LANDING_ROOT / "compare/codegraph-pt-application-inspector.html"
-    ).read_text(encoding="utf-8")
+    pt_source = (LANDING_ROOT / "compare/codegraph-pt-application-inspector.html").read_text(
+        encoding="utf-8"
+    )
     if "PT Application Inspector использует сопоставление шаблонов" in pt_source:
-        errors.append(
-            "compare/codegraph-pt-application-inspector.html: disproved contrast"
-        )
+        errors.append("compare/codegraph-pt-application-inspector.html: disproved contrast")
     assert not errors, "\n".join(errors)
 
 
@@ -944,9 +909,7 @@ def test_images_and_link_labels_are_layout_and_context_safe() -> None:
             if (image.get("src") or "").strip() and (
                 not image.get("width") or not image.get("height")
             ):
-                errors.append(
-                    f"{relative}: image dimensions missing: {image.get('src')}"
-                )
+                errors.append(f"{relative}: image dimensions missing: {image.get('src')}")
         for link in soup.find_all("a", href=True):
             if link.get_text(" ", strip=True).casefold() in generic_labels:
                 errors.append(f"{relative}: generic link label: {link.get('href')}")
@@ -961,9 +924,7 @@ def test_every_internal_link_and_fragment_resolves() -> None:
     root = LANDING_ROOT.resolve()
 
     for source_path in _public_html_files():
-        source_soup = BeautifulSoup(
-            source_path.read_text(encoding="utf-8"), "html.parser"
-        )
+        source_soup = BeautifulSoup(source_path.read_text(encoding="utf-8"), "html.parser")
         source_relative = source_path.relative_to(LANDING_ROOT).as_posix()
         for link in source_soup.find_all("a", href=True):
             href = link.get("href", "").strip()
@@ -999,9 +960,7 @@ def test_every_internal_link_and_fragment_resolves() -> None:
                 continue
             if parts.fragment:
                 if target not in target_anchors:
-                    target_soup = BeautifulSoup(
-                        target.read_text(encoding="utf-8"), "html.parser"
-                    )
+                    target_soup = BeautifulSoup(target.read_text(encoding="utf-8"), "html.parser")
                     target_anchors[target] = {
                         value
                         for node in target_soup.find_all(True)
@@ -1023,9 +982,7 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
     edit_prefix = "/mkhlsavin/codegraph/edit/main/"
     edit_count = 0
     for source_path in _public_html_files():
-        source_soup = BeautifulSoup(
-            source_path.read_text(encoding="utf-8"), "html.parser"
-        )
+        source_soup = BeautifulSoup(source_path.read_text(encoding="utf-8"), "html.parser")
         source_relative = source_path.relative_to(LANDING_ROOT).as_posix()
         for link in source_soup.find_all("a", href=True):
             href = link.get("href", "").strip()
@@ -1124,9 +1081,7 @@ def test_ai_referral_to_lead_measurement_contract_is_present() -> None:
     """Keep source, landing, CTA and accepted-lead dimensions available for reporting."""
     scripts = (LANDING_ROOT / "templates" / "scripts.html").read_text(encoding="utf-8")
     javascript = (LANDING_ROOT / "js" / "main.js").read_text(encoding="utf-8")
-    cta = (LANDING_ROOT / "templates" / "sections" / "cta.html").read_text(
-        encoding="utf-8"
-    )
+    cta = (LANDING_ROOT / "templates" / "sections" / "cta.html").read_text(encoding="utf-8")
 
     assert "referrer: document.referrer" in scripts
     assert "url: location.href" in scripts

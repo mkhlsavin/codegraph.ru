@@ -8,28 +8,22 @@ import re
 from pathlib import Path
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_CATEGORY = json.loads(
-    (LANDING_ROOT / "site_content.json").read_text(encoding="utf-8")
-)["canonical_category"]
+CANONICAL_CATEGORY = json.loads((LANDING_ROOT / "site_content.json").read_text(encoding="utf-8"))[
+    "canonical_category"
+]
 FOOTER_DESCRIPTOR = CANONICAL_CATEGORY.split("—", 1)[1].strip()
 
 FORBIDDEN_MARKETING_PATTERNS = {
-    "scenario_count": re.compile(
-        r"\b(?:21|36)\s+(?:сценар\w*|карточ\w*)", re.IGNORECASE
-    ),
+    "scenario_count": re.compile(r"\b(?:21|36)\s+(?:сценар\w*|карточ\w*)", re.IGNORECASE),
     "unsupported_quality_score": re.compile(r"(?<!\d)0[,.]83(?!\d)"),
     "unsupported_30ms": re.compile(r"(?<!\d)30\s*мс\b", re.IGNORECASE),
     "unsupported_71s": re.compile(r"(?<!\d)71\s*(?:с|сек\w*)\b", re.IGNORECASE),
     "unsupported_false_positive_rate": re.compile(
         r"(?<!\d)12\s*%[^\n]{0,80}ложн\w*\s+срабатыван", re.IGNORECASE
     ),
-    "unsupported_cve_detection": re.compile(
-        r"(?<!\d)100\s*%[^\n]{0,80}CVE", re.IGNORECASE
-    ),
+    "unsupported_cve_detection": re.compile(r"(?<!\d)100\s*%[^\n]{0,80}CVE", re.IGNORECASE),
     "unsupported_23ms": re.compile(r"(?<!\d)23\s*мс\b", re.IGNORECASE),
-    "unsupported_indexing_sla": re.compile(
-        r"(?:1M|1\s*млн)[^\n]{0,100}30\s*мин", re.IGNORECASE
-    ),
+    "unsupported_indexing_sla": re.compile(r"(?:1M|1\s*млн)[^\n]{0,100}30\s*мин", re.IGNORECASE),
     "unsupported_availability": re.compile(r"(?<!\d)99[,.]9\s*%(?!\d)"),
     "unsupported_support_sla": re.compile(
         r"(?:4\s*/\s*24\s*/\s*72|время\s+реакции:\s*(?:4|24|72)\s*час)",
@@ -47,8 +41,7 @@ FORBIDDEN_MARKETING_PATTERNS = {
         re.IGNORECASE,
     ),
     "unsupported_pilot_threshold": re.compile(
-        r"(?:порог\s*20\s*%|20\s*[-–]\s*40\s*инженер|"
-        r"35\s*%[^\n]{0,80}(?:час|эффект))",
+        r"(?:порог\s*20\s*%|20\s*[-–]\s*40\s*инженер|" r"35\s*%[^\n]{0,80}(?:час|эффект))",
         re.IGNORECASE,
     ),
     "unsupported_pilot_timeline": re.compile(
@@ -61,25 +54,17 @@ FORBIDDEN_MARKETING_PATTERNS = {
         re.IGNORECASE,
     ),
     "unsupported_false_positive_effort": re.compile(r"512\s*час", re.IGNORECASE),
-    "unsupported_contact_response_time": re.compile(
-        r"в\s+течение\s+24\s+час", re.IGNORECASE
-    ),
-    "unsupported_internal_scale": re.compile(
-        r"(?:75K\+\s*метод|3[,.]4M\s*узл)", re.IGNORECASE
-    ),
+    "unsupported_contact_response_time": re.compile(r"в\s+течение\s+24\s+час", re.IGNORECASE),
+    "unsupported_internal_scale": re.compile(r"(?:75K\+\s*метод|3[,.]4M\s*узл)", re.IGNORECASE),
     "unsupported_f1_uplift": re.compile(r"(?<!\d)33[,.]6\s*%\s*F1", re.IGNORECASE),
-    "unsupported_graph_latency": re.compile(
-        r"(?<!\d)2\s*[-–]\s*3\s*мс\b", re.IGNORECASE
-    ),
+    "unsupported_graph_latency": re.compile(r"(?<!\d)2\s*[-–]\s*3\s*мс\b", re.IGNORECASE),
     "quarter_only_roadmap": re.compile(r"\bQ[23]\s*2026\b", re.IGNORECASE),
     "absolute_data_egress": re.compile(
         r"(?:данные\s+никуда\s+не\s+уходят|код\s+не\s+переда[её]тся|"
         r"внешн(?:ий|его)\s+трафик(?:а)?\s+(?:нет|отсутствует))",
         re.IGNORECASE,
     ),
-    "absolute_compliance": re.compile(
-        r"обеспечивает\s+соответствие\s+ГОСТ", re.IGNORECASE
-    ),
+    "absolute_compliance": re.compile(r"обеспечивает\s+соответствие\s+ГОСТ", re.IGNORECASE),
     "absolute_findings": re.compile(r"только\s+реальные\s+уязвимости", re.IGNORECASE),
     "absolute_determinism": re.compile(
         r"(?:весь\s+анализ\s+детерминирован|сам\s+анализ\s*[—-]\s*"
@@ -97,9 +82,7 @@ def _public_projection_files() -> list[Path]:
         if "node_modules" not in path.parts and not path.name.startswith("yandex_")
     }
     files.update(
-        path
-        for path in (LANDING_ROOT / "js").rglob("*.js")
-        if "node_modules" not in path.parts
+        path for path in (LANDING_ROOT / "js").rglob("*.js") if "node_modules" not in path.parts
     )
     files.update(LANDING_ROOT.glob("llms*.txt"))
     return sorted(files)
@@ -139,13 +122,9 @@ def test_home_and_shared_sources_use_the_canonical_category() -> None:
         if CANONICAL_CATEGORY.replace(" ", "")
         not in path.read_text(encoding="utf-8").replace(" ", "").replace("\xa0", "")
     ]
-    footer = (
-        surfaces[2].read_text(encoding="utf-8").replace(" ", "").replace("\xa0", "")
-    )
+    footer = surfaces[2].read_text(encoding="utf-8").replace(" ", "").replace("\xa0", "")
 
-    assert (
-        not missing_category
-    ), f"Canonical category is missing from: {missing_category}"
+    assert not missing_category, f"Canonical category is missing from: {missing_category}"
     assert "{footer_tagline}" in footer, "Footer tagline placeholder is missing"
 
 
@@ -168,6 +147,7 @@ def test_demo_route_redirects_to_the_canonical_home_form() -> None:
     assert '<meta name="robots" content="noindex,follow">' in demo_page
     assert '<link rel="canonical" href="https://codegraph.ru/">' in demo_page
     assert 'href="/#demo"' in demo_page
+    assert "<h1" in demo_page
 
 
 def test_privacy_page_has_real_security_link_and_canonical_cta() -> None:
@@ -181,9 +161,9 @@ def test_privacy_page_has_real_security_link_and_canonical_cta() -> None:
 
 def test_benchmark_page_is_a_reproducible_template_until_evidence_exists() -> None:
     """Prevent a methodology page from quietly reintroducing unsupported results."""
-    benchmark = (
-        LANDING_ROOT / "research" / "tochnost-otvetov-i-skorost-razbora.html"
-    ).read_text(encoding="utf-8")
+    benchmark = (LANDING_ROOT / "research" / "tochnost-otvetov-i-skorost-razbora.html").read_text(
+        encoding="utf-8"
+    )
     forbidden = (
         "Высокое качество на опубликованном наборе",
         "Ускорение отдельных задач на опубликованном стенде",
@@ -231,9 +211,9 @@ def test_public_person_schema_does_not_repeat_unverified_tenure() -> None:
 
 def test_benchmark_metadata_matches_unpublished_evidence_status() -> None:
     """Keep machine-readable benchmark metadata aligned with visible content."""
-    benchmark = (
-        LANDING_ROOT / "research" / "tochnost-otvetov-i-skorost-razbora.html"
-    ).read_text(encoding="utf-8")
+    benchmark = (LANDING_ROOT / "research" / "tochnost-otvetov-i-skorost-razbora.html").read_text(
+        encoding="utf-8"
+    )
     for phrase in (
         "Точность ответов и скорость разбора CodeGraph",
         "Как публиковать benchmark CodeGraph",
@@ -274,13 +254,9 @@ def test_all_non_documentation_pages_declare_form_context() -> None:
             continue
         source = path.read_text(encoding="utf-8")
         main = re.search(r"<main\b[^>]*>", source, flags=re.IGNORECASE)
-        if main is None or any(
-            attribute not in main.group(0) for attribute in required
-        ):
+        if main is None or any(attribute not in main.group(0) for attribute in required):
             offenders.append(str(relative))
-    assert not offenders, "Pages without declarative form context: " + ", ".join(
-        offenders
-    )
+    assert not offenders, "Pages without declarative form context: " + ", ".join(offenders)
 
 
 def test_legacy_hero_copy_is_absent_from_all_templates() -> None:
@@ -340,9 +316,5 @@ def test_public_pages_use_the_generated_versioned_tailwind_bundle() -> None:
         if len(stylesheets) != 1 or not stylesheets[0].endswith(f"?v={version}"):
             offenders.append(f"{relative}: {stylesheets}")
         if preloads and preloads != stylesheets:
-            offenders.append(
-                f"{relative}: preload={preloads}, stylesheet={stylesheets}"
-            )
-    assert not offenders, "Unversioned or mismatched Tailwind links:\n" + "\n".join(
-        offenders
-    )
+            offenders.append(f"{relative}: preload={preloads}, stylesheet={stylesheets}")
+    assert not offenders, "Unversioned or mismatched Tailwind links:\n" + "\n".join(offenders)

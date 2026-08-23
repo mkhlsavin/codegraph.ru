@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import pytest
+from bs4 import BeautifulSoup
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = LANDING_ROOT.parents[1]
@@ -17,14 +20,22 @@ if ROOT_ROUTE_REGISTRY.is_file() and str(REPOSITORY_ROOT) not in sys.path:
 from scripts.landing_content import SITE_CONTENT  # noqa: E402
 
 
+def _load_design_contract_module() -> ModuleType:
+    """Load the standalone landing design contract from its exact file path."""
+    module_path = LANDING_ROOT / "scripts" / "check_design_system_contract.py"
+    spec = importlib.util.spec_from_file_location("landing_design_system_contract", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _shared_routes(repository_root: Path, landing_root: Path) -> list[Any]:
     """Load canonical source routes or skip when validating a standalone projection."""
 
     registry = repository_root / "scripts" / "landing_build_registry.py"
     if not registry.is_file():
-        pytest.skip(
-            "canonical root route registry is unavailable in standalone projection"
-        )
+        pytest.skip("canonical root route registry is unavailable in standalone projection")
     if str(repository_root) not in sys.path:
         sys.path.insert(0, str(repository_root))
     from scripts.landing_build_registry import iter_shared_routes
@@ -66,6 +77,24 @@ def test_shared_positioning_contract_has_all_non_empty_values() -> None:
 
     assert set(SITE_CONTENT) == expected
     assert all(value.strip() for value in SITE_CONTENT.values())
+
+
+@pytest.mark.nfr(
+    "CNFR-Q05-RELIABILITY-NONREGRESSION-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_homepage_heading_budget_includes_the_benefits_surface() -> None:
+    """Keep the intentional benefits section inside the homepage heading budget."""
+    contract = _load_design_contract_module()
+    homepage = BeautifulSoup(
+        (LANDING_ROOT / "index.html").read_text(encoding="utf-8"), "html.parser"
+    )
+    headings = [
+        heading.get_text(" ", strip=True) for heading in homepage.select("main > section h2")
+    ]
+
+    assert "Что меняется в\u00a0ежедневной работе" in headings
+    assert len(headings) == contract.HOME_TOP_LEVEL_HEADING_LIMIT == 9
 
 
 @pytest.mark.nfr(
