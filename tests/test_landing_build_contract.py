@@ -23,7 +23,9 @@ from scripts.landing_content import SITE_CONTENT  # noqa: E402
 def _load_design_contract_module() -> ModuleType:
     """Load the standalone landing design contract from its exact file path."""
     module_path = LANDING_ROOT / "scripts" / "check_design_system_contract.py"
-    spec = importlib.util.spec_from_file_location("landing_design_system_contract", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "landing_design_system_contract", module_path
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -35,7 +37,9 @@ def _shared_routes(repository_root: Path, landing_root: Path) -> list[Any]:
 
     registry = repository_root / "scripts" / "landing_build_registry.py"
     if not registry.is_file():
-        pytest.skip("canonical root route registry is unavailable in standalone projection")
+        pytest.skip(
+            "canonical root route registry is unavailable in standalone projection"
+        )
     if str(repository_root) not in sys.path:
         sys.path.insert(0, str(repository_root))
     from scripts.landing_build_registry import iter_shared_routes
@@ -90,7 +94,8 @@ def test_homepage_heading_budget_includes_the_benefits_surface() -> None:
         (LANDING_ROOT / "index.html").read_text(encoding="utf-8"), "html.parser"
     )
     headings = [
-        heading.get_text(" ", strip=True) for heading in homepage.select("main > section h2")
+        heading.get_text(" ", strip=True)
+        for heading in homepage.select("main > section h2")
     ]
 
     assert "Что меняется в\u00a0ежедневной работе" in headings

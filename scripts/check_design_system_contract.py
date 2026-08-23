@@ -130,7 +130,9 @@ def _append_page_metadata_errors(
         ),
     )
     for label, node, expected in pairs:
-        if _normalize_metadata(_metadata_content(node)) != _normalize_metadata(expected):
+        if _normalize_metadata(_metadata_content(node)) != _normalize_metadata(
+            expected
+        ):
             errors.append(
                 f"{route}: {label} must equal {'title' if label.endswith('title') else 'description'}"
             )
@@ -141,7 +143,9 @@ def _append_page_metadata_errors(
     schema = webpage[0]
     if _normalize_metadata(schema.get("name", "")) != _normalize_metadata(
         title
-    ) or _normalize_metadata(schema.get("description", "")) != _normalize_metadata(description):
+    ) or _normalize_metadata(schema.get("description", "")) != _normalize_metadata(
+        description
+    ):
         errors.append(f"{route}: WebPage metadata must match title and description")
 
 
@@ -156,7 +160,9 @@ def _append_duplicate_metadata_errors(
         if not value or count <= 1:
             continue
         routes = ", ".join(
-            route for candidate, route in values if _normalize_metadata(candidate) == value
+            route
+            for candidate, route in values
+            if _normalize_metadata(candidate) == value
         )
         errors.append(f"{label} duplicated on {routes}")
 
@@ -199,7 +205,9 @@ def _append_control_and_card_errors(route: str, soup: Any, errors: list[str]) ->
     for control in soup.find_all(["button", "input", "select"]):
         if {"rounded-cg-card", "rounded-cg-panel"} & set(control.get("class", [])):
             errors.append(f"{route}: control uses a surface radius")
-    for card in soup.select(".cg-article-list-card, .cg-article-related-link, .cg-article-fact"):
+    for card in soup.select(
+        ".cg-article-list-card, .cg-article-related-link, .cg-article-fact"
+    ):
         if any(value.startswith("shadow-") for value in card.get("class", [])):
             errors.append(f"{route}: editorial card has a shadow")
     for node in soup.find_all(class_=True):
@@ -246,11 +254,15 @@ def _append_product_flow_errors(route: str, soup: Any, errors: list[str]) -> Non
     if route not in {"index.html", "whitepaper.html"} and "cg-page-flow" not in classes:
         errors.append(f"{route}: page flow contract is missing")
     hero = main.find("section")
-    has_action = hero and hero.find("a", class_=lambda value: value and "cg-button" in value)
+    has_action = hero and hero.find(
+        "a", class_=lambda value: value and "cg-button" in value
+    )
     if route != "privacy.html" and not has_action:
         errors.append(f"{route}: hero primary action must use cg-button")
     preview_exempt = {"index.html", "privacy.html", "integrations.html"}
-    if route not in preview_exempt and not main.select('[data-visual-kind="product-preview"]'):
+    if route not in preview_exempt and not main.select(
+        '[data-visual-kind="product-preview"]'
+    ):
         errors.append(f"{route}: hero ProductPreview is missing")
 
 
@@ -332,7 +344,9 @@ def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
                 or not soup.find(id=viewer.get("data-diagram-id"))
             ):
                 errors.append(f"{route}: wide diagram lacks fullscreen viewer")
-            if not figure.select_one(".cg-diagram-scroll, .overflow-x-auto, .cg-diagram-mobile"):
+            if not figure.select_one(
+                ".cg-diagram-scroll, .overflow-x-auto, .cg-diagram-mobile"
+            ):
                 errors.append(f"{route}: wide diagram lacks mobile scroll strategy")
             if svg is None:
                 continue
@@ -340,7 +354,9 @@ def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
             for node in active_nodes:
                 group = node.parent
                 active_text = (
-                    group.select("text.cg-diagram-title-active, text.cg-diagram-body-active")
+                    group.select(
+                        "text.cg-diagram-title-active, text.cg-diagram-body-active"
+                    )
                     if group
                     else []
                 )
@@ -352,7 +368,8 @@ def check_diagram_tokens(pages: Iterable[Path], errors: list[str]) -> None:
         for svg in soup.find_all("svg"):
             for element in svg.find_all(True):
                 attributes = " ".join(
-                    str(element.get(name, "")) for name in ("class", "fill", "stroke", "style")
+                    str(element.get(name, ""))
+                    for name in ("class", "fill", "stroke", "style")
                 )
                 if raw.search(attributes):
                     errors.append(f"{route}: raw diagram color declaration")
@@ -394,7 +411,9 @@ def check_release_surface(pages: Iterable[Path], errors: list[str]) -> None:
     if sitemap.is_file():
         try:
             root = ET.fromstring(sitemap.read_text(encoding="utf-8"))
-            locations = [element.text for element in root.iter() if element.tag.endswith("}loc")]
+            locations = [
+                element.text for element in root.iter() if element.tag.endswith("}loc")
+            ]
             if len(locations) != len(set(locations)):
                 errors.append("release: sitemap contains duplicate URLs")
         except ET.ParseError as error:
@@ -446,7 +465,9 @@ def check_release_surface(pages: Iterable[Path], errors: list[str]) -> None:
             try:
                 target.relative_to(ROOT.resolve())
             except ValueError:
-                errors.append(f"{_route(path)}: local link escapes landing root: {value}")
+                errors.append(
+                    f"{_route(path)}: local link escapes landing root: {value}"
+                )
                 continue
             if target.is_dir():
                 target /= "index.html"
