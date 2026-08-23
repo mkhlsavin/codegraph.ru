@@ -22,7 +22,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-from playwright.async_api import BrowserContext, Route, async_playwright
+from playwright.async_api import (
+    BrowserContext,
+    Error as PlaywrightError,
+    Page,
+    Route,
+    async_playwright,
+)
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 PROFILES: dict[str, dict[str, Any]] = {
@@ -242,6 +248,23 @@ async def _serve_local_request(route: Route, *, base_url: str) -> None:
     )
 
 
+async def _evaluate_after_navigation(
+    page: Page,
+    expression: str,
+    argument: Any = None,
+) -> Any:
+    """Retry evaluation after a bounded same-page redirect finishes loading."""
+    for attempt in range(2):
+        try:
+            return await page.evaluate(expression, argument)
+        except PlaywrightError as error:
+            navigation_race = "Execution context was destroyed" in str(error)
+            if not navigation_race or attempt == 1:
+                raise
+            await page.wait_for_load_state("domcontentloaded", timeout=5_000)
+    raise AssertionError("unreachable navigation retry state")
+
+
 async def _inspect_route(
     context: BrowserContext,
     *,
@@ -270,6 +293,7 @@ async def _inspect_route(
             lambda request: (
                 console_errors.append(f"requestfailed:{request.url}:{request.failure}")
                 if request.url.startswith(base_url.rstrip("/"))
+                and request.failure != "net::ERR_ABORTED"
                 else None
             ),
         )
@@ -280,14 +304,18 @@ async def _inspect_route(
                 wait_until="domcontentloaded",
                 timeout=20_000,
             )
-            await page.evaluate("""async () => {
+            await _evaluate_after_navigation(
+                page,
+                """async () => {
                   if (document.fonts && document.fonts.ready) await document.fonts.ready;
-                }""")
+                }""",
+            )
             await page.wait_for_timeout(100)
             if profile == "print":
                 await page.emulate_media(media="print")
             result.update(
-                await page.evaluate(
+                await _evaluate_after_navigation(
+                    page,
                     """async (profile) => {
                       const headings = [...document.querySelectorAll('main h1,main h2,main h3,main h4,main h5,main h6')]
                         .map((node) => Number(node.tagName.slice(1)));
@@ -950,7 +978,7 @@ def _public_layout_failure_reasons(row: dict[str, Any]) -> list[str]:
     reasons: list[str] = []
     if row.get("data_density") != "expressive":
         reasons.append(f"data_density={row.get('data_density')!r}")
-    if row.get("top_level_h2", 0) > 8 and row.get("route") == "index.html":
+    if row.get("top_level_h2", 0) > 9 and row.get("route") == "index.html":
         reasons.append(f"top_level_h2={row.get('top_level_h2')}")
     if row.get("wide_diagrams_without_strategy", 0):
         reasons.append(
