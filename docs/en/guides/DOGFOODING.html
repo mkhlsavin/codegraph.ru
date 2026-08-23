@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="CodeGraph analyzes its own codebase through the Code Property Graph after every commit, creating a Plan-Act-Review feedback loop.">
-  <meta name="cg:build-commit" content="6ea7881752ef39f57ee69d1de1e3480b477cab4a">
+  <meta name="cg:build-commit" content="658b12a026490612d2e67503eceb8a43765eb37c">
   <meta name="cg:css-build" content="e3e86a3404f3">
 
   <meta property="og:title" content="Dogfooding Guide: CPG-Powered Commit Analysis — Documentation">
@@ -200,7 +200,7 @@
         <h1>Dogfooding Guide: CPG-Powered Commit Analysis</h1>
         <p class="doc-lead">CodeGraph analyzes its own codebase through the Code Property Graph after every commit, creating a Plan-Act-Review feedback loop.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-11">Updated: 2026-08-11</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-23">Updated: 2026-08-23</time></div>
       </header>
 
       <!-- Content -->
@@ -260,7 +260,7 @@
 <p>The primary local scenario. You work in Claude Code, make changes, commit, then inspect the diff explicitly:</p>
 <div class="highlight"><pre><span></span><code>You: &quot;Commit these changes and analyze the result&quot;
 Claude: git add src/intent/classifier.py &amp;&amp; git commit -m &quot;refactor: extract pattern table&quot;
-Claude: python -m src.cli.import_commands dogfood analyze --base-ref HEAD~1
+Claude: python -m src.cli dogfood analyze --base-ref HEAD~1 --db data/projects/codegraph.duckdb
 </code></pre></div>
 
 <p>The review pipeline produces a report:</p>
@@ -299,7 +299,7 @@ Claude: [extracts patterns to data table, replaces if/else chain with loop]
 
 You: &quot;Commit&quot;
 Claude: git commit -m &quot;refactor: extract fallback patterns to class-level table&quot;
-Claude: python -m src.cli.import_commands dogfood analyze --base-ref HEAD~1
+Claude: python -m src.cli dogfood analyze --base-ref HEAD~1 --db data/projects/codegraph.duckdb
   -&gt; Review report shows: CC 29-&gt;8 (-21)
 </code></pre></div>
 
@@ -315,7 +315,7 @@ Claude: [queries call_containment]
 
 You: &quot;Proceed with the refactoring&quot;
 Claude: [makes changes, commits]
-Claude: python -m src.cli.import_commands dogfood analyze --base-ref HEAD~1
+Claude: python -m src.cli dogfood analyze --base-ref HEAD~1 --db data/projects/codegraph.duckdb
   -&gt; Review report shows: 213 affected callers, CC unchanged, no regressions
 </code></pre></div>
 
@@ -323,19 +323,19 @@ Claude: python -m src.cli.import_commands dogfood analyze --base-ref HEAD~1
 <h3  id="scenario-4-on-demand-analysis"><span id="scenario_4_on_demand_analysis"></span>Scenario 4: On-demand analysis<a class="heading-anchor" href="#scenario-4-on-demand-analysis" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Run analysis without committing:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Analyze the last commit</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~1
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span>--base-ref<span class="w"> </span>HEAD~1<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 
 <span class="c1"># Analyze changes between branches</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span>--base-ref<span class="w"> </span>origin/main
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span>--base-ref<span class="w"> </span>origin/main<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 
 <span class="c1"># Generate a full quality report</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span>--format<span class="w"> </span>markdown
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span>--format<span class="w"> </span>markdown<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 
 <span class="c1"># Validate numeric claims in documentation</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span>--path<span class="w"> </span>docs/
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span>--path<span class="w"> </span>docs/<span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 
 <span class="c1"># Show quality trend across recent commits</span>
-python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span>--commits<span class="w"> </span><span class="m">20</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span>--commits<span class="w"> </span><span class="m">20</span><span class="w"> </span>--db<span class="w"> </span>data/projects/codegraph.duckdb
 </code></pre></div>
 
 <h2  id="pipeline-architecture"><span id="pipeline_architecture"></span>Pipeline Architecture<a class="heading-anchor" href="#pipeline-architecture" aria-label="Copy link to section" title="Copy link to section"></a></h2>
@@ -554,25 +554,25 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 <li>OpenViking availability for the local development stack</li>
 </ul>
 <h2  id="cli-commands"><span id="cli_commands"></span>CLI Commands<a class="heading-anchor" href="#cli-commands" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>All commands are accessed via <code>python -m src.cli.import_commands dogfood &lt;subcommand&gt;</code>.</p>
+<p>All commands are accessed via <code>python -m src.cli dogfood &lt;subcommand&gt;</code>.</p>
 <h3  id="dogfood-status"><span id="dogfood_status"></span>dogfood status<a class="heading-anchor" href="#dogfood-status" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Check CPG freshness, review state, and local runtime readiness:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>status<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>status<span class="w"> </span>--db<span class="w"> </span>PATH
 </code></pre></div>
 
 <h3  id="dogfood-analyze"><span id="dogfood_analyze"></span>dogfood analyze<a class="heading-anchor" href="#dogfood-analyze" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Run commit analysis on demand:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span><span class="o">[</span>--base-ref<span class="w"> </span>HEAD~1<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>analyze<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--base-ref<span class="w"> </span>HEAD~1<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dogfood-report"><span id="dogfood_report"></span>dogfood report<a class="heading-anchor" href="#dogfood-report" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Generate quality report (markdown or JSON):</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>report<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>markdown<span class="p">|</span>json<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dogfood-validate-claims"><span id="dogfood_validate_claims"></span>dogfood validate-claims<a class="heading-anchor" href="#dogfood-validate-claims" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Validate numeric claims in documentation against the CPG. Extracts numbers from markdown (e.g., &ldquo;95 handlers&rdquo;, &ldquo;12 scenarios&rdquo;) and verifies via SQL:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>validate-claims<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>PATH<span class="o">]</span>
 </code></pre></div>
 
 <p>Claim rules are defined in <code>config.yaml</code> → <code>dogfooding.claims_validation.rules[]</code>. Each rule maps keywords (English + Russian) to a SQL query:</p>
@@ -587,19 +587,19 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 
 <h3  id="dogfood-trend"><span id="dogfood_trend"></span>dogfood trend<a class="heading-anchor" href="#dogfood-trend" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Show quality trend across recent commits from the <code>cpg_quality_history</code> table:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span><span class="o">[</span>--commits<span class="w"> </span>N<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>trend<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--commits<span class="w"> </span>N<span class="o">]</span>
 </code></pre></div>
 
 <p>Output is an ASCII table with columns: Commit, Date, Methods, Avg CC, Dead, Hi-CC, TODO.</p>
 <p>Quality snapshots are recorded automatically after each commit analysis via <code>record_snapshot()</code> in <code>src/dogfooding/quality_history.py</code>.</p>
 <h3  id="dogfood-validate-stories"><span id="dogfood_validate_stories"></span>dogfood validate-stories<a class="heading-anchor" href="#dogfood-validate-stories" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Validate user story interface coverage via CPG using <code>StoryValidationRunner</code>:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>validate-stories<span class="w"> </span><span class="o">[</span>--stories<span class="w"> </span><span class="m">2</span>,8,11<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--go-db<span class="w"> </span>PATH<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>validate-stories<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--stories<span class="w"> </span><span class="m">2</span>,8,11<span class="o">]</span><span class="w"> </span><span class="o">[</span>--path<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--output<span class="w"> </span>FILE<span class="o">]</span><span class="w"> </span><span class="o">[</span>--go-db<span class="w"> </span>PATH<span class="o">]</span>
 </code></pre></div>
 
 <h3  id="dogfood-config-check"><span id="dogfood_config_check"></span>dogfood config-check<a class="heading-anchor" href="#dogfood-config-check" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Detect orphan configuration parameters by cross-referencing YAML config, schema, and code usage:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="p">|</span>csv<span class="o">]</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span>error<span class="p">|</span>warning<span class="p">|</span>info<span class="p">|</span>all<span class="o">]</span><span class="w"> </span><span class="o">[</span>--fix-suggestions<span class="o">]</span><span class="w"> </span><span class="o">[</span>--config<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--schema<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--source<span class="w"> </span>DIR...<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>config-check<span class="w"> </span><span class="o">[</span>--format<span class="w"> </span>text<span class="p">|</span>json<span class="p">|</span>csv<span class="o">]</span><span class="w"> </span><span class="o">[</span>--level<span class="w"> </span>error<span class="p">|</span>warning<span class="p">|</span>info<span class="p">|</span>all<span class="o">]</span><span class="w"> </span><span class="o">[</span>--fix-suggestions<span class="o">]</span><span class="w"> </span><span class="o">[</span>--config<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--schema<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--source<span class="w"> </span>DIR...<span class="o">]</span>
 </code></pre></div>
 
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="dogfood config-check"><table data-columns="3"><caption class="sr-only">dogfood config-check</caption>
@@ -646,7 +646,7 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 <p>Detects 6 orphan types: <code>yaml_unused</code>, <code>yaml_missing</code>, <code>code_orphan</code>, <code>path_mismatch</code>, <code>orphaned_dataclass</code>, <code>unused_default</code>. Uses <code>ConfigOrphanAnalyzer</code> from <code>src/analysis/config_analyzer.py</code>.</p>
 <h3  id="dogfood-maintain-db"><span id="dogfood_maintain_db"></span>dogfood maintain-db<a class="heading-anchor" href="#dogfood-maintain-db" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Perform routine CPG maintenance and cleanup:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span>maintain-db<span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--force<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
 </code></pre></div>
 
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="dogfood maintain-db"><table data-columns="3"><caption class="sr-only">dogfood maintain-db</caption>
@@ -660,7 +660,7 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 <tbody>
 <tr>
 <td><code>--db</code></td>
-<td>auto-detected</td>
+<td>required</td>
 <td>DuckDB database path</td>
 </tr>
 <tr>
@@ -678,7 +678,7 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 <p>Use this command when quality history tables, review traces, or stale maintenance markers need a controlled cleanup step.</p>
 <h3  id="dogfood-continue"><span id="dogfood_continue"></span>dogfood continue<a class="heading-anchor" href="#dogfood-continue" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Resume an interrupted dogfooding workflow from the stored review state:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli.import_commands<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span><span class="o">[</span>--db<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>dogfood<span class="w"> </span><span class="k">continue</span><span class="w"> </span>--db<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--review-dir<span class="w"> </span>PATH<span class="o">]</span><span class="w"> </span><span class="o">[</span>--json<span class="o">]</span>
 </code></pre></div>
 
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="dogfood continue"><table data-columns="3"><caption class="sr-only">dogfood continue</caption>
@@ -692,7 +692,7 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 <tbody>
 <tr>
 <td><code>--db</code></td>
-<td>auto-detected</td>
+<td>required</td>
 <td>DuckDB database path</td>
 </tr>
 <tr>
@@ -859,20 +859,20 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 <li>
 <p>Verify the local runtime:
    <code>bash
-   python -m src.cli.import_commands dogfood status --db data/projects/my_project.duckdb
-   python -m src.cli.import_commands dogfood analyze --base-ref HEAD~1 --db data/projects/my_project.duckdb</code></p>
+   python -m src.cli dogfood status --db data/projects/my_project.duckdb
+   python -m src.cli dogfood analyze --base-ref HEAD~1 --db data/projects/my_project.duckdb</code></p>
 </li>
 </ol>
-<p>The dogfood commands read the active project from <code>config.yaml</code> and resolve the correct database path automatically.</p>
+<p>Dogfood commands require an explicit <code>--db</code> path so the operator can verify the exact project database before execution.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><strong>Analysis produces empty <code>{}</code> output:</strong>
 - Check that the database file exists at the configured <code>db_path</code>
 - Verify the active project in <code>config.yaml</code> has a valid <code>db_path</code>
-- Run <code>python -m src.cli.import_commands dogfood status</code> to check freshness
+- Run <code>python -m src.cli dogfood status --db data/projects/my_project.duckdb</code> to check freshness
 - Ensure the commit changed code files (<code>.py</code>, <code>.go</code>, <code>.c</code>, etc.), not just docs or configs</p>
 <p><strong>CPG always shows stale:</strong>
 - Ensure gocpg binary exists at <code>gocpg/gocpg.exe</code> (or the configured <code>GOCPG_PATH</code>)
-- Run <code>python -m src.cli.import_commands dogfood status</code> and inspect <code>recommended_next_action</code>
+- Run <code>python -m src.cli dogfood status --db data/projects/my_project.duckdb</code> and inspect <code>recommended_next_action</code>
 - Try manual update: <code>gocpg/gocpg.exe update --input=. --output=&lt;db&gt;</code></p>
 <p><strong>CC values are 0 after incremental update:</strong>
 - Incremental <code>gocpg update</code> may skip <code>MethodMetricsPass</code> for some entries. New entries can have <code>cyclomatic_complexity=0</code>.
@@ -892,7 +892,7 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
 - Ensure GoCPG indexes are up to date: <code>gocpg/gocpg.exe index --db=&lt;db&gt;</code></p>
 <p><strong>OpenViking is missing from status:</strong>
 - Start the local stack and confirm the OpenViking service is listening on the configured port.
-- Run <code>python -m src.cli.import_commands dogfood status</code> again and inspect the <code>openviking_status</code> section.</p>
+- Run <code>python -m src.cli dogfood status --db data/projects/my_project.duckdb</code> again and inspect the <code>openviking_status</code> section.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -977,6 +977,8 @@ Explicit review run (`dogfood analyze --base-ref HEAD~1`)
         <div class="min-w-0">
           <h4 class="cg-footer-tracking mb-4 text-sm font-semibold uppercase">Product</h4>
           <ul class="flex flex-col gap-2">
+            <li><a href="../../../product-delivery.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Product management</a></li>
+            <li><a href="../../../platform-operations.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Platform operations</a></li>
             <li><a href="../../../evidence.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Evidence</a></li>
             <li><a href="../../../integrations.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Integrations</a></li>
             <li><a href="../../../digital-team.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Digital team</a></li>

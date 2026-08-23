@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Содержание Обзор Основные принципы проектирования Таблицы узлов nodesmethod nodescall nodesidentifier nodesfieldidentifier nodesliteral nodeslocal.">
-  <meta name="cg:build-commit" content="6ea7881752ef39f57ee69d1de1e3480b477cab4a">
+  <meta name="cg:build-commit" content="658b12a026490612d2e67503eceb8a43765eb37c">
   <meta name="cg:css-build" content="e3e86a3404f3">
 
   <meta property="og:title" content="Дизайн схемы DuckDB CPG (CPG Spec v1.1) — Документация CodeGraph">
@@ -167,7 +167,7 @@
         <h1>Дизайн схемы DuckDB CPG (CPG Spec v1.1)</h1>
         <p class="doc-lead">Содержание Обзор Основные принципы проектирования Таблицы узлов nodesmethod nodescall nodesidentifier nodesfieldidentifier nodesliteral nodeslocal.</p>
 
-        <div class="doc-meta"><span>Справочник</span><time datetime="2026-08-11">Обновлено: 2026-08-11</time></div>
+        <div class="doc-meta"><span>Справочник</span><time datetime="2026-08-23">Обновлено: 2026-08-23</time></div>
       </header>
 
       <!-- Content -->
@@ -259,7 +259,7 @@
 <li><a href="#example-queries">Примеры запросов</a></li>
 <li><a href="#standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda">Стандартный SQL-запрос: Поиск всех вызовов определённого метода</a></li>
 <li><a href="#duckdb-pgq-zapros-nayti-pryamye-tsepochki-vyzovov-vyzyvayuschiy-vyzyvaemyy">DuckDB PGQ-запрос: Поиск прямых цепочек вызовов (вызывающий -&gt; вызываемый)</a></li>
-<li><a href="#duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast">DuckDB PGQ-запрос: Поиск методов и их дочерних элементов в AST</a></li>
+<li><a href="#duckdb-pgq-zapros-nayti-metody-i-ih-dochernie-uzly-ast">DuckDB PGQ-запрос: Поиск методов и их дочерних элементов в AST</a></li>
 <li><a href="#duckdb-pgq-zapros-puti-potoka-dannyh-s-ispolzovaniem-reaching-def">DuckDB PGQ-запрос: Пути потока данных с использованием REACHING_DEF</a></li>
 <li><a href="#duckdb-pgq-zapros-puti-cfg-upravlenie-vypolneniem">DuckDB PGQ-запрос: Пути CFG (управляющий поток)</a></li>
 <li><a href="#duckdb-pgq-zapros-nayti-vse-identifikatory-i-ih-ssylki">DuckDB PGQ-запрос: Поиск всех идентификаторов и их ссылок</a></li>
@@ -286,7 +286,7 @@
 <li><a href="#integration-notes">Примечания по интеграции</a></li>
 </ul>
 <h2 id="overview">Обзор<a class="heading-anchor" href="#overview" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Эта схема реализует спецификацию графа свойств кода (CPG) версии 1.1 в DuckDB с использованием расширения duckpgq для эффективного выполнения запросов к графам свойств.</p>
+<p>Эта схема реализует спецификацию графа свойств кода (CPG) версии 1.1 в DuckDB с использованием расширения duckpgq для эффективного выполнения запросов к графам свойств.</p>
 <h2  id="core-design-principles"><span id="core_design_principles"></span><span id="osnovnye-printsipy-proektirovaniya"></span><span id="osnovnye_printsipy_proektirovaniya"></span>Основные принципы проектирования<a class="heading-anchor" href="#core-design-principles" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ol>
 <li><strong>Таблицы узлов</strong>: Отдельные таблицы для каждого основного типа узлов (METHOD, CALL, IDENTIFIER и т.д.)</li>
@@ -300,7 +300,7 @@
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="GoCPG vs устаревшая схема"><table data-columns="2"><caption class="sr-only">GoCPG vs устаревшая схема</caption>
 <thead>
 <tr>
-<th scope="col">Таблица только в GoCPG</th>
+<th scope="col">Таблица только в GoCPG</th>
 <th scope="col">Назначение</th>
 </tr>
 </thead>
@@ -385,27 +385,27 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• FULL_NAME, NAME, SIGNATURE: Идентификация метода
-• IS_EXTERNAL: Определён ли в исходном коде
-• AST_PARENT_FULL_NAME, AST_PARENT_TYPE: Контекст типа
-• FILENAME, LINE_NUMBER, COLUMN_NUMBER: Расположение в исходном коде
-• CODE: Исходный код метода (усечён до 1000 символов)
-• LOC: Количество строк кода
-• PARAMETER_COUNT: Количество параметров
-• AST_HASH: SHA256-хеш структуры AST (для инкрементального обнаружения изменений)</p>
+- FULL_NAME, NAME, SIGNATURE: Идентификация метода
+- IS_EXTERNAL: Определён ли в исходном коде
+- AST_PARENT_FULL_NAME, AST_PARENT_TYPE: Контекст типа
+- FILENAME, LINE_NUMBER, COLUMN_NUMBER: Расположение в исходном коде
+- CODE: Исходный код метода (усечён до 1000 символов)
+- LOC: Количество строк кода
+- PARAMETER_COUNT: Количество параметров
+- AST_HASH: SHA256-хеш структуры AST (для инкрементального обнаружения изменений)</p>
 <p><strong>Предвычисленные флаги шаблонов</strong> (v6.0 &ndash; GoCPG):
-• HAS_DISABLED_CODE: Содержит <code>#if 0</code>, <code>if false</code> или закомментированные блоки
-• HAS_DEPRECATED: Содержит <code>@Deprecated</code>, <code>[[deprecated]]</code> или аналогичные аннотации
-• HAS_TODO_FIXME: Содержит комментарии <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, <code>XXX</code>
-• HAS_DEBUG_CODE: Содержит отладочный вывод, console.log, отладочные операторы</p>
+- HAS_DISABLED_CODE: Содержит <code>#if 0</code>, <code>if false</code> или закомментированные блоки
+- HAS_DEPRECATED: Содержит <code>@Deprecated</code>, <code>[[deprecated]]</code> или аналогичные аннотации
+- HAS_TODO_FIXME: Содержит комментарии <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, <code>XXX</code>
+- HAS_DEBUG_CODE: Содержит отладочный вывод, console.log, отладочные операторы</p>
 <p><strong>Классификационные флаги</strong> (v6.0 &ndash; GoCPG):
-• IS_TEST: Метод идентифицирован как тестовая функция (кросс-языковое определение)
-• IS_ENTRY_POINT: Метод является точкой входа публичного API (экспортируемый, HTTP-обработчик, main и т.д.)
-• IS_NESTED: Метод определён внутри другого метода (замыкание/вложенная функция)</p>
+- IS_TEST: Метод идентифицирован как тестовая функция (кросс-языковое определение)
+- IS_ENTRY_POINT: Метод является точкой входа публичного API (экспортируемый, HTTP-обработчик, main и т.д.)
+- IS_NESTED: Метод определён внутри другого метода (замыкание/вложенная функция)</p>
 <p><strong>Предвычисленные метрики</strong> (v6.0 &ndash; GoCPG):
-• CYCLOMATIC_COMPLEXITY: Цикломатическая сложность по Маккейбу
-• FAN_IN: Количество методов, вызывающих этот метод
-• FAN_OUT: Количество методов, вызываемых данным методом</p>
+- CYCLOMATIC_COMPLEXITY: Цикломатическая сложность по Маккейбу
+- FAN_IN: Количество методов, вызывающих этот метод
+- FAN_OUT: Количество методов, вызываемых данным методом</p>
 <p><strong>Примеры запросов с предвычисленными флагами:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Поиск сложных методов с высоким fan-out (потенциальные «god-методы»)</span>
 <span class="k">SELECT</span><span class="w"> </span><span class="n">full_name</span><span class="p">,</span><span class="w"> </span><span class="n">cyclomatic_complexity</span><span class="p">,</span><span class="w"> </span><span class="n">fan_out</span>
@@ -455,14 +455,14 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• METHOD_FULL_NAME: Целевой метод
-• DISPATCH_TYPE: Механизм вызова (STATIC_DISPATCH, DYNAMIC_DISPATCH)
-• TYPE_FULL_NAME: Возвращаемый тип
-• SIGNATURE: Типы параметров
-• CONTAINING_METHOD_ID: Идентификатор метода, содержащего место вызова
-• CALLEE_METHOD_ID: Идентификатор разрешённого вызываемого метода
-• TYPE_ORIGIN: Источник вывода типов (например, TypeRecoveryPass)
-• TYPE_CONFIDENCE: Уровень уверенности вывода типов (0.0-1.0)</p>
+- METHOD_FULL_NAME: Целевой метод
+- DISPATCH_TYPE: Механизм вызова (STATIC_DISPATCH, DYNAMIC_DISPATCH)
+- TYPE_FULL_NAME: Возвращаемый тип
+- SIGNATURE: Типы параметров
+- CONTAINING_METHOD_ID: Идентификатор метода, содержащего место вызова
+- CALLEE_METHOD_ID: Идентификатор разрешённого вызываемого метода
+- TYPE_ORIGIN: Источник вывода типов (например, TypeRecoveryPass)
+- TYPE_CONFIDENCE: Уровень уверенности вывода типов (0.0-1.0)</p>
 <h3  id="nodes-identifier"><span id="nodes_identifier"></span>nodes_identifier<a class="heading-anchor" href="#nodes-identifier" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Имена переменных и ссылок.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_identifier</span><span class="w"> </span><span class="p">(</span>
@@ -480,9 +480,9 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• NAME: Идентификатор переменной
-• TYPE_FULL_NAME: Тип переменной
-• CONTAINING_METHOD_ID: Идентификатор содержащего метода</p>
+- NAME: Идентификатор переменной
+- TYPE_FULL_NAME: Тип переменной
+- CONTAINING_METHOD_ID: Идентификатор содержащего метода</p>
 <h3  id="nodes-field-identifier"><span id="nodes_field_identifier"></span>nodes_field_identifier<a class="heading-anchor" href="#nodes-field-identifier" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Идентификаторы доступа к полям (ООП — например, obj.field).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_field_identifier</span><span class="w"> </span><span class="p">(</span>
@@ -498,9 +498,9 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• CANONICAL_NAME: Нормализованное имя (например, “myField” для a.myField и b.myField)
-• CODE: Доступ к полю в исходном виде (например, “obj.field”)
-• Назначение: Определение обращений к полям в ООП-коде (критично для анализа псевдонимов)</p>
+- CANONICAL_NAME: Нормализованное имя (например, “myField” для a.myField и b.myField)
+- CODE: Доступ к полю в исходном виде (например, “obj.field”)
+- Назначение: Определение обращений к полям в ООП-коде (критично для анализа псевдонимов)</p>
 <p><strong>Пример:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="n">struct</span><span class="w"> </span><span class="n">Point</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">int</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
 <span class="n">Point</span><span class="w"> </span><span class="n">p</span><span class="p">;</span>
@@ -523,8 +523,8 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• TYPE_FULL_NAME: Тип литерала
-• CODE: Значение литерала</p>
+- TYPE_FULL_NAME: Тип литерала
+- CODE: Значение литерала</p>
 <h3  id="nodes-local"><span id="nodes_local"></span>nodes_local<a class="heading-anchor" href="#nodes-local" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Объявления локальных переменных.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_local</span><span class="w"> </span><span class="p">(</span>
@@ -541,8 +541,8 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• NAME: Имя локальной переменной
-• TYPE_FULL_NAME: Объявленный тип</p>
+- NAME: Имя локальной переменной
+- TYPE_FULL_NAME: Объявленный тип</p>
 <h3  id="nodes-param"><span id="nodes_param"></span>nodes_param<a class="heading-anchor" href="#nodes-param" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Параметры метода (формальные параметры).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_param</span><span class="w"> </span><span class="p">(</span>
@@ -564,13 +564,13 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• INDEX: Позиция параметра
-• IS_VARIADIC: Параметр переменной длины
-• EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING
-• METHOD_ID: Идентификатор содержащего метода
-• PARENT_PARAM_ID: Идентификатор родительского параметра (для вложенных/деструктурированных параметров)
-• TYPEDEF_ID: Идентификатор узла typedef (для разрешения C typedef)
-• STRUCT_MEMBER_ID: Идентификатор члена структуры (для разрешения членов C struct)</p>
+- INDEX: Позиция параметра
+- IS_VARIADIC: Параметр переменной длины
+- EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING
+- METHOD_ID: Идентификатор содержащего метода
+- PARENT_PARAM_ID: Идентификатор родительского параметра (для вложенных/деструктурированных параметров)
+- TYPEDEF_ID: Идентификатор узла typedef (для разрешения C typedef)
+- STRUCT_MEMBER_ID: Идентификатор члена структуры (для разрешения членов C struct)</p>
 <h3  id="nodes-param-out"><span id="nodes-method-parameter-out"></span><span id="nodes_method_parameter_out"></span><span id="nodes_param_out"></span>nodes_method_parameter_out<a class="heading-anchor" href="#nodes-param-out" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Выходные параметры метода (для анализа SSA/потока данных). Множественные возвращаемые значения Go.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_method_parameter_out</span><span class="w"> </span><span class="p">(</span>
@@ -588,11 +588,11 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Соответствует METHOD_PARAMETER_IN для анализа потока данных
-• INDEX: Позиция параметра (совпадает с входным параметром)
-• EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING
-• METHOD_ID: Идентификатор содержащего метода
-• Требуется для анализа SSA (Static Single Assignment)</p>
+- Соответствует METHOD_PARAMETER_IN для анализа потока данных
+- INDEX: Позиция параметра (совпадает с входным параметром)
+- EVALUATION_STRATEGY: BY_VALUE, BY_REFERENCE, BY_SHARING
+- METHOD_ID: Идентификатор содержащего метода
+- Требуется для анализа SSA (Static Single Assignment)</p>
 <h3  id="nodes-method-return"><span id="nodes_method_return"></span>nodes_method_return<a class="heading-anchor" href="#nodes-method-return" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Параметр возврата метода (формальный возврат).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_method_return</span><span class="w"> </span><span class="p">(</span>
@@ -609,11 +609,11 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• TYPE_FULL_NAME: Тип возврата
-• CODE: Обычно “RET” или пусто
-• EVALUATION_STRATEGY: Способ передачи возвращаемого значения
-• METHOD_ID: Идентификатор содержащего метода
-• Один на метод (формальный параметр возврата, не оператор return)</p>
+- TYPE_FULL_NAME: Тип возврата
+- CODE: Обычно “RET” или пусто
+- EVALUATION_STRATEGY: Способ передачи возвращаемого значения
+- METHOD_ID: Идентификатор содержащего метода
+- Один на метод (формальный параметр возврата, не оператор return)</p>
 <h3  id="nodes-return"><span id="nodes_return"></span>nodes_return<a class="heading-anchor" href="#nodes-return" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Операторы возврата (фактический return в коде).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_return</span><span class="w"> </span><span class="p">(</span>
@@ -661,7 +661,7 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• CONTROL_STRUCTURE_TYPE: BREAK, CONTINUE, DO, WHILE, FOR, GOTO, IF, ELSE, TRY, THROW, SWITCH</p>
+- CONTROL_STRUCTURE_TYPE: BREAK, CONTINUE, DO, WHILE, FOR, GOTO, IF, ELSE, TRY, THROW, SWITCH</p>
 <h3  id="nodes-member"><span id="nodes_member"></span>nodes_member<a class="heading-anchor" href="#nodes-member" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Члены типов (поля классов/структур).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_member</span><span class="w"> </span><span class="p">(</span>
@@ -677,10 +677,10 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• NAME: Имя члена (например, “x”, “y”)
-• TYPE_FULL_NAME: Тип члена (например, “int”, “std::string”)
-• AST_PARENT_FULL_NAME: Содержащий тип
-• Назначение: Представление полей/членов классов/структур</p>
+- NAME: Имя члена (например, “x”, “y”)
+- TYPE_FULL_NAME: Тип члена (например, “int”, “std::string”)
+- AST_PARENT_FULL_NAME: Содержащий тип
+- Назначение: Представление полей/членов классов/структур</p>
 <p><strong>Пример:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="n">struct</span><span class="w"> </span><span class="n">Point</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">int</span><span class="w"> </span><span class="n">x</span><span class="p">;</span><span class="w">     </span><span class="o">//</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">MEMBER</span><span class="o">:</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s">&quot;x&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">type_full_name</span><span class="o">=</span><span class="s">&quot;int&quot;</span>
@@ -706,11 +706,11 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• FULL_NAME, NAME: Идентификация типа
-• IS_EXTERNAL: Определён ли в исходном коде
-• INHERITS_FROM_TYPE_FULL_NAME: Базовые типы (массив)
-• ALIAS_TYPE_FULL_NAME: Псевдоним типа
-• AST_PARENT_TYPE, AST_PARENT_FULL_NAME: Контекст родительского типа</p>
+- FULL_NAME, NAME: Идентификация типа
+- IS_EXTERNAL: Определён ли в исходном коде
+- INHERITS_FROM_TYPE_FULL_NAME: Базовые типы (массив)
+- ALIAS_TYPE_FULL_NAME: Псевдоним типа
+- AST_PARENT_TYPE, AST_PARENT_FULL_NAME: Контекст родительского типа</p>
 <h3  id="nodes-metadata"><span id="nodes_metadata"></span>nodes_metadata<a class="heading-anchor" href="#nodes-metadata" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Метаданные CPG (требуются спецификацией).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_metadata</span><span class="w"> </span><span class="p">(</span>
@@ -724,11 +724,11 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• LANGUAGE: Язык исходного кода
-• VERSION: Версия спецификации CPG (по умолчанию &ldquo;1.1&rdquo;)
-• ROOT: Корневой путь
-• OVERLAYS: Применённые оверлеи
-• HASH: Хеш содержимого</p>
+- LANGUAGE: Язык исходного кода
+- VERSION: Версия спецификации CPG (по умолчанию &ldquo;1.1&rdquo;)
+- ROOT: Корневой путь
+- OVERLAYS: Применённые оверлеи
+- HASH: Хеш содержимого</p>
 <h3  id="nodes-file"><span id="nodes_file"></span>nodes_file<a class="heading-anchor" href="#nodes-file" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Узлы исходных файлов (требуются спецификацией).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_file</span><span class="w"> </span><span class="p">(</span>
@@ -743,17 +743,17 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• NAME: Путь к файлу относительно корня (из METADATA.ROOT)
-• HASH: Хеш SHA-256 или MD5 содержимого файла
-• AST_HASH: Хеш структуры AST (для инкрементального обнаружения изменений)
-• CONTENT: Необязательно — полный исходный код файла
-• SIZE_BYTES: Размер файла в байтах
-• LANGUAGE: Определённый язык программирования</p>
+- NAME: Путь к файлу относительно корня (из METADATA.ROOT)
+- HASH: Хеш SHA-256 или MD5 содержимого файла
+- AST_HASH: Хеш структуры AST (для инкрементального обнаружения изменений)
+- CONTENT: Необязательно — полный исходный код файла
+- SIZE_BYTES: Размер файла в байтах
+- LANGUAGE: Определённый язык программирования</p>
 <p><strong>Назначение:</strong>
-• Индекс для поиска всех элементов кода по файлу
-• Корневые узлы деревьев синтаксического анализа (AST)
-• Хранение метаданных исходных файлов
-• Требуется для рёбер SOURCE_FILE</p>
+- Индекс для поиска всех элементов кода по файлу
+- Корневые узлы деревьев синтаксического анализа (AST)
+- Хранение метаданных исходных файлов
+- Требуется для рёбер SOURCE_FILE</p>
 <p><strong>Пример:</strong></p>
 <div class="highlight"><pre><span></span><code>name=&quot;src/main.c&quot;, hash=&quot;abc123...&quot;, order_index=0
 </code></pre></div>
@@ -771,17 +771,17 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• NAME: Человекочитаемое имя пространства имён (например, “foo.bar”)
+- NAME: Человекочитаемое имя пространства имён (например, “foo.bar”)
   — С точками: “foo.bar” означает пространство имён “bar” внутри “foo”
-• FULL_NAME: Уникальный идентификатор, объединяющий файл и пространство имён
+- FULL_NAME: Уникальный идентификатор, объединяющий файл и пространство имён
   — Должен включать информацию о файле для обеспечения уникальности
-• FILENAME: Исходный файл, содержащий этот блок пространства имён
-• ORDER_INDEX: Позиция в родительском AST</p>
+- FILENAME: Исходный файл, содержащий этот блок пространства имён
+- ORDER_INDEX: Позиция в родительском AST</p>
 <p><strong>Назначение:</strong>
-• Представление блоков пространств имён (C++ <code>namespace{}</code>, Java <code>package</code>)
-• Структурирование кода на логические единицы
-• Возможность запросов к коду по пространству имён
-• Поддержка анализа многокомпонентных пространств имён</p>
+- Представление блоков пространств имён (C++ <code>namespace{}</code>, Java <code>package</code>)
+- Структурирование кода на логические единицы
+- Возможность запросов к коду по пространству имён
+- Поддержка анализа многокомпонентных пространств имён</p>
 <p><strong>Примеры:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1">// C++:</span>
 <span class="kn">namespace</span><span class="w"> </span><span class="nx">foo</span><span class="w"> </span><span class="p">{</span>
@@ -812,10 +812,10 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• METHOD_FULL_NAME: Полное имя ссылочного метода
-• CODE: Как ссылка отображается в исходном коде</p>
+- METHOD_FULL_NAME: Полное имя ссылочного метода
+- CODE: Как ссылка отображается в исходном коде</p>
 <p><strong>Назначение:</strong>
-• Представление методов, передаваемых как аргументы (функции высшего порядка)</p>
+- Представление методов, передаваемых как аргументы (функции высшего порядка)</p>
 <h3  id="nodes-type-ref"><span id="nodes_type_ref"></span>nodes_type_ref<a class="heading-anchor" href="#nodes-type-ref" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Ссылки на типы (тип как значение).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">nodes_type_ref</span><span class="w"> </span><span class="p">(</span>
@@ -1126,12 +1126,12 @@
 </code></pre></div>
 
 <p><strong>Свойства:</strong>
-• NAME: Имя переменной (напр. <code>CWE_DATABASE</code>)
-• FULL_NAME: FQN (напр. <code>src/security/kb.py:CWE_DATABASE</code>)
-• COLLECTION_TYPE: <code>dict</code>, <code>list</code>, <code>set</code>, <code>tuple</code>, <code>enum</code>
-• ELEMENT_COUNT: Количество элементов верхнего уровня
-• KEYS_JSON: JSON-массив ключей словаря (макс. 256, только для dict)
-• VALUE_TYPE_HINT: Предполагаемый тип значений (если однородный)</p>
+- NAME: Имя переменной (напр. <code>CWE_DATABASE</code>)
+- FULL_NAME: FQN (напр. <code>src/security/kb.py:CWE_DATABASE</code>)
+- COLLECTION_TYPE: <code>dict</code>, <code>list</code>, <code>set</code>, <code>tuple</code>, <code>enum</code>
+- ELEMENT_COUNT: Количество элементов верхнего уровня
+- KEYS_JSON: JSON-массив ключей словаря (макс. 256, только для dict)
+- VALUE_TYPE_HINT: Предполагаемый тип значений (если однородный)</p>
 <p><strong>Поддержка:</strong> только Python-фронтенд. JS/TS/Go/Java — планируется.</p>
 <h3  id="nodes-config-file"><span id="nodes_config_file"></span>nodes_config_file<a class="heading-anchor" href="#nodes-config-file" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Содержимое конфигурационных файлов.</p>
@@ -1194,8 +1194,8 @@
 </code></pre></div>
 
 <p><strong>Свойства:</strong>
-• CROSS_LANGUAGE: Является ли вызов кросс-языковым (например, CGO Go-&gt;C, ctypes Python-&gt;C)
-• BINDING_TYPE: Способ разрешения вызова (например, &ldquo;exact&rdquo;, &ldquo;name_only&rdquo;, &ldquo;import_path&rdquo;)</p>
+- CROSS_LANGUAGE: Является ли вызов кросс-языковым (например, CGO Go-&gt;C, ctypes Python-&gt;C)
+- BINDING_TYPE: Способ разрешения вызова (например, &ldquo;exact&rdquo;, &ldquo;name_only&rdquo;, &ldquo;import_path&rdquo;)</p>
 <h3  id="edges-ref"><span id="edges_ref"></span>edges_ref<a class="heading-anchor" href="#edges-ref" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Рёбра ссылок (идентификатор → объявление).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_ref</span><span class="w"> </span><span class="p">(</span>
@@ -1221,7 +1221,7 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• VARIABLE: имя отслеживаемой переменной</p>
+- VARIABLE: имя отслеживаемой переменной</p>
 <h3  id="edges-argument"><span id="edges_argument"></span>edges_argument<a class="heading-anchor" href="#edges-argument" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Рёбра аргументов (вызов → выражения аргументов, возврат → возвращаемое выражение).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_argument</span><span class="w"> </span><span class="p">(</span>
@@ -1236,8 +1236,8 @@
 </code></pre></div>
 
 <p><strong>Свойства:</strong>
-• ARGUMENT_INDEX: Позиция аргумента в списке аргументов
-• ARGUMENT_NAME: Имя именованного аргумента (для языков с ключевыми аргументами)</p>
+- ARGUMENT_INDEX: Позиция аргумента в списке аргументов
+- ARGUMENT_NAME: Имя именованного аргумента (для языков с ключевыми аргументами)</p>
 <h3  id="edges-receiver"><span id="edges_receiver"></span>edges_receiver<a class="heading-anchor" href="#edges-receiver" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Рёбра получателя (вызов → выражение-получатель).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_receiver</span><span class="w"> </span><span class="p">(</span>
@@ -1285,10 +1285,10 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Ребро CDG означает: dst зависит от src по управлению
-• Критически важно для построения графа зависимостей программы (PDG = DDG + CDG)
-• Используется для срезов программы, анализа безопасности, оптимизаций компилятора
-• Пример: операторы внутри блока IF зависят по управлению от условия IF</p>
+- Ребро CDG означает: dst зависит от src по управлению
+- Критически важно для построения графа зависимостей программы (PDG = DDG + CDG)
+- Используется для срезов программы, анализа безопасности, оптимизаций компилятора
+- Пример: операторы внутри блока IF зависят по управлению от условия IF</p>
 <h3  id="edges-binds"><span id="edges_binds"></span>edges_binds<a class="heading-anchor" href="#edges-binds" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Рёбра привязки имён (связывание имён).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_binds</span><span class="w"> </span><span class="p">(</span>
@@ -1298,9 +1298,9 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Связывает узлы BINDING с их объявлениями
-• Используется для разрешения имён переменных и функций
-• Пример: оператор import связывает имя с фактическим определением</p>
+- Связывает узлы BINDING с их объявлениями
+- Используется для разрешения имён переменных и функций
+- Пример: оператор import связывает имя с фактическим определением</p>
 <h3  id="edges-binds-to"><span id="edges_binds_to"></span>edges_binds_to<a class="heading-anchor" href="#edges-binds-to" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Обратные рёбра привязки (использование имён).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_binds_to</span><span class="w"> </span><span class="p">(</span>
@@ -1310,9 +1310,9 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Обратное ребро к ребру BINDS
-• Связывает использование имён с их привязками
-• Пример: ссылка на переменную → привязка → объявление</p>
+- Обратное ребро к ребру BINDS
+- Связывает использование имён с их привязками
+- Пример: ссылка на переменную → привязка → объявление</p>
 <p><strong>Последовательность BINDS:</strong></p>
 <div class="highlight"><pre><span></span><code>Объявление (METHOD/TYPE_DECL)
      ↑
@@ -1337,15 +1337,15 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Связывает узлы с их исходным файлом FILE
-• Создаётся автоматически на основе свойства FILENAME
-• <strong>НЕ ДОЛЖНО создаваться языковым модулем анализа</strong> — создаётся автоматически
-• Отношение один к одному: каждый узел имеет ровно один исходный файл</p>
+- Связывает узлы с их исходным файлом FILE
+- Создаётся автоматически на основе свойства FILENAME
+- <strong>НЕ ДОЛЖНО создаваться языковым модулем анализа</strong> — создаётся автоматически
+- Отношение один к одному: каждый узел имеет ровно один исходный файл</p>
 <p><strong>Назначение:</strong>
-• Сопоставление любого элемента кода с его исходным файлом
-• Навигация от FILE ко всем содержащимся элементам
-• Поддержка запросов и анализа на уровне файлов
-• Реализация функции IDE «перейти к файлу»</p>
+- Сопоставление любого элемента кода с его исходным файлом
+- Навигация от FILE ко всем содержащимся элементам
+- Поддержка запросов и анализа на уровне файлов
+- Реализация функции IDE «перейти к файлу»</p>
 <p><strong>Пример:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="nx">Узел</span><span class="w"> </span><span class="nx">METHOD</span><span class="w"> </span><span class="p">(</span><span class="nx">id</span><span class="p">=</span><span class="mi">100</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">SOURCE_FILE</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">Узел</span><span class="w"> </span><span class="nx">FILE</span><span class="w"> </span><span class="p">(</span><span class="nx">id</span><span class="p">=</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="p">=</span><span class="s">&quot;main.c&quot;</span><span class="p">)</span>
 <span class="nx">Узел</span><span class="w"> </span><span class="nx">CALL</span><span class="w"> </span><span class="p">(</span><span class="nx">id</span><span class="p">=</span><span class="mi">200</span><span class="p">)</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">SOURCE_FILE</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nx">Узел</span><span class="w"> </span><span class="nx">FILE</span><span class="w"> </span><span class="p">(</span><span class="nx">id</span><span class="p">=</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="p">=</span><span class="s">&quot;main.c&quot;</span><span class="p">)</span>
@@ -1366,13 +1366,13 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Связывает TYPE_DECL (псевдоним) с TYPE (фактическим типом)
-• <strong>НЕ ДОЛЖНО создаваться модулем анализа</strong> — создаётся автоматически из ALIAS_TYPE_FULL_NAME
-• Отношение один к одному</p>
+- Связывает TYPE_DECL (псевдоним) с TYPE (фактическим типом)
+- <strong>НЕ ДОЛЖНО создаваться модулем анализа</strong> — создаётся автоматически из ALIAS_TYPE_FULL_NAME
+- Отношение один к одному</p>
 <p><strong>Назначение:</strong>
-• Представление псевдонимов типов (typedef в C, using, type aliases)
-• Поддержка разрешения псевдонимов
-• Анализ синонимов типов</p>
+- Представление псевдонимов типов (typedef в C, using, type aliases)
+- Поддержка разрешения псевдонимов
+- Анализ синонимов типов</p>
 <p><strong>Примеры:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1">// typedef в C:</span>
 <span class="nx">typedef</span><span class="w"> </span><span class="nx">int</span><span class="w"> </span><span class="nx">Integer</span><span class="p">;</span>
@@ -1400,14 +1400,14 @@
 </code></pre></div>
 
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Связывает TYPE_DECL (производный) с TYPE (базовым)
-• <strong>НЕ ДОЛЖНО создаваться модулем анализа</strong> — создаётся автоматически из INHERITS_FROM_TYPE_FULL_NAME
-• Отношение один ко многим (поддерживается множественное наследование)</p>
+- Связывает TYPE_DECL (производный) с TYPE (базовым)
+- <strong>НЕ ДОЛЖНО создаваться модулем анализа</strong> — создаётся автоматически из INHERITS_FROM_TYPE_FULL_NAME
+- Отношение один ко многим (поддерживается множественное наследование)</p>
 <p><strong>Назначение:</strong>
-• Представление наследования классов/интерфейсов
-• Поддержка анализа полиморфизма
-• Запросы к иерархии типов
-• Отслеживание цепочек наследования</p>
+- Представление наследования классов/интерфейсов
+- Поддержка анализа полиморфизма
+- Запросы к иерархии типов
+- Отслеживание цепочек наследования</p>
 <p><strong>Примеры:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="o">//</span><span class="w"> </span><span class="err">Одиночное</span><span class="w"> </span><span class="err">наследование</span><span class="w"> </span><span class="err">в</span><span class="w"> </span><span class="n">Java</span><span class="p">:</span>
 <span class="k">class</span><span class="w"> </span><span class="n">Dog</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="n">Animal</span><span class="w"> </span><span class="n">implements</span><span class="w"> </span><span class="n">Comparable</span><span class="w"> </span><span class="p">{</span>
@@ -1433,16 +1433,16 @@
 </code></pre></div>
 
 <p><strong>Свойства:</strong>
-• VARIABLE_NAME: Имя захваченной переменной</p>
+- VARIABLE_NAME: Имя захваченной переменной</p>
 <p><strong>Свойства</strong> (из спецификации CPG):
-• Связывает METHOD_REF/TYPE_REF с CLOSURE_BINDING
-• Представляет захват переменных в замыкании/лямбде
-• Отношение один ко многим (замыкание может захватывать несколько переменных)</p>
+- Связывает METHOD_REF/TYPE_REF с CLOSURE_BINDING
+- Представляет захват переменных в замыкании/лямбде
+- Отношение один ко многим (замыкание может захватывать несколько переменных)</p>
 <p><strong>Назначение:</strong>
-• Отслеживание переменных, захваченных замыканиями
-• Поддержка анализа выхода за пределы области видимости (escape analysis)
-• Оптимизация замыканий
-• Определение времени жизни захваченных переменных</p>
+- Отслеживание переменных, захваченных замыканиями
+- Поддержка анализа выхода за пределы области видимости (escape analysis)
+- Оптимизация замыканий
+- Определение времени жизни захваченных переменных</p>
 <p><strong>Примеры:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="kr">function</span><span class="w"> </span><span class="kr">outer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">let</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span>
@@ -1506,7 +1506,7 @@
 </code></pre></div>
 
 <h3  id="edges-ddg"><span id="edges_ddg"></span>edges_ddg<a class="heading-anchor" href="#edges-ddg" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Рёбра графа зависимостей по данным (совместимость с CodeGraph).</p>
+<p>Рёбра графа зависимостей по данным (совместимость с CodeGraph).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_ddg</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">src</span><span class="w">     </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">dst</span><span class="w">     </span><span class="nb">BIGINT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
@@ -1531,7 +1531,7 @@
 </code></pre></div>
 
 <p><strong>Свойства:</strong>
-• BINDING_TYPE: Способ связи комментария с узлом (например, &ldquo;proximity&rdquo;, &ldquo;docstring&rdquo;)</p>
+- BINDING_TYPE: Способ связи комментария с узлом (например, &ldquo;proximity&rdquo;, &ldquo;docstring&rdquo;)</p>
 <h2  id="views"><span id="predstavleniya"></span>Представления<a class="heading-anchor" href="#views" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <h3  id="call-containment"><span id="call_containment"></span>call_containment<a class="heading-anchor" href="#call-containment" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Денормализованное представление вызывающий/вызываемый. Используется Python CodeGraph для запросов архитектуры, поиска и рабочих процессов.</p>
@@ -1557,13 +1557,13 @@
 </code></pre></div>
 
 <p><strong>Столбцы</strong> (11):
-• containing_method_name, containing_method_full_name: Вызывающий метод
-• callee_name, callee_full_name: Вызываемый метод
-• caller_filename, callee_filename: Исходные файлы
-• call_line_number: Строка места вызова
-• cross_language: Пересекает ли вызов языковую границу
-• binding_type: Способ разрешения вызова
-• caller_language, callee_language: Языки вызывающего и вызываемого</p>
+- containing_method_name, containing_method_full_name: Вызывающий метод
+- callee_name, callee_full_name: Вызываемый метод
+- caller_filename, callee_filename: Исходные файлы
+- call_line_number: Строка места вызова
+- cross_language: Пересекает ли вызов языковую границу
+- binding_type: Способ разрешения вызова
+- caller_language, callee_language: Языки вызывающего и вызываемого</p>
 <h3  id="method-docstrings"><span id="method_docstrings"></span>method_docstrings<a class="heading-anchor" href="#method-docstrings" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Связь комментариев с документируемыми методами (используется для извлечения описаний функций).</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">method_docstrings</span><span class="w"> </span><span class="k">AS</span>
@@ -1663,7 +1663,7 @@
 <tr>
 <td><code>include_tests</code></td>
 <td>BOOLEAN</td>
-<td>Включены ли тесты в CPG</td>
+<td>Включены ли тесты в CPG</td>
 </tr>
 <tr>
 <td><code>include_paths</code></td>
@@ -2074,11 +2074,11 @@
 </code></pre></div>
 
 <p><strong>Ключевые особенности</strong>:
-• <strong>Полная поддержка схемы CPG</strong> со всеми типами рёбер
-• <strong>Полиморфные рёбра</strong> (AST, CFG, REF и т.д.) через материализованную таблицу <code>cpg_nodes</code>
-• <strong>Типизированные вершины</strong> для эффективных целевых запросов
-• <strong>Совместимо с DuckDB PGQ</strong> (используются таблицы, а не представления)
-• <strong>Полное соответствие спецификации CPG v1.1</strong></p>
+- <strong>Полная поддержка схемы CPG</strong> со всеми типами рёбер
+- <strong>Полиморфные рёбра</strong> (AST, CFG, REF и т.д.) через материализованную таблицу <code>cpg_nodes</code>
+- <strong>Типизированные вершины</strong> для эффективных целевых запросов
+- <strong>Совместимо с DuckDB PGQ</strong> (используются таблицы, а не представления)
+- <strong>Полное соответствие спецификации CPG v1.1</strong></p>
 <h2  id="example-queries"><span id="example_queries"></span><span id="primery-zaprosov"></span><span id="primery_zaprosov"></span>Примеры запросов<a class="heading-anchor" href="#example-queries" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <h3  id="standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda"><span id="standartnyy_sql_zapros_nayti_vse_vyzovy_opredelyonnogo_metoda"></span>Стандартный SQL-запрос: Найти все вызовы определённого метода<a class="heading-anchor" href="#standartnyy-sql-zapros-nayti-vse-vyzovy-opredelyonnogo-metoda" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <div class="highlight"><pre><span></span><code><span class="nt">SELECT</span><span class="w"> </span><span class="nt">c</span><span class="o">.*,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">name</span><span class="o">,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">filename</span><span class="o">,</span><span class="w"> </span><span class="nt">m</span><span class="p">.</span><span class="nc">line_number</span>
@@ -2607,157 +2607,157 @@
 <h2  id="changelog"><span id="zhurnal-izmeneniy"></span><span id="zhurnal_izmeneniy"></span>Журнал изменений<a class="heading-anchor" href="#changelog" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <h3  id="v71-2026-03-06-parse-scope-awareness"><span id="v71_2026_03_06_parse_scope_awareness"></span>v7.1 (2026-03-06) — Parse scope awareness<a class="heading-anchor" href="#v71-2026-03-06-parse-scope-awareness" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p><strong>Новая таблица состояния:</strong>
-• <code>cpg_parse_scope</code> — границы CPG-анализа (singleton, id=1). Фиксирует какие части репозитория включены/исключены при парсинге. Используется code review pipeline для scope-aware фильтрации findings (подавление ложных срабатываний мёртвого кода и отсутствия тестов при ограниченном scope)</p>
+- <code>cpg_parse_scope</code> — границы CPG-анализа (singleton, id=1). Фиксирует какие части репозитория включены/исключены при парсинге. Используется code review pipeline для scope-aware фильтрации findings (подавление ложных срабатываний мёртвого кода и отсутствия тестов при ограниченном scope)</p>
 <p><strong>Новые столбцы:</strong>
-• <code>source_path</code> (VARCHAR) — путь к исходному коду или URL репозитория
-• <code>language</code> (VARCHAR) — язык парсинга
-• <code>include_tests</code> (BOOLEAN) — включены ли тесты в CPG
-• <code>include_paths</code> (VARCHAR) — JSON-массив включённых путей
-• <code>exclude_paths</code> (VARCHAR) — JSON-массив явно исключённых путей
-• <code>default_excludes</code> (VARCHAR) — JSON-массив исключений по умолчанию
-• <code>import_mode</code> (VARCHAR) — режим импорта (<code>full</code>/<code>selective</code>)
-• <code>gocpg_version</code> (VARCHAR) — версия GoCPG</p>
+- <code>source_path</code> (VARCHAR) — путь к исходному коду или URL репозитория
+- <code>language</code> (VARCHAR) — язык парсинга
+- <code>include_tests</code> (BOOLEAN) — включены ли тесты в CPG
+- <code>include_paths</code> (VARCHAR) — JSON-массив включённых путей
+- <code>exclude_paths</code> (VARCHAR) — JSON-массив явно исключённых путей
+- <code>default_excludes</code> (VARCHAR) — JSON-массив исключений по умолчанию
+- <code>import_mode</code> (VARCHAR) — режим импорта (<code>full</code>/<code>selective</code>)
+- <code>gocpg_version</code> (VARCHAR) — версия GoCPG</p>
 <p><strong>Новая команда CLI:</strong>
-• <code>gocpg scope --db=... [--json]</code> — просмотр scope парсинга с индикатором partial scope</p>
+- <code>gocpg scope --db=... [--json]</code> — просмотр scope парсинга с индикатором partial scope</p>
 <h3  id="v70-2026-02-28-polnoe-sootvetstvie-schemago"><span id="v70_2026_02_28_polnoe_sootvetstvie_schemago"></span>v7.0 (2026-02-28) — Полное соответствие schema.go<a class="heading-anchor" href="#v70-2026-02-28-polnoe-sootvetstvie-schemago" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Все определения таблиц приведены в точное соответствие с <code>gocpg/pkg/storage/duckdb/schema.go</code></strong></p>
 <p><strong>Новые таблицы узлов:</strong>
-• <code>nodes_modifier</code> — Узлы модификаторов доступа
-• <code>nodes_annotation</code> — Аннотации и декораторы методов/классов
-• <code>nodes_type</code> — Экземпляры типов
-• <code>nodes_jump_label</code> — Метки переходов (goto)
-• <code>nodes_tag_v2</code> — Теги внешнего контекста (заменяет устаревший nodes_tag)
-• <code>nodes_finding</code> — Результаты статического анализа
-• <code>nodes_macro</code> — Макросы препроцессора C
-• <code>nodes_macro_param</code> — Параметры макросов
-• <code>nodes_namespace</code> — Индексные узлы пространств имён
-• <code>nodes_annotation_literal</code> — Литеральные значения аннотаций
-• <code>nodes_annotation_parameter</code> — Формальные параметры аннотаций
-• <code>nodes_annotation_parameter_assign</code> — Присвоение параметров аннотаций
-• <code>nodes_key_value_pair</code> — Пары ключ-значение для находок
-• <code>nodes_location</code> — Сводка расположения в исходном коде
-• <code>nodes_config_file</code> — Содержимое конфигурационных файлов
-• <code>nodes_import</code> — Операторы импорта/включения
-• <code>nodes_closure_binding</code> — Захват переменных замыканиями</p>
+- <code>nodes_modifier</code> — Узлы модификаторов доступа
+- <code>nodes_annotation</code> — Аннотации и декораторы методов/классов
+- <code>nodes_type</code> — Экземпляры типов
+- <code>nodes_jump_label</code> — Метки переходов (goto)
+- <code>nodes_tag_v2</code> — Теги внешнего контекста (заменяет устаревший nodes_tag)
+- <code>nodes_finding</code> — Результаты статического анализа
+- <code>nodes_macro</code> — Макросы препроцессора C
+- <code>nodes_macro_param</code> — Параметры макросов
+- <code>nodes_namespace</code> — Индексные узлы пространств имён
+- <code>nodes_annotation_literal</code> — Литеральные значения аннотаций
+- <code>nodes_annotation_parameter</code> — Формальные параметры аннотаций
+- <code>nodes_annotation_parameter_assign</code> — Присвоение параметров аннотаций
+- <code>nodes_key_value_pair</code> — Пары ключ-значение для находок
+- <code>nodes_location</code> — Сводка расположения в исходном коде
+- <code>nodes_config_file</code> — Содержимое конфигурационных файлов
+- <code>nodes_import</code> — Операторы импорта/включения
+- <code>nodes_closure_binding</code> — Захват переменных замыканиями</p>
 <p><strong>Новые таблицы рёбер:</strong>
-• <code>edges_contains</code> — Вложенность
-• <code>edges_eval_type</code> — Вычисление типов
-• <code>edges_tagged_by</code> — Ассоциация с тегами
-• <code>edges_parameter_link</code> — Связи параметров
-• <code>edges_pdg</code> — Граф программных зависимостей
-• <code>edges_ddg</code> — Граф зависимостей по данным
-• <code>edges_vtable</code> — Таблица виртуальных методов
-• <code>edges_documents</code> — Связи документирования комментариями</p>
+- <code>edges_contains</code> — Вложенность
+- <code>edges_eval_type</code> — Вычисление типов
+- <code>edges_tagged_by</code> — Ассоциация с тегами
+- <code>edges_parameter_link</code> — Связи параметров
+- <code>edges_pdg</code> — Граф программных зависимостей
+- <code>edges_ddg</code> — Граф зависимостей по данным
+- <code>edges_vtable</code> — Таблица виртуальных методов
+- <code>edges_documents</code> — Связи документирования комментариями</p>
 <p><strong>Новые представления:</strong>
-• <code>call_containment</code> — Денормализованное представление вызывающий/вызываемый (11 столбцов)
-• <code>method_docstrings</code> — Связь комментариев с методами</p>
+- <code>call_containment</code> — Денормализованное представление вызывающий/вызываемый (11 столбцов)
+- <code>method_docstrings</code> — Связь комментариев с методами</p>
 <p><strong>Новые таблицы состояния/доменов/шаблонов:</strong>
-• <code>cpg_fqn_index</code>, <code>cpg_file_state</code>, <code>cpg_git_state</code>, <code>cpg_parse_scope</code>, <code>cpg_branch_state</code>, <code>cpg_submodule_state</code>, <code>export_progress</code>
-• <code>cpg_domain_annotations</code>, <code>cpg_domain_subsystems</code>, <code>cpg_domain_subsystem_members</code>
-• <code>finding_evidence</code>, <code>cpg_enrichment_state</code>, <code>cpg_enrichment_anchors</code>
-• <code>cpg_pattern_results</code>, <code>cpg_pattern_rules</code>, <code>cpg_pattern_deps</code></p>
+- <code>cpg_fqn_index</code>, <code>cpg_file_state</code>, <code>cpg_git_state</code>, <code>cpg_parse_scope</code>, <code>cpg_branch_state</code>, <code>cpg_submodule_state</code>, <code>export_progress</code>
+- <code>cpg_domain_annotations</code>, <code>cpg_domain_subsystems</code>, <code>cpg_domain_subsystem_members</code>
+- <code>finding_evidence</code>, <code>cpg_enrichment_state</code>, <code>cpg_enrichment_anchors</code>
+- <code>cpg_pattern_results</code>, <code>cpg_pattern_rules</code>, <code>cpg_pattern_deps</code></p>
 <p><strong>Изменения столбцов:</strong>
-• <code>nodes_method</code>: Добавлены <code>is_nested</code>, <code>loc</code>, <code>parameter_count</code>, <code>embedding*</code>, <code>ast_hash</code>
-• <code>nodes_call</code>: Добавлены <code>containing_method_id</code>, <code>callee_method_id</code>, <code>type_origin</code>, <code>type_confidence</code>, <code>embedding*</code>
-• <code>nodes_param</code>: Добавлены <code>method_id</code>, <code>parent_param_id</code>, <code>typedef_id</code>, <code>struct_member_id</code>
-• <code>nodes_method_return</code>: Добавлен <code>method_id</code>
-• <code>nodes_comment</code>: Добавлены <code>hash</code>, <code>line_number_end</code>, <code>column_number_end</code>, <code>containing_method_id</code>, <code>comment_type</code>, <code>documented_node_id</code>, <code>binding_type</code>
-• <code>edges_call</code>: Добавлены <code>cross_language</code>, <code>binding_type</code>
-• <code>edges_argument</code>: Добавлены <code>argument_index</code>, <code>argument_name</code>
-• <code>edges_capture</code>: Добавлен <code>variable_name</code>
-• <code>edges_documents</code>: Добавлен <code>binding_type</code></p>
+- <code>nodes_method</code>: Добавлены <code>is_nested</code>, <code>loc</code>, <code>parameter_count</code>, <code>embedding*</code>, <code>ast_hash</code>
+- <code>nodes_call</code>: Добавлены <code>containing_method_id</code>, <code>callee_method_id</code>, <code>type_origin</code>, <code>type_confidence</code>, <code>embedding*</code>
+- <code>nodes_param</code>: Добавлены <code>method_id</code>, <code>parent_param_id</code>, <code>typedef_id</code>, <code>struct_member_id</code>
+- <code>nodes_method_return</code>: Добавлен <code>method_id</code>
+- <code>nodes_comment</code>: Добавлены <code>hash</code>, <code>line_number_end</code>, <code>column_number_end</code>, <code>containing_method_id</code>, <code>comment_type</code>, <code>documented_node_id</code>, <code>binding_type</code>
+- <code>edges_call</code>: Добавлены <code>cross_language</code>, <code>binding_type</code>
+- <code>edges_argument</code>: Добавлены <code>argument_index</code>, <code>argument_name</code>
+- <code>edges_capture</code>: Добавлен <code>variable_name</code>
+- <code>edges_documents</code>: Добавлен <code>binding_type</code></p>
 <p><strong>Переименования таблиц:</strong>
-• <code>nodes_type_parameter</code> -&gt; <code>nodes_type_param</code> (с новыми столбцами: <code>constraint_type</code>, <code>index</code>, <code>method_id</code>, <code>type_decl_id</code>)
-• <code>nodes_method_parameter_out</code> -&gt; <code>nodes_method_parameter_out</code></p>
+- <code>nodes_type_parameter</code> -&gt; <code>nodes_type_param</code> (с новыми столбцами: <code>constraint_type</code>, <code>index</code>, <code>method_id</code>, <code>type_decl_id</code>)
+- <code>nodes_method_parameter_out</code> -&gt; <code>nodes_method_parameter_out</code></p>
 <h3  id="v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov"><span id="v60-2026-02-26-predvychislennye-metriki-i-flagi-shablonov"></span><span id="v60_2026_02_26_predvychislennye_metriki_i_flagi_patternov"></span><span id="v60_2026_02_26_predvychislennye_metriki_i_flagi_shablonov"></span>v6.0 (2026-02-26) — Предвычисленные метрики и флаги шаблонов<a class="heading-anchor" href="#v60-2026-02-26-predvychislennye-metriki-i-flagi-patternov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлены предвычисленные булевые флаги и метрики в nodes_method для быстрых запросов</strong></p>
+<p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлены предвычисленные булевые флаги и метрики в nodes_method для быстрых запросов</strong></p>
 <p><strong>Новые столбцы nodes_method:</strong>
-• <code>has_disabled_code</code> (BOOLEAN) — обнаруживает <code>#if 0</code>, <code>if false</code>, закомментированные блоки
-• <code>has_deprecated</code> (BOOLEAN) — обнаруживает <code>@Deprecated</code>, <code>[[deprecated]]</code>
-• <code>has_todo_fixme</code> (BOOLEAN) — обнаруживает <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, <code>XXX</code>
-• <code>has_debug_code</code> (BOOLEAN) — обнаруживает отладочный вывод, console.log
-• <code>is_test</code> (BOOLEAN) — кросс-языковое определение тестовых функций (11 языков)
-• <code>is_entry_point</code> (BOOLEAN) — определение точек входа публичного API (экспортируемые, HTTP-обработчики, main)
-• <code>cyclomatic_complexity</code> (INTEGER) — цикломатическая сложность по Маккейбу
-• <code>fan_in</code> (INTEGER) — количество вызывающих методов
-• <code>fan_out</code> (INTEGER) — количество вызываемых методов</p>
+- <code>has_disabled_code</code> (BOOLEAN) — обнаруживает <code>#if 0</code>, <code>if false</code>, закомментированные блоки
+- <code>has_deprecated</code> (BOOLEAN) — обнаруживает <code>@Deprecated</code>, <code>[[deprecated]]</code>
+- <code>has_todo_fixme</code> (BOOLEAN) — обнаруживает <code>TODO</code>, <code>FIXME</code>, <code>HACK</code>, <code>XXX</code>
+- <code>has_debug_code</code> (BOOLEAN) — обнаруживает отладочный вывод, console.log
+- <code>is_test</code> (BOOLEAN) — кросс-языковое определение тестовых функций (11 языков)
+- <code>is_entry_point</code> (BOOLEAN) — определение точек входа публичного API (экспортируемые, HTTP-обработчики, main)
+- <code>cyclomatic_complexity</code> (INTEGER) — цикломатическая сложность по Маккейбу
+- <code>fan_in</code> (INTEGER) — количество вызывающих методов
+- <code>fan_out</code> (INTEGER) — количество вызываемых методов</p>
 <p><strong>Влияние:</strong>
-• <strong>В 10-100 раз быстрее</strong> запросы по шаблонам по сравнению со сканированием LIKE по столбцам code/name
-• Кросс-языковое обнаружение тестовых файлов (pytest, JUnit, Go testing и др.)
-• Предвычисленные метрики обеспечивают мгновенный анализ сложности и связности
-• Требуется DuckDB 1.4.2+ для расширения DuckPGQ</p>
+- <strong>В 10-100 раз быстрее</strong> запросы по шаблонам по сравнению со сканированием LIKE по столбцам code/name
+- Кросс-языковое обнаружение тестовых файлов (pytest, JUnit, Go testing и др.)
+- Предвычисленные метрики обеспечивают мгновенный анализ сложности и связности
+- Требуется DuckDB 1.4.2+ для расширения DuckPGQ</p>
 <h3  id="v50-2025-11-16-compliance"><span id="v50-2025-11-16-polnoe-sootvetstvie-sheme"></span><span id="v50_2025_11_16_compliance"></span><span id="v50_2025_11_16_polnoe_sootvetstvie_sheme"></span>v5.0 (2025-11-16) — полное соответствие схеме<a class="heading-anchor" href="#v50-2025-11-16-compliance" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Достигнуто 100% соответствие схеме CPG со всеми оставшимися функциями</strong></p>
 <p><strong>Новые типы узлов:</strong>
-• <code>nodes_unknown</code> (UNKNOWN) — универсальный тип для неподдерживаемых конструкций AST
-• <code>nodes_jump_target</code> (JUMP_TARGET) — метки для операторов goto/break/continue
-• <code>nodes_type_parameter</code> (TYPE_PARAMETER) — формальные параметры шаблонов/дженериков
-• <code>nodes_type_argument</code> (TYPE_ARGUMENT) — фактические аргументы шаблонов/дженериков
-• <code>nodes_binding</code> (BINDING) — привязки для разрешения методов
-• <code>nodes_closure_binding</code> (CLOSURE_BINDING) — захват переменных в замыканиях
-• <code>nodes_comment</code> (COMMENT) — комментарии в исходном коде</p>
+- <code>nodes_unknown</code> (UNKNOWN) — универсальный тип для неподдерживаемых конструкций AST
+- <code>nodes_jump_target</code> (JUMP_TARGET) — метки для операторов goto/break/continue
+- <code>nodes_type_parameter</code> (TYPE_PARAMETER) — формальные параметры шаблонов/дженериков
+- <code>nodes_type_argument</code> (TYPE_ARGUMENT) — фактические аргументы шаблонов/дженериков
+- <code>nodes_binding</code> (BINDING) — привязки для разрешения методов
+- <code>nodes_closure_binding</code> (CLOSURE_BINDING) — захват переменных в замыканиях
+- <code>nodes_comment</code> (COMMENT) — комментарии в исходном коде</p>
 <p><strong>Новые типы рёбер:</strong>
-• <code>edges_alias_of</code> (ALIAS_OF) — связи псевдонимов типов
-• <code>edges_inherits_from</code> (INHERITS_FROM) — связи наследования типов
-• <code>edges_capture</code> (CAPTURE) — захват переменных в замыканиях
-• <code>edges_captured_by</code> (CAPTURED_BY) — обратные связи захвата в замыканиях</p>
+- <code>edges_alias_of</code> (ALIAS_OF) — связи псевдонимов типов
+- <code>edges_inherits_from</code> (INHERITS_FROM) — связи наследования типов
+- <code>edges_capture</code> (CAPTURE) — захват переменных в замыканиях
+- <code>edges_captured_by</code> (CAPTURED_BY) — обратные связи захвата в замыканиях</p>
 <p><strong>Влияние:</strong>
-• <strong>Достигнуто 100% соответствие схеме CPG</strong>
-• Полное покрытие AST с использованием узлов UNKNOWN
-• Полная поддержка дженериков и шаблонов
-• Включён анализ замыканий и лямбд
-• Поддержка разрешения псевдонимов и наследования типов
-• Сохранение комментариев для документации
-• Полноценные возможности анализа программ</p>
+- <strong>Достигнуто 100% соответствие схеме CPG</strong>
+- Полное покрытие AST с использованием узлов UNKNOWN
+- Полная поддержка дженериков и шаблонов
+- Включён анализ замыканий и лямбд
+- Поддержка разрешения псевдонимов и наследования типов
+- Сохранение комментариев для документации
+- Полноценные возможности анализа программ</p>
 <p><strong>Соответствие:</strong> ~95% → <strong>100% схеме CPG</strong></p>
 <h3  id="v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov"><span id="v40-2025-11-16-podderzhka-prostranstv-imyon-i-faylov"></span><span id="v40_2025_11_16_podderzhka_prostranstv_imyon_i_faylov"></span><span id="v40_2025_11_16_tretiy_etap_podderzhka_prostranstv_imyon_i_faylov"></span>v4.0 (2025-11-16) — поддержка пространств имён и файлов<a class="heading-anchor" href="#v40-2025-11-16-tretiy-etap-podderzhka-prostranstv-imyon-i-faylov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлено сопоставление с файлами, поддержка пространств имён и ссылок на методы/типы</strong></p>
 <p><strong>Новые типы узлов:</strong>
-• <code>nodes_file</code> (FILE) — узлы исходных файлов для индексации по файлам
-• <code>nodes_namespace_block</code> (NAMESPACE_BLOCK) — блоки пространств имён (C++ namespace, Java package)
-• <code>nodes_method_ref</code> (METHOD_REF) — ссылки на методы (функции высшего порядка, указатели на функции)
-• <code>nodes_type_ref</code> (TYPE_REF) — ссылки на типы (рефлексия, приведение типов, дженерики)</p>
+- <code>nodes_file</code> (FILE) — узлы исходных файлов для индексации по файлам
+- <code>nodes_namespace_block</code> (NAMESPACE_BLOCK) — блоки пространств имён (C++ namespace, Java package)
+- <code>nodes_method_ref</code> (METHOD_REF) — ссылки на методы (функции высшего порядка, указатели на функции)
+- <code>nodes_type_ref</code> (TYPE_REF) — ссылки на типы (рефлексия, приведение типов, дженерики)</p>
 <p><strong>Новые типы рёбер:</strong>
-• <code>edges_source_file</code> (SOURCE_FILE) — сопоставление узлов с файлами (создаётся автоматически из FILENAME)</p>
+- <code>edges_source_file</code> (SOURCE_FILE) — сопоставление узлов с файлами (создаётся автоматически из FILENAME)</p>
 <p><strong>Влияние:</strong>
-• Включена навигация по коду на уровне файлов
-• Поддержка анализа с учётом пространств имён
-• Отслеживание функций высшего порядка (колбэки, делегаты)
-• Поддержка рефлексии и дженериков
-• Полное сопоставление с исходными файлами (готово к интеграции с IDE)
-• Улучшен анализ межфайловых зависимостей</p>
+- Включена навигация по коду на уровне файлов
+- Поддержка анализа с учётом пространств имён
+- Отслеживание функций высшего порядка (колбэки, делегаты)
+- Поддержка рефлексии и дженериков
+- Полное сопоставление с исходными файлами (готово к интеграции с IDE)
+- Улучшен анализ межфайловых зависимостей</p>
 <p><strong>Соответствие:</strong> ~90% → ~95% схеме CPG</p>
 <h3  id="v30-2025-11-16-podderzhka-oop"><span id="v30_2025_11_16_podderzhka_oop"></span>v3.0 (2025-11-16) — поддержка ООП<a class="heading-anchor" href="#v30-2025-11-16-podderzhka-oop" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлена поддержка анализа ООП и точное сопоставление с исходным кодом</strong></p>
 <p><strong>Новые типы узлов:</strong>
-• <code>nodes_field_identifier</code> (FIELD_IDENTIFIER) — узлы доступа к полям для ООП
-• <code>nodes_member</code> (MEMBER) — объявления полей классов/структур</p>
+- <code>nodes_field_identifier</code> (FIELD_IDENTIFIER) — узлы доступа к полям для ООП
+- <code>nodes_member</code> (MEMBER) — объявления полей классов/структур</p>
 <p><strong>Новые типы рёбер:</strong>
-• <code>edges_binds</code> (BINDS) — рёбра привязки имён (операторы import/using)
-• <code>edges_binds_to</code> (BINDS_TO) — обратные рёбра привязки (разрешение имён)</p>
+- <code>edges_binds</code> (BINDS) — рёбра привязки имён (операторы import/using)
+- <code>edges_binds_to</code> (BINDS_TO) — обратные рёбра привязки (разрешение имён)</p>
 <p><strong>Новые свойства:</strong>
-• OFFSET, OFFSET_END: точное сопоставление по байтам (добавлено к METHOD, TYPE_DECL, IDENTIFIER, FIELD_IDENTIFIER, MEMBER)
-• MODIFIER: массив модификаторов доступа (добавлено к METHOD, TYPE_DECL)
-• CANONICAL_NAME: нормализованное имя идентификатора (добавлено к FIELD_IDENTIFIER)</p>
+- OFFSET, OFFSET_END: точное сопоставление по байтам (добавлено к METHOD, TYPE_DECL, IDENTIFIER, FIELD_IDENTIFIER, MEMBER)
+- MODIFIER: массив модификаторов доступа (добавлено к METHOD, TYPE_DECL)
+- CANONICAL_NAME: нормализованное имя идентификатора (добавлено к FIELD_IDENTIFIER)</p>
 <p><strong>Влияние:</strong>
-• Полная поддержка анализа ООП-кода (отслеживание доступа к полям)
-• Точное сопоставление с местоположением в исходном коде (на уровне байтов)
-• Включён анализ видимости (PUBLIC, PRIVATE, STATIC и т.д.)
-• Улучшено разрешение имён переменных и функций
-• Включён анализ псевдонимов (канонические имена)</p>
+- Полная поддержка анализа ООП-кода (отслеживание доступа к полям)
+- Точное сопоставление с местоположением в исходном коде (на уровне байтов)
+- Включён анализ видимости (PUBLIC, PRIVATE, STATIC и т.д.)
+- Улучшено разрешение имён переменных и функций
+- Включён анализ псевдонимов (канонические имена)</p>
 <p><strong>Соответствие:</strong> ~80% → ~90% схеме CPG</p>
 <h3  id="v20-2025-11-16-kriticheskie-obnovleniya"><span id="v20_2025_11_16_kriticheskie_obnovleniya"></span>v2.0 (2025-11-16) — критические обновления<a class="heading-anchor" href="#v20-2025-11-16-kriticheskie-obnovleniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлены критически важные компоненты для анализа PDG и SSA</strong></p>
+<p><strong>КРУПНОЕ ОБНОВЛЕНИЕ: Добавлены критически важные компоненты для анализа PDG и SSA</strong></p>
 <p><strong>Новые типы узлов:</strong>
-• <code>nodes_method_parameter_out</code> (METHOD_PARAMETER_OUT) — выходные параметры для анализа SSA
-• <code>nodes_method_return</code> (METHOD_RETURN) — формальный параметр возврата</p>
+- <code>nodes_method_parameter_out</code> (METHOD_PARAMETER_OUT) — выходные параметры для анализа SSA
+- <code>nodes_method_return</code> (METHOD_RETURN) — формальный параметр возврата</p>
 <p><strong>Новые типы рёбер:</strong>
-• <code>edges_cdg</code> (Control Dependence Graph) — критически важен для PDG!</p>
+- <code>edges_cdg</code> (Control Dependence Graph) — критически важен для PDG!</p>
 <p><strong>Влияние:</strong>
-• Граф зависимостей программы (PDG) теперь полный (DDG + CDG)
-• Теперь возможен анализ SSA
-• Включено программное срезание (program slicing)
-• Улучшен анализ утечки данных (анализ заражения данных)</p>
+- Граф зависимостей программы (PDG) теперь полный (DDG + CDG)
+- Теперь возможен анализ SSA
+- Включено программное срезание (program slicing)
+- Улучшен анализ утечки данных (анализ заражения данных)</p>
 <p><strong>Соответствие:</strong> ~70% → ~80% схеме CPG</p>
 <h3  id="v10-2025-11-15---initial-release"><span id="v10-2025-11-15-pervonachalnyy-vypusk"></span><span id="v10_2025_11_15___initial_release"></span><span id="v10_2025_11_15_pervonachalnyy_vypusk"></span>v1.0 (2025-11-15) — Первоначальный выпуск<a class="heading-anchor" href="#v10-2025-11-15---initial-release" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <ul>
@@ -2788,15 +2788,15 @@
 </code></pre></div>
 
 <p><strong>Свойства:</strong>
-• NAME: Идентификатор категории тега (уникальное семантическое измерение)
-• VALUE: Значение тега в рамках этой категории
-• EXTERNAL_SOURCE: Источник внешнего контекста (например, &lsquo;jira&rsquo;, &lsquo;git&rsquo;)
-• EXTERNAL_ID: Идентификатор во внешней системе
-• EXTERNAL_URL: URL ресурса во внешней системе
-• CONFIDENCE: Уровень уверенности (0.0 — 1.0)
-• METADATA: Дополнительные метаданные в формате JSON
-• CREATED_AT: Время создания тега
-• UPDATED_AT: Время последнего обновления</p>
+- NAME: Идентификатор категории тега (уникальное семантическое измерение)
+- VALUE: Значение тега в рамках этой категории
+- EXTERNAL_SOURCE: Источник внешнего контекста (например, &lsquo;jira&rsquo;, &lsquo;git&rsquo;)
+- EXTERNAL_ID: Идентификатор во внешней системе
+- EXTERNAL_URL: URL ресурса во внешней системе
+- CONFIDENCE: Уровень уверенности (0.0 — 1.0)
+- METADATA: Дополнительные метаданные в формате JSON
+- CREATED_AT: Время создания тега
+- UPDATED_AT: Время последнего обновления</p>
 <h3 id="edges-tagged-by">edges_tagged_by<a class="heading-anchor" href="#edges-tagged-by" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Связывает элементы кода с их семантическими тегами.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">edges_tagged_by</span><span class="w"> </span><span class="p">(</span>
@@ -2808,8 +2808,8 @@
 </code></pre></div>
 
 <p><strong>Связь:</strong>
-• Источник: любой узел CPG (обычно nodes_method)
-• Назначение: запись в nodes_tag_v2</p>
+- Источник: любой узел CPG (обычно nodes_method)
+- Назначение: запись в nodes_tag_v2</p>
 <h3  id="kategorii-tegov"><span id="kategorii_tegov"></span>Категории тегов<a class="heading-anchor" href="#kategorii-tegov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Категории тегов"><table data-columns="3"><caption class="sr-only">Категории тегов</caption>
 <thead>
@@ -2912,9 +2912,9 @@
 
 <h3  id="statistika-po-tegam"><span id="statistika_po_tegam"></span>Статистика по тегам<a class="heading-anchor" href="#statistika-po-tegam" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>В текущей базе данных содержится приблизительно:
-• <strong>15,68 млн тегов</strong> в рамках <strong>98 категорий</strong>
-• Основные категории: subsystem-name, security-risk, function-purpose
-• Теги позволяют выполнять семантический поиск по коду и интеллектуальный анализ</p>
+- <strong>15,68 млн тегов</strong> в рамках <strong>98 категорий</strong>
+- Основные категории: subsystem-name, security-risk, function-purpose
+- Теги позволяют выполнять семантический поиск по коду и интеллектуальный анализ</p>
 <h3  id="integration-notes"><span id="integration_notes"></span><span id="primechaniya-po-integratsii"></span><span id="primechaniya_po_integratsii"></span>Примечания по интеграции<a class="heading-anchor" href="#integration-notes" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Теги добавляются после генерации CPG с помощью:
 1. <strong>Статического анализа</strong>: Запросы тегов CPG (<code>SELECT * FROM method_tags WHERE name = ...</code>)
@@ -3105,6 +3105,8 @@
         <div class="min-w-0">
           <h4 class="cg-footer-tracking mb-4 text-sm font-semibold uppercase">Продукт</h4>
           <ul class="flex flex-col gap-2">
+            <li><a href="../../../product-delivery.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Управление продуктом</a></li>
+            <li><a href="../../../platform-operations.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Платформа и эксплуатация</a></li>
             <li><a href="../../../evidence.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Доказательства</a></li>
             <li><a href="../../../integrations.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Интеграции</a></li>
             <li><a href="../../../digital-team.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Цифровая команда</a></li>
@@ -3158,7 +3160,7 @@
     </div>
 
     <div class="border-t border-cg-border pt-6 text-center dark:border-cg-border">
-      <p class="text-sm text-cg-muted dark:text-cg-inverse-secondary">&copy; 2025–2026 CodeGraph. Все права защищены.</p>
+      <p class="text-sm text-cg-muted dark:text-cg-inverse-secondary">&copy; 2025-2026 CodeGraph. Все права защищены.</p>
     </div>
   </div>
 </footer>

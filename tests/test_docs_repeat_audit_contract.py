@@ -147,6 +147,22 @@ def test_russian_search_index_uses_localized_descriptions_and_keywords() -> None
     )
 
 
+def test_competitive_matrix_separates_lead_from_snapshot_callout() -> None:
+    """Keep the generated lead concise and preserve the snapshot sentence boundary."""
+    page = (
+        LANDING_ROOT / "docs" / "ru" / "enterprise" / "COMPETITIVE_MATRIX.html"
+    ).read_text(encoding="utf-8")
+    lead_match = re.search(r'<p class="doc-lead">(.*?)</p>', page, flags=re.DOTALL)
+    assert lead_match
+    lead = re.sub(r"<[^>]+>", "", unescape(lead_match.group(1))).replace("\xa0", " ")
+    body = re.sub(r"<[^>]+>", " ", unescape(page)).replace("\xa0", " ")
+    body = " ".join(body.split())
+
+    assert "Дата среза" not in lead
+    assert "пилота. Дата среза: 21 июля 2026 года" in body
+    assert "пилота Дата среза" not in body
+
+
 def _canonical_public_release_date(index_html: str) -> str:
     """Return the single release date declared by the public projection."""
 
