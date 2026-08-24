@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Поддерживаемый customer-профиль разворачивает основной Compose-стек на VM заказчика с Ubuntu 22.04/24.04. Установку должен выполнять профессиональный.">
-  <meta name="cg:build-commit" content="2ea5149f34204db874495793c0353eefc950cbaf">
+  <meta name="cg:build-commit" content="6de5a5bf9ed842d2f3de0728c0a64db425c7f02d">
   <meta name="cg:css-build" content="56c29a4c7e6f">
 
   <meta property="og:title" content="Установка CodeGraph на Ubuntu-сервер заказчика — Документация CodeGraph">
@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=56c29a4c7e6f">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Установка CodeGraph на Ubuntu-сервер заказчика — Документация CodeGraph","description":"Поддерживаемый customer-профиль разворачивает основной Compose-стек на VM заказчика с Ubuntu 22.04/24.04. Установку должен выполнять профессиональный.","url":"https://codegraph.ru/docs/ru/getting-started/INSTALLATION.html","inLanguage":"ru"}</script>
 </head>
-<body class="page-docs" data-doc-layout="article">
+<body class="page-docs" data-doc-layout="wide">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
   <!-- Header Component
      Template variables:
@@ -176,6 +176,118 @@
 </ul>
 <p>Не помещайте логин, токен или пароль в адрес репозитория либо командную строку. Для закрытого
 зеркала используйте SSH agent или системный credential helper.</p>
+<!-- SYSTEM_REQUIREMENTS_START -->
+<h2  id="trebovaniya-k-serveru-klientam-i-ii-modelyam"><span id="trebovaniya_k_serveru_klientam_i_ii_modelyam"></span>Требования к серверу, клиентам и ИИ-моделям<a class="heading-anchor" href="#trebovaniya-k-serveru-klientam-i-ii-modelyam" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Ниже приведён поддерживаемый baseline для single-VM customer-развёртывания. Профиль VM выбирают
+по объёму CPG, числу одновременных импортов и рабочих процессов. Минимальный профиль предназначен
+для проверки установки, а не для промышленной нагрузки.</p>
+<h3  id="server-codegraph"><span id="server_codegraph"></span>Сервер CodeGraph<a class="heading-anchor" href="#server-codegraph" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<div class="doc-table-scroll doc-table-scroll--matrix" data-columns="5" tabindex="-1" role="region" aria-label="Сервер CodeGraph"><table data-columns="5"><caption class="sr-only">Сервер CodeGraph</caption>
+<thead>
+<tr>
+<th scope="col">Профиль</th>
+<th scope="col" class="text-right">vCPU</th>
+<th scope="col" class="text-right">ОЗУ</th>
+<th scope="col" class="text-right">Диск SSD</th>
+<th scope="col">Назначение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Дымовая проверка</td>
+<td class="text-right">4 vCPU</td>
+<td class="text-right">16 GB</td>
+<td class="text-right">100 GB</td>
+<td>UI/API, небольшой демонстрационный проект, без тяжёлого self-analysis и конкурентных импортов</td>
+</tr>
+<tr>
+<td>Рекомендуемая рабочая VM</td>
+<td class="text-right">8 vCPU</td>
+<td class="text-right">32 GB</td>
+<td class="text-right">200 GB</td>
+<td>Полный Compose-стек, OpenViking, Temporal, MCP, мониторинг и умеренная нагрузка</td>
+</tr>
+<tr>
+<td>Крупный self-analysis</td>
+<td class="text-right">16 vCPU</td>
+<td class="text-right">64 GB</td>
+<td class="text-right">500 GB</td>
+<td>Крупные CPG, повторные импорты и конкурентные процессы digital employees</td>
+</tr>
+</tbody>
+</table></div>
+<p>Поддерживаемая серверная ОС — Ubuntu 22.04/24.04 на <code>x86_64</code>. Для ARM64 требуется отдельная
+проверка образов и GoCPG-артефактов в проекте развёртывания: эта страница не объявляет ARM64
+поддерживаемым production-профилем. Нужны Docker Engine с Compose plugin, Git, Bash, <code>curl</code>,
+<code>openssl</code>, синхронизация времени и доступ к неизменяемому release ref. GPU не требуется при
+использовании удалённого LLM-провайдера; локальный inference рассчитывают отдельно вместе с
+VRAM, RAM и диском под выбранную модель.</p>
+<p>Снаружи обычно публикуют только HTTPS <code>443</code>; HTTP <code>80</code> нужен, если используется redirect или
+получение сертификата, SSH <code>22</code> — только из административной сети. Порты API <code>8000</code>, панели
+<code>3100</code>, MCP <code>27495</code>, GoCPG <code>50051</code>, OpenViking <code>1933</code>/<code>8020</code> и Temporal <code>7233</code>/<code>8233</code> считаются
+внутренними, пока утверждённая сетевая схема явно не говорит обратное. Серверу нужен исходящий
+доступ либо внутренние зеркала для пакетов, контейнеров и репозитория, а также утверждённые
+направления к модельному провайдеру, DNS и NTP.</p>
+<p>Диск должен вмещать Docker volumes, PostgreSQL, workspace, CPG, OpenViking, логи и запас для
+обновления. До пилота задайте отдельное резервное хранилище и проверьте восстановление <code>.env</code>,
+<code>config.yaml</code>, <code>projects.yaml</code>, данных приложения, workspace, OpenViking и постоянных volumes.
+Параметры секретов, TLS, CORS и hosts приведены в <a href="CONFIGURATION.html">руководстве по конфигурации</a>.</p>
+<h3  id="klientskoe-po"><span id="klientskoe_po"></span>Клиентское ПО<a class="heading-anchor" href="#klientskoe-po" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<ul>
+<li>Для панели нужен поддерживаемый производителем актуальный браузер с JavaScript, HTTPS и WSS.
+  Пользователю заранее выдают URL, учётную запись, tenant/project scope и требуемую роль.</li>
+<li>MCP-клиент должен поддерживать только <code>MCP 2026-07-28</code>, native JSON arrays/objects, авторизацию
+  и один из транспортов: <code>stdio</code> или Streamable HTTP <code>POST /mcp</code>. Legacy HTTP+SSE, protocol
+  fallback и JSON-строки вместо контейнеров не поддерживаются. Настройка и проверка вызова
+  инструмента описаны в <a href="../api/MCP_OPERATOR_GUIDE.html">руководстве оператора MCP</a>.</li>
+<li>Для Codex нужны Windows 10/11 с PowerShell 5+ либо Linux/macOS с Bash 4+, Git, рекомендуемый
+  Python 3.11+, не менее 1 GB свободного места для client home/cache/logs, <code>Codex 0.147.0+</code> и
+  пакет Agent Plugins 1.0.0. Клиенту требуется доступ к CodeGraph API/MCP; OpenViking нужен,
+  если используется долговременная память.</li>
+<li>Для OpenCode нужны runtime с <code>@opencode-ai/plugin &gt;=1.2.0</code>, npm-пакет
+  <code>opencode-codegraph 0.1.38</code> и доступ к CodeGraph API. Текущий launcher по умолчанию использует
+  <code>openai/gpt-5.4</code>, но модель заменяют на утверждённую через поддерживаемую конфигурацию.
+  Установка описана в <a href="../guides/OPENCODE_QUICK_START.html">быстром старте OpenCode</a>, а
+  переменные и жизненный цикл — в <a href="../integrations/OPENCODE_PLUGIN.html">руководстве по интеграции</a>.</li>
+</ul>
+<h3  id="ii-modeli"><span id="ii_modeli"></span>ИИ-модели<a class="heading-anchor" href="#ii-modeli" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>Не смешивайте два независимых выбора: серверная модель CodeGraph выполняет генерацию и
+embedding внутри runtime, а модель Codex/OpenCode планирует шаги агента и вызывает MCP.</p>
+<p>Серверный runtime поддерживает provider types <code>local</code>, <code>codex_subscription</code>, <code>gigachat</code>,
+<code>openai</code> и <code>yandex</code>. Для удалённого провайдера требуются endpoint и credential утверждённого
+tenant, TLS, квоты и возможность передавать system/user prompts в UTF-8. Модель должна работать
+с русским и английским текстом, кодом, diff и CPG-сводками, принимать настройки temperature,
+<code>max_tokens</code> и timeout и возвращать диагностируемые ошибки. Параметры конкретных провайдеров
+см. в руководствах <a href="../integrations/YANDEX_AI_STUDIO.html">Yandex AI Studio</a> и
+<a href="../integrations/GIGACHAT.html">GigaChat</a>.</p>
+<p>Для первого пилота выбирайте контекст не менее <code>32K</code>; для крупных репозиториев и многошаговых
+задач предпочтительно <code>64K+</code>. Это рекомендация по ёмкости, а не универсальная гарантия
+совместимости: фактический prompt вместе с ответом и запасом должен помещаться в лимит выбранной
+модели и подтверждаться приёмочным сценарием.</p>
+<p>Agent-модель должна надёжно вызывать инструменты по JSON Schema, сохранять точные story/task/
+project identifiers и source refs, выполнять многошаговый цикл и явно сообщать об отказе или
+недоступности инструмента. Embedding-модель должна покрывать русский, английский и исходный код,
+поддерживать batching и стабильную размерность в пределах индекса. Смена embedding-модели либо
+размерности требует явной переиндексации; смешивать в одном индексе несовместимые векторы нельзя.</p>
+<p>До включения внешней модели зафиксируйте endpoint, tenant, регион обработки, использование данных
+для обучения, retention, TLS, access logs, квоты, стоимость, fallback и порядок инцидента. Какие
+данные могут покидать контур и как проверить DLP, описано в <a href="../enterprise/LLM_SECURITY.html">руководстве по безопасности LLM</a>.</p>
+<h3  id="priyomka-trebovaniy"><span id="priyomka_trebovaniy"></span>Приёмка требований<a class="heading-anchor" href="#priyomka-trebovaniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>Развёртывание принимают только после шести независимых проверок:</p>
+<ol>
+<li>install receipt указывает утверждённый commit, обязательные контейнеры healthy, общая readiness
+   успешна;</li>
+<li>пользователь входит через браузер по HTTPS, открывает проект, а browser WebSocket работает;</li>
+<li>Codex или OpenCode выполняет реальный авторизованный MCP tool call, а не только discovery;</li>
+<li>серверная модель выполняет тестовую генерацию и embedding на синтетических данных;</li>
+<li>DLP блокирует или маскирует синтетический canary без использования настоящего секрета;</li>
+<li>резервная копия восстанавливается в проверочном окружении с сохранением project scope.</li>
+</ol>
+<p>Точные версии браузеров, production-поддержка ARM64, HA/Kubernetes и единый для всех моделей
+контекстный лимит не входят в этот single-VM контракт и должны оформляться отдельным проектным
+решением.</p>
+<!-- SYSTEM_REQUIREMENTS_END -->
+
 <h2  id="1-proverte-plan"><span id="1_proverte_plan"></span>1. Проверьте план<a class="heading-anchor" href="#1-proverte-plan" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Сначала выполните немутирующую проверку из одобренного release checkout:</p>
 <div class="highlight"><pre><span></span><code>bash<span class="w"> </span>scripts/install-ubuntu.sh<span class="w"> </span><span class="se">\</span>
@@ -229,15 +341,11 @@ sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"
 <p>Для обновления используйте тот же установщик с новым неизменяемым ref. Для отката восстановите
 соответствующую резервную копию и запустите установщик с previous-known-good неизменяемым ref.
 Не очищайте volumes при откате, если процедура восстановления явно их не заменяет.</p>
-<h2  id="istochniki-kontrakta"><span id="istochniki_kontrakta"></span>Источники контракта<a class="heading-anchor" href="#istochniki-kontrakta" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<ul>
-<li><code>scripts/install-ubuntu.sh</code> — customer-профиль, проверка source и изменения host;</li>
-<li><code>.env.example</code> — текущий шаблон секретов и переменных окружения;</li>
-<li><code>scripts/run_app_stack_readiness.py</code> — общая проверка runtime;</li>
-<li><code>docs/development/reference/operator/CODEGRAPH_RUNTIME_RELEASE_RUNBOOK.md</code> — внутренняя
-  процедура release evidence, резервного копирования и отката.</li>
-</ul>
-<p>Далее: <a href="CONFIGURATION.html">Конфигурация</a> · <a href="QUICK_START.html">Быстрый старт</a></p>
+<h2  id="svyazannaya-vneshnyaya-dokumentatsiya"><span id="svyazannaya_vneshnyaya_dokumentatsiya"></span>Связанная внешняя документация<a class="heading-anchor" href="#svyazannaya-vneshnyaya-dokumentatsiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p><a href="CONFIGURATION.html">Конфигурация</a> · <a href="QUICK_START.html">Быстрый старт</a> ·
+<a href="../api/MCP_OPERATOR_GUIDE.html">MCP</a> ·
+<a href="../enterprise/LLM_SECURITY.html">Безопасность LLM</a> ·
+<a href="../guides/OPENCODE_QUICK_START.html">OpenCode</a></p>
       </article>
 
       <div class="doc-maintenance">
@@ -261,12 +369,17 @@ sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#predvaritelnye-usloviya" class="level-2" aria-current="location">Предварительные условия</a></li>
+<li><a href="#trebovaniya-k-serveru-klientam-i-ii-modelyam" class="level-2">Требования к серверу, клиентам и ИИ-моделям</a></li>
+<li data-doc-toc-level="3" data-doc-parent="trebovaniya-k-serveru-klientam-i-ii-modelyam" hidden><a href="#server-codegraph" class="level-3">Сервер CodeGraph</a></li>
+<li data-doc-toc-level="3" data-doc-parent="trebovaniya-k-serveru-klientam-i-ii-modelyam" hidden><a href="#klientskoe-po" class="level-3">Клиентское ПО</a></li>
+<li data-doc-toc-level="3" data-doc-parent="trebovaniya-k-serveru-klientam-i-ii-modelyam" hidden><a href="#ii-modeli" class="level-3">ИИ-модели</a></li>
+<li data-doc-toc-level="3" data-doc-parent="trebovaniya-k-serveru-klientam-i-ii-modelyam" hidden><a href="#priyomka-trebovaniy" class="level-3">Приёмка требований</a></li>
 <li><a href="#1-proverte-plan" class="level-2">1. Проверьте план</a></li>
 <li><a href="#2-ustanovite-odobrennuyu-versiyu" class="level-2">2. Установите одобренную версию</a></li>
 <li><a href="#3-nastroyte-sekrety" class="level-2">3. Настройте секреты</a></li>
 <li><a href="#4-zapustite-i-proverte" class="level-2">4. Запустите и проверьте</a></li>
 <li><a href="#obnovlenie-i-otkat" class="level-2">Обновление и откат</a></li>
-<li><a href="#istochniki-kontrakta" class="level-2">Источники контракта</a></li>
+<li><a href="#svyazannaya-vneshnyaya-dokumentatsiya" class="level-2">Связанная внешняя документация</a></li>
       </ul>
     </aside>
   </div>
