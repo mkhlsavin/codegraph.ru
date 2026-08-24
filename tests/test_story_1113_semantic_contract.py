@@ -1049,8 +1049,21 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
                     if not target.is_file():
                         errors.append(f"{source_relative}: missing edit source: {href}")
 
-    if edit_count != 194:
-        errors.append(f"generated edit-link count={edit_count}, expected=194")
+    expected_edit_count = sum(
+        len(
+            json.loads(
+                (LANDING_ROOT / "docs" / language / "search-index.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+        )
+        for language in ("en", "ru")
+    )
+    if edit_count != expected_edit_count:
+        errors.append(
+            "generated edit-link count="
+            f"{edit_count}, expected={expected_edit_count} from search indexes"
+        )
     assert not errors, "\n".join(errors[:100])
 
 
