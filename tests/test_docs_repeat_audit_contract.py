@@ -103,8 +103,7 @@ def test_generated_docs_use_heading_specific_table_labels_and_current_css() -> N
     )
     assert f'cg:css-build" content="{css_hash}' in page
     labels = re.findall(r'aria-label="([^"]+)"', page)
-    assert any("Парсинг" in label for label in labels)
-    assert any("Время по пассам" in label for label in labels)
+    assert any("Карта решения" in label for label in labels)
     assert 'tabindex="-1"' in page
     assert "4adb3bb2edfa" not in page
 
