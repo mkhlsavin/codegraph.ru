@@ -328,6 +328,8 @@ def test_public_pages_use_the_generated_versioned_tailwind_bundle() -> None:
         ):
             continue
         source = path.read_text(encoding="utf-8")
+        if 'content="noindex, follow"' in source:
+            continue
         stylesheets = re.findall(
             r'<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"',
             source,

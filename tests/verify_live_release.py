@@ -33,6 +33,37 @@ DOC_PUBLIC_ROUTES = (
     "docs/ru/getting-started/QUICK_START.html",
     "docs/en/api/REST_API.html",
 )
+REQUIRED_DOC_REDIRECTS = {
+    "docs/en/api/README.html": "docs/en/api/index.html",
+    "docs/ru/api/README.html": "docs/ru/api/index.html",
+    "docs/en/enterprise/README.html": "docs/en/enterprise/index.html",
+    "docs/ru/enterprise/README.html": "docs/ru/enterprise/index.html",
+    "docs/en/enterprise/HYPOTHESIS_WHITEPAPER.html": "docs/en/reference/HYPOTHESIS_SYSTEM.html",
+    "docs/ru/enterprise/HYPOTHESIS_WHITEPAPER.html": "docs/ru/reference/HYPOTHESIS_SYSTEM.html",
+    "docs/en/guides/README.html": "docs/en/guides/index.html",
+    "docs/ru/guides/README.html": "docs/ru/guides/index.html",
+    "docs/en/guides/COMPLIANCE_REPORT.html": "docs/en/enterprise/GOST_56939_COMPLIANCE.html",
+    "docs/ru/guides/COMPLIANCE_REPORT.html": "docs/ru/enterprise/GOST_56939_COMPLIANCE.html",
+    "docs/en/guides/REFACTORING.html": "docs/en/guides/scenarios/05-refactoring.html",
+    "docs/ru/guides/REFACTORING.html": "docs/ru/guides/scenarios/05-refactoring.html",
+    "docs/en/guides/scenarios/21-pattern-search.html": "docs/en/guides/PATTERN_SEARCH.html",
+    "docs/ru/guides/scenarios/21-pattern-search.html": "docs/ru/guides/PATTERN_SEARCH.html",
+    "docs/en/integrations/README.html": "docs/en/integrations/index.html",
+    "docs/ru/integrations/README.html": "docs/ru/integrations/index.html",
+    "docs/en/reference/README.html": "docs/en/reference/index.html",
+    "docs/ru/reference/README.html": "docs/ru/reference/index.html",
+    "docs/en/reference/API.html": "docs/en/api/index.html",
+    "docs/ru/reference/API.html": "docs/ru/api/index.html",
+    "docs/en/reference/APPROVAL_ENGINE.html": "docs/en/reference/index.html",
+    "docs/ru/reference/APPROVAL_ENGINE.html": "docs/ru/reference/index.html",
+    "docs/en/reference/MCP_TOOLS.html": "docs/en/api/MCP_OPERATOR_GUIDE.html",
+    "docs/ru/reference/MCP_TOOLS.html": "docs/ru/api/MCP_OPERATOR_GUIDE.html",
+    "docs/en/reference/SECURITY.html": "docs/en/enterprise/index.html",
+    "docs/ru/reference/SECURITY.html": "docs/ru/enterprise/index.html",
+    "docs/en/reference/WORKFLOWS.html": "docs/en/guides/SCENARIOS.html",
+    "docs/ru/reference/WORKFLOWS.html": "docs/ru/guides/SCENARIOS.html",
+}
+FORBIDDEN_PUBLIC_DOC_ORIGINS = ("https://github.com/mkhlsavin/codegraph/",)
 REQUIRED_PUBLIC_ASSETS = (
     "css/tailwind.min.css",
     "js/main.min.js",
@@ -397,6 +428,11 @@ def _verify_docs_contract(
         expected_css_build,
         raw_public.split("<main", 1)[0],
     )
+    failures.extend(
+        f"{route}: forbidden private repository origin {origin!r}"
+        for origin in FORBIDDEN_PUBLIC_DOC_ORIGINS
+        if origin.casefold() in raw_public.casefold()
+    )
     evidence: dict[str, object] = {
         "build_commit": build_commit,
         "build_commit_semantics": DOC_BUILD_COMMIT_SEMANTICS,
@@ -405,6 +441,72 @@ def _verify_docs_contract(
         "scripts": contract.scripts,
         "security_label": expected_security in contract.visible_text,
     }
+    return evidence, failures
+
+
+def _verify_doc_redirects(
+    remote: dict[str, bytes],
+    root: Path,
+) -> tuple[dict[str, dict[str, str]], list[str]]:
+    """Verify every audited legacy route as a noindex local/public redirect stub."""
+
+    evidence: dict[str, dict[str, str]] = {}
+    failures: list[str] = []
+    for route, target in REQUIRED_DOC_REDIRECTS.items():
+        local_path = root / route
+        if not local_path.is_file():
+            failures.append(f"missing local redirect: {route}")
+            continue
+
+        public_payload = remote[route]
+        local_payload = local_path.read_bytes()
+        raw_public = public_payload.decode("utf-8")
+        expected_url = f"/{target}"
+        expected_canonical = f"https://codegraph.ru/{target}"
+        contract = _parse_home_contract(public_payload)
+        local_hash = _normalized_sha256(local_payload)
+        public_hash = _normalized_sha256(public_payload)
+        evidence[route] = {
+            "target": target,
+            "canonical": contract.canonical,
+            "robots": _normalized_robots(contract.robots),
+            "local_hash": local_hash,
+            "public_hash": public_hash,
+        }
+        checks = (
+            (local_hash == public_hash, "content hash differs from local"),
+            (
+                contract.canonical == expected_canonical,
+                f"canonical={contract.canonical!r}, expected={expected_canonical!r}",
+            ),
+            (
+                _normalized_robots(contract.robots) == "noindex, follow",
+                f"robots={contract.robots!r}, expected='noindex, follow'",
+            ),
+            (
+                re.search(
+                    rf'<meta\s+http-equiv="refresh"\s+content="0;\s*url={re.escape(expected_url)}"',
+                    raw_public,
+                    re.IGNORECASE,
+                )
+                is not None,
+                f"missing refresh target {expected_url!r}",
+            ),
+            (
+                f'location.replace("{expected_url}")' in raw_public,
+                f"missing script target {expected_url!r}",
+            ),
+            (
+                not any(
+                    origin.casefold() in raw_public.casefold()
+                    for origin in FORBIDDEN_PUBLIC_DOC_ORIGINS
+                ),
+                "forbidden private repository origin",
+            ),
+        )
+        failures.extend(
+            f"{route}: {message}" for passed, message in checks if not passed
+        )
     return evidence, failures
 
 
@@ -522,6 +624,7 @@ def verify_once(
     local_sitemap = (root / "sitemap.xml").read_bytes()
     routes = _routes_from_sitemap(local_sitemap)
     remote = _fetch_many(base_url, routes, release)
+    remote_redirects = _fetch_many(base_url, tuple(REQUIRED_DOC_REDIRECTS), release)
     remote["sitemap.xml"] = _fetch(base_url, "sitemap.xml", release)
     remote_assets = _fetch_many(base_url, REQUIRED_PUBLIC_ASSETS, release)
     homepage = remote["index.html"].decode("utf-8")
@@ -536,10 +639,19 @@ def verify_once(
     )
     hashes, hash_failures = _verify_hashes(root, routes, remote)
     asset_hashes, asset_failures = _verify_asset_hashes(root, remote_assets)
+    redirect_contracts, redirect_failures = _verify_doc_redirects(
+        remote_redirects, root
+    )
     failures.extend(route_failures)
     failures.extend(homepage_contract_failures)
     failures.extend(hash_failures)
     failures.extend(asset_failures)
+    failures.extend(redirect_failures)
+    failures.extend(
+        f"redirect route must be excluded from sitemap: {route}"
+        for route in REQUIRED_DOC_REDIRECTS
+        if route in routes
+    )
     return {
         "ok": not failures,
         "failures": failures,
@@ -548,6 +660,7 @@ def verify_once(
         "release": homepage_release,
         "route_contracts": route_contracts,
         "docs_contracts": docs_contracts,
+        "redirects": redirect_contracts,
         "assets": asset_hashes,
         "plain_probes": plain_probes,
     }

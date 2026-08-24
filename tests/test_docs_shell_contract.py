@@ -9,9 +9,19 @@ LANDING_ROOT = Path(__file__).resolve().parents[1]
 DOCS_ROOT = LANDING_ROOT / "docs"
 
 
+def _canonical_doc_pages() -> list[Path]:
+    """Return full-shell pages while excluding audited noindex redirect stubs."""
+
+    return [
+        page
+        for page in sorted(DOCS_ROOT.rglob("*.html"))
+        if 'content="noindex, follow"' not in page.read_text(encoding="utf-8")
+    ]
+
+
 def test_generated_docs_use_the_shared_shell() -> None:
     """Require every generated documentation page to use the shared shell."""
-    pages = sorted(DOCS_ROOT.rglob("*.html"))
+    pages = _canonical_doc_pages()
     assert pages
 
     for page in pages:
@@ -32,7 +42,7 @@ def test_generated_docs_use_current_favicon_and_public_social_card() -> None:
     )
     social_image = "https://codegraph.ru/assets/og-codegraph-platform-20260722.png"
 
-    pages = sorted(DOCS_ROOT.rglob("*.html"))
+    pages = _canonical_doc_pages()
     assert pages
     for page in pages:
         html = page.read_text(encoding="utf-8")

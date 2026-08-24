@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -16,6 +17,7 @@ FORBIDDEN_RU_SEARCH_PHRASES = (
     "callable codegraph tools",
     "technical reference for",
 )
+PRIVATE_REPOSITORY_ORIGIN = "https://github.com/mkhlsavin/codegraph/"
 
 
 def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> None:
@@ -38,8 +40,57 @@ def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> N
     assert "DocsContractParser" in source
     assert "ThreadPoolExecutor" in source
     assert "_fetch_many" in source
+    assert "REQUIRED_DOC_REDIRECTS" in source
+    assert '"docs/ru/guides/REFACTORING.html"' in source
+    assert '"docs/en/guides/REFACTORING.html"' in source
+    assert "_verify_doc_redirects" in source
+    assert "FORBIDDEN_PUBLIC_DOC_ORIGINS" in source
     assert 'raw_public.split("<main", 1)[0]' in source
     assert "source checkout commit used to generate the HTML" in source
+
+
+def test_generated_public_docs_do_not_link_to_the_private_repository() -> None:
+    """Reject private source, edit, and evidence URLs in the publishable artifact."""
+
+    violations = [
+        path.relative_to(LANDING_ROOT).as_posix()
+        for path in (LANDING_ROOT / "docs").rglob("*.html")
+        if PRIVATE_REPOSITORY_ORIGIN.casefold()
+        in path.read_text(encoding="utf-8").casefold()
+    ]
+    assert violations == []
+
+
+def test_audited_legacy_redirects_are_complete_and_not_discoverable() -> None:
+    """Verify every live-gated redirect locally without treating it as an article."""
+
+    verifier_source = (LANDING_ROOT / "tests" / "verify_live_release.py").read_text(
+        encoding="utf-8"
+    )
+    module = ast.parse(verifier_source)
+    assignment = next(
+        node
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "REQUIRED_DOC_REDIRECTS"
+            for target in node.targets
+        )
+    )
+    redirects = ast.literal_eval(assignment.value)
+    assert len(redirects) == 28
+
+    sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    for route, target in redirects.items():
+        path = LANDING_ROOT / route
+        assert path.is_file(), route
+        html = path.read_text(encoding="utf-8")
+        assert 'content="noindex, follow"' in html
+        assert f'content="0; url=/{target}"' in html
+        assert f'href="https://codegraph.ru/{target}"' in html
+        assert f'location.replace("/{target}")' in html
+        assert PRIVATE_REPOSITORY_ORIGIN not in html
+        assert f"https://codegraph.ru/{route}" not in sitemap
 
 
 def test_static_search_indexes_have_the_required_fields() -> None:

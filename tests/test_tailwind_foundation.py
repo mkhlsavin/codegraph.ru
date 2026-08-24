@@ -81,12 +81,13 @@ def _source_files(pattern: str) -> list[Path]:
 
 
 def _public_html_files() -> list[Path]:
-    """Return complete public HTML documents rather than template fragments."""
+    """Return canonical full-shell documents rather than redirects or fragments."""
     return [
         path
         for path in _source_files("*.html")
         if "templates" not in path.relative_to(LANDING_ROOT).parts
         and not path.name.startswith("yandex_")
+        and 'content="noindex, follow"' not in path.read_text(encoding="utf-8")
     ]
 
 

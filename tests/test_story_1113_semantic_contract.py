@@ -513,13 +513,14 @@ def _normalized_text(value: str) -> str:
 
 
 def _public_html_files() -> list[Path]:
-    """Return complete public documents, excluding templates and ownership tokens."""
+    """Return canonical full-shell documents, excluding noindex redirect stubs."""
     return sorted(
         path
         for path in LANDING_ROOT.rglob("*.html")
         if "node_modules" not in path.parts
         and "templates" not in path.relative_to(LANDING_ROOT).parts
         and not path.name.startswith("yandex_")
+        and 'content="noindex, follow"' not in path.read_text(encoding="utf-8")
     )
 
 
@@ -1017,13 +1018,12 @@ def test_every_internal_link_and_fragment_resolves() -> None:
     assert not errors, "\n".join(errors[:100])
 
 
-def test_external_edit_links_resolve_to_real_repository_sources() -> None:
-    """Reject placeholder provenance and verify every generated GitHub edit target."""
+def test_documentation_maintenance_links_use_the_public_feedback_endpoint() -> None:
+    """Keep private repository paths out of the public documentation chrome."""
     errors: list[str] = []
-    repository_root = LANDING_ROOT.parents[1]
-    source_checkout_available = (repository_root / "docs").is_dir()
-    edit_prefix = "/mkhlsavin/codegraph/edit/main/"
-    edit_count = 0
+    private_origin = "https://github.com/mkhlsavin/codegraph/"
+    feedback_url = "https://github.com/mkhlsavin/codegraph.ru/issues/new"
+    feedback_count = 0
     for source_path in _public_html_files():
         source_soup = BeautifulSoup(
             source_path.read_text(encoding="utf-8"), "html.parser"
@@ -1039,17 +1039,12 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
                 "https://t.me/codegraph",
             }:
                 errors.append(f"{source_relative}: placeholder external URL: {href}")
-            if parts.netloc.casefold() == "github.com" and "/edit/main/" in parts.path:
-                edit_count += 1
-                if not parts.path.startswith(edit_prefix):
-                    errors.append(f"{source_relative}: unexpected edit origin: {href}")
-                    continue
-                if source_checkout_available:
-                    target = repository_root / unquote(parts.path[len(edit_prefix) :])
-                    if not target.is_file():
-                        errors.append(f"{source_relative}: missing edit source: {href}")
+            if href.casefold().startswith(private_origin.casefold()):
+                errors.append(f"{source_relative}: private repository URL: {href}")
+            if href == feedback_url:
+                feedback_count += 1
 
-    expected_edit_count = sum(
+    expected_feedback_count = sum(
         len(
             json.loads(
                 (LANDING_ROOT / "docs" / language / "search-index.json").read_text(
@@ -1059,10 +1054,10 @@ def test_external_edit_links_resolve_to_real_repository_sources() -> None:
         )
         for language in ("en", "ru")
     )
-    if edit_count != expected_edit_count:
+    if feedback_count != expected_feedback_count:
         errors.append(
-            "generated edit-link count="
-            f"{edit_count}, expected={expected_edit_count} from search indexes"
+            "generated feedback-link count="
+            f"{feedback_count}, expected={expected_feedback_count} from search indexes"
         )
     assert not errors, "\n".join(errors[:100])
 
