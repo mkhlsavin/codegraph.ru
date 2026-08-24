@@ -266,6 +266,28 @@ async def _evaluate_after_navigation(
     raise AssertionError("unreachable navigation retry state")
 
 
+async def _wait_for_css_runtime(page: Page) -> bool:
+    """Wait for a usable stylesheet and reload once after a redirect race.
+
+    A meta refresh can finish after ``domcontentloaded`` while a concurrent audit context
+    briefly observes the destination document before its stylesheet is available.  Retry
+    that transient state once, but preserve fail-closed behavior when CSS is still absent.
+    """
+    expression = """() => [...document.styleSheets].some((sheet) => {
+      try { return Boolean(sheet.href) && sheet.cssRules.length > 0; }
+      catch (_error) { return false; }
+    })"""
+    for attempt in range(2):
+        try:
+            await page.wait_for_function(expression, timeout=2_000)
+            return attempt == 1
+        except PlaywrightError:
+            if attempt == 1:
+                raise
+            await page.reload(wait_until="domcontentloaded", timeout=20_000)
+    raise AssertionError("unreachable stylesheet readiness retry state")
+
+
 async def _inspect_route(
     context: BrowserContext,
     *,
@@ -312,6 +334,15 @@ async def _inspect_route(
                 }""",
             )
             await page.wait_for_timeout(100)
+            css_reloaded = await _wait_for_css_runtime(page)
+            if css_reloaded:
+                await _evaluate_after_navigation(
+                    page,
+                    """async () => {
+                      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+                    }""",
+                )
+                await page.wait_for_timeout(100)
             if profile == "print":
                 await page.emulate_media(media="print")
             result.update(

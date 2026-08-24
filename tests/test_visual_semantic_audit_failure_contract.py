@@ -21,6 +21,7 @@ from visual_semantic_audit import (
     _inspect_route,
     _public_layout_failure_reasons,
     _serve_local_request,
+    _wait_for_css_runtime,
 )
 
 
@@ -49,6 +50,29 @@ def test_navigation_evaluation_tolerates_two_consecutive_context_destructions() 
     assert result == "stable-result"
     assert page.evaluate_calls == 3
     assert page.load_waits == 2
+
+
+def test_css_runtime_readiness_reloads_once_after_redirect_race() -> None:
+    """A transient stylesheet miss is retried once before the audit fails closed."""
+
+    class RedirectRacePage:
+        def __init__(self) -> None:
+            self.wait_calls = 0
+            self.reload_calls = 0
+
+        async def wait_for_function(self, expression: str, *, timeout: int) -> None:
+            self.wait_calls += 1
+            if self.wait_calls == 1:
+                raise PlaywrightError("Timeout 2000ms exceeded")
+
+        async def reload(self, *, wait_until: str, timeout: int) -> None:
+            self.reload_calls += 1
+
+    page = RedirectRacePage()
+    asyncio.run(_wait_for_css_runtime(cast(Any, page)))
+
+    assert page.wait_calls == 2
+    assert page.reload_calls == 1
 
 
 def test_redirect_route_has_no_interactive_layout_requirements() -> None:
