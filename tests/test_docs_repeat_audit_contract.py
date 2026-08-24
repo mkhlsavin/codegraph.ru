@@ -89,6 +89,9 @@ def test_audited_legacy_redirects_are_complete_and_not_discoverable() -> None:
         assert f'content="0; url=/{target}"' in html
         assert f'href="https://codegraph.ru/{target}"' in html
         assert f'location.replace("/{target}")' in html
+        assert html.count("<h1>") == 1
+        if route.startswith("docs/ru/"):
+            assert "Переадресация документации CodeGraph" in html
         assert PRIVATE_REPOSITORY_ORIGIN not in html
         assert f"https://codegraph.ru/{route}" not in sitemap
 
