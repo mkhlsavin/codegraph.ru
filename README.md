@@ -1,162 +1,89 @@
 ---
 type: Directory Index
-title: Readme
-description: Directory Index for Readme.
+title: CodeGraph public site
+description: Maintainer guide for the generated CodeGraph landing and documentation site.
 tags:
 - directory_index
-timestamp: '2026-06-14T13:13:53Z'
+- landing
+timestamp: '2026-08-26T00:00:00Z'
 doc_kind: directory_index
-language: mixed
+language: ru
 source_path: docs/landing/README.md
 status: active
-owner: engineering
+owner: documentation
 audience:
 - engineering
+- documentation
 memory_policy: repo_only
-topic: documentation
+topic: public_site
 public_projection: internal
 section: docs/landing
 ---
-# CodeGraph Landing Page
+# Публичный сайт CodeGraph
 
-Статический сайт [codegraph.ru](https://codegraph.ru) — маркетинговый лендинг и документация продукта CodeGraph. Деплоится на GitHub Pages при пуше в `main`.
+Этот репозиторий хранит собранный лендинг, публичную HTML-документацию и статические ресурсы.
+README проверен по текущему дереву и командам родительского проекта 26 августа 2026 года.
 
-## Локальный запуск
+## Где находится источник
 
-```bash
+- Контент и шаблоны лендинга находятся в родительском репозитории: `scripts/landing_content.py`,
+  `docs/landing/templates/` и `docs/landing/templates/sections/`.
+- Markdown-источники документации находятся в `docs/getting-started`, `docs/guides`, `docs/api`,
+  `docs/integrations`, `docs/reference` и `docs/enterprise` родительского репозитория.
+- `docs/landing/docs/` — сгенерированная HTML-проекция. Не редактируйте её вручную.
+- Общие стили, JavaScript, изображения, шрифты и favicon лежат в `css/`, `js/` и `assets/`.
+
+Один только checkout этого подрепозитория пригоден для просмотра готового сайта, но не содержит
+полного набора исходников и сборочных скриптов.
+
+## Локальный просмотр
+
+Из каталога `docs/landing`:
+
+```powershell
 python -m http.server 8000
-# Открыть http://localhost:8000
 ```
 
-Демо-терминал в hero-секции автоматически определяет окружение: `localhost:8000` в dev, `api.codegraph.ru` в prod. При недоступности API отображает мок-ответы.
+Откройте `http://127.0.0.1:8000/`. Для проверки документации используйте также
+`/docs/en/` и `/docs/ru/`.
 
-## Сборка
+## Сборка из родительского репозитория
 
-Скрипты сборки находятся в родительском репозитории codegraph (`../../scripts/`). **Запускать из корня codegraph**, не из landing/.
+```powershell
+# Лендинг и минимизированные assets
+python scripts/build_landing.py
 
-### Лендинг
+# Явные режимы сборщика
+python scripts/build_landing.py --sections
+python scripts/build_landing.py --assets
+python scripts/build_landing.py --all
 
-```bash
-python scripts/build_landing.py              # Обновить header/footer во всех HTML-страницах
-python scripts/build_landing.py --sections   # Пересобрать index.html из модульных секций
-python scripts/build_landing.py --assets     # Минификация CSS/JS (styles.min.css, main.min.js)
-python scripts/build_landing.py --all        # Всё вместе
+# Документация без обращения к провайдеру перевода
+python scripts/build_docs.py --no-translate --validate-content
+
+# Проверка ссылок в готовой HTML-проекции
+python scripts/build_docs.py --validate
 ```
 
-### Документация
+`build_landing.py` принимает один из перечисленных флагов; отдельного `--help` у него нет.
+`build_docs.py --translate` используйте только для осознанной пересборки перевода с доступными
+credentials; ключи и токены не должны попадать в репозиторий или generated HTML.
 
-```bash
-python scripts/build_docs.py --no-translate              # Сборка EN-документации (по умолчанию, без API-ключей)
-python scripts/build_docs.py                              # Полная сборка с переводом EN → RU
-python scripts/build_docs.py --provider yandex            # YandexGPT
-python scripts/build_docs.py --provider gigachat          # GigaChat
-python scripts/build_docs.py --provider openai            # OpenAI
-python scripts/build_docs.py --validate                   # Только валидация ссылок
-```
+## Что проверять в diff
 
-Результат: `docs/en/` и `docs/ru/`.
+- публичные маршруты, canonical и hreflang;
+- sitemap, robots и структурированные данные;
+- согласованность русской и английской документации;
+- отсутствие приватных runbook-ссылок, внутренних evidence carrier, секретов и сырых ответов
+  провайдеров;
+- отсутствие случайных изменений сгенерированных страниц вне заявленного источника;
+- визуальный smoke на desktop и mobile для изменённых маршрутов.
 
-## Структура
+Статические числа страниц, URL и FAQ здесь не фиксируются: они быстро расходятся с generated
+output. Текущий состав проверяйте по файлам, sitemap и валидаторам.
 
-```
-landing/
-├── index.html              # Основной лендинг (RU, ~128KB)
-├── whitepaper.html         # Технический whitepaper
-├── security.html           # Вертикаль: SAST, анализ потоков данных, SIEM
-├── productivity.html       # Вертикаль: онбординг, поиск по коду
-├── compliance.html         # Вертикаль: 152-ФЗ, ГОСТ, ФСТЭК
-├── cpg.html                # Вертикаль: технология CPG
-├── ai-engineering.html     # Вертикаль: ML-инфраструктура, верификация AI-кода
-├── business-efficiency.html # Вертикаль: CEO/CFO, стоимость разработки, ФОТ, выручка на сотрудника
-│
-├── css/
-│   ├── tailwind.css        # Точка входа Tailwind и семантических токенов
-│   ├── tailwind.min.css    # Минифицированный бандл сайта
-│   ├── base/               # Дизайн-токены, ресет, типографика, анимации
-│   ├── components/         # По файлу на секцию лендинга
-│   ├── pages/              # Стили whitepaper, документации
-│   └── layout/             # Адаптивность, печать
-│
-├── js/
-│   ├── main.js             # Вся логика (IIFE, без зависимостей)
-│   └── main.min.js         # Минифицированная версия
-│
-├── templates/
-│   ├── header.html         # Шаблон навигации ({base_url}, {docs_url}, ...)
-│   ├── footer.html         # Шаблон футера
-│   └── sections/           # Модульные секции index.html
-│
-├── assets/svg/             # Логотипы, иконки, диаграммы
-├── docs/{en,ru}/           # HTML-документация
-├── sitemap.xml             # 15 публичных URL с приоритетами
-├── CNAME                   # codegraph.ru
-└── .nojekyll
-```
+## Публикация
 
-## Страницы и FAQ
-
-Все root HTML-страницы используют общий header/footer из шаблонов. При изменении навигации или футера — обновить все страницы через `build_landing.py` или вручную.
-
-Каждая вертикальная страница имеет уникальный FAQ (вопросы не пересекаются между страницами) и JSON-LD FAQPage в `<head>`:
-
-| Страница | FAQ-тематика | Вопросов |
-|----------|-------------|----------|
-| `index.html` | Общие вопросы о продукте, AI, надёжность, POC | 26 |
-| `security.html` | DLP, сравнение со сканерами, изолированный контур | 8 |
-| `productivity.html` | vs Copilot, миграция, метрики, внедрение | 8 |
-| `compliance.html` | Тендеры, госреференсы, русская документация | 8 |
-| `cpg.html` | CGO/FFI, масштабируемость, глубина анализа, CI/CD | 8 |
-| `ai-engineering.html` | ML-инфраструктура, верификация AI-кода, эксперименты | 8 |
-| `business-efficiency.html` | Стоимость разработки, ФОТ, пилотная экономика, цифровая команда | 8 |
-
-## Дизайн-система
-
-Дизайн-токены в `css/tailwind.css`:
-- **Основной цвет**: `#2563EB`
-- **Шрифты**: Inter (текст), JetBrains Mono (код)
-- **Контейнер**: max `1200px`
-- **Темы**: светлая по умолчанию, тёмная через `[data-theme="dark"]`
-- **Брейкпоинты**: mobile (<768px), tablet (768px+), desktop (1024px+), wide (1200px+)
-
-## Локализация
-
-Лендинг — русскоязычный. Английский контент только в `docs/en/`. Технические термины переводятся:
-
-| English | Русский |
-|---------|---------|
-| taint analysis | анализ потоков данных |
-| pattern matching | сопоставление шаблонов |
-| source / sink | источник / приёмник |
-| code smells | признаки плохого кода |
-| air-gapped | изолированная среда |
-| compliance evidence | доказательства соответствия |
-| audit trail | журнал аудита |
-| PII | ПДн |
-
-Исключения: on-premise, CPG, AST, CFG, SARIF, DuckDB — оставляются как есть.
-
-## SEO
-
-- JSON-LD (Organization, SoftwareApplication, FAQPage) в `index.html` и вертикальных страницах
-- OpenGraph и Twitter Card метатеги
-- `robots.txt` — разрешает всё кроме `/admin/`, `/api/`, `*.json`
-- `sitemap.xml` — 15 URL с приоритетами
-- `BingSiteAuth.xml` — верификация Bing
-
-## Деплой
-
-Автоматический через GitHub Pages при пуше в `main`:
-
-```bash
-git push origin main
-```
-
-После пуша — обновить субмодуль в родительском codegraph:
-
-```bash
-cd D:/work/codegraph
-git add docs/landing
-git commit -m "docs: update landing submodule"
-```
-
-Remote: `github.com/mkhlsavin/codegraph.ru.git` (публичный). Префиксы коммитов: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`.
+Сборка и локальная проверка не означают публикацию. Deploy выполняется отдельной авторизованной
+операцией после просмотра diff, проверок публичной границы и подтверждения целевого revision.
+README не задаёт команду push и не является доказательством успешного deploy.
