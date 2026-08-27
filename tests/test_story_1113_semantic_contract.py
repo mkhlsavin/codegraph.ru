@@ -590,6 +590,20 @@ def test_commercial_pages_own_questions_while_docs_do_not() -> None:
     assert not errors, "\n".join(errors[:100])
 
 
+def test_cpg_page_explains_the_story_1239_architecture_projection() -> None:
+    """Keep the public CPG model aligned with Story 1239 without claiming enforcement."""
+    text = _normalized_text(_soup("cpg.html").get_text(" ", strip=True)).casefold()
+    for marker in (
+        "стабильный uid",
+        "ровно одному компоненту",
+        "прямые и транзитивные связи",
+        "язык источника и назначения",
+        "c, c++, javascript и typescript",
+        "не является архитектурным одобрением",
+    ):
+        assert marker in text
+
+
 def test_key_page_metadata_and_schema_match_visible_contract() -> None:
     """Require title/description/social/WebPage schema parity on governed key pages."""
     errors: list[str] = []
