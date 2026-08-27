@@ -566,7 +566,9 @@ def main() -> int:
 def test_all_public_pages_pass_six_editorial_checks() -> None:
     """Require every declared public page to pass all editorial checks."""
     pages, findings = audit()
-    assert len(pages) == 41, f"Expected 41 public pages, found {len(pages)}"  # FR-P1237-LEAD-PAGE-01
+    assert (
+        len(pages) == 41
+    ), f"Expected 41 public pages, found {len(pages)}"  # FR-P1237-LEAD-PAGE-01
     assert not findings, "Editorial audit findings:\n" + "\n".join(
         f"[{criterion}] {item}"
         for criterion, items in findings.items()
