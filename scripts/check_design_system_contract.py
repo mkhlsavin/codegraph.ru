@@ -264,8 +264,9 @@ def _append_shell_component_errors(route: str, soup: Any, errors: list[str]) -> 
     if route not in RESOURCE_ROUTES:
         return
     for selector in (".cg-resource-brand", ".cg-resource-intro", ".cg-resource-body"):
-        if route == "downloads/digital-role-passport/role-passport.html" and not soup.select_one(
-            f".cg-resource-shell {selector}"
+        if (
+            route == "downloads/digital-role-passport/role-passport.html"
+            and not soup.select_one(f".cg-resource-shell {selector}")
         ):
             errors.append(f"{route}: resource shell lacks {selector}")
 
@@ -287,11 +288,15 @@ def check_article_structure(pages: Iterable[Path], errors: list[str]) -> None:
                 f"{route}: ArticleShell has {len(chapter_headings)} content h2 headings; expected <= 6"
             )
         toc = soup.select_one(".cg-article-toc")
-        toc_ids = {
-            str(link.get("href", ""))[1:]
-            for link in toc.find_all("a")
-            if link.get("href", "").startswith("#")
-        } if toc else set()
+        toc_ids = (
+            {
+                str(link.get("href", ""))[1:]
+                for link in toc.find_all("a")
+                if link.get("href", "").startswith("#")
+            }
+            if toc
+            else set()
+        )
         for heading in chapter_headings:
             if heading.get("id") and heading["id"] not in toc_ids:
                 errors.append(f"{route}: ArticleShell TOC misses #{heading['id']}")
@@ -319,11 +324,16 @@ def check_documentation_shell(errors: list[str]) -> None:
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
         body = soup.body
         if body is None or body.get("data-density") != "expressive":
-            errors.append(f"{route}: documentation body must declare expressive density")
-        if len(soup.select("[data-shell-header]")) != 1 or len(
-            soup.select("[data-shell-footer]")
-        ) != 1:
-            errors.append(f"{route}: documentation must use the shared header and footer")
+            errors.append(
+                f"{route}: documentation body must declare expressive density"
+            )
+        if (
+            len(soup.select("[data-shell-header]")) != 1
+            or len(soup.select("[data-shell-footer]")) != 1
+        ):
+            errors.append(
+                f"{route}: documentation must use the shared header and footer"
+            )
         if soup.find_all(style=True):
             errors.append(f"{route}: inline style attributes are not allowed")
 
@@ -332,9 +342,13 @@ def check_article_css_contract(errors: list[str]) -> None:
     """Keep ArticleShell source styles single-defined and token-based."""
     css = CSS.read_text(encoding="utf-8")
     for selector in (".cg-article-source-list", ".cg-article-related-link"):
-        count = len(re.findall(rf"^{re.escape(selector)}\s*(?:\{{|,)", css, flags=re.MULTILINE))
+        count = len(
+            re.findall(rf"^{re.escape(selector)}\s*(?:\{{|,)", css, flags=re.MULTILINE)
+        )
         if count != 1:
-            errors.append(f"css: ArticleShell selector {selector} must have one definition")
+            errors.append(
+                f"css: ArticleShell selector {selector} must have one definition"
+            )
 
 
 def _append_product_flow_errors(route: str, soup: Any, errors: list[str]) -> None:
