@@ -264,6 +264,32 @@ def test_corporate_blog_article_is_published_and_linked_from_playbook() -> None:
     assert "https://codegraph.ru/blog/kogda-kod-perestaet-byt-uzkim-mestom/" in sitemap
 
 
+def test_corporate_blog_index_uses_visual_cards_and_vertical_links() -> None:
+    """FR-P1237-BLOG-PUBLICATION-01/AC-1237-12: make the blog index visual and navigable."""
+    blog_index = LANDING_ROOT / "blog" / "index.html"
+    soup = BeautifulSoup(blog_index.read_text(encoding="utf-8"), "html.parser")
+
+    assert soup.select_one(".cg-article-trust") is None
+
+    feature = soup.select_one("a.cg-blog-feature-card")
+    assert feature is not None
+    assert feature.get("href") == "/blog/kogda-kod-perestaet-byt-uzkim-mestom/"
+    feature_image = feature.find("img")
+    assert feature_image is not None
+    assert feature_image.get("src") == "../assets/ui/ad-ai-hero.png"
+    assert feature_image.get("width") == "1440"
+    assert feature_image.get("height") == "980"
+
+    topics = soup.select("a.cg-blog-topic-card")
+    assert len(topics) == 3
+    assert [topic.get("href") for topic in topics] == [
+        "/product-delivery.html",
+        "/ai-engineering.html",
+        "/evidence.html",
+    ]
+    assert all(topic.find("img") is not None for topic in topics)
+
+
 def test_playbook_pdf_is_searchable_metadata_complete_and_geometrically_valid() -> None:
     """FR-P1237-PDF-01/AC-1237-07: verify the generated publication artifact."""
     pdf = RESOURCE_ROOT / "CODEGRAPH_AI_NATIVE_PDLC_SDLC_PLAYBOOK_RU.pdf"
