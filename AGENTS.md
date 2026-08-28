@@ -39,7 +39,7 @@ Agent guide for `D:\work\codegraph\docs\landing`.
 3. Preserve internal SEO links to every vertical page registered in
    `scripts/build_landing.py`; do not maintain a second hard-coded count here.
 4. Keep landing user-facing content Russian-first.
-5. Regenerate minified assets when CSS or JS changes.
+5. Regenerate the compiled Tailwind CSS and JavaScript assets when source styles or scripts change.
 6. Respect the separate submodule workflow when syncing this subproject with the parent repo.
 7. CodeGraph has 21 scenarios, and S21 is `Interface Docs Sync`; do not label it as pattern search.
 
@@ -84,5 +84,5 @@ python scripts/build_docs.py --validate
 
 ## Workflow safety
 - After changes to shared HTML fragments, rebuild affected pages instead of editing generated output inconsistently.
-- After CSS or JS edits, regenerate `styles.min.css` and `main.min.js`.
+- After CSS or JS edits, regenerate `css/tailwind.min.css` and `js/main.min.js`.
 - If this subproject is pushed independently, update the parent repo submodule pointer afterward.

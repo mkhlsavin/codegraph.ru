@@ -80,8 +80,16 @@ def check_design_tokens_parity(errors: list[str]) -> None:
     migration = ROOT / "design-token-migration.md"
     if not migration.is_file():
         errors.append("css: design-token-migration.md is missing")
-    if "@deprecated" not in source:
-        errors.append("css: legacy token layer has no deprecation marker")
+    for legacy_token in (
+        "--color-primary",
+        "--color-bg",
+        "--color-text",
+        "--font-family",
+        "--radius-sm",
+        "--transition-fast",
+    ):
+        if legacy_token in source:
+            errors.append(f"css: retired legacy token remains: {legacy_token}")
 
 
 def _normalize_metadata(value: object) -> str:
