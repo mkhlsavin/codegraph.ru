@@ -75,8 +75,10 @@ def test_playbook_page_matches_revised_playbook_content_contract() -> None:
     page_text = soup.get_text(" ", strip=True)
 
     assert soup.title is not None
-    assert soup.title.get_text(strip=True).replace("\u00a0", " ").startswith(
-        "Плейбук CodeGraph для разработки с ИИ-агентами"
+    assert (
+        soup.title.get_text(strip=True)
+        .replace("\u00a0", " ")
+        .startswith("Плейбук CodeGraph для разработки с ИИ-агентами")
     )
     assert soup.find("h1").get_text(" ", strip=True).replace("\u00a0", " ") == (
         "Плейбук CodeGraph для разработки с ИИ-агентами"
