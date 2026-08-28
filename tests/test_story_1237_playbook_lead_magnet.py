@@ -45,7 +45,7 @@ def test_playbook_covers_requested_governance_contours() -> None:
 
 
 def test_playbook_page_is_form_first_and_initially_hides_pdf() -> None:
-    """FR-P1237-LEAD-PAGE-01/AC-1237-08: render a form-first soft gate."""
+    """FR-P1237-LEAD-PAGE-01/AC-1237-08: render a form-first download flow."""
     page = RESOURCE_ROOT / "index.html"
     soup = BeautifulSoup(page.read_text(encoding="utf-8"), "html.parser")
 
@@ -63,7 +63,9 @@ def test_playbook_page_is_form_first_and_initially_hides_pdf() -> None:
     assert link.get("aria-hidden") == "true"
     assert link.get("tabindex") == "-1"
     assert link.get("href") == "CODEGRAPH_AI_NATIVE_PDLC_SDLC_PLAYBOOK_RU.pdf"
-    assert "мягкий gate" in soup.get_text(" ", strip=True)
+    assert "После успешной регистрации заявки появится ссылка на PDF." in soup.get_text(
+        " ", strip=True
+    )
 
 
 def test_playbook_page_matches_revised_playbook_content_contract() -> None:
@@ -73,10 +75,10 @@ def test_playbook_page_matches_revised_playbook_content_contract() -> None:
     page_text = soup.get_text(" ", strip=True)
 
     assert soup.title is not None
-    assert soup.title.get_text(strip=True).startswith(
+    assert soup.title.get_text(strip=True).replace("\u00a0", " ").startswith(
         "Плейбук CodeGraph для разработки с ИИ-агентами"
     )
-    assert soup.find("h1").get_text(" ", strip=True) == (
+    assert soup.find("h1").get_text(" ", strip=True).replace("\u00a0", " ") == (
         "Плейбук CodeGraph для разработки с ИИ-агентами"
     )
     assert "От продуктовой задачи до проверенного выпуска" in page_text

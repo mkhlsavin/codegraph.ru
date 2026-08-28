@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="opencode-codegraph is the maintained OpenCode adapter for CodeGraph. It adds graph-backed prompt context, guided CodeGraph commands, explicit.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="OpenCode plugin — Documentation">
@@ -215,7 +215,8 @@ registration or launcher configuration.</p>
 </tbody>
 </table></div>
 <p>The API, MCP server, and CPG lifecycle remain CodeGraph runtime responsibilities. Installing the npm
-package alone does not start them, authorize the client, or prove that the project graph is fresh.</p>
+package adds the client integration; the CodeGraph runtime starts the services, authorizes the client,
+and reports project-graph freshness.</p>
 <h2  id="opencode-hook-contract"><span id="opencode_hook_contract"></span>OpenCode hook contract<a class="heading-anchor" href="#opencode-hook-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The maintained source registers these OpenCode hooks:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="OpenCode hook contract"><table data-columns="2"><caption class="sr-only">OpenCode hook contract</caption>
@@ -244,28 +245,29 @@ package alone does not start them, authorize the client, or prove that the proje
 </tr>
 </tbody>
 </table></div>
-<p>The plugin also consumes OpenCode lifecycle events for child-session memory. Hook output is
-advisory context, not a Git, CI, review, security, or release approval.</p>
+<p>The plugin also consumes OpenCode lifecycle events for child-session memory. Hook output supplies
+context; Git, CI, review, security, and release owners record their decisions in the corresponding
+workflow.</p>
 <h2  id="guided-commands-and-tools"><span id="guided_commands_and_tools"></span>Guided commands and tools<a class="heading-anchor" href="#guided-commands-and-tools" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The supported command files are the current contents of <code>.opencode/commands</code>: <code>/audit</code>,
 <code>/continue</code>, <code>/explain</code>, <code>/next</code>, <code>/onboard</code>, <code>/review</code>, <code>/status</code>, and <code>/update</code>. A command absent
 from that directory is not supported merely because an old article mentioned it.</p>
 <p>The adapter exposes a small set of direct graph/review tools and explicit CodeGraph context-session
 tools. The full MCP catalog is discovered from the configured server and changes independently;
-this page intentionally does not freeze a tool count. Native MCP arrays and objects must remain
+this page describes the discovery mechanism rather than a fixed tool count. Native MCP arrays and objects must remain
 native values.</p>
 <h2  id="context-and-continuity"><span id="context_and_continuity"></span>Context and continuity<a class="heading-anchor" href="#context-and-continuity" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The plugin distinguishes full context, sync-pending, and graph-only fallback. Degraded mode is
 labelled and must not be reported as full semantic context. Explicit sessions may be reopened,
 shared read-only, or handed off only through the corresponding server contract.</p>
 <p>Lightweight resume state under <code>.opencode/state</code> links a local OpenCode session to CodeGraph. It
-does not reconstruct arbitrary chat history and does not replace the authoritative server session.
+stores the local binding; the authoritative server session stores the workflow history and mutation state.
 Closed or archived sessions cannot be used for further mutation.</p>
 <h2  id="post-commit-behavior"><span id="post_commit_behavior"></span>Post-commit behavior<a class="heading-anchor" href="#post-commit-behavior" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>After a recognized Git commit, <code>tool.execute.after</code> can request a local incremental update through
 the authenticated CodeGraph runtime route and then show pending or completed workflow guidance.
-Request acceptance is asynchronous: a plugin message or HTTP acceptance is not proof that CPG,
-context sync, or review evidence is complete.</p>
+Request acceptance is asynchronous: use the CPG, context-sync, and review evidence statuses to follow
+the request to completion.</p>
 <h2  id="verification-and-rollback"><span id="verification_and_rollback"></span>Verification and rollback<a class="heading-anchor" href="#verification-and-rollback" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For remote MCP, OpenCode uses its own configuration and OAuth adapter rather than loading the
 portable Agent Plugins package. Follow <a href="REMOTE_MCP_AUTH.html">Remote MCP authentication</a> for

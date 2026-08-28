@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Scenario 18 analyzes bounded files and returns optimization suggestions by category. The current public contract is analysis-only: no documented Scenario.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Scenario 18: Code-optimization analysis — Documentation">
@@ -233,15 +233,16 @@
 <span class="n">result</span> <span class="o">=</span> <span class="n">invoke_role_bound_scenario_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
 </code></pre></div>
 
-<p>The workflow returns <code>optimization_suggestions</code> in result state. It does not persist an approval session or call a source writer.</p>
+<p>The workflow returns <code>optimization_suggestions</code> in result state. Persist approval and call a source
+writer through a separate governed implementation task.</p>
 <h2  id="mcp-and-composite-analysis"><span id="mcp_and_composite_analysis"></span>MCP and composite analysis<a class="heading-anchor" href="#mcp-and-composite-analysis" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The registered <code>codegraph_runtime_composition_workflow_run</code> tool accepts <code>orchestrator="s18"</code>, plus governed <code>namespace</code> and <code>task_id</code>. The current MCP mapping invokes role-bound <code>scenario_18</code> analysis and returns answer, evidence, and metadata.</p>
-<p>The CLI <code>python -m src.cli composition run "&lt;query&gt;" -o s18</code> runs a broader composite analysis and stores its session only in the current process. Treat both routes as analysis evidence, not mutation evidence.</p>
+<p>The CLI <code>python -m src.cli composition run "&lt;query&gt;" -o s18</code> runs a broader composite analysis and stores its session only in the current process. Treat both routes as analysis evidence; source mutation uses a separate implementation workflow.</p>
 <h2  id="unsupported-stateful-loop"><span id="unsupported_stateful_loop"></span>Unsupported stateful loop<a class="heading-anchor" href="#unsupported-stateful-loop" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The <code>optimize</code> parser registers <code>list-suggestions</code>, <code>approve</code>, <code>reject</code>, <code>apply</code>, and <code>undo</code>, but their handlers print <strong>not yet implemented</strong> and return exit code 1. Do not use them in an automation or approval workflow.</p>
-<p><code>composition apply</code> is also not an implementation path: it depends on process-local state, prints <code>Edit application not implemented in CLI demo</code>, does not edit a file, and returns zero. The MCP composition tool likewise does not apply suggestions.</p>
+<p>The <code>optimize</code> parser registers <code>list-suggestions</code>, <code>approve</code>, <code>reject</code>, <code>apply</code>, and <code>undo</code>, but their handlers print <strong>not yet implemented</strong> and return exit code 1. Use the supported analysis workflow and a governed implementation task for automation or approval.</p>
+<p><code>composition apply</code> remains a demonstration path: it depends on process-local state, prints <code>Edit application not implemented in CLI demo</code>, leaves source files unchanged, and returns zero. The MCP composition tool returns suggestions for a separate implementation task.</p>
 <h2  id="read-and-verify-suggestions"><span id="read_and_verify_suggestions"></span>Read and verify suggestions<a class="heading-anchor" href="#read-and-verify-suggestions" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Confirm each suggestion against the bound revision, a measurable objective, compatibility constraints, and focused tests. Static pattern output or an LLM recommendation does not prove a performance improvement, security fix, or maintainability benefit.</p>
+<p>Confirm each suggestion against the bound revision, a measurable objective, compatibility constraints, and focused tests. Performance measurements, security checks, and maintainability review establish the resulting benefit.</p>
 <p>Create a separate governed implementation slice for an accepted suggestion, then use RED/GREEN tests, measurement, review, AppSec/QA evidence, and rollback as required.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>

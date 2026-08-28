@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="MCP operator guide — Documentation">
@@ -164,8 +164,8 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Use this guide to start and diagnose the MCP server. It deliberately does not duplicate the
-tool catalog: callable tools depend on the active profile and change with the runtime. Inspect
+        <p>Use this guide to start and diagnose the MCP server. The callable tool catalog depends on the active
+profile and changes with the runtime. Inspect
 the client-visible catalog after every profile change or server restart.</p>
 <section class="doc-summary" aria-labelledby="choose-a-transport"><h2  id="choose-a-transport"><span id="choose_a_transport"></span>Choose a transport<a class="heading-anchor" href="#choose-a-transport" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For a local client that starts CodeGraph as a subprocess, use stdio:</p>
@@ -184,19 +184,18 @@ are not available.</p>
 <code>Authorization: Bearer &lt;jwt&gt;</code> or <code>X-API-Key: &lt;api-key&gt;</code>. Send <code>X-Project-ID</code> when a network
 tool call needs project scope; the server resolves that value against the authenticated identity
 and rejects a mismatched <code>project_key</code> or <code>namespace</code>.</p>
-<p><code>--no-auth</code> is a local-development exception, not a production mode. The command is rejected
+<p><code>--no-auth</code> is a local-development mode. The command is rejected
 unless <code>security.mcp_allow_no_auth_network_transports</code> is enabled, and an unauthenticated server
 may bind only to a loopback host:</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w"> </span>--no-auth
 </code></pre></div>
 
-<p>Discoverability is not authorization. A full or owner-scoped profile can expose a tool while
-its handler still fails closed until the required role, exact carrier, or persisted approval is
-present.</p>
+<p>Tool calls require the handler to verify the required role, exact carrier, and persisted approval.
+A full or owner-scoped profile defines the catalog available to the operator.</p>
 <h2  id="select-and-verify-a-tool-profile"><span id="select_and_verify_a_tool_profile"></span>Select and verify a tool profile<a class="heading-anchor" href="#select-and-verify-a-tool-profile" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The command starts with the <code>codex</code> profile unless <code>CODEGRAPH_MCP_TOOL_PROFILE</code> is set. Owner
-profiles are the normal route to lane-specific tools; absence from the default profile does not
-mean that a role tool was removed.</p>
+profiles are the normal route to lane-specific tools. Derive the current tool catalog from the
+selected profile.</p>
 <p>For a source-checkout diagnostic, derive the current set instead of copying a count into docs:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">$env:CODEGRAPH_MCP_TOOL_PROFILE</span> <span class="p">=</span> <span class="s2">&quot;full&quot;</span>
 <span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;from src.mcp.surface_catalog import profile_family_tool_names; print(len(profile_family_tool_names(&#39;full&#39;)))&quot;</span>
@@ -212,9 +211,9 @@ connected MCP client is the runtime evidence that matters.</p>
 <li>Do not pass <code>db_path</code> or another storage path to agent-facing tools. Runtime storage is
   resolved from the authenticated project context.</li>
 <li>For PRD execution, pass traceability assertions and test executions as native typed arrays.
-  Command exit codes, paths, and historical status labels are not product acceptance evidence.</li>
-<li>Do not invent approval, finance, or authority payloads. Use only values issued or persisted by
-  the authoritative server workflow.</li>
+  Product acceptance evidence comes from revision-bound requirements, test executions, and lane decisions; command exit codes, paths, and historical status labels provide operational context.</li>
+<li>Approval, finance, and authority payloads come from values issued or persisted by the
+  authoritative server workflow.</li>
 </ul>
 <h2  id="use-supported-prd-status-views"><span id="use_supported_prd_status_views"></span>Use supported PRD status views<a class="heading-anchor" href="#use-supported-prd-status-views" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><code>codegraph_digital_employee_prd_delivery_status</code> accepts these exact <code>view</code> values:</p>
@@ -256,7 +255,7 @@ connected MCP client is the runtime evidence that matters.</p>
 <h2  id="diagnose-a-failed-call"><span id="diagnose_a_failed_call"></span>Diagnose a failed call<a class="heading-anchor" href="#diagnose-a-failed-call" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Run <code>python -m src.mcp --help</code> and confirm the transport and bind options.</li>
-<li>Reconnect the client after a server restart; cached discovery cannot prove current runtime
+<li>Reconnect the client after a server restart; refreshed discovery reports current runtime
    registration.</li>
 <li>Verify the active profile and check whether the error names a required owner profile.</li>
 <li>For HTTP, verify authentication and <code>X-Project-ID</code> before changing tool arguments.</li>

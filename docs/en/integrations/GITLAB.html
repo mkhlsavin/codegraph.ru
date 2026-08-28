@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Use this guide for GitLab.com or a self-managed GitLab instance. CodeGraph can resolve repository metadata, import a group, synchronize pushes, and create.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="GitLab integration — Documentation">
@@ -228,9 +228,9 @@ Keep TLS verification enabled; use <code>--ca-bundle-path</code> for a self-mana
 <p>Set the shared value as <code>GITLAB_WEBHOOK_SECRET</code> in CodeGraph. GitLab sends the event type in
 <code>X-Gitlab-Event</code> and the plain secret token in <code>X-Gitlab-Token</code>; CodeGraph compares that token in
 constant time.</p>
-<p>GitLab does not provide the timestamp header used by the other supported adapters for replay-age
-validation. Compensate with ingress restrictions, TLS, secret rotation, provider delivery IDs, and
-the durable queue&rsquo;s deduplication. A <code>202 Accepted</code> response confirms intake only, not completion.</p>
+<p>GitLab&rsquo;s adapter uses ingress restrictions, TLS, secret rotation, provider delivery IDs, and the
+durable queue&rsquo;s deduplication for replay control. A <code>202 Accepted</code> response confirms intake; use the
+job status and repository state to confirm completion.</p>
 <h2  id="observe-and-recover"><span id="observe_and_recover"></span>Observe and recover<a class="heading-anchor" href="#observe-and-recover" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Bindings, sync jobs, backlogs, review snapshots, and recovery actions are exposed below:</p>
 <div class="highlight"><pre><span></span><code>/api/v1/integrations/repositories
@@ -239,11 +239,10 @@ GET /api/v1/admin/runtime/webhooks/status/{project_id}
 </code></pre></div>
 
 <p>A rerun posts a GitLab note only when <code>publish_review</code> is requested and a provider token is
-available. Confirm the stored publication status; completed analysis alone is not evidence that a
-note reached the merge request.</p>
+available. Confirm the stored publication status and the note on the merge request.</p>
 <p>The equivalent operator commands are under <code>python -m src.cli repos</code>. Check <code>provider-health</code>
 first, then the exact binding and failed job. Replay only a failed job and verify repository HEAD
-against CPG HEAD; another webhook delivery or another <code>202</code> is not completion evidence.</p>
+against CPG HEAD; use the job and repository status to confirm completion.</p>
 <h2  id="security-boundary"><span id="security_boundary"></span>Security boundary<a class="heading-anchor" href="#security-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>Scope the access token to the repositories and API operations required by the pilot.</li>

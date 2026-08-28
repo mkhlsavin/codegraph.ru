@@ -102,7 +102,7 @@
       processing_time_ms: 17000
     },
     'default': {
-      answer: 'CodeGraph использует Code Property Graph как один из механизмов impact analysis. Результат анализа требует версии, области проверки и evidence; демонстрационный ответ не является подтверждением реализации требования.',
+      answer: 'CodeGraph использует Code Property Graph как один из механизмов impact analysis. Результат анализа требует версии, области проверки и evidence; реализация требования подтверждается привязанными результатами проверки.',
       processing_time_ms: 500
     }
   };

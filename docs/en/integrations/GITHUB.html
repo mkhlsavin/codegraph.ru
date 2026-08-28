@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Use this guide when CodeGraph must import GitHub repositories, keep their CPG state aligned with pushes, and create review snapshots for pull requests.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="GitHub integration — Documentation">
@@ -226,8 +226,8 @@ is enabled by default; use <code>--ca-bundle-path</code> for a private CA.</p>
 runtime as <code>GITHUB_WEBHOOK_SECRET</code>. GitHub sends the event name in <code>X-GitHub-Event</code> and the
 HMAC-SHA256 signature in <code>X-Hub-Signature-256</code>.</p>
 <p>The receiver returns <code>202 Accepted</code> after an event has been accepted, deduplicated, or skipped for
-background processing. That response is not proof of CPG-update or review completion. Correlate the
-returned job and inspect repository status instead.</p>
+background processing. Correlate the returned job and inspect repository status to confirm the CPG
+update and review completion.</p>
 <h2  id="observe-and-recover"><span id="observe_and_recover"></span>Observe and recover<a class="heading-anchor" href="#observe-and-recover" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The shared REST surface begins at:</p>
 <div class="highlight"><pre><span></span><code>/api/v1/integrations/repositories
@@ -241,17 +241,16 @@ operators can also inspect:</p>
 </code></pre></div>
 
 <p>A rerun publishes a GitHub comment only when <code>publish_review</code> is requested and a provider token is
-available. Confirm the stored publication status; completed analysis alone is not proof that a
-comment appeared on the pull request.</p>
+available. Confirm the stored publication status and the comment on the pull request.</p>
 <p>A safe recovery sequence is: check provider health, inspect the binding and job, replay only a
-failed job, then confirm that the repository HEAD and CPG HEAD converge. Re-sending an event or
-receiving another <code>202</code> is not completion evidence.</p>
+failed job, then confirm that the repository HEAD and CPG HEAD converge. Use the job status and
+repository state to confirm completion after a new event.</p>
 <h2  id="security-boundary"><span id="security_boundary"></span>Security boundary<a class="heading-anchor" href="#security-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>Keep provider tokens and webhook secrets outside repository files and logs.</li>
 <li>Keep TLS verification enabled; use a custom CA bundle for an enterprise proxy.</li>
-<li>Restrict the admin runtime route to operators. The webhook signature authenticates the event;
-  it does not authorize unrelated API calls.</li>
+<li>Restrict the admin runtime route to operators. The webhook signature authenticates the event and
+  the operator session authorizes separate API calls.</li>
 <li>Treat pull-request content as untrusted input before it reaches an LLM-backed workflow.</li>
 </ul>
 <h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>

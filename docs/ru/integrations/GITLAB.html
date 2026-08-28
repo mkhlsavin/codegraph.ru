@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Руководство подходит для GitLab.com и собственного экземпляра GitLab. CodeGraph получает метаданные репозитория, импортирует проекты группы.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Интеграция с GitLab — Документация CodeGraph">
@@ -228,9 +228,9 @@ shell. Проверку TLS не отключайте; для собственн
 <p>Общее значение задайте в CodeGraph как <code>GITLAB_WEBHOOK_SECRET</code>. GitLab передаёт тип события в
 <code>X-Gitlab-Event</code>, а секрет — открытым токеном в <code>X-Gitlab-Token</code>; CodeGraph сравнивает его за
 постоянное время.</p>
-<p>У GitLab нет timestamp-заголовка, по которому остальные адаптеры ограничивают возраст события.
-Компенсируйте это сетевыми ограничениями, TLS, ротацией секрета, идентификаторами доставок и
-дедупликацией устойчивой очереди. Ответ <code>202 Accepted</code> подтверждает приём, а не завершение.</p>
+<p>Адаптер GitLab использует сетевые ограничения, TLS, ротацию секрета, идентификаторы доставок и
+дедупликацию устойчивой очереди для контроля повторов. Ответ <code>202 Accepted</code> подтверждает приём;
+завершение проверяйте по заданию и состоянию репозитория.</p>
 <h2  id="nablyudenie-i-vosstanovlenie"><span id="nablyudenie_i_vosstanovlenie"></span>Наблюдение и восстановление<a class="heading-anchor" href="#nablyudenie-i-vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Привязки, задания синхронизации, очередь, снимки ревью и восстановление доступны по путям:</p>
 <div class="highlight"><pre><span></span><code>/api/v1/integrations/repositories
@@ -238,12 +238,11 @@ POST /api/v1/integrations/repositories/review-snapshots/{snapshot_id}/rerun
 GET /api/v1/admin/runtime/webhooks/status/{project_id}
 </code></pre></div>
 
-<p>Повторное задание публикует заметку GitLab, только если запрошен <code>publish_review</code> и доступен токен
-провайдера. Проверяйте записанный статус: завершённый анализ не подтверждает доставку заметки в
-merge request.</p>
+<p>Повторное задание публикует заметку GitLab, если запрошен <code>publish_review</code> и доступен токен
+провайдера. Доставку заметки в merge request подтверждает записанный статус.</p>
 <p>Аналогичные команды находятся под <code>python -m src.cli repos</code>. Сначала проверьте
 <code>provider-health</code>, затем конкретную привязку и неуспешное задание. Повторяйте только это задание и
-сверяйте HEAD репозитория с HEAD CPG: новая доставка или новый <code>202</code> не доказывают завершение.</p>
+сверяйте HEAD репозитория с HEAD CPG: завершение подтверждается статусом задания и репозитория.</p>
 <h2  id="granitsa-bezopasnosti"><span id="granitsa_bezopasnosti"></span>Граница безопасности<a class="heading-anchor" href="#granitsa-bezopasnosti" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
 <li>Ограничьте токен репозиториями и API-операциями пилота.</li>

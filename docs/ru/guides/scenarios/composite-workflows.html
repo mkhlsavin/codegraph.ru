@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Объединяйте находки сценария 18 или 19 через поддерживаемый CLI либо управляемый MCP-маршрут, не выдавая предложения за применённые изменения.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Составные аналитические workflow — Документация CodeGraph">
@@ -203,7 +203,7 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Композиция объединяет находки нескольких аналитических сценариев, удаляет дубликаты, разрешает конфликты и ранжирует результат. Поддерживаются составной анализ оптимизации Scenario 18 и анализ стандартов Scenario 19. Оба workflow имеют границу analysis-only: предложение или pending edit не доказывают изменение исходников.</p>
+        <p>Композиция объединяет находки нескольких аналитических сценариев, удаляет дубликаты, разрешает конфликты и ранжирует результат. Поддерживаются составной анализ оптимизации Scenario 18 и анализ стандартов Scenario 19. Оба workflow работают в режиме <code>analysis-only</code> и возвращают аналитический результат; изменение исходников подтверждается diff и проверками репозитория.</p>
 <h2  id="vyberite-orkestrator"><span id="vyberite_orkestrator"></span>Выберите оркестратор<a class="heading-anchor" href="#vyberite-orkestrator" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Выберите оркестратор"><table data-columns="3"><caption class="sr-only">Выберите оркестратор</caption>
 <thead>
@@ -234,7 +234,9 @@
 </code></pre></div>
 
 <p>Зафиксируйте ревизии исходников и CPG, запрос, оркестратор, конфигурацию, список вызванных подсценариев, метаданные объединения, конфликты, находки и хеш результата. CLI хранит сессии в process-local словаре; идентификатор не сохраняется между процессами и перезапусками.</p>
-<p>Зарегистрированные параметры <code>--sub-scenario</code>, parallel и merge-strategy не полностью проецируются в текущий прямой путь выполнения CLI. Не утверждайте, что напечатанный параметр изменил выполнение, если это не подтверждают метаданные результата.</p>
+<p>Зарегистрированные параметры <code>--sub-scenario</code>, parallel и merge-strategy частично проецируются в
+текущий прямой путь выполнения CLI. Фактически применённые параметры указаны в метаданных
+результата.</p>
 <h2  id="zapustite-upravlyaemyy-mcp-marshrut"><span id="zapustite_upravlyaemyy_mcp_marshrut"></span>Запустите управляемый MCP-маршрут<a class="heading-anchor" href="#zapustite-upravlyaemyy-mcp-marshrut" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Вызывайте <code>codegraph_runtime_composition_workflow_run</code> с нативными значениями и точной областью task capsule. Пример эффективного запроса:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -246,14 +248,14 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Для <code>s18</code> и <code>s19</code> реализация MCP определяет ответственного сотрудника и вызывает <code>RoleBoundScenarioInvocationRequest</code>. Отсутствие управляемой области закрывается ошибкой role-bound контракта. Инструмент возвращает answer, evidence и metadata; он не применяет pending edit и не разрешает выпуск.</p>
-<h2  id="ne-schitayte-cli-apply-svidetelstvom-izmeneniya"><span id="ne_schitayte_cli_apply_svidetelstvom_izmeneniya"></span>Не считайте CLI apply свидетельством изменения<a class="heading-anchor" href="#ne-schitayte-cli-apply-svidetelstvom-izmeneniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p><code>python -m src.cli composition apply &lt;finding-id&gt; --session &lt;session-id&gt;</code> сначала ищет данные только в process-local словаре сессий. Без подходящей сессии или pending edit команда завершается ошибкой. При наличии записи и без <code>--preview</code> текущая команда печатает <code>Edit application not implemented in CLI demo</code>, returns exit code 0 и does not apply изменения исходников.</p>
-<p>Следующая строка с рекомендацией MCP не превращает его в поверхность применения: текущий <code>codegraph_runtime_composition_workflow_run</code> выполняет только role-bound анализ. Реальное изменение требует отдельной управляемой implementation-задачи с точными файлами, принятым предпросмотром, тестами, ревью, rollback и привязанными к ревизии свидетельствами.</p>
+<p>Для <code>s18</code> и <code>s19</code> реализация MCP определяет ответственного сотрудника и вызывает <code>RoleBoundScenarioInvocationRequest</code>. Управляемая область обязательна по role-bound контракту. Инструмент возвращает answer, evidence и metadata; изменение исходников и разрешение выпуска выполняются отдельными управляемыми процессами.</p>
+<h2  id="povedenie-cli-apply-i-izmenenie-ishodnikov"><span id="povedenie_cli_apply_i_izmenenie_ishodnikov"></span>Поведение CLI apply и изменение исходников<a class="heading-anchor" href="#povedenie-cli-apply-i-izmenenie-ishodnikov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p><code>python -m src.cli composition apply &lt;finding-id&gt; --session &lt;session-id&gt;</code> сначала ищет данные только в process-local словаре сессий. Без подходящей сессии или pending edit команда завершается ошибкой. При наличии записи и без <code>--preview</code> текущая команда печатает <code>Edit application not implemented in CLI demo</code>, returns exit code 0 и оставляет исходники без изменений.</p>
+<p>Рекомендация MCP запускает role-bound анализ через <code>codegraph_runtime_composition_workflow_run</code>. Изменение выполняется отдельной управляемой implementation-задачей с точными файлами, принятым предпросмотром, тестами, ревью, rollback и привязанными к ревизии свидетельствами.</p>
 <h2  id="interpretiruyte-rezultat-korrektno"><span id="interpretiruyte_rezultat_korrektno"></span>Интерпретируйте результат корректно<a class="heading-anchor" href="#interpretiruyte-rezultat-korrektno" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
-<li>Дедупликация и ранжирование помогают выбрать порядок расследования, но не подтверждают каждую исходную находку.</li>
-<li>Метаданные разрешения конфликтов описывают объединение, а не решение ответственного reviewer.</li>
+<li>Дедупликация и ранжирование помогают выбрать порядок расследования; каждую исходную находку проверяйте по привязанной ревизии.</li>
+<li>Метаданные разрешения конфликтов описывают объединение. Решение ответственного reviewer фиксируется отдельно.</li>
 <li>Pending edit остаётся предложением. Перед отдельным изменением проверьте контекст и текущую ревизию.</li>
 <li>Пустой или деградировавший результат подсценария должен оставаться видимым; его нельзя превращать в заключение об отсутствии проблем.</li>
 </ul>
@@ -296,7 +298,7 @@
         <li><a href="#vyberite-orkestrator" class="level-2" aria-current="location">Выберите оркестратор</a></li>
 <li><a href="#zapustite-sostavnoy-analiz-iz-cli" class="level-2">Запустите составной анализ из CLI</a></li>
 <li><a href="#zapustite-upravlyaemyy-mcp-marshrut" class="level-2">Запустите управляемый MCP-маршрут</a></li>
-<li><a href="#ne-schitayte-cli-apply-svidetelstvom-izmeneniya" class="level-2">Не считайте CLI apply свидетельством изменения</a></li>
+<li><a href="#povedenie-cli-apply-i-izmenenie-ishodnikov" class="level-2">Поведение CLI apply и изменение исходников</a></li>
 <li><a href="#interpretiruyte-rezultat-korrektno" class="level-2">Интерпретируйте результат корректно</a></li>
 <li><a href="#kontrakt-istochnikov" class="level-2">Контракт источников</a></li>
 <li><a href="#svyazannye-rukovodstva" class="level-2">Связанные руководства</a></li>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Review dependencies, duplication, and consolidation risks across repositories without confusing analysis with approval.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Scenario 10: Cross-repository impact — Documentation">
@@ -203,7 +203,7 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Use this scenario when a proposed change in one repository may affect code, dependencies, or duplicated implementations in other repositories. Its value is a shared evidence set for review; it is not a deployment or architecture decision.</p>
+        <p>Use this scenario when a proposed change in one repository may affect code, dependencies, or duplicated implementations in other repositories. It produces a shared evidence set for review; deployment and architecture owners record their decisions separately.</p>
 <h2  id="when-to-use-it"><span id="when_to_use_it"></span>When to use it<a class="heading-anchor" href="#when-to-use-it" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use Scenario 10 for a bounded workspace that contains several repositories and one explicit question, such as:</p>
 <ul>
@@ -214,7 +214,9 @@
 <p>For structure inside one repository, use <a href="11-architecture.html">Scenario 11</a>. For a broad source migration, use <a href="13-mass-refactoring.html">Scenario 13</a>.</p>
 <h2  id="prerequisites-and-scope"><span id="prerequisites_and_scope"></span>Prerequisites and scope<a class="heading-anchor" href="#prerequisites-and-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>You need an accepted review task, a current project CPG, and a trusted CodeGraph runtime whose working directory is the intended workspace. Record the repositories and revision of each repository in the task evidence before comparing results.</p>
-<p>The underlying workflow reads <code>user_context.workspace_path</code> and otherwise falls back to <code>.</code>. The current role-bound adapter does not expose that internal state field as a public path selector. Set the server working directory to a bounded workspace; do not run the scenario from a parent directory that contains unrelated repositories.</p>
+<p>The underlying workflow reads <code>user_context.workspace_path</code> and otherwise falls back to <code>.</code>. The
+current role-bound adapter keeps that internal state field inside the workflow. Set the server
+working directory to a bounded workspace containing the intended repositories.</p>
 <blockquote class="callout">
 <p><strong>Indexing side effect:</strong> the workflow discovers repositories and calls <code>index_repository_cpg</code> for every result. It can refresh the active project CPG. Treat the run as a controlled indexing operation, not as a read-only query.</p>
 </blockquote>
@@ -241,7 +243,8 @@
 <span class="n">result</span> <span class="o">=</span> <span class="n">invoke_role_bound_scenario_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
 </code></pre></div>
 
-<p>There is no separate supported public CLI command for Scenario 10. Do not substitute a generic query alias: it loses the role, event, and task evidence carried by the typed request.</p>
+<p>Scenario 10 uses the typed role-bound request as its public entry point. The request carries the
+role, event, and task evidence for the cross-repository analysis.</p>
 <h2  id="read-the-result"><span id="read_the_result"></span>Read the result<a class="heading-anchor" href="#read-the-result" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Keep these fields with the review evidence:</p>
 <ul>
@@ -250,14 +253,19 @@
 <li><code>metadata.role_bound_scenario_invocation</code>: employee, event, workflow, and preflight evidence;</li>
 <li>the workspace and repository revision manifest captured before the run.</li>
 </ul>
-<p>Verify important claims in the named repository and revision. A similarity or dependency observation is a review lead, not proof that two implementations are interchangeable.</p>
+<p>Verify important claims in the named repository and revision. A similarity or dependency observation
+creates a review lead; compatibility follows from the comparison and the accountable decision.</p>
 <h2  id="safety-and-authority-boundaries"><span id="safety_and_authority_boundaries"></span>Safety and authority boundaries<a class="heading-anchor" href="#safety-and-authority-boundaries" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The run may update CPG data, but it does not edit source repositories, approve consolidation, merge changes, or authorize a release. An accountable reviewer must validate ownership, compatibility, licensing, security, tests, and rollback before any cross-repository change.</p>
-<p>Do not point the runtime at an untrusted directory. Repository discovery follows the workspace boundary, so an overly broad working directory can index projects that were not part of the task.</p>
+<p>The run may update CPG data. Source-repository edits, consolidation, merges, and release
+authorization run through the accountable reviewer, who validates ownership, compatibility,
+licensing, security, tests, and rollback.</p>
+<p>Point the runtime at the approved workspace directory. Repository discovery follows that boundary,
+so the indexed projects match the task scope.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>No repositories found: verify the server working directory and repository revision manifest.</li>
-<li>Stale or mixed results: refresh the intended repositories, rerun against the same revisions, and replace—not combine—the old evidence.</li>
+<li>Stale or mixed results: refresh the intended repositories, rerun against the same revisions, and
+  replace the old evidence with the new revision-bound package.</li>
 <li>Handler or CPG failure: treat fallback or partial output as a hypothesis and record the unavailable evidence source.</li>
 <li>Unexpected repositories indexed: stop, preserve the log, correct the workspace boundary, and assess whether unrelated code entered the active CPG.</li>
 </ul>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Combine Scenario 18 or 19 findings through the supported CLI or governed MCP route without treating suggestions as applied edits.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Composite analysis workflows — Documentation">
@@ -203,7 +203,7 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Composition combines findings from several analysis scenarios, removes duplicates, resolves conflicts and ranks the result. The supported composite jobs are Scenario 18 optimization analysis and Scenario 19 standards analysis. Both are analysis-only: a suggestion or pending edit is not evidence that source changed.</p>
+        <p>Composition combines findings from several analysis scenarios, removes duplicates, resolves conflicts and ranks the result. The supported composite jobs are Scenario 18 optimization analysis and Scenario 19 standards analysis. Both workflows run in <code>analysis-only</code> mode and produce analysis output; confirm source changes with the recorded diff and repository checks.</p>
 <h2  id="choose-the-orchestrator"><span id="choose_the_orchestrator"></span>Choose the orchestrator<a class="heading-anchor" href="#choose-the-orchestrator" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Choose the orchestrator"><table data-columns="3"><caption class="sr-only">Choose the orchestrator</caption>
 <thead>
@@ -246,14 +246,15 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>For <code>s18</code> and <code>s19</code>, the MCP implementation resolves the owning employee and invokes <code>RoleBoundScenarioInvocationRequest</code>. Missing governed scope fails through the role-bound contract. The tool returns answer, evidence and metadata; it does not apply a pending edit or authorize release.</p>
-<h2  id="do-not-use-the-cli-apply-command-as-mutation-evidence"><span id="do_not_use_the_cli_apply_command_as_mutation_evidence"></span>Do not use the CLI apply command as mutation evidence<a class="heading-anchor" href="#do-not-use-the-cli-apply-command-as-mutation-evidence" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p><code>python -m src.cli composition apply &lt;finding-id&gt; --session &lt;session-id&gt;</code> first looks only in the process-local session dictionary. Without a matching session or pending edit it fails. With a matching edit and no <code>--preview</code>, the current command prints <code>Edit application not implemented in CLI demo</code>, returns exit code 0, and does not apply source changes.</p>
-<p>The follow-up line that refers users to the MCP tool does not make MCP an application surface: current <code>codegraph_runtime_composition_workflow_run</code> runs role-bound analysis only. A real change requires a separate governed implementation task with exact files, accepted preview, tests, review, rollback and revision-bound evidence.</p>
+<p>For <code>s18</code> and <code>s19</code>, the MCP implementation resolves the owning employee and invokes <code>RoleBoundScenarioInvocationRequest</code>. Governed scope is required by the role-bound contract. The tool returns answer, evidence and metadata; source mutation and release authorization use separate governed workflows.</p>
+<h2  id="cli-apply-behavior-and-mutation"><span id="cli_apply_behavior_and_mutation"></span>CLI apply behavior and mutation<a class="heading-anchor" href="#cli-apply-behavior-and-mutation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p><code>python -m src.cli composition apply &lt;finding-id&gt; --session &lt;session-id&gt;</code> first looks only in the process-local session dictionary. Without a matching session or pending edit it fails. With a matching edit and no <code>--preview</code>, the current command prints <code>Edit application not implemented in CLI demo</code>, returns exit code 0, and leaves source files unchanged.</p>
+<p>The follow-up line that refers users to the MCP tool points to the current role-bound analysis surface: <code>codegraph_runtime_composition_workflow_run</code> returns analysis only. A source change requires a separate governed implementation task with exact files, accepted preview, tests, review, rollback and revision-bound evidence.</p>
 <h2  id="interpret-the-result"><span id="interpret_the_result"></span>Interpret the result<a class="heading-anchor" href="#interpret-the-result" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li>Deduplication and ranking help prioritize investigation; they do not validate every source finding.</li>
-<li>Conflict resolution metadata records how findings were merged; it is not an accountable reviewer decision.</li>
+<li>Deduplication and ranking help prioritize investigation; review each source finding in its bound revision.</li>
+<li>Conflict resolution metadata records how findings were merged. The accountable reviewer records the
+  resulting decision separately.</li>
 <li>A pending edit is a proposal. Verify source context and current revision before any separate mutation.</li>
 <li>Empty or degraded sub-scenario output must remain visible; do not convert it into a clean bill of health.</li>
 </ul>
@@ -296,7 +297,7 @@
         <li><a href="#choose-the-orchestrator" class="level-2" aria-current="location">Choose the orchestrator</a></li>
 <li><a href="#run-composite-analysis-from-the-cli" class="level-2">Run composite analysis from the CLI</a></li>
 <li><a href="#run-the-governed-mcp-route" class="level-2">Run the governed MCP route</a></li>
-<li><a href="#do-not-use-the-cli-apply-command-as-mutation-evidence" class="level-2">Do not use the CLI apply command as mutation evidence</a></li>
+<li><a href="#cli-apply-behavior-and-mutation" class="level-2">CLI apply behavior and mutation</a></li>
 <li><a href="#interpret-the-result" class="level-2">Interpret the result</a></li>
 <li><a href="#source-contract" class="level-2">Source contract</a></li>
 <li><a href="#related-guides" class="level-2">Related guides</a></li>

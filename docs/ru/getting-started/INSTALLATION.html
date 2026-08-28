@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Поддерживаемый customer-профиль разворачивает основной Compose-стек на VM заказчика с Ubuntu 22.04/24.04. Установку должен выполнять профессиональный.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Установка CodeGraph на Ubuntu-сервер заказчика — Документация CodeGraph">
@@ -236,15 +236,15 @@ VRAM, RAM и диском под выбранную модель.</p>
 <ul>
 <li>Для панели нужен поддерживаемый производителем актуальный браузер с JavaScript, HTTPS и WSS.
   Пользователю заранее выдают URL, учётную запись, tenant/project scope и требуемую роль.</li>
-<li>MCP-клиент должен поддерживать только <code>MCP 2026-07-28</code>, native JSON arrays/objects, авторизацию
-  и один из транспортов: <code>stdio</code> или Streamable HTTP <code>POST /mcp</code>. Legacy HTTP+SSE, protocol
-  fallback и JSON-строки вместо контейнеров не поддерживаются. Настройка и проверка вызова
+<li>MCP-клиент работает с <code>MCP 2026-07-28</code>, native JSON arrays/objects, авторизацией и одним из
+  транспортов: <code>stdio</code> или Streamable HTTP <code>POST /mcp</code>. Настройка и проверка вызова
   инструмента описаны в <a href="../api/MCP_OPERATOR_GUIDE.html">руководстве оператора MCP</a>.</li>
 <li>Для Codex нужны Windows 10/11 с PowerShell 5+ либо Linux/macOS с Bash 4+, Git, рекомендуемый
   Python 3.11+, не менее 1 GB свободного места для client home/cache/logs, <code>Codex 0.149.1+</code> и
   нативный пакет плагина Codex. Клиенту требуется доступ к CodeGraph API/MCP; OpenViking нужен,
   если используется долговременная память. Устаревший workaround Codex 0.147 с корневым
-  manifest не поддерживается как вариант установки.</li>
+  используйте актуальный поток установки Codex и пакет плагина; прежний root-manifest для Codex
+  0.147 архивирован.</li>
 <li>Для OpenCode нужны runtime с <code>@opencode-ai/plugin &gt;=1.2.0</code>, npm-пакет
   <code>opencode-codegraph 0.1.38</code> и доступ к CodeGraph API. Текущий launcher по умолчанию использует
   <code>openai/gpt-5.4</code>, но модель заменяют на утверждённую через поддерживаемую конфигурацию.
@@ -279,7 +279,7 @@ project identifiers и source refs, выполнять многошаговый 
 <li>install receipt указывает утверждённый commit, обязательные контейнеры healthy, общая readiness
    успешна;</li>
 <li>пользователь входит через браузер по HTTPS, открывает проект, а browser WebSocket работает;</li>
-<li>Codex или OpenCode выполняет реальный авторизованный MCP tool call, а не только discovery;</li>
+<li>Codex или OpenCode выполняет реальный авторизованный MCP tool call после discovery;</li>
 <li>серверная модель выполняет тестовую генерацию и embedding на синтетических данных;</li>
 <li>DLP блокирует или маскирует синтетический canary без использования настоящего секрета;</li>
 <li>резервная копия восстанавливается в проверочном окружении с сохранением project scope.</li>
@@ -308,8 +308,8 @@ CodeGraph, self-hosted Sentry и autodeploy должны оставаться в
 </code></pre></div>
 
 <p>Установщик разрешает ref до коммита и записывает квитанцию
-<code>/opt/codegraph/data/deployment-evidence/install-source.json</code>. Остановитесь, если checkout
-содержит локальные изменения, ref не подтверждён или resolved commit отличается от одобренного.</p>
+<code>/opt/codegraph/data/deployment-evidence/install-source.json</code>. Для продолжения checkout должен быть
+чистым, ref — одобренным, а resolved commit — совпадать с ним.</p>
 <h2  id="3-nastroyte-sekrety"><span id="3_nastroyte_sekrety"></span>3. Настройте секреты<a class="heading-anchor" href="#3-nastroyte-sekrety" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>До запуска сервиса заполните <code>/opt/codegraph/.env</code> по защищённой процедуре заказчика. Как
 минимум замените пустые значения:</p>
@@ -334,14 +334,14 @@ sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"
 
 <p>К пользовательскому onboarding можно переходить, когда сервис активен, обязательные контейнеры
 здоровы, readiness-команда успешна, квитанция указывает одобренный коммит, а доступы заказчика
-проверены. Один успешный ответ <code>/health</code> не является вердиктом о релизной готовности.</p>
+проверены. Релизную готовность подтверждает полный набор этих проверок.</p>
 <h2  id="obnovlenie-i-otkat"><span id="obnovlenie_i_otkat"></span>Обновление и откат<a class="heading-anchor" href="#obnovlenie-i-otkat" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Перед обновлением сохраните <code>/opt/codegraph/.env</code>, <code>config.yaml</code>, <code>projects.yaml</code>, данные
 приложения, workspace, OpenViking и постоянные Docker volumes. Сохраните квитанцию текущей
 ревизии.</p>
 <p>Для обновления используйте тот же установщик с новым неизменяемым ref. Для отката восстановите
 соответствующую резервную копию и запустите установщик с previous-known-good неизменяемым ref.
-Не очищайте volumes при откате, если процедура восстановления явно их не заменяет.</p>
+Volumes очищайте при откате только по процедуре, которая явно заменяет их восстановлением.</p>
 <h2  id="svyazannaya-vneshnyaya-dokumentatsiya"><span id="svyazannaya_vneshnyaya_dokumentatsiya"></span>Связанная внешняя документация<a class="heading-anchor" href="#svyazannaya-vneshnyaya-dokumentatsiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p><a href="CONFIGURATION.html">Конфигурация</a> · <a href="QUICK_START.html">Быстрый старт</a> ·
 <a href="../api/MCP_OPERATOR_GUIDE.html">MCP</a> ·

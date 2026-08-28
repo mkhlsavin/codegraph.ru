@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Руководство по интеграции ACP: транспорты, JSON-RPC-методы, авторизация, границы workspace и ограничения approval в CodeGraph.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Интеграция ACP — Документация CodeGraph">
@@ -204,8 +204,8 @@ service account со scope <code>scenarios:execute</code>. Обход аутен
 только при явно включённом параметре <code>local_dev_unauthenticated_surfaces_enabled</code>.</p>
 <p>WebSocket принимает bearer access token или API key. Для машинной учётной записи сервер
 дополнительно проверяет область проекта, версию <code>X-CodeGraph-Machine-Contract</code>, политику
-интерфейса и настроенные требования mTLS. JSON-RPC-метод <code>authenticate</code> не заменяет
-аутентификацию транспорта.</p>
+интерфейса и настроенные требования mTLS. Аутентификация транспорта завершается до разбора
+JSON-RPC-параметров; метод <code>authenticate</code> работает внутри уже проверенного соединения.</p>
 <h2  id="initsializatsiya-i-gruppy-metodov"><span id="initsializatsiya_i_gruppy_metodov"></span>Инициализация и группы методов<a class="heading-anchor" href="#initsializatsiya-i-gruppy-metodov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>На каждом соединении сначала вызывайте <code>initialize</code>. До инициализации сервер отклоняет другие
 методы с кодом <code>-32002</code>.</p>
@@ -259,8 +259,8 @@ service account со scope <code>scenarios:execute</code>. Обход аутен
 allowlist команд сборки и чтения; интерпретаторы и оболочки <code>python</code>, <code>powershell</code>, <code>pwsh</code>,
 <code>cmd</code>, <code>bash</code>, <code>sh</code> и <code>node</code> явно запрещены. Аргументы передаются нативным списком строк без
 NUL, перевода строки и возврата каретки.</p>
-<p>Эти проверки снижают риск path traversal и shell injection, но не превращают ACP в универсальный
-удалённый shell. Сетевые маршруты должны оставаться за штатной аутентификацией и областью проекта.</p>
+<p>Эти проверки задают границу ACP для path traversal и shell injection. Сетевые маршруты обслуживаются
+штатной аутентификацией и областью проекта.</p>
 <h2  id="ogranichenie-approval-dlya-faylovyh-izmeneniy"><span id="ogranichenie_approval_dlya_faylovyh_izmeneniy"></span>Ограничение approval для файловых изменений<a class="heading-anchor" href="#ogranichenie-approval-dlya-faylovyh-izmeneniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Сервер объявляет approval flow и умеет отправлять <code>item/fileChange/requestApproval</code>; клиент
 отвечает через <code>item/fileChange/respondApproval</code>. Если ответ не поступил до тайм-аута, решение
@@ -268,7 +268,7 @@ NUL, перевода строки и возврата каретки.</p>
 <p>Текущий обработчик <code>fs/write_text_file</code> не вызывает автоматически этот approval bridge. После
 проверки пути он сразу выполняет запись внутри workspace. Если процесс требует человеческого
 approval, клиент или внешний workflow должен получить его до открытия write-метода. Само наличие
-capability <code>approvalFlow</code> не доказывает, что конкретная запись была одобрена.</p>
+Одобрение конкретной записи подтверждается сохранённым approval перед открытием write-метода.</p>
 <h2 id="vosstanovlenie">Восстановление<a class="heading-anchor" href="#vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ol>
 <li>Проверьте префикс <code>/api/v1/admin/runtime/acp</code>: исторический <code>/acp</code> неактуален.</li>

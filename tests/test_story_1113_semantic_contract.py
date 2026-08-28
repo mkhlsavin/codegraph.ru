@@ -591,7 +591,7 @@ def test_commercial_pages_own_questions_while_docs_do_not() -> None:
 
 
 def test_cpg_page_explains_the_story_1239_architecture_projection() -> None:
-    """Keep the public CPG model aligned with Story 1239 without claiming enforcement."""
+    """Keep the public CPG model aligned with Story 1239 and its review workflow."""
     text = _normalized_text(_soup("cpg.html").get_text(" ", strip=True)).casefold()
     for marker in (
         "стабильный uid",
@@ -599,7 +599,7 @@ def test_cpg_page_explains_the_story_1239_architecture_projection() -> None:
         "прямые и транзитивные связи",
         "язык источника и назначения",
         "c, c++, javascript и typescript",
-        "не является архитектурным одобрением",
+        "архитектурное одобрение, правила",
     ):
         assert marker in text
 

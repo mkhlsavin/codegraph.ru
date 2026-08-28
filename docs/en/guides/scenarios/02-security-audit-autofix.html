@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Use autofix after a security finding has been scoped to a method and, optionally, a CWE. CodeGraph generates a proposed unified diff plus validation.">
-  <meta name="cg:build-commit" content="22057d13e84515e7e9c8574e5ae288e053958053">
+  <meta name="cg:build-commit" content="fef1058877fb0b6ab0f4d035bbf9092660cf4a87">
   <meta name="cg:css-build" content="b09b616248bf">
 
   <meta property="og:title" content="Security audit autofix previews — Documentation">
@@ -210,7 +210,7 @@
 </code></pre></div>
 
 <p>The audit collects security findings and passes available taint-path evidence to the dry-run autofix engine. If the report contains no usable taint paths, the command reports that no suggestions can be generated. <code>--skip-persistence</code> prevents audit result and snapshot persistence, but the audit freshness preflight may still update a stale CPG database.</p>
-<p>The command prints suggestions; it does not edit files. Capture the output in a caller-owned location if it must become review evidence.</p>
+<p>The command prints suggestions and leaves files unchanged. Capture the output in a caller-owned location when it becomes review evidence.</p>
 <h2  id="rest-preview-one-method"><span id="rest_preview_one_method"></span>REST: preview one method<a class="heading-anchor" href="#rest-preview-one-method" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The current route is <code>POST /api/v1/security/autofix</code>. It uses the project context selected by the API runtime.</p>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/security/autofix<span class="w"> </span><span class="se">\</span>
@@ -239,7 +239,8 @@
 <li><code>explanation</code> — why the change is proposed;</li>
 <li><code>diff_patch</code> — the unified diff to review.</li>
 </ul>
-<p><code>validated: true</code> is not proof that the patch is correct for the product. It does not replace compilation, focused tests, regression tests, architecture review, or AppSec approval.</p>
+<p><code>validated: true</code> records the preliminary validation result for the patch. Product correctness
+requires compilation, focused tests, regression tests, architecture review, and AppSec approval.</p>
 <h2  id="safe-application-workflow"><span id="safe_application_workflow"></span>Safe application workflow<a class="heading-anchor" href="#safe-application-workflow" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Preserve the original finding, revision, and source evidence.</li>
@@ -252,9 +253,10 @@
 <p>Reject a suggestion if it changes behavior outside the accepted scope, relies on a missing dependency, weakens validation, hides the symptom without removing the flow, or cannot be tested.</p>
 <h2  id="failure-and-permission-boundaries"><span id="failure_and_permission_boundaries"></span>Failure and permission boundaries<a class="heading-anchor" href="#failure-and-permission-boundaries" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li>Empty results mean no preview was generated for the selected method/filter; they do not prove absence of a vulnerability.</li>
+<li>Empty results mean no preview was generated for the selected method/filter; continue the
+  vulnerability review with the configured scope and runtime evidence.</li>
 <li>A path-boundary error means the requested source root is outside the registered project.</li>
-<li>Tool absence can be a profile or role-policy restriction. Do not retry through a retired alias.</li>
+<li>Tool absence can be a profile or role-policy restriction. Use the active catalog and policy.</li>
 <li>Autofix never commits, pushes, approves, or releases a change.</li>
 </ul>
 <h2  id="maintained-source-contracts"><span id="maintained_source_contracts"></span>Maintained source contracts<a class="heading-anchor" href="#maintained-source-contracts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
