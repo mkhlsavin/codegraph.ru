@@ -68,6 +68,41 @@ def test_playbook_page_is_form_first_and_initially_hides_pdf() -> None:
     )
 
 
+def test_playbook_form_and_public_freshness_use_readable_layout_contract() -> None:
+    """FR-P1237-LEAD-PAGE-01/AC-1237-13: keep controls and freshness aligned."""
+    page = RESOURCE_ROOT / "index.html"
+    soup = BeautifulSoup(page.read_text(encoding="utf-8"), "html.parser")
+    form = soup.find("form", attrs={"id": "playbook-lead-form"})
+    assert form is not None
+    layout = soup.find(class_="cg-playbook-lead-layout")
+    assert layout is not None
+    assert "cg-content-shell" in layout.get("class", [])
+
+    controls = form.select("input:not([type=checkbox]), select")
+    assert len(controls) == 5
+    assert all("cg-form-control-lg" in control.get("class", []) for control in controls)
+
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+    assert ".cg-form-control-lg" in css
+    assert "min-height: 64px" in css
+    assert ".page-freshness-container" in css
+
+    for relative_path in (
+        "index.html",
+        "privacy.html",
+        "blog/index.html",
+        "downloads/ai-native-pdlc-sdlc-playbook/index.html",
+    ):
+        page_soup = BeautifulSoup(
+            (LANDING_ROOT / relative_path).read_text(encoding="utf-8"),
+            "html.parser",
+        )
+        freshness = page_soup.find(attrs={"data-freshness-label": True})
+        assert freshness is not None
+        assert "page-freshness-container" in freshness.get("class", [])
+        assert "page-freshness-note" in freshness.get("class", [])
+
+
 def test_playbook_page_matches_revised_playbook_content_contract() -> None:
     """FR-P1237-CONTENT-SYNC-01/AC-1237-01: expose the revised playbook promise."""
     page = RESOURCE_ROOT / "index.html"
