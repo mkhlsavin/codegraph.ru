@@ -112,6 +112,7 @@ def test_playbook_uses_the_shared_landing_shell() -> None:
         encoding="utf-8"
     )
     assert '"downloads/ai-native-pdlc-sdlc-playbook/index.html"' in registry
+    assert '    "blog",' in registry
 
 
 def test_corporate_blog_template_defines_reviewable_article_slots() -> None:
@@ -182,6 +183,57 @@ def test_playbook_public_metadata_and_route_registry() -> None:
         (LANDING_ROOT / "public-pages.json").read_text(encoding="utf-8")
     )
     assert "downloads/ai-native-pdlc-sdlc-playbook/index.html" in registry["include"]
+
+
+def test_corporate_blog_article_is_published_and_linked_from_playbook() -> None:
+    """FR-P1237-BLOG-PUBLICATION-01/AC-1237-11: publish the reviewed article and its route."""
+    article = LANDING_ROOT / "blog" / "kogda-kod-perestaet-byt-uzkim-mestom" / "index.html"
+    blog_index = LANDING_ROOT / "blog" / "index.html"
+    article_soup = BeautifulSoup(article.read_text(encoding="utf-8"), "html.parser")
+    article_text = article_soup.get_text(" ", strip=True)
+
+    assert article_soup.find("h1").get_text(" ", strip=True).startswith(
+        "Когда код перестаёт быть узким местом"
+    )
+    assert article_soup.find("meta", attrs={"name": "robots"}).get("content") == "index, follow"
+    assert article_soup.find("link", attrs={"rel": "canonical"}).get("href") == (
+        "https://codegraph.ru/blog/kogda-kod-perestaet-byt-uzkim-mestom/"
+    )
+    assert article_soup.find("script", string=lambda value: value and "BlogPosting" in value)
+    assert article_soup.find("header", attrs={"data-shell-header": True}) is not None
+    assert article_soup.find("footer", attrs={"data-shell-footer": True}) is not None
+    assert article_soup.find(id="pdlc") is not None
+    assert article_soup.find(id="schools") is not None
+    assert article_soup.find(id="conclusion") is not None
+    assert len(
+        [h2 for h2 in article_soup.find_all("h2") if h2.get_text(" ", strip=True) == "Основной вывод"]
+    ) == 1
+    for marker in (
+        "Anthropic",
+        "AWS",
+        "Референсная архитектура AI-native PDLC",
+        "Минимально жизнеспособный плейбук на 90 дней",
+    ):
+        assert marker in article_text
+    assert "{{" not in article.read_text(encoding="utf-8")
+
+    blog_soup = BeautifulSoup(blog_index.read_text(encoding="utf-8"), "html.parser")
+    assert blog_soup.find("a", href="/blog/kogda-kod-perestaet-byt-uzkim-mestom/") is not None
+
+    playbook = BeautifulSoup(
+        (RESOURCE_ROOT / "index.html").read_text(encoding="utf-8"), "html.parser"
+    )
+    assert playbook.find(
+        "a", href="/blog/kogda-kod-perestaet-byt-uzkim-mestom/"
+    ) is not None
+
+    registry = json.loads((LANDING_ROOT / "public-pages.json").read_text(encoding="utf-8"))
+    assert "blog/index.html" in registry["include"]
+    assert "blog/*.html" in registry["include"]
+    assert "blog/kogda-kod-perestaet-byt-uzkim-mestom/index.html" in registry["include"]
+    sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    assert "https://codegraph.ru/blog/" in sitemap
+    assert "https://codegraph.ru/blog/kogda-kod-perestaet-byt-uzkim-mestom/" in sitemap
 
 
 def test_playbook_pdf_is_searchable_metadata_complete_and_geometrically_valid() -> None:
