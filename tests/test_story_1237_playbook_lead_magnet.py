@@ -66,6 +66,79 @@ def test_playbook_page_is_form_first_and_initially_hides_pdf() -> None:
     assert "мягкий gate" in soup.get_text(" ", strip=True)
 
 
+def test_playbook_page_matches_revised_playbook_content_contract() -> None:
+    """FR-P1237-CONTENT-SYNC-01/AC-1237-01: expose the revised playbook promise."""
+    page = RESOURCE_ROOT / "index.html"
+    soup = BeautifulSoup(page.read_text(encoding="utf-8"), "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+
+    assert soup.title is not None
+    assert soup.title.get_text(strip=True).startswith(
+        "Плейбук CodeGraph для разработки с ИИ-агентами"
+    )
+    assert soup.find("h1").get_text(" ", strip=True) == (
+        "Плейбук CodeGraph для разработки с ИИ-агентами"
+    )
+    assert "От продуктовой задачи до проверенного выпуска" in page_text
+    assert soup.find("meta", attrs={"name": "dateModified"}).get("content") == "2026-08-27"
+
+    for marker in (
+        "семь принципов",
+        "25 процессных областей",
+        "обнаружение, стабилизация, восстановление",
+        "четыре показателя DORA",
+        "шесть рабочих недель",
+    ):
+        assert marker.lower() in page_text.lower()
+
+
+def test_playbook_uses_the_shared_landing_shell() -> None:
+    """AC-1237-10: keep the playbook navigation and footer on the shared shell."""
+    page = RESOURCE_ROOT / "index.html"
+    soup = BeautifulSoup(page.read_text(encoding="utf-8"), "html.parser")
+
+    header = soup.find("header", attrs={"data-shell-header": True})
+    footer = soup.find("footer", attrs={"data-shell-footer": True})
+    assert header is not None
+    assert footer is not None
+    assert soup.find(attrs={"data-shell-logo": True}) is not None
+    assert soup.find(attrs={"data-theme-toggle": True}) is not None
+    assert soup.find(attrs={"data-mobile-menu-toggle": True}) is not None
+    assert soup.find(attrs={"data-mobile-nav": True}) is not None
+    assert soup.find("header", class_="cg-resource-header") is None
+    assert soup.find("footer", class_="cg-resource-footer") is None
+
+    registry = (LANDING_ROOT.parents[1] / "scripts" / "landing_build_registry.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"downloads/ai-native-pdlc-sdlc-playbook/index.html"' in registry
+
+
+def test_corporate_blog_template_defines_reviewable_article_slots() -> None:
+    """The reusable corporate article template must compose with shared chrome."""
+    template = LANDING_ROOT / "templates" / "corporate-blog-article.html"
+    source = template.read_text(encoding="utf-8")
+
+    for marker in (
+        "CORPORATE_BLOG_ARTICLE_TEMPLATE_START",
+        "CORPORATE_BLOG_ARTICLE_TEMPLATE_END",
+        "{{article_title}}",
+        "{{article_description}}",
+        "{{article_author}}",
+        "{{published_date}}",
+        "{{updated_date}}",
+        "{{reading_time}}",
+        'data-article-template="corporate-blog"',
+        'class="cg-article-hero"',
+        'class="cg-article-answer"',
+        'class="cg-article-section"',
+        'class="cg-article-related-links"',
+        "templates/header.html",
+        "templates/footer.html",
+    ):
+        assert marker in source
+
+
 def test_playbook_form_script_keeps_failure_closed_and_reveals_on_success() -> None:
     """FR-P1237-FORM-GATE-01/AC-1237-09: reveal only after accepted lead response."""
     source = (RESOURCE_ROOT / "playbook-download.js").read_text(encoding="utf-8")
@@ -80,6 +153,11 @@ def test_playbook_form_script_keeps_failure_closed_and_reveals_on_success() -> N
         "link.hidden = true",
         "consent: consent.checked",
         "sessionStorage",
+        "AbortController",
+        "lead_api_400",
+        "lead_api_422",
+        "lead_api_429",
+        "lead_api_5xx",
     ):
         assert contract in source
     assert "localStorage" not in source
