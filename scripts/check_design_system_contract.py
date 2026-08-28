@@ -41,6 +41,11 @@ PRODUCT_ROUTES = {
     "scenarios/ai-code-control.html",
 }
 HOME_TOP_LEVEL_HEADING_LIMIT = 9
+RESOURCE_ROUTES = {
+    "downloads/digital-role-passport/index.html",
+    "downloads/digital-role-passport/role-passport.html",
+}
+BLOG_ARTICLE_ROUTE = "blog/kogda-kod-perestaet-byt-uzkim-mestom/index.html"
 
 
 def public_pages() -> list[Path]:
@@ -210,6 +215,21 @@ def _append_control_and_card_errors(route: str, soup: Any, errors: list[str]) ->
     body = soup.body
     if body and body.get("data-density") != "expressive":
         errors.append(f"{route}: body must declare expressive density")
+    if soup.find_all(style=True):
+        errors.append(f"{route}: inline style attributes are not allowed")
+    if route not in RESOURCE_ROUTES and (
+        len(soup.select("[data-shell-header]")) != 1
+        or len(soup.select("[data-shell-footer]")) != 1
+    ):
+        errors.append(f"{route}: shared header and footer are required")
+    if route in RESOURCE_ROUTES and not soup.select_one(".cg-resource-shell"):
+        errors.append(f"{route}: resource shell is missing")
+    for table in soup.select("table.cg-data-table, table.cg-article-table"):
+        if not table.find("caption") and not table.get("aria-label"):
+            errors.append(f"{route}: data table needs caption or accessible name")
+        for header in table.find_all("th"):
+            if not header.get("scope"):
+                errors.append(f"{route}: table header needs scope")
     for control in soup.find_all(["button", "input", "select"]):
         if {"rounded-cg-card", "rounded-cg-panel"} & set(control.get("class", [])):
             errors.append(f"{route}: control uses a surface radius")
@@ -241,11 +261,80 @@ def _append_shell_component_errors(route: str, soup: Any, errors: list[str]) -> 
         ".cg-article-hero .cg-article-kicker"
     ):
         errors.append(f"{route}: ArticleShell hero lacks article kicker")
-    if route != "downloads/digital-role-passport/role-passport.html":
+    if route not in RESOURCE_ROUTES:
         return
     for selector in (".cg-resource-brand", ".cg-resource-intro", ".cg-resource-body"):
-        if not soup.select_one(f".cg-resource-shell {selector}"):
+        if route == "downloads/digital-role-passport/role-passport.html" and not soup.select_one(
+            f".cg-resource-shell {selector}"
+        ):
             errors.append(f"{route}: resource shell lacks {selector}")
+
+
+def check_article_structure(pages: Iterable[Path], errors: list[str]) -> None:
+    """Check ArticleShell hierarchy and table/source composition for editorial pages."""
+    for path in pages:
+        route = _route(path)
+        soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
+        if route != BLOG_ARTICLE_ROUTE:
+            continue
+        article_body = soup.select_one("#article-body")
+        if article_body is None:
+            errors.append(f"{route}: article body is missing")
+            continue
+        chapter_headings = article_body.find_all("h2")
+        if len(chapter_headings) > 6:
+            errors.append(
+                f"{route}: ArticleShell has {len(chapter_headings)} content h2 headings; expected <= 6"
+            )
+        toc = soup.select_one(".cg-article-toc")
+        toc_ids = {
+            str(link.get("href", ""))[1:]
+            for link in toc.find_all("a")
+            if link.get("href", "").startswith("#")
+        } if toc else set()
+        for heading in chapter_headings:
+            if heading.get("id") and heading["id"] not in toc_ids:
+                errors.append(f"{route}: ArticleShell TOC misses #{heading['id']}")
+
+
+def documentation_pages() -> list[Path]:
+    """Return indexable documentation pages, excluding generated redirect aliases."""
+    pages: list[Path] = []
+    for path in sorted((ROOT / "docs").rglob("*.html")):
+        source = path.read_text(encoding="utf-8")
+        if re.search(
+            r'<meta\s+[^>]*name=["\']robots["\'][^>]*content=["\'][^"\']*noindex',
+            source,
+            flags=re.IGNORECASE,
+        ):
+            continue
+        pages.append(path)
+    return pages
+
+
+def check_documentation_shell(errors: list[str]) -> None:
+    """Require the shared expressive shell on every indexable doc page."""
+    for path in documentation_pages():
+        route = _route(path)
+        soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
+        body = soup.body
+        if body is None or body.get("data-density") != "expressive":
+            errors.append(f"{route}: documentation body must declare expressive density")
+        if len(soup.select("[data-shell-header]")) != 1 or len(
+            soup.select("[data-shell-footer]")
+        ) != 1:
+            errors.append(f"{route}: documentation must use the shared header and footer")
+        if soup.find_all(style=True):
+            errors.append(f"{route}: inline style attributes are not allowed")
+
+
+def check_article_css_contract(errors: list[str]) -> None:
+    """Keep ArticleShell source styles single-defined and token-based."""
+    css = CSS.read_text(encoding="utf-8")
+    for selector in (".cg-article-source-list", ".cg-article-related-link"):
+        count = len(re.findall(rf"^{re.escape(selector)}\s*(?:\{{|,)", css, flags=re.MULTILINE))
+        if count != 1:
+            errors.append(f"css: ArticleShell selector {selector} must have one definition")
 
 
 def _append_product_flow_errors(route: str, soup: Any, errors: list[str]) -> None:
@@ -504,12 +593,15 @@ def main() -> int:
         check_design_tokens_parity(errors)
     if args.check in {"all", "component-contracts"}:
         check_component_contracts(pages, errors)
+        check_article_structure(pages, errors)
+        check_article_css_contract(errors)
     if args.check in {"all", "component-contracts"}:
         check_metadata_contract(pages, errors)
     if args.check in {"all", "diagram-tokens"}:
         check_diagram_tokens(pages, errors)
     if args.check in {"all", "public-shell"}:
         check_public_shell(errors)
+        check_documentation_shell(errors)
     if args.check == "all":
         check_release_surface(pages, errors)
     if errors:
