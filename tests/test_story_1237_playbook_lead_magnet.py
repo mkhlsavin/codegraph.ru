@@ -180,12 +180,13 @@ def test_digital_role_passport_is_indexable_and_uses_the_shared_content_shell() 
         assert robots is None or "noindex" not in robots.get("content", "").lower()
         main = page.find("main")
         assert main is not None
-        assert main.select_one(
-            ":scope > section.relative.overflow-hidden > .cg-content-shell"
-        ) is not None
-        assert main.select_one(
-            ":scope > section > .cg-content-shell"
-        ) is not None
+        assert (
+            main.select_one(
+                ":scope > section.relative.overflow-hidden > .cg-content-shell"
+            )
+            is not None
+        )
+        assert main.select_one(":scope > section > .cg-content-shell") is not None
 
     sitemap = (RESOURCE_ROOT.parent.parent / "sitemap.xml").read_text(encoding="utf-8")
     assert "https://codegraph.ru/downloads/digital-role-passport/" in sitemap
@@ -219,7 +220,9 @@ def test_digital_role_passport_uses_the_shared_lead_magnet_form() -> None:
     assert link.get("aria-hidden") == "true"
     assert link.get("tabindex") == "-1"
     assert link.get("href") == "CODEGRAPH_DIGITAL_ROLE_PASSPORT.pdf"
-    assert page.find("script", attrs={"src": "../../js/resource-download.js"}) is not None
+    assert (
+        page.find("script", attrs={"src": "../../js/resource-download.js"}) is not None
+    )
 
 
 def test_resource_forms_share_the_same_field_and_control_contract() -> None:
@@ -249,12 +252,17 @@ def test_resource_forms_share_the_same_field_and_control_contract() -> None:
         for element in forms[1].select("input, select")
     }
     for form in forms:
-        assert form.select_one("button[data-resource-submit].cg-submit-button") is not None
+        assert (
+            form.select_one("button[data-resource-submit].cg-submit-button") is not None
+        )
         assert form.select_one("[data-resource-status][role='status']") is not None
         assert form.select_one("[data-resource-download-result][hidden]") is not None
-        assert form.select_one(
-            "a[data-resource-download-link][hidden][aria-hidden='true'][tabindex='-1']"
-        ) is not None
+        assert (
+            form.select_one(
+                "a[data-resource-download-link][hidden][aria-hidden='true'][tabindex='-1']"
+            )
+            is not None
+        )
 
 
 def test_machine_readable_projections_use_direct_editorial_language() -> None:
@@ -440,7 +448,9 @@ def test_corporate_blog_index_uses_visual_cards_and_vertical_links() -> None:
     assert all(topic.find("img") is not None for topic in topics)
 
 
-def test_corporate_blog_pages_use_the_shared_hero_shell_and_direct_editorial_copy() -> None:
+def test_corporate_blog_pages_use_the_shared_hero_shell_and_direct_editorial_copy() -> (
+    None
+):
     """AC-1237-14: keep blog pages on the site shell and remove defensive copy."""
     for relative_path in (
         "blog/index.html",
