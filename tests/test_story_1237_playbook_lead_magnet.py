@@ -252,6 +252,11 @@ def test_resource_forms_share_the_same_field_and_control_contract() -> None:
         for element in forms[1].select("input, select")
     }
     for form in forms:
+        role_select = form.select_one("select[name='buyer_role']")
+        assert role_select is not None
+        role_field = role_select.parent
+        assert role_field is not None
+        assert "sm:col-span-2" in role_field.get("class", [])
         assert (
             form.select_one("button[data-resource-submit].cg-submit-button") is not None
         )
@@ -263,6 +268,30 @@ def test_resource_forms_share_the_same_field_and_control_contract() -> None:
             )
             is not None
         )
+
+
+def test_downloads_index_routes_to_both_lead_magnets() -> None:
+    """AC-1237-20: expose both gated resources from one shared catalog page."""
+    page_path = LANDING_ROOT / "downloads/index.html"
+    page = BeautifulSoup(page_path.read_text(encoding="utf-8"), "html.parser")
+
+    assert page.title is not None
+    assert page.title.get_text(strip=True).replace("\u00a0", " ") == (
+        "Материалы CodeGraph: плейбук и паспорт"
+    )
+    assert page.select_one("header[data-shell-header]") is not None
+    assert page.select_one("footer[data-shell-footer]") is not None
+    assert page.select_one("footer a[href='../downloads/']") is not None
+    cards = page.select("a[data-download-card]")
+    assert len(cards) == 2
+    assert {card.get("href") for card in cards} == {
+        "ai-native-pdlc-sdlc-playbook/",
+        "digital-role-passport/",
+    }
+    assert all(card.select_one("h2") is not None for card in cards)
+
+    sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
+    assert "https://codegraph.ru/downloads/" in sitemap
 
 
 def test_machine_readable_projections_use_direct_editorial_language() -> None:
