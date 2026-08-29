@@ -1,0 +1,58 @@
+name: Generate comparison pages once
+
+on:
+  push:
+    branches:
+      - feature/compare-platform-pages-20260829
+    paths:
+      - .github/workflows/generate-comparison-pages-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restore and run generator
+        shell: bash
+        run: |
+          cat .github/compare-generator/part*.b64 | base64 --decode | gzip --decompress > /tmp/generate_compare_pages.py
+          python -m py_compile /tmp/generate_compare_pages.py
+          python /tmp/generate_compare_pages.py --root "$GITHUB_WORKSPACE"
+
+      - name: Install validation dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+
+      - name: Validate generated pages
+        shell: bash
+        run: |
+          python scripts/validate_freshness.py
+          python scripts/check_design_system_contract.py
+          python tests/ru_text_score_audit.py --minimum 9.1
+          python -m pytest \
+            tests/test_story_1113_semantic_contract.py \
+            tests/test_public_claims_patch.py \
+            tests/test_docs_repeat_audit_contract.py \
+            -q
+
+      - name: Commit generated pages
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add compare sitemap.xml
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "Add comparison page drafts for 20 platforms"
+          git push origin HEAD
