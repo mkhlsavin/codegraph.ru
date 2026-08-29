@@ -630,7 +630,9 @@ async def _inspect_route(
                         const currentStyle = getComputedStyle(section);
                         const heading = section.querySelector('h2, h3');
                         if (heading && isVisible(heading)) {
-                          const inset = heading.getBoundingClientRect().top - section.getBoundingClientRect().top;
+                          const eyebrow = section.querySelector('span.mb-3.block');
+                          const spacingAnchor = eyebrow && isVisible(eyebrow) ? eyebrow : heading;
+                          const inset = spacingAnchor.getBoundingClientRect().top - section.getBoundingClientRect().top;
                           if (section.classList.contains('cg-section-new-surface')) {
                             newSurfaceHeadingInsets.push(inset);
                           } else if (section.classList.contains('cg-section-continuation')) {
