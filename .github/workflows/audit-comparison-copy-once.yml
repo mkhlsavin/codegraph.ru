@@ -1,0 +1,70 @@
+name: Audit comparison copy once
+
+on:
+  push:
+    branches:
+      - feature/compare-platform-pages-20260829
+    paths:
+      - .github/workflows/audit-comparison-copy-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Print comparison summaries and suspicious lowercase acronyms
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import html
+          import re
+
+          existing = {
+              "codegraph-checkmarx.html",
+              "codegraph-fortify.html",
+              "codegraph-pt-application-inspector.html",
+              "codegraph-semgrep.html",
+              "codegraph-sonarqube.html",
+          }
+          card_re = re.compile(
+              r'<div class="cg-article-list-card">\s*<h3>(.*?)</h3>\s*<p>(.*?)</p>',
+              re.S,
+          )
+          tag_re = re.compile(r"<[^>]+>")
+          suspicious = re.compile(
+              r"(?<![A-Za-zА-Яа-яЁё])(?:ии|по|alm|sdlc|pdlc|devops|devsecops|ppm|plm|appsec)(?![A-Za-zА-Яа-яЁё])"
+          )
+
+          print("=== COMPETITOR SUMMARY CARDS ===")
+          for path in sorted(Path("compare").glob("codegraph-*.html")):
+              if path.name in existing:
+                  continue
+              text = path.read_text(encoding="utf-8")
+              match = card_re.search(text)
+              if not match:
+                  print(f"MISSING CARD: {path}")
+                  continue
+              name = html.unescape(tag_re.sub("", match.group(1))).replace("\u00a0", " ")
+              summary = html.unescape(tag_re.sub("", match.group(2))).replace("\u00a0", " ")
+              print(f"{path.name}\t{name}\t{summary}")
+
+          print("=== SUSPICIOUS LOWERCASE ACRONYMS ===")
+          found = False
+          for path in sorted(Path("compare").glob("codegraph-*.html")):
+              if path.name in existing:
+                  continue
+              for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                  if suspicious.search(line):
+                      found = True
+                      clean = html.unescape(tag_re.sub(" ", line)).replace("\u00a0", " ")
+                      clean = re.sub(r"\s+", " ", clean).strip()
+                      print(f"{path.name}:{number}: {clean}")
+          if not found:
+              print("NONE")
+          PY
