@@ -78,8 +78,8 @@ DOC_BUILD_COMMIT_SEMANTICS = (
 )
 ROBOTS_POLICY = {
     EXTRA_PUBLIC_ROUTES[0]: "noindex, nofollow",
-    EXTRA_PUBLIC_ROUTES[1]: "noindex, follow",
-    EXTRA_PUBLIC_ROUTES[2]: "noindex, follow",
+    EXTRA_PUBLIC_ROUTES[1]: "index, follow",
+    EXTRA_PUBLIC_ROUTES[2]: "index, follow",
 }
 
 
