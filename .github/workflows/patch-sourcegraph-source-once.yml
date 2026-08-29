@@ -1,0 +1,42 @@
+name: Patch Sourcegraph source once
+
+on:
+  push:
+    branches:
+      - feature/compare-platform-pages-20260829
+    paths:
+      - .github/workflows/patch-sourcegraph-source-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Replace Sourcegraph homepage with documentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("compare/codegraph-sourcegraph.html")
+          html = path.read_text(encoding="utf-8")
+          old = '<li><a href="https://sourcegraph.com/" target="_blank" rel="noopener noreferrer">Sourcegraph</a></li>'
+          new = '<li><a href="https://sourcegraph.com/docs" target="_blank" rel="noopener noreferrer">Документация Sourcegraph</a></li>'
+          if old not in html:
+              raise SystemExit("Expected Sourcegraph source link not found")
+          path.write_text(html.replace(old, new, 1), encoding="utf-8")
+          PY
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add compare/codegraph-sourcegraph.html
+          git commit -m "Use Sourcegraph documentation as official source"
+          git push origin HEAD
