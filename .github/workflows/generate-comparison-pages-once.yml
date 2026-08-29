@@ -29,6 +29,47 @@ jobs:
           python -m py_compile /tmp/generate_compare_pages.py
           python /tmp/generate_compare_pages.py --root "$GITHUB_WORKSPACE"
 
+      - name: Normalize CSP and Russian typography
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          existing = {
+              "codegraph-checkmarx.html",
+              "codegraph-fortify.html",
+              "codegraph-pt-application-inspector.html",
+              "codegraph-semgrep.html",
+              "codegraph-sonarqube.html",
+          }
+          one_letter = re.compile(
+              r"(?<![А-Яа-яЁё])([вксоуюияа]) (?=[А-Яа-яЁё0-9«])",
+              re.IGNORECASE,
+          )
+          csp = (
+              "  <meta http-equiv=\"Content-Security-Policy\" content=\""
+              "default-src 'self'; base-uri 'self'; object-src 'none'; "
+              "style-src 'self'; img-src 'self' data: https://mc.yandex.ru "
+              "https://mc.yandex.com; font-src 'self'; script-src 'self' "
+              "https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net "
+              "https://mc.yandex.com; connect-src 'self' https://api.codegraph.ru "
+              "https://mc.yandex.ru https://mc.yandex.net https://mc.yandex.com "
+              "wss://mc.yandex.ru wss://mc.yandex.com; frame-src "
+              "https://mc.yandex.ru https://mc.yandex.com; form-action 'self'\">"
+          )
+
+          for path in sorted(Path("compare").glob("codegraph-*.html")):
+              if path.name in existing:
+                  continue
+              html = path.read_text(encoding="utf-8")
+              html = one_letter.sub(lambda match: match.group(1) + "\u00a0", html)
+              html = html.replace(" — ", "\u00a0— ")
+              if 'http-equiv="Content-Security-Policy"' not in html:
+                  html = html.replace("  <title>", csp + "\n  <title>", 1)
+              path.write_text(html, encoding="utf-8")
+          PY
+
       - name: Install validation dependencies
         shell: bash
         run: |
