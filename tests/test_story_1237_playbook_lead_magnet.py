@@ -74,7 +74,7 @@ def test_playbook_form_and_public_freshness_use_readable_layout_contract() -> No
     soup = BeautifulSoup(page.read_text(encoding="utf-8"), "html.parser")
     form = soup.find("form", attrs={"id": "playbook-lead-form"})
     assert form is not None
-    layout = soup.find(class_="cg-playbook-lead-layout")
+    layout = soup.find(class_="cg-resource-lead-layout")
     assert layout is not None
     assert "cg-content-shell" in layout.get("class", [])
 
@@ -156,6 +156,120 @@ def test_playbook_uses_the_shared_landing_shell() -> None:
     assert '    "blog",' in registry
 
 
+def test_playbook_content_sections_use_the_shared_content_shell() -> None:
+    """AC-1237-15: keep every resource section aligned with the landing shell."""
+    page = RESOURCE_ROOT / "index.html"
+    soup = BeautifulSoup(page.read_text(encoding="utf-8"), "html.parser")
+    main = soup.find("main")
+    assert main is not None
+    assert len(main.select(":scope > section > div.cg-content-shell")) == 4
+    assert not main.select(".max-w-5xl")
+
+
+def test_digital_role_passport_is_indexable_and_uses_the_shared_content_shell() -> None:
+    """AC-1237-16: expose the role passport through the public shell and sitemap."""
+    for relative_path in (
+        "downloads/digital-role-passport/index.html",
+        "downloads/digital-role-passport/role-passport.html",
+    ):
+        page = BeautifulSoup(
+            (RESOURCE_ROOT.parent.parent / relative_path).read_text(encoding="utf-8"),
+            "html.parser",
+        )
+        robots = page.find("meta", attrs={"name": "robots"})
+        assert robots is None or "noindex" not in robots.get("content", "").lower()
+        main = page.find("main")
+        assert main is not None
+        assert main.select_one(
+            ":scope > section.relative.overflow-hidden > .cg-content-shell"
+        ) is not None
+        assert main.select_one(
+            ":scope > section > .cg-content-shell"
+        ) is not None
+
+    sitemap = (RESOURCE_ROOT.parent.parent / "sitemap.xml").read_text(encoding="utf-8")
+    assert "https://codegraph.ru/downloads/digital-role-passport/" in sitemap
+    assert (
+        "https://codegraph.ru/downloads/digital-role-passport/role-passport.html"
+        in sitemap
+    )
+
+
+def test_digital_role_passport_uses_the_shared_lead_magnet_form() -> None:
+    """AC-1237-18: gate the passport PDF with the same form contract as the playbook."""
+    page = BeautifulSoup(
+        (LANDING_ROOT / "downloads/digital-role-passport/index.html").read_text(
+            encoding="utf-8"
+        ),
+        "html.parser",
+    )
+    form = page.find("form", attrs={"id": "passport-lead-form"})
+    assert form is not None
+    assert form.get("data-resource-form") == "digital-role-passport"
+    assert form.get("data-source-page") == "digital_role_passport_lead_magnet"
+    assert form.get("data-intent") == "resource_download"
+    assert form.get("data-page-stage") == "resource"
+    assert page.find("input", attrs={"name": "name", "required": True}) is not None
+    assert page.find("input", attrs={"name": "email", "required": True}) is not None
+    assert page.find("input", attrs={"name": "company", "required": True}) is not None
+    assert page.find("input", attrs={"name": "consent", "required": True}) is not None
+    link = page.find("a", attrs={"id": "passport-download-link"})
+    assert link is not None
+    assert link.has_attr("hidden")
+    assert link.get("aria-hidden") == "true"
+    assert link.get("tabindex") == "-1"
+    assert link.get("href") == "CODEGRAPH_DIGITAL_ROLE_PASSPORT.pdf"
+    assert page.find("script", attrs={"src": "../../js/resource-download.js"}) is not None
+
+
+def test_resource_forms_share_the_same_field_and_control_contract() -> None:
+    """AC-1237-19: keep the passport and playbook gates interchangeable."""
+    forms = []
+    for relative_path, form_id in (
+        (
+            "downloads/ai-native-pdlc-sdlc-playbook/index.html",
+            "playbook-lead-form",
+        ),
+        ("downloads/digital-role-passport/index.html", "passport-lead-form"),
+    ):
+        page = BeautifulSoup(
+            (LANDING_ROOT / relative_path).read_text(encoding="utf-8"),
+            "html.parser",
+        )
+        form = page.find("form", attrs={"id": form_id})
+        assert form is not None
+        forms.append(form)
+
+    field_contract = {
+        (element.name, element.get("name"), element.get("type"))
+        for element in forms[0].select("input, select")
+    }
+    assert field_contract == {
+        (element.name, element.get("name"), element.get("type"))
+        for element in forms[1].select("input, select")
+    }
+    for form in forms:
+        assert form.select_one("button[data-resource-submit].cg-submit-button") is not None
+        assert form.select_one("[data-resource-status][role='status']") is not None
+        assert form.select_one("[data-resource-download-result][hidden]") is not None
+        assert form.select_one(
+            "a[data-resource-download-link][hidden][aria-hidden='true'][tabindex='-1']"
+        ) is not None
+
+
+def test_machine_readable_projections_use_direct_editorial_language() -> None:
+    """AC-1237-17: keep machine-readable public copy free of defensive disclaimers."""
+    forbidden = (
+        "без преждевременных заявлений о сертификации",
+        "это не обещание",
+        "иллюстративный пример",
+        "сами по себе не подтверждают",
+    )
+    for relative_path in ("llms.txt", "llms-full.txt"):
+        text = (LANDING_ROOT / relative_path).read_text(encoding="utf-8").casefold()
+        assert not [phrase for phrase in forbidden if phrase in text]
+
+
 def test_corporate_blog_template_defines_reviewable_article_slots() -> None:
     """The reusable corporate article template must compose with shared chrome."""
     template = LANDING_ROOT / "templates" / "corporate-blog-article.html"
@@ -171,7 +285,7 @@ def test_corporate_blog_template_defines_reviewable_article_slots() -> None:
         "{{updated_date}}",
         "{{reading_time}}",
         'data-article-template="corporate-blog"',
-        'class="cg-article-hero"',
+        "cg-article-hero",
         'class="cg-article-answer"',
         'class="cg-article-section"',
         'class="cg-article-related-links"',
@@ -183,11 +297,12 @@ def test_corporate_blog_template_defines_reviewable_article_slots() -> None:
 
 def test_playbook_form_script_keeps_failure_closed_and_reveals_on_success() -> None:
     """FR-P1237-FORM-GATE-01/AC-1237-09: reveal only after accepted lead response."""
-    source = (RESOURCE_ROOT / "playbook-download.js").read_text(encoding="utf-8")
+    source = (LANDING_ROOT / "js" / "resource-download.js").read_text(encoding="utf-8")
 
     for contract in (
         "https://api.codegraph.ru/api/v1/leads",
-        "playbook_lead_magnet",
+        "config.sourcePage",
+        "config.initiativeTask",
         "response.ok",
         "link.hidden = false",
         'link.setAttribute("aria-hidden", "false")',
@@ -323,6 +438,31 @@ def test_corporate_blog_index_uses_visual_cards_and_vertical_links() -> None:
         "/evidence.html",
     ]
     assert all(topic.find("img") is not None for topic in topics)
+
+
+def test_corporate_blog_pages_use_the_shared_hero_shell_and_direct_editorial_copy() -> None:
+    """AC-1237-14: keep blog pages on the site shell and remove defensive copy."""
+    for relative_path in (
+        "blog/index.html",
+        "blog/kogda-kod-perestaet-byt-uzkim-mestom/index.html",
+    ):
+        soup = BeautifulSoup(
+            (LANDING_ROOT / relative_path).read_text(encoding="utf-8"),
+            "html.parser",
+        )
+        article = soup.select_one("article.cg-article")
+        assert article is not None
+        hero = soup.select_one(".cg-article-hero")
+        assert hero is not None
+        assert hero.select_one(":scope > .cg-content-shell") is not None
+
+    playbook = BeautifulSoup(
+        (RESOURCE_ROOT / "index.html").read_text(encoding="utf-8"),
+        "html.parser",
+    )
+    playbook_text = playbook.get_text(" ", strip=True).replace("\u00a0", " ")
+    assert "без преждевременных заявлений о сертификации" not in playbook_text.lower()
+    assert "карта 25 процессных областей гост р 56939-2024" in playbook_text.lower()
 
 
 def test_playbook_pdf_is_searchable_metadata_complete_and_geometrically_valid() -> None:

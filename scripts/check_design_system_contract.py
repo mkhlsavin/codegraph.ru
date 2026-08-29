@@ -222,8 +222,8 @@ def _append_control_and_card_errors(route: str, soup: Any, errors: list[str]) ->
         or len(soup.select("[data-shell-footer]")) != 1
     ):
         errors.append(f"{route}: shared header and footer are required")
-    if route in RESOURCE_ROUTES and not soup.select_one(".cg-resource-shell"):
-        errors.append(f"{route}: resource shell is missing")
+    if route in RESOURCE_ROUTES and not soup.select_one(".cg-resource-page-flow"):
+        errors.append(f"{route}: resource page flow is missing")
     for table in soup.select("table.cg-data-table, table.cg-article-table"):
         if not table.find("caption") and not table.get("aria-label"):
             errors.append(f"{route}: data table needs caption or accessible name")
@@ -263,10 +263,10 @@ def _append_shell_component_errors(route: str, soup: Any, errors: list[str]) -> 
         errors.append(f"{route}: ArticleShell hero lacks article kicker")
     if route not in RESOURCE_ROUTES:
         return
-    for selector in (".cg-resource-brand", ".cg-resource-intro", ".cg-resource-body"):
+    for selector in (".cg-resource-body",):
         if (
             route == "downloads/digital-role-passport/role-passport.html"
-            and not soup.select_one(f".cg-resource-shell {selector}")
+            and not soup.select_one(selector)
         ):
             errors.append(f"{route}: resource shell lacks {selector}")
 
@@ -527,6 +527,27 @@ def check_release_surface(pages: Iterable[Path], errors: list[str]) -> None:
             ]
             if len(locations) != len(set(locations)):
                 errors.append("release: sitemap contains duplicate URLs")
+            for path in pages:
+                source = path.read_text(encoding="utf-8")
+                if re.search(
+                    r'<meta\s+[^>]*name=["\']robots["\'][^>]*content=["\'][^"\']*noindex',
+                    source,
+                    flags=re.IGNORECASE,
+                ):
+                    continue
+                relative = path.relative_to(ROOT).as_posix()
+                public_path = (
+                    relative[: -len("index.html")]
+                    if relative.endswith("index.html")
+                    else relative
+                )
+                expected = (
+                    f"https://codegraph.ru/{public_path}"
+                    if public_path
+                    else "https://codegraph.ru/"
+                )
+                if expected not in locations:
+                    errors.append(f"release: sitemap missing indexable {relative}")
         except ET.ParseError as error:
             errors.append(f"release: invalid sitemap.xml: {error}")
 
@@ -541,6 +562,9 @@ def check_release_surface(pages: Iterable[Path], errors: list[str]) -> None:
             "business-efficiency.html",
             "cpg.html",
             "ai-engineering.html",
+            "downloads/ai-native-pdlc-sdlc-playbook/",
+            "downloads/digital-role-passport/",
+            "downloads/digital-role-passport/role-passport.html",
         )
         for route in required_routes:
             canonical = f"https://codegraph.ru/{route}"

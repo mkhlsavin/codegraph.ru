@@ -296,12 +296,13 @@ def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_dat
         "https://codegraph.ru/docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html"
         in entries
     )
-    for route in (
-        "downloads/digital-role-passport/index.html",
-        "downloads/digital-role-passport/role-passport.html",
-        "research/tochnost-otvetov-i-skorost-razbora.html",
-    ):
+    for route in ("research/tochnost-otvetov-i-skorost-razbora.html",):
         assert f"https://codegraph.ru/{route}" not in entries
+    assert "https://codegraph.ru/downloads/digital-role-passport/" in entries
+    assert (
+        "https://codegraph.ru/downloads/digital-role-passport/role-passport.html"
+        in entries
+    )
 
 
 def test_generated_docs_mark_documentation_as_the_current_global_section() -> None:

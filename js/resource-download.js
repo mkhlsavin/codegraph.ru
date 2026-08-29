@@ -1,5 +1,3 @@
-"use strict";
-
 const LEAD_SUBMISSION_TIMEOUT_MS = 20000;
 
 const isLocalhost = (hostname) => ["localhost", "127.0.0.1"].includes(hostname);
@@ -69,14 +67,26 @@ function classifyLeadSubmissionException(error) {
   };
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("playbook-lead-form");
-  const button = document.getElementById("playbook-submit");
-  const status = document.getElementById("playbook-status");
-  const result = document.getElementById("playbook-download-result");
-  const link = document.getElementById("playbook-download-link");
-  const consent = document.getElementById("playbook-consent");
-  if (!form || !button || !status || !result || !link || !consent) return;
+function initResourceLeadForm(form) {
+  const button = form.querySelector("[data-resource-submit]");
+  const status = form.querySelector("[data-resource-status]");
+  const result = form.querySelector("[data-resource-download-result]");
+  const link = form.querySelector("[data-resource-download-link]");
+  const consent = form.elements.consent;
+  if (!button || !status || !result || !link || !consent) return;
+
+  const config = {
+    initiativeTask: form.dataset.initiativeTask,
+    sourcePage: form.dataset.sourcePage,
+    intent: form.dataset.intent || "resource_download",
+    ctaVariant: form.dataset.ctaVariant,
+    useCase: form.dataset.useCase,
+    pageId: form.dataset.pageId,
+    pageStage: form.dataset.pageStage || "resource",
+    sessionKey: form.dataset.sessionKey || `codegraph_${form.dataset.resourceForm}_unlocked`,
+    successEvent: form.dataset.successEvent || "resource_pdf_unlocked",
+    submitLabel: form.dataset.submitLabel || "Получить PDF",
+  };
 
   const hideDownload = () => {
     result.hidden = true;
@@ -91,16 +101,16 @@ document.addEventListener("DOMContentLoaded", () => {
     link.setAttribute("aria-hidden", "false");
     link.removeAttribute("tabindex");
     try {
-      sessionStorage.setItem("codegraph_playbook_unlocked", "1");
+      sessionStorage.setItem(config.sessionKey, "1");
     } catch (_error) {
-      // The accepted lead must remain usable when browser storage is restricted.
+      // The accepted lead remains usable when browser storage is restricted.
     }
     result.focus();
   };
 
   const wasUnlocked = () => {
     try {
-      return sessionStorage.getItem("codegraph_playbook_unlocked") === "1";
+      return sessionStorage.getItem(config.sessionKey) === "1";
     } catch (_error) {
       return false;
     }
@@ -131,13 +141,13 @@ document.addEventListener("DOMContentLoaded", () => {
       company: form.elements.company.value.trim(),
       position: form.elements.position.value.trim() || null,
       buyer_role: form.elements.buyer_role.value,
-      initiative_task: "ai_native_pdlc_sdlc_playbook",
-      source_page: "playbook_lead_magnet",
-      intent: "resource_download",
-      cta_variant: "playbook_pdf_gate",
-      use_case: "ai_native_pdlc_sdlc",
-      page_id: "downloads-ai-native-pdlc-sdlc-playbook",
-      page_stage: "resource",
+      initiative_task: config.initiativeTask,
+      source_page: config.sourcePage,
+      intent: config.intent,
+      cta_variant: config.ctaVariant,
+      use_case: config.useCase,
+      page_id: config.pageId,
+      page_stage: config.pageStage,
       consent: consent.checked,
     };
 
@@ -162,8 +172,8 @@ document.addEventListener("DOMContentLoaded", () => {
       status.textContent = "Готово: заявка принята, ссылка на PDF открыта.";
       revealDownload();
       if (typeof window.ym === "function") {
-        window.ym(107046651, "reachGoal", "playbook_pdf_unlocked", {
-          source: "playbook_lead_magnet",
+        window.ym(107046651, "reachGoal", config.successEvent, {
+          source: config.sourcePage,
         });
       }
     } catch (error) {
@@ -173,7 +183,11 @@ document.addEventListener("DOMContentLoaded", () => {
       status.textContent = failure.statusText;
     } finally {
       button.disabled = false;
-      button.textContent = "Получить PDF";
+      button.textContent = config.submitLabel;
     }
   });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("form[data-resource-form]").forEach(initResourceLeadForm);
 });
