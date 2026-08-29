@@ -1,4 +1,4 @@
-name: Audit comparison copy once
+name: Fix comparison copy once
 
 on:
   push:
@@ -8,63 +8,58 @@ on:
       - .github/workflows/audit-comparison-copy-once.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Print comparison summaries and suspicious lowercase acronyms
+      - name: Correct acronym casing in comparison summaries
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import html
-          import re
 
-          existing = {
-              "codegraph-checkmarx.html",
-              "codegraph-fortify.html",
-              "codegraph-pt-application-inspector.html",
-              "codegraph-semgrep.html",
-              "codegraph-sonarqube.html",
+          replacements = {
+              "compare/codegraph-codebeamer.html": [("Alm-платформа", "ALM-платформа")],
+              "compare/codegraph-devprom.html": [("alm-платформа", "ALM-платформа")],
+              "compare/codegraph-gitlab.html": [("devsecops-платформа", "DevSecOps-платформа")],
+              "compare/codegraph-microsoft-github.html": [("ии-помощников", "ИИ-помощников")],
+              "compare/codegraph-polarion.html": [("Alm-платформа", "ALM-платформа")],
+              "compare/codegraph-servicenow.html": [("и&nbsp;ии.", "и&nbsp;ИИ.")],
+              "compare/codegraph-snyk.html": [("ии-разработки", "ИИ-разработки")],
+              "compare/codegraph-sourcecraft.html": [
+                  ("ci/cd", "CI/CD"),
+                  ("ии-помощником", "ИИ-помощником"),
+              ],
           }
-          card_re = re.compile(
-              r'<div class="cg-article-list-card">\s*<h3>(.*?)</h3>\s*<p>(.*?)</p>',
-              re.S,
-          )
-          tag_re = re.compile(r"<[^>]+>")
-          suspicious = re.compile(
-              r"(?<![A-Za-zА-Яа-яЁё])(?:ии|по|alm|sdlc|pdlc|devops|devsecops|ppm|plm|appsec)(?![A-Za-zА-Яа-яЁё])"
-          )
 
-          print("=== COMPETITOR SUMMARY CARDS ===")
-          for path in sorted(Path("compare").glob("codegraph-*.html")):
-              if path.name in existing:
-                  continue
+          for filename, pairs in replacements.items():
+              path = Path(filename)
               text = path.read_text(encoding="utf-8")
-              match = card_re.search(text)
-              if not match:
-                  print(f"MISSING CARD: {path}")
-                  continue
-              name = html.unescape(tag_re.sub("", match.group(1))).replace("\u00a0", " ")
-              summary = html.unescape(tag_re.sub("", match.group(2))).replace("\u00a0", " ")
-              print(f"{path.name}\t{name}\t{summary}")
-
-          print("=== SUSPICIOUS LOWERCASE ACRONYMS ===")
-          found = False
-          for path in sorted(Path("compare").glob("codegraph-*.html")):
-              if path.name in existing:
-                  continue
-              for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                  if suspicious.search(line):
-                      found = True
-                      clean = html.unescape(tag_re.sub(" ", line)).replace("\u00a0", " ")
-                      clean = re.sub(r"\s+", " ", clean).strip()
-                      print(f"{path.name}:{number}: {clean}")
-          if not found:
-              print("NONE")
+              for old, new in pairs:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f"{filename}: expected one occurrence of {old!r}, found {count}")
+                  text = text.replace(old, new, 1)
+              path.write_text(text, encoding="utf-8")
           PY
+
+      - name: Commit corrections
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add compare/codegraph-codebeamer.html \
+            compare/codegraph-devprom.html \
+            compare/codegraph-gitlab.html \
+            compare/codegraph-microsoft-github.html \
+            compare/codegraph-polarion.html \
+            compare/codegraph-servicenow.html \
+            compare/codegraph-snyk.html \
+            compare/codegraph-sourcecraft.html
+          git commit -m "Correct acronym casing in comparison summaries"
+          git push origin HEAD
