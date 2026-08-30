@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -128,3 +129,42 @@ def test_yandex_metrika_csp_allows_only_the_observed_runtime_endpoints() -> None
     assert "wss://mc.yandex.ru" in head_html
     assert "frame-src https://mc.yandex.ru https://mc.yandex.com" in head_html
     assert "*.yandex" not in head_html
+
+
+@pytest.mark.nfr(
+    "CNFR-Q05-RELIABILITY-NONREGRESSION-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_article_shell_has_explicit_hero_and_section_geometry() -> None:
+    """Keep ArticleShell content aligned and prevent section width cascade drift."""
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+
+    hero_rule = re.search(
+        r"\.cg-article-hero\s*\{(?P<body>.*?)\n\}", css, re.DOTALL
+    )
+    assert hero_rule is not None
+    hero_body = hero_rule.group("body")
+    assert (
+        "padding-left: max(32px, calc((100% - var(--container-max)) / 2 + 32px));"
+        in hero_body
+    )
+    assert (
+        "padding-right: max(32px, calc((100% - var(--container-max)) / 2 + 32px));"
+        in hero_body
+    )
+
+    section_rule = re.search(
+        r"\.cg-article\s*>\s*\.cg-article-section\s*\{(?P<body>.*?)\n\}",
+        css,
+        re.DOTALL,
+    )
+    assert section_rule is not None
+    assert "max-width: 800px;" in section_rule.group("body")
+
+    article_pages = []
+    for page in LANDING_ROOT.rglob("*.html"):
+        html = page.read_text(encoding="utf-8")
+        if 'class="cg-article"' in html and 'class="cg-article-hero"' in html:
+            article_pages.append(page)
+
+    assert len(article_pages) >= 25
