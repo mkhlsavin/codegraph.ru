@@ -463,9 +463,9 @@ def test_corporate_blog_index_uses_visual_cards_and_vertical_links() -> None:
     assert feature.get("href") == "/blog/kogda-kod-perestaet-byt-uzkim-mestom/"
     feature_image = feature.find("img")
     assert feature_image is not None
-    assert feature_image.get("src") == "../assets/ui/ad-ai-hero.png"
-    assert feature_image.get("width") == "1440"
-    assert feature_image.get("height") == "980"
+    assert feature_image.get("src") == "../assets/og-codegraph-platform-20260722.png"
+    assert feature_image.get("width") == "1200"
+    assert feature_image.get("height") == "630"
 
     topics = soup.select("a.cg-blog-topic-card")
     assert len(topics) == 3
