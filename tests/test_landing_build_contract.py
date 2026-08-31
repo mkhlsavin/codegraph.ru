@@ -269,3 +269,38 @@ def test_every_public_page_uses_the_vertical_content_shell() -> None:
     assert article_routes
     assert shell_routes
     assert len(article_routes) + len(shell_routes) == len(routes)
+
+
+@pytest.mark.nfr(
+    "FR-P1248-SHELL-01",
+    "CNFR-Q1248-RESPONSIVE-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_public_landing_sections_keep_spacing_between_content_blocks() -> None:
+    """BDD: Given public landing sections, Then adjacent blocks do not stick together."""
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+
+    sibling_rule = re.search(
+        r"\.cg-article-section\s*>\s*:is\(\.cg-article-grid,\s*"
+        r"\.cg-article-table-wrap,\s*figure\)\s*\+\s*p\s*"
+        r"\{(?P<body>.*?)\n\}",
+        css,
+        re.DOTALL,
+    )
+    assert sibling_rule is not None
+    assert "margin-top: 24px;" in sibling_rule.group("body")
+
+    benefit_routes: list[str] = []
+    for route in _public_manifest_routes():
+        page = BeautifulSoup(
+            (LANDING_ROOT / route).read_text(encoding="utf-8"), "html.parser"
+        )
+        section = page.select_one("section#fab-benefits")
+        if section is None:
+            continue
+        benefit_routes.append(route)
+        classes = set(section.get("class", []))
+        assert "cg-section-new-surface" in classes, route
+        assert "cg-section-continuation" not in classes, route
+
+    assert benefit_routes
