@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from urllib.parse import urljoin
 
 import pytest
 from bs4 import BeautifulSoup
@@ -68,6 +69,24 @@ def _public_manifest_routes() -> list[str]:
         if not any(
             fnmatch.fnmatch(route, pattern) for pattern in PUBLIC_PAGE_EXCLUSIONS
         )
+    )
+
+
+def _all_public_manifest_routes() -> list[str]:
+    """Expand public routes while retaining the whitepaper for copy validation."""
+    manifest = json.loads(
+        (LANDING_ROOT / "public-pages.json").read_text(encoding="utf-8")
+    )
+    routes = {
+        path.relative_to(LANDING_ROOT).as_posix()
+        for pattern in manifest["include"]
+        for path in LANDING_ROOT.glob(pattern)
+        if path.is_file()
+    }
+    return sorted(
+        route
+        for route in routes
+        if not fnmatch.fnmatch(route, "docs/**")
     )
 
 
@@ -372,3 +391,129 @@ def test_public_interactive_rows_share_one_clickable_surface_contract() -> None:
             assert faq_list.select(".cg-faq-icon"), route
 
     assert interactive_routes >= 3
+
+
+def _footer_signature(html: str, route: str, *, document: bool) -> tuple[Any, ...]:
+    """Return the exact shared-footer DOM contract with route URLs canonicalized."""
+    soup = BeautifulSoup(html, "html.parser")
+    footer = (
+        soup.select_one("footer[data-shell-footer]")
+        if document
+        else soup.find("footer", attrs={"data-shell-footer": True})
+    )
+    assert footer is not None, route
+    page_url = urljoin("https://codegraph.ru/", route)
+
+    def normalize_attribute(name: str, value: Any) -> Any:
+        if name in {"href", "src"}:
+            return urljoin(page_url, str(value))
+        if isinstance(value, list):
+            return tuple(sorted(str(item) for item in value))
+        return str(value)
+
+    signature: list[Any] = []
+    for node in (footer, *footer.find_all(True)):
+        attributes = tuple(
+            sorted(
+                (name, normalize_attribute(name, value))
+                for name, value in node.attrs.items()
+            )
+        )
+        direct_text = " ".join(
+            " ".join(str(text).split())
+            for text in node.find_all(string=True, recursive=False)
+            if str(text).strip()
+        )
+        signature.append((node.name, attributes, direct_text))
+    return tuple(signature)
+
+
+def _canonical_footer() -> str:
+    """Render the footer template used by the root landing build."""
+    module_path = REPOSITORY_ROOT / "scripts" / "landing_chrome.py"
+    if not module_path.is_file():
+        pytest.skip("canonical landing chrome renderer is unavailable")
+    spec = importlib.util.spec_from_file_location("landing_chrome", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.render_footer(base_url="", docs_url_base="docs/ru", lang="ru")
+
+
+@pytest.mark.nfr(
+    "FR-P1248-SHELL-01",
+    "FR-P1248-ROUTES-01",
+    "CNFR-Q1248-RESPONSIVE-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_every_public_page_uses_the_exact_shared_footer_contract() -> None:
+    """BDD: Given public pages, Then every footer is the canonical shared footer."""
+    expected = _footer_signature(_canonical_footer(), "security.html", document=False)
+
+    routes = _public_manifest_routes()
+    assert routes
+    for route in routes:
+        page = (LANDING_ROOT / route).read_text(encoding="utf-8")
+        assert page.count("data-shell-footer") == 1, route
+        assert _footer_signature(page, route, document=True) == expected, route
+
+
+@pytest.mark.nfr(
+    "FR-P1248-COPY-01",
+    "FR-P1248-ROUTES-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_public_copy_does_not_use_protective_disclaimers() -> None:
+    """BDD: Given public copy, Then it states facts without defensive disclaimers."""
+    forbidden = (
+        "без библиографических ссылок",
+        "не считаются подтверждёнными",
+        "без лишних обещаний",
+        "без расширения обещаний",
+        "без обещаний вне контекста",
+        "без преждевременных заявлений",
+        "универсальное обещание",
+        "за пределы уже опубликованных обещаний",
+        "заранее обещать",
+        "не обещать",
+        "где нужны оговорки",
+        "сами по себе не подтверждают",
+        "это не обещание",
+        "не выдумывает отсутствующие основания",
+    )
+
+    violations: list[str] = []
+    for route in _all_public_manifest_routes():
+        page = BeautifulSoup(
+            (LANDING_ROOT / route).read_text(encoding="utf-8"), "html.parser"
+        )
+        main = page.find("main") or page
+        visible_text = " ".join(main.get_text(" ", strip=True).split()).casefold()
+        violations.extend(
+            f"{route}: {phrase}"
+            for phrase in forbidden
+            if phrase in visible_text
+        )
+
+    assert not violations, "Protective public copy remains: " + "; ".join(violations)
+
+
+@pytest.mark.nfr(
+    "FR-P1248-COPY-02",
+    "FR-P1248-ROUTES-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_public_headings_start_with_an_uppercase_letter() -> None:
+    """BDD: Given public headings, Then their first cased letter is uppercase."""
+    violations: list[str] = []
+    for route in _all_public_manifest_routes():
+        page = BeautifulSoup(
+            (LANDING_ROOT / route).read_text(encoding="utf-8"), "html.parser"
+        )
+        for heading in page.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+            text = " ".join(heading.get_text(" ", strip=True).split())
+            first_letter = next((char for char in text if char.isalpha()), "")
+            if first_letter and first_letter.islower():
+                violations.append(f"{route}: {heading.name}: {text}")
+
+    assert not violations, "Lowercase public headings remain: " + "; ".join(violations)

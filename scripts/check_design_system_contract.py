@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from functools import lru_cache
 import json
 from pathlib import Path
 import re
 from typing import Any, Iterable
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 import xml.etree.ElementTree as ET
 
 from bs4 import BeautifulSoup
@@ -46,6 +47,7 @@ RESOURCE_ROUTES = {
     "downloads/digital-role-passport/role-passport.html",
 }
 BLOG_ARTICLE_ROUTE = "blog/kogda-kod-perestaet-byt-uzkim-mestom/index.html"
+PUBLIC_ORIGIN = "https://codegraph.ru/"
 
 
 def public_pages() -> list[Path]:
@@ -105,6 +107,49 @@ def _normalize_metadata(value: object) -> str:
 def _metadata_content(node: Any) -> str:
     """Return a scalar content attribute from an optional DOM node."""
     return str(node.get("content", "")).strip() if node is not None else ""
+
+
+def _footer_signature(markup: str, route: str, *, document: bool) -> tuple[Any, ...]:
+    """Return the footer DOM and attributes with route-relative URLs canonicalized."""
+    soup = BeautifulSoup(markup, "html.parser")
+    footer = (
+        soup.select_one("footer[data-shell-footer]")
+        if document
+        else soup.find("footer", attrs={"data-shell-footer": True})
+    )
+    if footer is None:
+        return ()
+    page_url = urljoin(PUBLIC_ORIGIN, route)
+
+    def normalize_attribute(name: str, value: Any) -> Any:
+        if isinstance(value, list):
+            return tuple(sorted(str(item) for item in value))
+        value = str(value)
+        if name in {"href", "src"}:
+            value = value.replace("{base_url}", "")
+            value = value.replace("{docs_url_base}", "docs/ru")
+            return urljoin(page_url, value)
+        return value
+
+    return tuple(
+        (
+            node.name,
+            tuple(
+                sorted(
+                    (name, normalize_attribute(name, value))
+                    for name, value in node.attrs.items()
+                )
+            ),
+        )
+        for node in (footer, *footer.find_all(True))
+    )
+
+
+@lru_cache(maxsize=1)
+def _canonical_footer_signature() -> tuple[Any, ...]:
+    """Return the structural contract rendered from the shared footer template."""
+    template = (ROOT / "templates" / "footer.html").read_text(encoding="utf-8")
+    return _footer_signature(template, "security.html", document=False)
 
 
 def _webpage_schemas(soup: Any) -> list[dict[str, Any]]:
@@ -222,6 +267,10 @@ def _append_control_and_card_errors(route: str, soup: Any, errors: list[str]) ->
         or len(soup.select("[data-shell-footer]")) != 1
     ):
         errors.append(f"{route}: shared header and footer are required")
+    if len(soup.select("footer[data-shell-footer]")) == 1:
+        actual_footer = _footer_signature(str(soup), route, document=True)
+        if actual_footer != _canonical_footer_signature():
+            errors.append(f"{route}: footer must match the shared footer template")
     if route in RESOURCE_ROUTES and not soup.select_one(".cg-resource-page-flow"):
         errors.append(f"{route}: resource page flow is missing")
     for table in soup.select("table.cg-data-table, table.cg-article-table"):
