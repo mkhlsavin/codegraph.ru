@@ -53,7 +53,9 @@ def _shared_routes(repository_root: Path, landing_root: Path) -> list[Any]:
 
 def _public_manifest_routes() -> list[str]:
     """Expand every public-page manifest include into a deterministic route list."""
-    manifest = json.loads((LANDING_ROOT / "public-pages.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (LANDING_ROOT / "public-pages.json").read_text(encoding="utf-8")
+    )
     routes = {
         path.relative_to(LANDING_ROOT).as_posix()
         for pattern in manifest["include"]
@@ -63,7 +65,9 @@ def _public_manifest_routes() -> list[str]:
     return sorted(
         route
         for route in routes
-        if not any(fnmatch.fnmatch(route, pattern) for pattern in PUBLIC_PAGE_EXCLUSIONS)
+        if not any(
+            fnmatch.fnmatch(route, pattern) for pattern in PUBLIC_PAGE_EXCLUSIONS
+        )
     )
 
 
