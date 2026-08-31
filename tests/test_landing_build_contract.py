@@ -139,9 +139,7 @@ def test_article_shell_has_explicit_hero_and_section_geometry() -> None:
     """Keep ArticleShell content aligned and prevent section width cascade drift."""
     css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
 
-    hero_rule = re.search(
-        r"\.cg-article-hero\s*\{(?P<body>.*?)\n\}", css, re.DOTALL
-    )
+    hero_rule = re.search(r"\.cg-article-hero\s*\{(?P<body>.*?)\n\}", css, re.DOTALL)
     assert hero_rule is not None
     hero_body = hero_rule.group("body")
     assert (
@@ -168,3 +166,25 @@ def test_article_shell_has_explicit_hero_and_section_geometry() -> None:
             article_pages.append(page)
 
     assert len(article_pages) >= 25
+
+
+@pytest.mark.nfr(
+    "CNFR-Q05-RELIABILITY-NONREGRESSION-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_comparison_article_primitives_have_readable_surface_and_mobile_table_contract() -> (
+    None
+):
+    """Keep comparison trust and tables aligned with the shared design system."""
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+
+    trust_rule = re.search(r"\.cg-article-trust\s*\{(?P<body>.*?)\n\}", css, re.DOTALL)
+    assert trust_rule is not None
+    assert "color: var(--cg-text-primary);" in trust_rule.group("body")
+
+    assert ".cg-article-trust a" in css
+    assert "color: var(--cg-primary);" in css
+    assert '.cg-article-table th[scope="col"]' in css
+    assert '.cg-article-table th[scope="row"]' in css
+    assert '[data-page-stage="comparison"] .cg-article-table-wrap::before' in css
+    assert 'content: "Прокрутите вправо, чтобы увидеть все колонки";' in css
