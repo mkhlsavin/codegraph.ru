@@ -83,11 +83,7 @@ def _all_public_manifest_routes() -> list[str]:
         for path in LANDING_ROOT.glob(pattern)
         if path.is_file()
     }
-    return sorted(
-        route
-        for route in routes
-        if not fnmatch.fnmatch(route, "docs/**")
-    )
+    return sorted(route for route in routes if not fnmatch.fnmatch(route, "docs/**"))
 
 
 def test_shared_route_registry_is_unique_and_points_to_existing_pages() -> None:
@@ -490,9 +486,7 @@ def test_public_copy_does_not_use_protective_disclaimers() -> None:
         main = page.find("main") or page
         visible_text = " ".join(main.get_text(" ", strip=True).split()).casefold()
         violations.extend(
-            f"{route}: {phrase}"
-            for phrase in forbidden
-            if phrase in visible_text
+            f"{route}: {phrase}" for phrase in forbidden if phrase in visible_text
         )
 
     assert not violations, "Protective public copy remains: " + "; ".join(violations)
