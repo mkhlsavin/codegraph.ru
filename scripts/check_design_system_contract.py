@@ -267,10 +267,7 @@ def _append_control_and_card_errors(route: str, soup: Any, errors: list[str]) ->
         or len(soup.select("[data-shell-footer]")) != 1
     ):
         errors.append(f"{route}: shared header and footer are required")
-    if len(soup.select("footer[data-shell-footer]")) == 1:
-        actual_footer = _footer_signature(str(soup), route, document=True)
-        if actual_footer != _canonical_footer_signature():
-            errors.append(f"{route}: footer must match the shared footer template")
+    _append_footer_contract_error(route, soup, errors)
     if route in RESOURCE_ROUTES and not soup.select_one(".cg-resource-page-flow"):
         errors.append(f"{route}: resource page flow is missing")
     for table in soup.select("table.cg-data-table, table.cg-article-table"):
@@ -302,6 +299,15 @@ def _append_control_and_card_errors(route: str, soup: Any, errors: list[str]) ->
     for faq_list in soup.select(".cg-faq-list"):
         if {"grid", "gap-3"}.issubset(set(faq_list.get("class", []))):
             errors.append(f"{route}: FAQ list must use divider rhythm, not grid gap")
+
+
+def _append_footer_contract_error(route: str, soup: Any, errors: list[str]) -> None:
+    """Append an error when a public footer differs from the shared contract."""
+    if len(soup.select("footer[data-shell-footer]")) != 1:
+        return
+    actual_footer = _footer_signature(str(soup), route, document=True)
+    if actual_footer != _canonical_footer_signature():
+        errors.append(f"{route}: footer must match the shared footer template")
 
 
 def _append_shell_component_errors(route: str, soup: Any, errors: list[str]) -> None:
