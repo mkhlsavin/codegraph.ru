@@ -188,3 +188,23 @@ def test_comparison_article_primitives_have_readable_surface_and_mobile_table_co
     assert '.cg-article-table th[scope="row"]' in css
     assert '[data-page-stage="comparison"] .cg-article-table-wrap::before' in css
     assert 'content: "Прокрутите вправо, чтобы увидеть все колонки";' in css
+
+
+@pytest.mark.nfr(
+    "CNFR-Q05-RELIABILITY-NONREGRESSION-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_comparison_article_shell_keeps_desktop_widths_coherent() -> None:
+    """Keep comparison shell blocks at the ArticleShell width on desktop."""
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+
+    assert "@media (min-width: 1024px)" in css
+    assert '[data-page-stage="comparison"] .cg-article-hero' in css
+    assert "padding-left: max(32px, calc((100% - 920px) / 2));" in css
+    assert "padding-right: max(32px, calc((100% - 920px) / 2));" in css
+    assert re.search(
+        r'\[data-page-stage="comparison"\]\s+\.cg-article\s*>\s*'
+        r":not\(\.cg-article-hero\):not\(\.cg-article-section\)",
+        css,
+    )
+    assert "max-width: 920px;" in css
