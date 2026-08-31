@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import fnmatch
 import importlib.util
+import json
 import re
 import sys
 from pathlib import Path
@@ -14,6 +16,7 @@ from bs4 import BeautifulSoup
 
 LANDING_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = LANDING_ROOT.parents[1]
+PUBLIC_PAGE_EXCLUSIONS = ("docs/**", "whitepaper.html")
 ROOT_ROUTE_REGISTRY = REPOSITORY_ROOT / "scripts" / "landing_build_registry.py"
 if ROOT_ROUTE_REGISTRY.is_file() and str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
@@ -46,6 +49,22 @@ def _shared_routes(repository_root: Path, landing_root: Path) -> list[Any]:
     from scripts.landing_build_registry import iter_shared_routes
 
     return list(iter_shared_routes(landing_root))
+
+
+def _public_manifest_routes() -> list[str]:
+    """Expand every public-page manifest include into a deterministic route list."""
+    manifest = json.loads((LANDING_ROOT / "public-pages.json").read_text(encoding="utf-8"))
+    routes = {
+        path.relative_to(LANDING_ROOT).as_posix()
+        for pattern in manifest["include"]
+        for path in LANDING_ROOT.glob(pattern)
+        if path.is_file()
+    }
+    return sorted(
+        route
+        for route in routes
+        if not any(fnmatch.fnmatch(route, pattern) for pattern in PUBLIC_PAGE_EXCLUSIONS)
+    )
 
 
 def test_shared_route_registry_is_unique_and_points_to_existing_pages() -> None:
@@ -157,7 +176,7 @@ def test_article_shell_has_explicit_hero_and_section_geometry() -> None:
         re.DOTALL,
     )
     assert section_rule is not None
-    assert "max-width: 800px;" in section_rule.group("body")
+    assert "max-width: var(--container-max);" in section_rule.group("body")
 
     article_pages = []
     for page in LANDING_ROOT.rglob("*.html"):
@@ -195,16 +214,54 @@ def test_comparison_article_primitives_have_readable_surface_and_mobile_table_co
     scenarios=("primary", "negative", "observability"),
 )
 def test_comparison_article_shell_keeps_desktop_widths_coherent() -> None:
-    """Keep comparison shell blocks at the ArticleShell width on desktop."""
+    """Keep comparison shell blocks at the vertical-page width on desktop."""
     css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
 
-    assert "@media (min-width: 1024px)" in css
-    assert '[data-page-stage="comparison"] .cg-article-hero' in css
-    assert "padding-left: max(32px, calc((100% - 920px) / 2));" in css
-    assert "padding-right: max(32px, calc((100% - 920px) / 2));" in css
-    assert re.search(
-        r'\[data-page-stage="comparison"\]\s+\.cg-article\s*>\s*'
-        r":not\(\.cg-article-hero\):not\(\.cg-article-section\)",
-        css,
-    )
-    assert "max-width: 920px;" in css
+    assert '[data-page-stage="comparison"] .cg-article-hero' not in css
+    assert "max-width: 920px;" not in css
+    assert "max-width: 800px;" not in css
+
+
+@pytest.mark.nfr(
+    "FR-P1248-SHELL-01",
+    "FR-P1248-ROUTES-01",
+    "CNFR-Q1248-RESPONSIVE-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_every_public_page_uses_the_vertical_content_shell() -> None:
+    """BDD: Given every manifest route, Then each page uses the vertical shell.
+
+    The whitepaper TOC and documentation grid are the only intentional scope
+    exclusions; all other public routes must keep a page-level 1200px authority.
+    """
+    routes = _public_manifest_routes()
+    assert "whitepaper.html" not in routes
+    assert not any(route.startswith("docs/") for route in routes)
+    assert "security.html" in routes
+    assert any(route.startswith("compare/") for route in routes)
+
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+    assert "--container-max: 1200px;" in css
+    assert ".cg-article > .cg-article-section" in css
+    assert "max-width: 920px;" not in css
+    assert "max-width: 800px;" not in css
+
+    article_routes: list[str] = []
+    shell_routes: list[str] = []
+    for route in routes:
+        page = BeautifulSoup(
+            (LANDING_ROOT / route).read_text(encoding="utf-8"), "html.parser"
+        )
+        main = page.find("main")
+        assert main is not None, route
+        article = main.find("article", class_="cg-article")
+        if article is not None:
+            article_routes.append(route)
+            assert article.find(class_="cg-article-hero") is not None, route
+        else:
+            shell_routes.append(route)
+            assert main.find(class_="cg-content-shell") is not None, route
+
+    assert article_routes
+    assert shell_routes
+    assert len(article_routes) + len(shell_routes) == len(routes)
