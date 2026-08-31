@@ -304,3 +304,71 @@ def test_public_landing_sections_keep_spacing_between_content_blocks() -> None:
         assert "cg-section-continuation" not in classes, route
 
     assert benefit_routes
+
+
+@pytest.mark.nfr(
+    "FR-P1248-SHELL-01",
+    "CNFR-Q1248-RESPONSIVE-01",
+    scenarios=("primary", "negative", "observability"),
+)
+def test_public_interactive_rows_share_one_clickable_surface_contract() -> None:
+    """BDD: Given public links and FAQ rows, Then they expose one visual affordance."""
+    css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
+
+    surface_rule = re.search(
+        r":is\(\.cg-article-related-links,\s*\.cg-article-source-list,\s*"
+        r"\.cg-faq-list\)\s*\{(?P<body>.*?)\n\}",
+        css,
+        re.DOTALL,
+    )
+    assert surface_rule is not None
+    surface_body = surface_rule.group("body")
+    assert "border: 1px solid var(--cg-border-subtle);" in surface_body
+    assert "border-radius: var(--cg-radius-card);" in surface_body
+    assert "background: var(--cg-surface);" in surface_body
+
+    row_rule = re.search(
+        r":is\(\.cg-article-related-link,\s*\.cg-article-source-list\s*>\s*"
+        r"li\s*>\s*a,\s*\.cg-faq-question\)\s*\{(?P<body>.*?)\n\}",
+        css,
+        re.DOTALL,
+    )
+    assert row_rule is not None
+    row_body = row_rule.group("body")
+    assert "cursor: pointer;" in row_body
+    assert "position: relative;" in row_body
+
+    link_rule = re.search(
+        r":is\(\.cg-article-related-link,\s*\.cg-article-source-list\s*>\s*"
+        r"li\s*>\s*a\)\s*\{(?P<body>.*?)\n\}",
+        css,
+        re.DOTALL,
+    )
+    assert link_rule is not None
+    assert "display: block;" in link_rule.group("body")
+
+    assert ".cg-article-related-link::after" in css
+    assert ".cg-article-source-list > li > a::after" in css
+    assert ".cg-faq-icon svg" in css
+    assert ".cg-faq-item.open .cg-faq-icon" in css
+
+    interactive_routes = 0
+    for route in _public_manifest_routes():
+        page = BeautifulSoup(
+            (LANDING_ROOT / route).read_text(encoding="utf-8"), "html.parser"
+        )
+        related = page.select_one(".cg-article-related-links")
+        source_list = page.select_one(".cg-article-source-list")
+        faq_list = page.select_one(".cg-faq-list")
+        if related is not None:
+            interactive_routes += 1
+            assert related.select("a.cg-article-related-link"), route
+        if source_list is not None:
+            interactive_routes += 1
+            assert source_list.select("li > a"), route
+        if faq_list is not None:
+            interactive_routes += 1
+            assert faq_list.select("button.cg-faq-question"), route
+            assert faq_list.select(".cg-faq-icon"), route
+
+    assert interactive_routes >= 3
