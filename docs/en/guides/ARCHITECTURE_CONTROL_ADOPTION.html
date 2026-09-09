@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Architecture control answers testable questions: which component owns a file or symbol, which dependencies exist between components, and which of them.">
-  <meta name="cg:build-commit" content="1f1f7c4e230581f8a82a65c997f40d68a627f382">
+  <meta name="description" content="Architecture control checks agreements about dependencies: for example, UI code must not access storage directly, and domain code must not import HTTP.">
+  <meta name="cg:build-commit" content="e105e9091fe7263993a4814d1462212785c1af5a">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Architecture control in CodeGraph — Documentation">
-  <meta property="og:description" content="Architecture control answers testable questions: which component owns a file or symbol, which dependencies exist between components, and which of them.">
+  <meta property="og:description" content="Architecture control checks agreements about dependencies: for example, UI code must not access storage directly, and domain code must not import HTTP.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/ARCHITECTURE_CONTROL_ADOPTION.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Architecture control in CodeGraph — Documentation">
-  <meta name="twitter:description" content="Architecture control answers testable questions: which component owns a file or symbol, which dependencies exist between components, and which of them.">
+  <meta name="twitter:description" content="Architecture control checks agreements about dependencies: for example, UI code must not access storage directly, and domain code must not import HTTP.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/ARCHITECTURE_CONTROL_ADOPTION.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Architecture control in CodeGraph — Documentation","description":"Architecture control answers testable questions: which component owns a file or symbol, which dependencies exist between components, and which of them.","url":"https://codegraph.ru/docs/en/guides/ARCHITECTURE_CONTROL_ADOPTION.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Architecture control in CodeGraph — Documentation","description":"Architecture control checks agreements about dependencies: for example, UI code must not access storage directly, and domain code must not import HTTP.","url":"https://codegraph.ru/docs/en/guides/ARCHITECTURE_CONTROL_ADOPTION.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -197,47 +197,65 @@
         <span>Architecture control in CodeGraph</span>
         </nav>
         <h1>Architecture control in CodeGraph</h1>
-        <p class="doc-lead">Architecture control answers testable questions: which component owns a file or symbol, which dependencies exist between components, and which of them.</p>
+        <p class="doc-lead">Architecture control checks agreements about dependencies: for example, UI code must not access storage directly, and domain code must not import HTTP.</p>
 
         <div class="doc-meta"><span>User Guides</span><time datetime="2026-09-09">Updated: 2026-09-09</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Architecture control answers testable questions: which component owns a file or
-symbol, which dependencies exist between components, and which of them violate
-the accepted model. Rules run on the Code Property Graph (CPG), so they can use
-resolved imports, calls, types, inheritance, and other language capabilities in
-addition to file paths.</p>
-<p>This is a distinct part of the <a href="DASHBOARD_METHODOLOGY.html">CPG audit</a>. It neither
-replaces syntactic pattern search nor turns incomplete evidence into a passing
-release gate.</p>
-<h2  id="what-an-evaluation-contains"><span id="what_an_evaluation_contains"></span>What an evaluation contains<a class="heading-anchor" href="#what-an-evaluation-contains" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ol>
-<li>The <strong>model</strong> defines components with stable <code>uid</code> values, hierarchy,
-   independent tag dimensions, and file or symbol selectors. A display <code>id</code> may
-   change; a <code>uid</code> is finding identity and must remain stable.</li>
-<li>The <strong>CPG</strong> supplies typed dependency facts. Available relations depend on
-   each language capability, such as imports, calls, inheritance, or type
-   references.</li>
-<li>A <strong>rule</strong> selects components and applies a v1 contract for dependency
-   boundaries, layers, cycles, public APIs, classification, metrics, or
-   resolution coverage.</li>
-<li>A <strong>canonical run</strong> records the revision, model and rule hashes,
-   completeness, coverage, and one outcome for every active rule.</li>
-<li><strong>Governance</strong> resolves findings against baselines and waivers, validates the
-   signature, lifetime, and exact scope, and then supplies one release decision.</li>
-</ol>
-<div class="highlight"><pre><span></span><code>source revision -&gt; CPG facts -&gt; component model -&gt; contracts -&gt; findings
-                -&gt; baseline/waiver -&gt; release profile -&gt; gate decision
+        <p>Architecture control checks agreements about dependencies: for example, UI code
+must not access storage directly, and domain code must not import HTTP handlers.
+Behavioural tests can still pass after either boundary is crossed. Architecture
+rules check the direction of the dependencies themselves.</p>
+<p>This guide is for developers defining module boundaries and CI engineers adding
+release checks. The first exercise requires YAML knowledge and access to GoCPG;
+it does not require knowledge of internal Go tests.</p>
+<h2  id="example-and-expected-result"><span id="example_and_expected_result"></span>Example and expected result<a class="heading-anchor" href="#example-and-expected-result" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Consider a Python project where <code>src/ui/</code> contains interface code and
+<code>src/storage/</code> contains data access. We want to forbid direct imports from UI
+to Storage. A real application would usually introduce a service layer between
+them; the first rule only needs the two boundaries being checked.</p>
+<p>A component groups files or symbols. The model defines these groups, a rule
+defines allowed relationships, and the CPG records dependencies found in code.
+A finding must identify the offending relationship and its source location.
+A release gate also considers analysis completeness, accepted debt, and approved
+exceptions.</p>
+<p>Preparing a rule and checking source code are separate steps. The first step
+below validates YAML, checks applicability to Python, and describes a component.
+<code>architecture validate</code> does not read source code or build a CPG.
+Even <code>applicable: true</code> does not mean the project has no violations.</p>
+<h2  id="prepare-the-environment"><span id="prepare_the_environment"></span>Prepare the environment<a class="heading-anchor" href="#prepare-the-environment" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Use a GoCPG build that provides <code>gocpg architecture --help</code>. If the command
+is missing, the installed binary does not support this section. To build the
+current source version, run this from the <code>gocpg</code> directory:</p>
+<div class="highlight"><pre><span></span><code><span class="n">go</span> <span class="n">build</span> <span class="n">-o</span> <span class="p">./</span><span class="n">bin</span><span class="p">/</span><span class="n">gocpg</span> <span class="p">./</span><span class="n">cmd</span><span class="p">/</span><span class="n">gocpg</span>
 </code></pre></div>
 
-<h2  id="minimal-model-and-rule"><span id="minimal_model_and_rule"></span>Minimal model and rule<a class="heading-anchor" href="#minimal-model-and-rule" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Architecture documents use <code>spec_version: "2.0"</code> and <code>kind: architecture</code>.
-Unknown versions and unknown fields fail closed.</p>
+<p>The required Go version is declared in <code>gocpg/go.mod</code>. Put the binary directory
+on PATH or substitute the full binary path for <code>gocpg</code>. YAML validation does
+not require a local CodeGraph server or a project database. Reading persisted
+findings with <code>explain</code> requires a CGO/DuckDB build.</p>
+<p>Run subsequent commands from the checkout root. The file
+<code>gocpg/docs/examples/architecture-control/architecture.yaml</code> is included in
+the source tree. Its complete contents appear below, with no hidden fields
+needed to complete the example.</p>
+<h2  id="model-and-first-rule"><span id="model_and_first_rule"></span>Model and first rule<a class="heading-anchor" href="#model-and-first-rule" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The rule has a stable identifier, <code>example.ui-no-storage</code>. Components have
+separate <code>uid</code> values: preserve them when renaming the readable <code>id</code> so that
+result comparisons do not treat a renamed component as a new one.</p>
+<p>The <code>paths</code> selector matches files relative to the analysed project root.
+The <code>components</code> selector refers to declared components.
+<code>import</code> is an edge type; <code>imports</code> is an analyser capability name.
+They belong to different fields and are not interchangeable.</p>
+<!-- architecture-rule -->
+
 <div class="highlight"><pre><span></span><code><span class="nt">spec_version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2.0&quot;</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">architecture</span>
-<span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example.ui-must-not-call-storage</span>
+<span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example.ui-no-storage</span>
+<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1&quot;</span>
+<span class="nt">fingerprint_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">]</span>
 <span class="nt">architecture</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">source_roots</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src</span>
@@ -249,37 +267,87 @@ Unknown versions and unknown fields fail closed.</p>
 <span class="w">    </span><span class="nt">generated_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ignore</span>
 <span class="w">    </span><span class="nt">minimum_coverage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
 <span class="w">  </span><span class="nt">components</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cmp_example_ui</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cmp-example-ui</span>
 <span class="w">      </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ui</span>
 <span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">UI</span>
-<span class="w">      </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">layer</span>
+<span class="w">      </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf</span>
 <span class="w">      </span><span class="nt">match</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;src/ui/**&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cmp_example_storage</span>
+<span class="w">        </span><span class="nt">paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;src/ui/**&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cmp-example-storage</span>
 <span class="w">      </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">storage</span>
 <span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Storage</span>
-<span class="w">      </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">layer</span>
+<span class="w">      </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf</span>
 <span class="w">      </span><span class="nt">match</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;src/storage/**&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;src/storage/**&quot;</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">forbidden_dependency</span>
 <span class="w">  </span><span class="nt">from</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">component</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ui</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">components</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cmp-example-ui</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">to</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">component</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">storage</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">components</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cmp-example-storage</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">relation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">edge_types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">imports</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">calls</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">reachability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transitive</span>
+<span class="w">    </span><span class="nt">edge_types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">import</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">reachability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">direct</span>
 <span class="w">  </span><span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">required_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">imports</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">required_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">imports</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">source_sets</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">minimum_coverage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
 </code></pre></div>
 
-<p>Validate the schema and applicability before enabling a gate:</p>
-<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">validate</span> <span class="p">-</span><span class="n">-rule</span> <span class="p">./</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-language</span> <span class="n">python</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<p><code>source_roots</code> identifies production code. Complete, unambiguous classification
+requires files in that scope to belong to components. Selector conflicts and
+unknown coverage must be resolved before enforcement. This small example has
+no other production directories.</p>
+<p><code>forbidden_dependency</code> forbids relationships from <code>from</code> to <code>to</code>.
+<code>reachability: direct</code> checks immediate imports. Prohibiting reachability
+through intermediate components requires a transitive rule; changing this
+meaning must not silently preserve an existing baseline decision.</p>
+<h2  id="check-applicability"><span id="check_applicability"></span>Check applicability<a class="heading-anchor" href="#check-applicability" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<!-- architecture-cli: validate -->
+
+<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">validate</span> <span class="p">-</span><span class="o">-file</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">docs</span><span class="p">/</span><span class="n">examples</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">/</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-language</span> <span class="n">python</span> <span class="p">-</span><span class="n">-json</span>
 </code></pre></div>
 
-<p><code>validate</code> does not run a second scan or authorize a release. It reports whether
-the rule can be evaluated with the declared language capabilities.</p>
+<p>Check these JSON fields; other response fields are omitted here:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;rule_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;example.ui-no-storage&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;applicable&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gate_evaluated&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason_codes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;applicable&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>applicable</code> confirms compatibility with the declared language capabilities.
+<code>gate_evaluated: false</code> says that no release decision was evaluated.
+For an unselected language such as <code>--language c</code>, the command can exit with
+code 0 while returning <code>applicable: false</code> and <code>language_not_selected</code>.
+CI must therefore inspect JSON rather than relying on exit code alone.</p>
+<p>Invalid syntax, an unknown YAML field, a missing file, or an invalid CLI flag
+produces a nonzero exit code. This command group uses <code>--file</code> and <code>--json</code>;
+<code>--rule</code> and <code>--format json</code> are not supported.</p>
+<h2  id="inspect-the-component-definition"><span id="inspect_the_component_definition"></span>Inspect the component definition<a class="heading-anchor" href="#inspect-the-component-definition" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<!-- architecture-cli: describe -->
+
+<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">describe</span> <span class="p">-</span><span class="o">-file</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">docs</span><span class="p">/</span><span class="n">examples</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">/</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-component</span> <span class="n">ui</span> <span class="p">-</span><span class="n">-json</span>
+</code></pre></div>
+
+<p>Expect <code>rule_id: example.ui-no-storage</code>,
+<code>component.uid: cmp-example-ui</code>, and <code>component.id: ui</code>.
+An unknown component produces an error. Verify that the intended model was
+loaded before investigating a graph finding.</p>
+<p><code>describe</code> returns the component definition, its parent, and direct children.
+It does not report actual file classification because it does not read sources.</p>
+<h2  id="from-a-rule-to-a-project-check"><span id="from_a_rule_to_a_project_check"></span>From a rule to a project check<a class="heading-anchor" href="#from-a-rule-to-a-project-check" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The next step requires a built CPG and an architecture evaluator run.
+The <code>architecture</code> group currently registers <code>validate</code>, <code>describe</code>, and
+<code>explain</code>; it has no general command to execute an arbitrary rule.
+The <code>scan</code> command serves the separate pattern-rule pipeline.
+YAML applicability alone does not demonstrate that a full evaluation of this
+rule is available through the CLI.</p>
+<p>With a configured CodeGraph integration, the result must identify the source
+revision, run, executed rules, and analysis completeness. To inspect a finding,
+take <code>run_id</code> from that result and <code>fingerprint</code> from the finding itself.
+Without a persisted run, <code>explain</code> cannot retrieve an explanation. The sections
+below describe release gate adoption conditions; enabling enforcement requires
+a verified analysis execution path in your integration.</p>
 <h2  id="adopt-it-without-false-green-results"><span id="adopt_it_without_false_green_results"></span>Adopt it without false green results<a class="heading-anchor" href="#adopt-it-without-false-green-results" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Define components and classification, then inspect unclassified entities and
@@ -317,16 +385,85 @@ baseline, waiver, dependency-edge, and strongly-connected-component changes
 expand invalidation. A partial enforcement result gets one synchronous full
 retry; any incomplete result remains <code>BLOCKED_INCOMPLETE</code>.</p>
 <h2  id="inspect-a-result"><span id="inspect_a_result"></span>Inspect a result<a class="heading-anchor" href="#inspect-a-result" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">describe</span> <span class="p">-</span><span class="n">-rule</span> <span class="p">./</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-component</span> <span class="n">cmp_example_ui</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
-<span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">explain</span> <span class="p">-</span><span class="n">-db</span> <span class="p">./</span><span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span> <span class="p">-</span><span class="n">-run-id</span> <span class="n">RUN</span> <span class="p">-</span><span class="n">-fingerprint</span> <span class="n">SHA256</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">describe</span> <span class="p">-</span><span class="o">-file</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">docs</span><span class="p">/</span><span class="n">examples</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">/</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-component</span> <span class="n">ui</span> <span class="p">-</span><span class="n">-json</span>
+<span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">explain</span> <span class="p">-</span><span class="n">-db</span> <span class="p">./</span><span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span> <span class="p">-</span><span class="n">-run-id</span> <span class="n">RUN</span> <span class="p">-</span><span class="n">-fingerprint</span> <span class="n">SHA256</span> <span class="p">-</span><span class="n">-json</span>
 </code></pre></div>
 
 <p><code>describe</code> returns a component with its parent and direct children. <code>explain</code>
 reads a persisted canonical finding, locations, and code flow. Both commands are
 read-only and cannot establish another source of truth.</p>
-<h2  id="normative-v1-documentation-set"><span id="normative_v1_documentation_set"></span>Normative v1 documentation set<a class="heading-anchor" href="#normative-v1-documentation-set" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The distribution contains 17 standalone documents under
-<code>gocpg/docs/architecture/v1/</code>:</p>
+<h2  id="one-guide-with-reference-appendices"><span id="one_guide_with_reference_appendices"></span>One guide with reference appendices<a class="heading-anchor" href="#one-guide-with-reference-appendices" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The 17 topics form one working cycle. A reader should not open them in an
+arbitrary order: start with the end-to-end scenario, then use the linked
+sections for the model, contract, preset, and governance details. The pages
+below remain normative appendices for exact fields and formats; they are not
+standalone product explanations.</p>
+<h3  id="map-of-the-17-topics"><span id="map_of_the_17_topics"></span>Map of the 17 topics<a class="heading-anchor" href="#map-of-the-17-topics" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p><a id="architecture-model"></a></p>
+<p><strong>1. Architecture model.</strong> Define source roots, components, stable <code>uid</code> values,
+hierarchy, and classification. The output is unambiguous ownership of files and
+symbols.</p>
+<p><a id="architecture-rule-dsl"></a></p>
+<p><strong>2. Rule DSL.</strong> Declare <code>kind: architecture</code>, a contract, selectors, languages,
+capabilities, and coverage. Do not confuse the CPG edge type <code>import</code> with the
+analyser capability <code>imports</code>.</p>
+<p><a id="contract-catalog"></a></p>
+<p><strong>3. Contract catalog.</strong> Choose one of the 12 contracts for dependencies, layers,
+cycles, APIs, classification completeness, metrics, or resolution coverage.</p>
+<p><a id="capability-registry"></a></p>
+<p><strong>4. Capability registry.</strong> Check which facts the language frontend actually
+provides. <code>complete</code> confirms required fact families; <code>degraded</code> cannot bypass a
+missing mandatory capability.</p>
+<p><a id="preset-authoring"></a></p>
+<p><strong>5. Preset authoring.</strong> Add a stable <code>id@version</code>, capability manifest, and
+source-backed fixtures with expected outcomes. A fixture must exercise a real
+source file, not only the YAML shape.</p>
+<p><a id="preset-catalog"></a></p>
+<p><strong>6. Preset catalog.</strong> Resolve a preset by exact ID and semantic version.
+<code>latest</code> and cross-language aliases are unsuitable for enforcement.</p>
+<p><a id="baseline"></a></p>
+<p><strong>7. Baseline.</strong> Record known findings by fingerprint version, rule semantic hash,
+and exact scope. A semantic rule change requires review.</p>
+<p><a id="waiver-trust"></a></p>
+<p><strong>8. Waiver and trust.</strong> A waiver applies to one finding and lifetime. A trusted
+governance manifest binds commit, model hash, rule hash, scope, revision,
+signature, and key-revocation state.</p>
+<p><a id="release-gates"></a></p>
+<p><strong>9. Release gate profiles.</strong> <code>discovery</code> and <code>advisory</code> help tune a model;
+<code>enforce_new</code>, <code>enforce_all</code>, and <code>strict</code> can block a release. The result must
+be <code>PASS</code>, <code>FAIL_VIOLATIONS</code>, or <code>BLOCKED_INCOMPLETE</code> with a reason.</p>
+<p><a id="incremental-scans"></a></p>
+<p><strong>10. Incremental scan semantics.</strong> Reuse is valid only when fingerprints,
+semantic digest, and baseline/waiver states match. Model, public API, edge, and
+strongly connected component changes expand invalidation.</p>
+<p><a id="migration"></a></p>
+<p><strong>11. Migration.</strong> Legacy findings start as discovery/shadow evidence. Moving to
+enforcement requires comparison and two release cycles; one green local run is
+not enough.</p>
+<p><a id="cli"></a></p>
+<p><strong>12. CLI.</strong> <code>validate</code> checks applicability, <code>describe</code> shows the model, and
+<code>explain</code> reads a persisted canonical finding. None of these commands grants
+release approval by itself.</p>
+<p><a id="grpc"></a></p>
+<p><strong>13. gRPC.</strong> A client requests revision-bound results by project, <code>run_id</code>, and
+fingerprint. The response preserves finding identity and completeness; an empty
+or mixed graph cannot become a passing response.</p>
+<p><a id="json-schema"></a></p>
+<p><strong>14. JSON Schema.</strong> Use schemas for result exchange, not as a substitute for
+the process explanation. Validate run identity, outcome, completeness, location,
+and lifecycle fields.</p>
+<p><a id="sarif"></a></p>
+<p><strong>15. SARIF mapping.</strong> The export preserves rule ID, fingerprint, severity,
+location, and evidence. SARIF is useful for Code Scanning; the canonical result
+remains the release authority.</p>
+<p><a id="diagram-export"></a></p>
+<p><strong>16. Mermaid and PlantUML.</strong> A diagram supports model and dependency review. It
+is a projection, not a second source of truth, and cannot change findings.</p>
+<p><a id="troubleshooting"></a></p>
+<p><strong>17. Troubleshooting.</strong> Start with status and reason codes: stale CPG, unknown
+denominator, missing capability, unresolved edge, and untrusted manifest require
+evidence repair or blocked enforcement.</p>
+<p>Normative appendices:</p>
 <ul>
 <li><a href="../reference/architecture-v1/architecture-model-reference.html">Architecture Model Reference</a></li>
 <li><a href="../reference/architecture-v1/architecture-rule-dsl-reference.html">Architecture Rule DSL Reference</a></li>
@@ -346,9 +483,11 @@ read-only and cannot establish another source of truth.</p>
 <li><a href="../reference/architecture-v1/diagram-export-guide.html">Mermaid and PlantUML Export Guide</a></li>
 <li><a href="../reference/architecture-v1/troubleshooting-guide.html">Troubleshooting Guide</a></li>
 </ul>
-<p>Every document has an <code>Executable example</code> section. CI reconciles the command
-with the normative registry and runs the referenced Go test. A command merely
-being present in Markdown is not acceptance evidence.</p>
+<p>The appendices contain exact fields, schemas, and source references. Their
+<code>Executable example</code> blocks show technical checks; practical
+commands live in this guide and in the shared CI scenario. CI executes the guide
+argv on a fresh CLI and checks JSON and negative cases; the presence of an
+internal Go test in an appendix does not prove that a user can follow the page.</p>
 <p>The current v1 catalog contains three generic templates and nine language
 presets: C, C++, C#, Go, JavaScript, Kotlin, PHP, Python, and TypeScript. A
 neighbouring language does not imply support: capabilities and fixture
@@ -362,6 +501,69 @@ requires comparison and <code>two_release_cycles</code>, not one successful loca
 <p>See the <a href="../enterprise/GOCPG_VS_JOERN_ANALYSIS.html">GoCPG technical analysis</a>
 for graph construction and type recovery, and the
 <a href="scenarios/11-architecture.html">architecture analysis scenario</a> for the user flow.</p>
+<h2  id="end-to-end-scenario-source-to-decision"><span id="end_to_end_scenario_source_to_decision"></span>End-to-end scenario: source to decision<a class="heading-anchor" href="#end-to-end-scenario-source-to-decision" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The repository includes the minimal rule
+<code>gocpg/docs/examples/architecture-control/architecture.yaml</code>. It models UI and
+Storage and forbids a direct dependency. The scenario has five verifiable steps.</p>
+<ol>
+<li><strong>Validate the rule.</strong> Run <code>validate</code> and check <code>applicable=true</code>,
+   <code>gate_evaluated=false</code>, and <code>reason_codes</code> containing <code>applicable</code>. This
+   validates input configuration, not an audit result.</li>
+<li><strong>Inspect the model.</strong> Run <code>describe --component ui</code> and check the stable
+   <code>cmp-example-ui</code>. If the component is missing, later findings are not
+   interpretable.</li>
+<li><strong>Build a CPG.</strong> For a standalone Python project use
+   <code>gocpg parse --input ./example-project --output ./cpg.duckdb --lang python</code>.
+   For a pull request use <code>gocpg ci-update --input . --output cpg.duckdb
+   --base-ref origin/main --head-ref HEAD --json</code>. The result must identify the
+   revision and graph completeness.</li>
+<li><strong>Evaluate the rule.</strong> The current CLI does not advertise a general
+   <code>architecture evaluate</code> command. Full enforcement runs through the production
+   runner in a configured CodeGraph integration, where the policy manifest binds
+   CPG facts, component membership, rule set, and release profile. Do not use
+   <code>validate</code> or an internal test as a substitute for this step.</li>
+<li><strong>Explain and fix a finding.</strong> Take <code>run_id</code> and the finding fingerprint from
+   the canonical run, then run <code>explain</code>. After changing the source, repeat a
+   full or valid incremental run. If completeness, capabilities, or denominators
+   are unproven, the result remains <code>BLOCKED_INCOMPLETE</code>.</li>
+</ol>
+<h3  id="minimal-ci-fragment"><span id="minimal_ci_fragment"></span>Minimal CI fragment<a class="heading-anchor" href="#minimal-ci-fragment" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<!-- architecture-cli: ci-update -->
+
+<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">ci-update</span> <span class="p">-</span><span class="n">-input</span> <span class="p">.</span> <span class="p">-</span><span class="n">-output</span> <span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span> <span class="p">-</span><span class="n">-base-ref</span> <span class="n">origin</span><span class="p">/</span><span class="n">main</span> <span class="p">-</span><span class="n">-head-ref</span> <span class="n">HEAD</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">python</span> <span class="p">-</span><span class="n">-json</span>
+</code></pre></div>
+
+<!-- architecture-cli: validate -->
+
+<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">validate</span> <span class="p">-</span><span class="o">-file</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">docs</span><span class="p">/</span><span class="n">examples</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">/</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-language</span> <span class="n">python</span> <span class="p">-</span><span class="n">-json</span>
+</code></pre></div>
+
+<!-- architecture-cli: describe -->
+
+<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">describe</span> <span class="p">-</span><span class="o">-file</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">docs</span><span class="p">/</span><span class="n">examples</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">/</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-component</span> <span class="n">ui</span> <span class="p">-</span><span class="n">-json</span>
+</code></pre></div>
+
+<p>CI must inspect JSON, not only exit codes. For an unselected language,
+<code>validate</code> may exit 0 while returning <code>applicable=false</code>; that is a diagnostic,
+not release approval. For the CodeGraph policy path, <code>ci-update</code> runs production
+architecture control only when the trusted manifest, policy, and release-control
+configuration are present. Without those inputs the pipeline must report the
+exact reason and stop enforcement.</p>
+<h3  id="what-counts-as-a-fix"><span id="what_counts_as_a_fix"></span>What counts as a fix<a class="heading-anchor" href="#what-counts-as-a-fix" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>In the example, an import from <code>src/ui</code> to <code>src/storage</code> creates a
+<code>FAIL_VIOLATIONS</code> finding. Moving the access through an allowed application
+component removes the finding after a new CPG run. If an import cannot be
+resolved or classification is incomplete, the result does not become green
+automatically: it remains <code>BLOCKED_INCOMPLETE</code>, and remediation restores graph
+facts, capabilities, or governance.</p>
+<h2  id="choosing-the-next-section"><span id="choosing_the_next_section"></span>Choosing the next section<a class="heading-anchor" href="#choosing-the-next-section" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>If files have no owner, start with the <a href="#architecture-model">model</a> and
+<a href="#architecture-rule-dsl">DSL</a>. If the rule already reports a finding, read the
+<a href="#contract-catalog">contract catalog</a>, <a href="#baseline">baseline</a>, and
+<a href="#waiver-trust">waiver/trust</a>. If full and PR results differ, check
+<a href="#incremental-scans">incremental semantics</a> and <a href="#capability-registry">capabilities</a>.
+For CI or Code Scanning output, use <a href="#json-schema">JSON Schema</a> and
+<a href="#sarif">SARIF</a>, while keeping the canonical result as the release authority.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -384,14 +586,23 @@ for graph construction and type recovery, and the
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#what-an-evaluation-contains" class="level-2" aria-current="location">What an evaluation contains</a></li>
-<li><a href="#minimal-model-and-rule" class="level-2">Minimal model and rule</a></li>
+        <li><a href="#example-and-expected-result" class="level-2" aria-current="location">Example and expected result</a></li>
+<li><a href="#prepare-the-environment" class="level-2">Prepare the environment</a></li>
+<li><a href="#model-and-first-rule" class="level-2">Model and first rule</a></li>
+<li><a href="#check-applicability" class="level-2">Check applicability</a></li>
+<li><a href="#inspect-the-component-definition" class="level-2">Inspect the component definition</a></li>
+<li><a href="#from-a-rule-to-a-project-check" class="level-2">From a rule to a project check</a></li>
 <li><a href="#adopt-it-without-false-green-results" class="level-2">Adopt it without false green results</a></li>
 <li><a href="#baselines-waivers-and-trust" class="level-2">Baselines, waivers, and trust</a></li>
 <li><a href="#full-and-incremental-runs" class="level-2">Full and incremental runs</a></li>
 <li><a href="#inspect-a-result" class="level-2">Inspect a result</a></li>
-<li><a href="#normative-v1-documentation-set" class="level-2">Normative v1 documentation set</a></li>
+<li><a href="#one-guide-with-reference-appendices" class="level-2">One guide with reference appendices</a></li>
+<li data-doc-toc-level="3" data-doc-parent="one-guide-with-reference-appendices" hidden><a href="#map-of-the-17-topics" class="level-3">Map of the 17 topics</a></li>
 <li><a href="#compatibility-and-recovery" class="level-2">Compatibility and recovery</a></li>
+<li><a href="#end-to-end-scenario-source-to-decision" class="level-2">End-to-end scenario: source to decision</a></li>
+<li data-doc-toc-level="3" data-doc-parent="end-to-end-scenario-source-to-decision" hidden><a href="#minimal-ci-fragment" class="level-3">Minimal CI fragment</a></li>
+<li data-doc-toc-level="3" data-doc-parent="end-to-end-scenario-source-to-decision" hidden><a href="#what-counts-as-a-fix" class="level-3">What counts as a fix</a></li>
+<li><a href="#choosing-the-next-section" class="level-2">Choosing the next section</a></li>
       </ul>
     </aside>
   </div>
