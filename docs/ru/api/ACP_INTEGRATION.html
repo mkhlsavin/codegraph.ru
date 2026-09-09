@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Руководство по интеграции ACP: транспорты, JSON-RPC-методы, авторизация, границы workspace и ограничения approval в CodeGraph.">
-  <meta name="cg:build-commit" content="cdef9d0ca82c1accd5cab856051d757154a548e2">
+  <meta name="description" content="Руководство по ACP v1, экспериментальному профилю ACP v2, транспортам, MCP-серверам, авторизации и ограничениям runtime в CodeGraph.">
+  <meta name="cg:build-commit" content="1f1f7c4e230581f8a82a65c997f40d68a627f382">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Интеграция ACP — Документация CodeGraph">
-  <meta property="og:description" content="Руководство по интеграции ACP: транспорты, JSON-RPC-методы, авторизация, границы workspace и ограничения approval в CodeGraph.">
+  <meta property="og:description" content="Руководство по ACP v1, экспериментальному профилю ACP v2, транспортам, MCP-серверам, авторизации и ограничениям runtime в CodeGraph.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/ru/api/ACP_INTEGRATION.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Интеграция ACP — Документация CodeGraph">
-  <meta name="twitter:description" content="Руководство по интеграции ACP: транспорты, JSON-RPC-методы, авторизация, границы workspace и ограничения approval в CodeGraph.">
+  <meta name="twitter:description" content="Руководство по ACP v1, экспериментальному профилю ACP v2, транспортам, MCP-серверам, авторизации и ограничениям runtime в CodeGraph.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/ru/api/ACP_INTEGRATION.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Интеграция ACP — Документация CodeGraph","description":"Руководство по интеграции ACP: транспорты, JSON-RPC-методы, авторизация, границы workspace и ограничения approval в CodeGraph.","url":"https://codegraph.ru/docs/ru/api/ACP_INTEGRATION.html","inLanguage":"ru"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Интеграция ACP — Документация CodeGraph","description":"Руководство по ACP v1, экспериментальному профилю ACP v2, транспортам, MCP-серверам, авторизации и ограничениям runtime в CodeGraph.","url":"https://codegraph.ru/docs/ru/api/ACP_INTEGRATION.html","inLanguage":"ru"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -157,135 +157,162 @@
         <span>Интеграция ACP</span>
         </nav>
         <h1>Интеграция ACP</h1>
-        <p class="doc-lead">Руководство по интеграции ACP: транспорты, JSON-RPC-методы, авторизация, границы workspace и ограничения approval в CodeGraph.</p>
+        <p class="doc-lead">Руководство по ACP v1, экспериментальному профилю ACP v2, транспортам, MCP-серверам, авторизации и ограничениям runtime в CodeGraph.</p>
 
-        <div class="doc-meta"><span>API Документация</span><time datetime="2026-08-24">Обновлено: 2026-08-24</time></div>
+        <div class="doc-meta"><span>API Документация</span><time datetime="2026-09-07">Обновлено: 2026-09-07</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph реализует Agent Client Protocol (ACP) поверх JSON-RPC для интеграции с редакторами.
-ACP подходит, когда IDE нужны сессии, потоковые agent-turn, диагностика, hover, ограниченный
-доступ к файлам или терминалу. Каталог MCP-инструментов относится к другому протоколу и здесь
-не дублируется.</p>
+        <p>CodeGraph поддерживает Agent Client Protocol (ACP) поверх JSON-RPC для интеграции с редакторами.
+ACP v1 — основной профиль, совместимый с промышленным контуром. Экспериментальный профиль ACP
+v2 alpha включается через <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>. Метод <code>initialize</code> выбирает
+профиль на весь срок соединения; сменить его без нового соединения нельзя.</p>
+<p>Оба профиля используют общее ядро сессий CodeGraph, ограничения workspace, запросы разрешений и
+мост Model Context Protocol (MCP). Возможности image и audio сервер не объявляет.</p>
 <h2  id="transporty-i-marshruty"><span id="transporty_i_marshruty"></span>Транспорты и маршруты<a class="heading-anchor" href="#transporty-i-marshruty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Транспорты и маршруты"><table data-columns="3"><caption class="sr-only">Транспорты и маршруты</caption>
 <thead>
 <tr>
 <th scope="col">Транспорт</th>
 <th scope="col">Точка входа</th>
-<th scope="col">Применение</th>
+<th scope="col">Контракт</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>stdio</td>
 <td><code>codegraph-acp</code></td>
-<td>Локальная IDE запускает отдельный процесс агента.</td>
+<td>Локальная IDE запускает процесс агента. Запросы, ответы и уведомления передаются потоком.</td>
 </tr>
 <tr>
 <td>HTTP</td>
 <td><code>POST /api/v1/admin/runtime/acp/rpc</code></td>
-<td>Один аутентифицированный JSON-RPC-запрос.</td>
+<td>Собственный JSON-RPC request/response endpoint CodeGraph. Это не официальный ACP Streamable HTTP.</td>
 </tr>
 <tr>
 <td>WebSocket</td>
 <td><code>WS /api/v1/admin/runtime/acp/ws</code></td>
-<td>Двунаправленные запросы и потоковые уведомления.</td>
+<td>Двунаправленные запросы, вызовы клиента агентом и потоковые уведомления.</td>
 </tr>
 </tbody>
 </table></div>
 <p>Управление HTTP-сессиями доступно через <code>GET /api/v1/admin/runtime/acp/sessions</code> и
-<code>DELETE /api/v1/admin/runtime/acp/sessions/{session_id}</code>. Список фильтруется по текущему
-пользователю, а при удалении проверяется владелец.</p>
+<code>DELETE /api/v1/admin/runtime/acp/sessions/{session_id}</code>. Состояние протокола и сессии HTTP
+изолированы по аутентифицированному субъекту и проекту. Для WebSocket область проекта берётся из
+токена, машинной учётной записи или явно включённого локального контура разработки.</p>
+<p>HTTP собирает уведомления prompt в ACP v1 и возвращает их в
+<code>result._meta.codegraph.sessionUpdates</code>. В ACP v2 метод <code>session/prompt</code> работает асинхронно и
+требует потоковый транспорт. HTTP отклоняет такой запрос кодом JSON-RPC <code>-32004</code> до выполнения
+turn.</p>
 <h2  id="granitsa-autentifikatsii"><span id="granitsa_autentifikatsii"></span>Граница аутентификации<a class="heading-anchor" href="#granitsa-autentifikatsii" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Для HTTP JSON-RPC и маршрутов сессий нужны роль администратора, scope <code>admin:all</code> либо
-service account со scope <code>scenarios:execute</code>. Обход аутентификации на localhost возможен
-только при явно включённом параметре <code>local_dev_unauthenticated_surfaces_enabled</code>.</p>
-<p>WebSocket принимает bearer access token или API key. Для машинной учётной записи сервер
-дополнительно проверяет область проекта, версию <code>X-CodeGraph-Machine-Contract</code>, политику
-интерфейса и настроенные требования mTLS. Аутентификация транспорта завершается до разбора
-JSON-RPC-параметров; метод <code>authenticate</code> работает внутри уже проверенного соединения.</p>
-<h2  id="initsializatsiya-i-gruppy-metodov"><span id="initsializatsiya_i_gruppy_metodov"></span>Инициализация и группы методов<a class="heading-anchor" href="#initsializatsiya-i-gruppy-metodov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>На каждом соединении сначала вызывайте <code>initialize</code>. До инициализации сервер отклоняет другие
+<p>Для HTTP JSON-RPC и маршрутов сессий нужны роль администратора, scope <code>admin:all</code> либо service
+account со scope <code>scenarios:execute</code>. Обход аутентификации на localhost возможен только при явно
+включённом параметре <code>local_dev_unauthenticated_surfaces_enabled</code>.</p>
+<p>WebSocket принимает bearer access token или API key. Для машинной учётной записи сервер также
+проверяет область проекта, версию <code>X-CodeGraph-Machine-Contract</code>, политику интерфейса и требования
+mTLS. Аутентификация транспорта завершается до разбора JSON-RPC-параметров. Оба профиля ACP
+возвращают пустой список <code>authMethods</code>; поэтому устаревший v1-метод <code>authenticate</code> работает только
+внутри уже проверенной транспортной границы.</p>
+<h2  id="metody-acp-v1"><span id="metody_acp_v1"></span>Методы ACP v1<a class="heading-anchor" href="#metody-acp-v1" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Сначала вызовите <code>initialize</code> с <code>protocolVersion: 1</code>. До инициализации сервер отклоняет остальные
 методы с кодом <code>-32002</code>.</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Инициализация и группы методов"><table data-columns="2"><caption class="sr-only">Инициализация и группы методов</caption>
-<thead>
-<tr>
-<th scope="col">Группа</th>
-<th scope="col">Реализованные методы</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Сессии</td>
-<td><code>authenticate</code>, <code>session/new</code>, <code>session/load</code>, <code>session/prompt</code>, <code>session/cancel</code></td>
-</tr>
-<tr>
-<td>Файлы</td>
-<td><code>fs/read_text_file</code>, <code>fs/write_text_file</code></td>
-</tr>
-<tr>
-<td>Терминал</td>
-<td><code>terminal/create</code>, <code>terminal/output</code>, <code>terminal/wait_for_exit</code>, <code>terminal/kill</code>, <code>terminal/release</code></td>
-</tr>
-<tr>
-<td>Потоки</td>
-<td><code>thread/start</code>, <code>thread/resume</code>, <code>thread/fork</code>, <code>thread/list</code>, <code>thread/archive</code>, <code>thread/compact</code></td>
-</tr>
-<tr>
-<td>Turn</td>
-<td><code>turn/start</code>, <code>turn/interrupt</code></td>
-</tr>
-<tr>
-<td>IDE</td>
-<td><code>diagnostics/subscribe</code>, <code>diagnostics/unsubscribe</code>, <code>hover/request</code></td>
-</tr>
-<tr>
-<td>Ответ на approval</td>
-<td><code>item/fileChange/respondApproval</code></td>
-</tr>
-</tbody>
-</table></div>
-<p>Во время <code>session/prompt</code> и <code>turn/start</code> сервер может отправлять JSON-RPC-уведомления. Клиент
-должен обрабатывать <code>session/update</code> и согласованные уведомления diagnostics, hover и approval,
-не полагаясь на фиксированное число MCP-инструментов.</p>
-<h2  id="ogranichenie-workspace-i-terminala"><span id="ogranichenie_workspace_i_terminala"></span>Ограничение workspace и терминала<a class="heading-anchor" href="#ogranichenie-workspace-i-terminala" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Файловые методы требуют абсолютные <code>workspaceRoot</code> и <code>path</code>. Если целевой путь после
-нормализации не находится внутри корня, сервер возвращает <code>outside workspace root</code>. При записи
-также запрещены чувствительные фрагменты пути: <code>.git</code>, <code>.env</code>, <code>.ssh</code>, <code>.aws</code> и <code>node_modules</code>.</p>
-<p>Терминальные методы используют тот же абсолютный <code>workspaceRoot</code>; <code>cwd</code> должен оставаться
-внутри него. Команда запускается как argv с <code>shell=False</code>. В исходниках задан ограниченный
-allowlist команд сборки и чтения; интерпретаторы и оболочки <code>python</code>, <code>powershell</code>, <code>pwsh</code>,
-<code>cmd</code>, <code>bash</code>, <code>sh</code> и <code>node</code> явно запрещены. Аргументы передаются нативным списком строк без
-NUL, перевода строки и возврата каретки.</p>
-<p>Эти проверки задают границу ACP для path traversal и shell injection. Сетевые маршруты обслуживаются
-штатной аутентификацией и областью проекта.</p>
+<p>Стандартная поверхность v1 включает <code>session/new</code>, <code>session/load</code>, <code>session/prompt</code> и
+<code>session/cancel</code>. Во время prompt сервер может вызвать у клиента <code>fs/read_text_file</code>,
+<code>fs/write_text_file</code>, терминальные методы и <code>session/request_permission</code>. Клиент должен связывать
+ответы по идентификатору JSON-RPC и одновременно обрабатывать уведомления <code>session/update</code>.</p>
+<p>В prompt ACP v1 эти клиентские вызовы включаются явно через расширение
+<code>_meta.codegraph.clientContext</code> у блока содержимого. Массив <code>readTextFiles</code> принимает объекты с
+полем <code>path</code>, а массив <code>terminals</code> — <code>command</code>, строковый список <code>args</code> и необязательные <code>cwd</code>,
+<code>env</code> или <code>outputByteLimit</code>. CodeGraph вызывает только возможности, объявленные клиентом при
+<code>initialize</code>, добавляет возвращённый редакторский текст и результат терминала в текущий prompt и
+всегда освобождает созданный терминал. Эти метаданные — расширение CodeGraph, а не новый
+стандартный метод ACP.</p>
+<p>Расширения CodeGraph используют пространство имён <code>_codegraph/</code>:</p>
+<ul>
+<li><code>_codegraph/thread/start</code>, <code>_codegraph/thread/resume</code>, <code>_codegraph/thread/fork</code>,
+  <code>_codegraph/thread/list</code>, <code>_codegraph/thread/archive</code> и <code>_codegraph/thread/compact</code>;</li>
+<li><code>_codegraph/turn/start</code> и <code>_codegraph/turn/interrupt</code>;</li>
+<li><code>_codegraph/diagnostics/subscribe</code>, <code>_codegraph/diagnostics/unsubscribe</code> и
+  <code>_codegraph/hover/request</code>;</li>
+<li><code>_codegraph/item/fileChange/respondApproval</code>.</li>
+</ul>
+<p>Имена без префикса, существовавшие до Story 1257, доступны через явный адаптер совместимости.
+Такой ответ содержит <code>_meta.codegraph.legacyMethod</code>; новые клиенты должны использовать методы с
+пространством имён. Внутренний класс <code>ClientCapabilitiesV2</code> описывает расширенные возможности
+CodeGraph и не относится к версии протокола ACP v2.</p>
+<h2  id="eksperimentalnyy-profil-acp-v2"><span id="eksperimentalnyy_profil_acp_v2"></span>Экспериментальный профиль ACP v2<a class="heading-anchor" href="#eksperimentalnyy-profil-acp-v2" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Если задано <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>, соединение можно инициализировать с
+<code>protocolVersion: 2</code>, <code>info.name</code> и <code>info.version</code>. Профиль поддерживает <code>session/new</code>,
+<code>session/list</code>, <code>session/resume</code>, <code>session/close</code>, <code>session/delete</code>, <code>session/prompt</code>,
+<code>session/cancel</code> и <code>$/cancel_request</code>.</p>
+<p>На <code>session/prompt</code> сервер отвечает до завершения turn. Затем клиент получает уведомления
+<code>session/update</code>, в том числе переходы состояния и обновления tool call. Для этого потока нужен
+stdio или WebSocket. Повторный <code>initialize</code> с другой версией протокола отклоняется; откройте новое
+соединение.</p>
+<p>Для отката задайте <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=false</code> и перезапустите ACP-соединения. Работа
+ACP v1 от флага v2 не зависит.</p>
+<h2  id="mcp-servery-i-zapros-razresheniya"><span id="mcp_servery_i_zapros_razresheniya"></span>MCP-серверы и запрос разрешения<a class="heading-anchor" href="#mcp-servery-i-zapros-razresheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p><code>session/new</code> и соответствующие операции resume/load принимают ACP-дескрипторы MCP для
+транспортов <code>stdio</code> и <code>http</code>. Stdio-команда преобразуется в путь к исполняемому файлу и
+запускается как нативный argv без shell. Переменные окружения и заголовки передаются объектами
+name/value. Сервер проверяет имена и запрещает NUL, возврат каретки и перевод строки в значениях.</p>
+<p>Для MCP через HTTP разрешены только публичные HTTPS-endpoint. Сервер отклоняет учётные данные в
+URL, query string, fragment, loopback, приватные и link-local адреса, а также обычный HTTP.
+Переходы по redirect подчиняются общей политике исходящих URL.</p>
+<p>При создании сессии должны подключиться все объявленные MCP-серверы. Если хотя бы один сервер
+недоступен, CodeGraph закрывает уже открытые соединения и удаляет незавершённую ACP-сессию. Перед
+вызовом MCP-инструмента агент отправляет <code>session/request_permission</code>; отказ или тайм-аут отменяет
+вызов. Один lifecycle-owner task выполняет вход в контекст MCP SDK, операции и выход из контекста,
+поэтому закрытие сессии или транспорта освобождает дочерние процессы и сетевые клиенты.</p>
+<h2  id="ogranicheniya-workspace-i-terminala"><span id="ogranicheniya_workspace_i_terminala"></span>Ограничения workspace и терминала<a class="heading-anchor" href="#ogranicheniya-workspace-i-terminala" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Файловые методы требуют абсолютные <code>workspaceRoot</code> и <code>path</code>. Если целевой путь после нормализации
+находится вне корня, сервер возвращает <code>outside workspace root</code>. При записи также запрещены
+чувствительные фрагменты пути: <code>.git</code>, <code>.env</code>, <code>.ssh</code>, <code>.aws</code> и <code>node_modules</code>.</p>
+<p>Терминальные методы используют тот же абсолютный <code>workspaceRoot</code>; <code>cwd</code> должен оставаться внутри
+него. Команда запускается как argv с <code>shell=False</code>. В репозитории задан ограниченный allowlist
+команд сборки и чтения. Интерпретаторы и оболочки <code>python</code>, <code>powershell</code>, <code>pwsh</code>, <code>cmd</code>, <code>bash</code>,
+<code>sh</code> и <code>node</code> запрещены. Аргументы передаются нативным списком строк без NUL, перевода строки и
+возврата каретки.</p>
+<p>Эти проверки не превращают ACP в универсальный удалённый shell. Сетевые маршруты должны оставаться
+за штатной аутентификацией и границей проекта.</p>
 <h2  id="ogranichenie-approval-dlya-faylovyh-izmeneniy"><span id="ogranichenie_approval_dlya_faylovyh_izmeneniy"></span>Ограничение approval для файловых изменений<a class="heading-anchor" href="#ogranichenie-approval-dlya-faylovyh-izmeneniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Сервер объявляет approval flow и умеет отправлять <code>item/fileChange/requestApproval</code>; клиент
-отвечает через <code>item/fileChange/respondApproval</code>. Если ответ не поступил до тайм-аута, решение
-считается отклонённым.</p>
-<p>Текущий обработчик <code>fs/write_text_file</code> не вызывает автоматически этот approval bridge. После
-проверки пути он сразу выполняет запись внутри workspace. Если процесс требует человеческого
-approval, клиент или внешний workflow должен получить его до открытия write-метода. Само наличие
-Одобрение конкретной записи подтверждается сохранённым approval перед открытием write-метода.</p>
+<p>Сервер объявляет approval flow и отправляет устоявшееся уведомление
+<code>item/fileChange/requestApproval</code>. Клиент отвечает каноническим методом
+<code>_codegraph/item/fileChange/respondApproval</code>; ответ без префикса принимает адаптер совместимости.
+Если ответ не поступил до тайм-аута, запрос отклоняется.</p>
+<p>Текущий обработчик <code>fs/write_text_file</code> не вызывает этот мост автоматически. После проверки пути
+он записывает файл внутри workspace. Если рабочий процесс требует решения человека, клиент или
+внешний процесс должен получить и сохранить approval до открытия write-операции.</p>
+<h2  id="ogranicheniya-runtime"><span id="ogranicheniya_runtime"></span>Ограничения runtime<a class="heading-anchor" href="#ogranicheniya-runtime" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Значения <code>ACPRuntimeConfig</code> по умолчанию ограничивают сервис 100 одновременными сессиями с
+тайм-аутом 60 минут, 128 ожидающими запросами agent-to-client на соединение, очередью из 256
+stdio-уведомлений и тайм-аутом approval 300 секунд. Та же конфигурация задаёт время ожидания и
+завершения терминала, интервалы опроса мостов и размер потоковых фрагментов. Развёртывание может
+переопределить эти значения через общую runtime-конфигурацию; клиент не должен полагаться на
+сохранение значений по умолчанию.</p>
 <h2 id="vosstanovlenie">Восстановление<a class="heading-anchor" href="#vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ol>
-<li>Проверьте префикс <code>/api/v1/admin/runtime/acp</code>: исторический <code>/acp</code> неактуален.</li>
-<li>Проверьте аутентификацию транспорта до разбора JSON-RPC-параметров.</li>
-<li>Вызовите <code>initialize</code>, затем создайте или загрузите сессию либо поток.</li>
-<li>При ошибке файлового или терминального метода передайте абсолютные <code>workspaceRoot</code>, <code>path</code>
-   и <code>cwd</code>; все цели должны находиться внутри одного корня.</li>
-<li>Запрет executable или отсутствие approval — результат политики. Не обходите его командой,
-   составленной для запуска через shell.</li>
+<li>Проверьте префикс <code>/api/v1/admin/runtime/acp</code>: исторический <code>/acp</code> больше не используется.</li>
+<li>Проверьте аутентификацию транспорта до разбора параметров JSON-RPC.</li>
+<li>Отправьте один запрос <code>initialize</code> и сохраняйте выбранный профиль до закрытия соединения.</li>
+<li>Для prompt в ACP v2 и запросов agent-to-client используйте stdio или WebSocket.</li>
+<li>При ошибке файлового или терминального метода держите абсолютные <code>workspaceRoot</code>, <code>path</code> и
+   <code>cwd</code> внутри одного корня.</li>
+<li>Запрет исполняемого файла, отклонение MCP-endpoint или отсутствие разрешения означает отказ
+   политики; обходить его через shell нельзя.</li>
 </ol>
 <h2  id="istochniki-istiny"><span id="istochniki_istiny"></span>Источники истины<a class="heading-anchor" href="#istochniki-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
-<li><code>src/api/routers/collaboration_suite/acp.py</code> — HTTP/WebSocket-маршруты и аутентификация.</li>
-<li><code>src/acp/server/core/agent.py</code> — диспетчер методов и проверка инициализации.</li>
-<li><code>src/acp/server/routing/handlers.py</code> — ограничения файловой системы и терминала.</li>
-<li><code>src/acp/server/routing/approval_bridge.py</code> — запрос approval, тайм-аут и обработка ответа.</li>
-<li><code>src/acp/cli.py</code> — локальная stdio-точка входа <code>codegraph-acp</code>.</li>
+<li><code>src/api/routers/collaboration_suite/acp.py</code>: HTTP/WebSocket-маршруты и аутентификация.</li>
+<li><code>src/acp/server/core/agent.py</code>: диспетчер v1, выбор профиля, запросы клиента и общий вызов MCP.</li>
+<li><code>src/acp/server/core/v2_profile.py</code>: жизненный цикл сессии и асинхронные turn в профиле v2.</li>
+<li><code>src/acp/server/core/session_manager.py</code>: владение сессиями, настройка MCP, отмена и очистка.</li>
+<li><code>src/acp/server/routing/handlers.py</code>: изоляция workspace и ограниченная терминальная политика.</li>
+<li><code>src/acp/integration/mcp_bridge.py</code>: проверка MCP-дескрипторов и жизненный цикл соединений.</li>
+<li><code>src/acp/transport/</code>: поведение stdio, HTTP и WebSocket.</li>
+<li><code>src/config/runtime_sections/unified_config_runtime_models.py</code>: значения ACP runtime по
+  умолчанию.</li>
 </ul>
       </article>
 
@@ -311,9 +338,12 @@ approval, клиент или внешний workflow должен получи�
       <ul class="doc-toc-list">
         <li><a href="#transporty-i-marshruty" class="level-2" aria-current="location">Транспорты и маршруты</a></li>
 <li><a href="#granitsa-autentifikatsii" class="level-2">Граница аутентификации</a></li>
-<li><a href="#initsializatsiya-i-gruppy-metodov" class="level-2">Инициализация и группы методов</a></li>
-<li><a href="#ogranichenie-workspace-i-terminala" class="level-2">Ограничение workspace и терминала</a></li>
+<li><a href="#metody-acp-v1" class="level-2">Методы ACP v1</a></li>
+<li><a href="#eksperimentalnyy-profil-acp-v2" class="level-2">Экспериментальный профиль ACP v2</a></li>
+<li><a href="#mcp-servery-i-zapros-razresheniya" class="level-2">MCP-серверы и запрос разрешения</a></li>
+<li><a href="#ogranicheniya-workspace-i-terminala" class="level-2">Ограничения workspace и терминала</a></li>
 <li><a href="#ogranichenie-approval-dlya-faylovyh-izmeneniy" class="level-2">Ограничение approval для файловых изменений</a></li>
+<li><a href="#ogranicheniya-runtime" class="level-2">Ограничения runtime</a></li>
 <li><a href="#vosstanovlenie" class="level-2">Восстановление</a></li>
 <li><a href="#istochniki-istiny" class="level-2">Источники истины</a></li>
       </ul>
@@ -328,7 +358,7 @@ approval, клиент или внешний workflow должен получи�
      — Доказательства, Цифровая команда, Вопросы и&nbsp;ответы
      — Начало работы, Руководства, API, Интеграции, Справочник, Корпоративная версия
      — Техническое описание, Безопасность, Инженерия ИИ, Индекс для ИИ, Блог
-     — 2025-2026, Все права защищены.
+     — 2025–2026, Все права защищены.
 -->
 <footer data-shell-footer class="border-t border-cg-border bg-cg-surface-subtle py-12 pb-6 text-cg-ink dark:bg-cg-surface-inverse dark:text-cg-inverse">
   <div class="cg-content-shell mx-auto w-full px-4 md:px-6 lg:px-8">
@@ -401,7 +431,7 @@ approval, клиент или внешний workflow должен получи�
     </div>
 
     <div class="border-t border-cg-border pt-6 text-center">
-      <p class="text-sm text-cg-muted dark:text-cg-inverse-secondary">&copy; 2025-2026 CodeGraph. Все права защищены.</p>
+      <p class="text-sm text-cg-muted dark:text-cg-inverse-secondary">&copy; 2025–2026 CodeGraph. Все права защищены.</p>
     </div>
   </div>
 </footer>

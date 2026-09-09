@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Operator guide for CodeGraph ACP transports, JSON-RPC methods, authorization, workspace containment, and approval limits.">
-  <meta name="cg:build-commit" content="cdef9d0ca82c1accd5cab856051d757154a548e2">
+  <meta name="description" content="Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.">
+  <meta name="cg:build-commit" content="1f1f7c4e230581f8a82a65c997f40d68a627f382">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="ACP integration — Documentation">
-  <meta property="og:description" content="Operator guide for CodeGraph ACP transports, JSON-RPC methods, authorization, workspace containment, and approval limits.">
+  <meta property="og:description" content="Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/api/ACP_INTEGRATION.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ACP integration — Documentation">
-  <meta name="twitter:description" content="Operator guide for CodeGraph ACP transports, JSON-RPC methods, authorization, workspace containment, and approval limits.">
+  <meta name="twitter:description" content="Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/api/ACP_INTEGRATION.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"ACP integration — Documentation","description":"Operator guide for CodeGraph ACP transports, JSON-RPC methods, authorization, workspace containment, and approval limits.","url":"https://codegraph.ru/docs/en/api/ACP_INTEGRATION.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"ACP integration — Documentation","description":"Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.","url":"https://codegraph.ru/docs/en/api/ACP_INTEGRATION.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -157,135 +157,161 @@
         <span>ACP integration</span>
         </nav>
         <h1>ACP integration</h1>
-        <p class="doc-lead">Operator guide for CodeGraph ACP transports, JSON-RPC methods, authorization, workspace containment, and approval limits.</p>
+        <p class="doc-lead">Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-09-07">Updated: 2026-09-07</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph implements Agent Client Protocol (ACP) JSON-RPC for editor integrations. Use ACP
-when an IDE needs sessions, streamed agent turns, diagnostics, hover, bounded file access, or a
-restricted terminal. MCP tool discovery is a separate protocol and is not duplicated here.</p>
+        <p>CodeGraph exposes Agent Client Protocol (ACP) over JSON-RPC for editor integrations. ACP v1 is
+the default and production-compatible profile. An experimental ACP v2 alpha profile is available
+behind <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>. The profile is selected by <code>initialize</code> and remains
+fixed for the lifetime of that connection.</p>
+<p>Both profiles use the same CodeGraph session core, workspace controls, permission requests, and
+Model Context Protocol (MCP) bridge. Image and audio capabilities are not advertised.</p>
 <h2  id="transports-and-routes"><span id="transports_and_routes"></span>Transports and routes<a class="heading-anchor" href="#transports-and-routes" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Transports and routes"><table data-columns="3"><caption class="sr-only">Transports and routes</caption>
 <thead>
 <tr>
 <th scope="col">Transport</th>
 <th scope="col">Entry point</th>
-<th scope="col">Intended use</th>
+<th scope="col">Contract</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>stdio</td>
 <td><code>codegraph-acp</code></td>
-<td>A local IDE starts one agent subprocess.</td>
+<td>A local IDE starts one agent subprocess. Requests, responses, and notifications are streamed.</td>
 </tr>
 <tr>
 <td>HTTP</td>
 <td><code>POST /api/v1/admin/runtime/acp/rpc</code></td>
-<td>One authenticated JSON-RPC request.</td>
+<td>CodeGraph request/response JSON-RPC endpoint. It is not the official ACP Streamable HTTP transport.</td>
 </tr>
 <tr>
 <td>WebSocket</td>
 <td><code>WS /api/v1/admin/runtime/acp/ws</code></td>
-<td>Bidirectional requests and streamed notifications.</td>
+<td>Bidirectional requests, agent-to-client calls, and streamed notifications.</td>
 </tr>
 </tbody>
 </table></div>
 <p>HTTP session administration is available through
 <code>GET /api/v1/admin/runtime/acp/sessions</code> and
-<code>DELETE /api/v1/admin/runtime/acp/sessions/{session_id}</code>. The list is filtered by the current
-user; deletion checks ownership.</p>
+<code>DELETE /api/v1/admin/runtime/acp/sessions/{session_id}</code>. HTTP protocol state and sessions are
+isolated by authenticated subject and project. WebSocket connections keep the project scope
+resolved from the token, machine credential, or explicitly enabled local-development boundary.</p>
+<p>The HTTP endpoint collects ACP v1 prompt notifications and returns them in
+<code>result._meta.codegraph.sessionUpdates</code>. ACP v2 <code>session/prompt</code> is asynchronous and needs a
+streaming transport, so HTTP rejects it with JSON-RPC error <code>-32004</code> before executing the turn.</p>
 <h2  id="authentication-boundary"><span id="authentication_boundary"></span>Authentication boundary<a class="heading-anchor" href="#authentication-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The HTTP JSON-RPC and session routes require an administrator, the <code>admin:all</code> scope, or a
 service account with <code>scenarios:execute</code>. An unauthenticated localhost bypass exists only when
-the explicit <code>local_dev_unauthenticated_surfaces_enabled</code> configuration flag is enabled.</p>
+<code>local_dev_unauthenticated_surfaces_enabled</code> is explicitly enabled.</p>
 <p>WebSocket accepts a bearer access token or an API key. Machine credentials are additionally
-checked against project scope, the <code>X-CodeGraph-Machine-Contract</code> version, interface policy,
-and configured mTLS requirements. Transport authentication completes before JSON-RPC parameters
-are parsed; <code>authenticate</code> operates inside the verified connection.</p>
-<h2  id="initialization-and-method-groups"><span id="initialization_and_method_groups"></span>Initialization and method groups<a class="heading-anchor" href="#initialization-and-method-groups" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Call <code>initialize</code> before every other method on a connection. The server negotiates client
-capabilities and rejects an uninitialized request with <code>-32002</code>.</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Initialization and method groups"><table data-columns="2"><caption class="sr-only">Initialization and method groups</caption>
-<thead>
-<tr>
-<th scope="col">Group</th>
-<th scope="col">Implemented methods</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Sessions</td>
-<td><code>authenticate</code>, <code>session/new</code>, <code>session/load</code>, <code>session/prompt</code>, <code>session/cancel</code></td>
-</tr>
-<tr>
-<td>Files</td>
-<td><code>fs/read_text_file</code>, <code>fs/write_text_file</code></td>
-</tr>
-<tr>
-<td>Terminal</td>
-<td><code>terminal/create</code>, <code>terminal/output</code>, <code>terminal/wait_for_exit</code>, <code>terminal/kill</code>, <code>terminal/release</code></td>
-</tr>
-<tr>
-<td>Threads</td>
-<td><code>thread/start</code>, <code>thread/resume</code>, <code>thread/fork</code>, <code>thread/list</code>, <code>thread/archive</code>, <code>thread/compact</code></td>
-</tr>
-<tr>
-<td>Turns</td>
-<td><code>turn/start</code>, <code>turn/interrupt</code></td>
-</tr>
-<tr>
-<td>IDE</td>
-<td><code>diagnostics/subscribe</code>, <code>diagnostics/unsubscribe</code>, <code>hover/request</code></td>
-</tr>
-<tr>
-<td>Approval response</td>
-<td><code>item/fileChange/respondApproval</code></td>
-</tr>
-</tbody>
-</table></div>
-<p><code>session/prompt</code> and <code>turn/start</code> may emit JSON-RPC notifications while the request is running.
-Clients should handle <code>session/update</code> and the negotiated diagnostics, hover, and approval
-notifications without assuming a particular number of MCP tools.</p>
+checked against project scope, the <code>X-CodeGraph-Machine-Contract</code> version, interface policy, and
+configured mTLS requirements. Transport authentication finishes before JSON-RPC parameters are
+parsed. Both ACP initialize responses advertise an empty <code>authMethods</code> list; the legacy v1
+<code>authenticate</code> method therefore operates only inside an already verified transport boundary.</p>
+<h2  id="acp-v1-methods"><span id="acp_v1_methods"></span>ACP v1 methods<a class="heading-anchor" href="#acp-v1-methods" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Call <code>initialize</code> with <code>protocolVersion: 1</code> before any other method. The server rejects an
+uninitialized request with <code>-32002</code>.</p>
+<p>The standard v1 surface contains <code>session/new</code>, <code>session/load</code>, <code>session/prompt</code>, and
+<code>session/cancel</code>. During a prompt, the server can issue client requests for
+<code>fs/read_text_file</code>, <code>fs/write_text_file</code>, terminal operations, and <code>session/request_permission</code>.
+Clients must route responses by JSON-RPC request ID while continuing to process
+<code>session/update</code> notifications.</p>
+<p>CodeGraph v1 prompts may opt in to those client calls with the
+<code>_meta.codegraph.clientContext</code> extension on a content block. Its <code>readTextFiles</code> array accepts
+objects with <code>path</code>; its <code>terminals</code> array accepts <code>command</code>, string <code>args</code>, and optional <code>cwd</code>,
+<code>env</code>, or <code>outputByteLimit</code>. CodeGraph invokes only capabilities advertised at <code>initialize</code>, adds
+the returned editor-visible file content and terminal result to that prompt, and always releases
+a created terminal. This metadata is a CodeGraph extension, not a new standard ACP method.</p>
+<p>CodeGraph-specific editor functions use the <code>_codegraph/</code> namespace:</p>
+<ul>
+<li><code>_codegraph/thread/start</code>, <code>_codegraph/thread/resume</code>, <code>_codegraph/thread/fork</code>,
+  <code>_codegraph/thread/list</code>, <code>_codegraph/thread/archive</code>, and <code>_codegraph/thread/compact</code>;</li>
+<li><code>_codegraph/turn/start</code> and <code>_codegraph/turn/interrupt</code>;</li>
+<li><code>_codegraph/diagnostics/subscribe</code>, <code>_codegraph/diagnostics/unsubscribe</code>, and
+  <code>_codegraph/hover/request</code>;</li>
+<li><code>_codegraph/item/fileChange/respondApproval</code>.</li>
+</ul>
+<p>Pre-Story-1257 unprefixed names remain available through an explicit compatibility adapter. Such
+responses carry <code>_meta.codegraph.legacyMethod</code>; new clients should use the namespaced methods.
+The internal <code>ClientCapabilitiesV2</code> class names the extended CodeGraph capability model and does
+not mean ACP protocol v2.</p>
+<h2  id="experimental-acp-v2-profile"><span id="experimental_acp_v2_profile"></span>Experimental ACP v2 profile<a class="heading-anchor" href="#experimental-acp-v2-profile" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>With <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>, a connection may initialize with
+<code>protocolVersion: 2</code>, <code>info.name</code>, and <code>info.version</code>. The profile supports <code>session/new</code>,
+<code>session/list</code>, <code>session/resume</code>, <code>session/close</code>, <code>session/delete</code>, <code>session/prompt</code>,
+<code>session/cancel</code>, and <code>$/cancel_request</code>.</p>
+<p><code>session/prompt</code> acknowledges the request before the turn finishes. The client then receives
+<code>session/update</code> notifications, including state transitions and tool-call updates. Use stdio or
+WebSocket for this flow. Reinitializing a connection with another protocol version fails closed;
+open a new connection instead.</p>
+<p>To roll back the experimental profile, set <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=false</code> and restart ACP
+connections. ACP v1 does not depend on the v2 flag.</p>
+<h2  id="mcp-servers-and-permission-flow"><span id="mcp_servers_and_permission_flow"></span>MCP servers and permission flow<a class="heading-anchor" href="#mcp-servers-and-permission-flow" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p><code>session/new</code> and the applicable resume/load flows accept ACP MCP descriptors for <code>stdio</code> and
+<code>http</code> transports. Stdio commands are resolved to an executable and run as a native argv with no
+shell. Environment and header entries must use name/value objects; names are validated and values
+cannot contain NUL, carriage-return, or newline characters.</p>
+<p>HTTP MCP descriptors accept public HTTPS endpoints only. Credentials in the URL, query strings,
+fragments, loopback addresses, private networks, link-local addresses, and plaintext HTTP are
+rejected. Redirect handling remains subject to the shared outbound URL policy.</p>
+<p>Every declared MCP server must connect during session creation. If any connection fails, the
+server closes connections already opened for that request and removes the incomplete ACP session.
+Before invoking an MCP tool, CodeGraph sends <code>session/request_permission</code>; a denial or timeout
+prevents the call. One lifecycle-owner task performs each MCP SDK context entry, operation, and
+exit so session close and transport shutdown can release subprocesses and network clients.</p>
 <h2  id="workspace-and-terminal-containment"><span id="workspace_and_terminal_containment"></span>Workspace and terminal containment<a class="heading-anchor" href="#workspace-and-terminal-containment" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>File calls require an absolute <code>workspaceRoot</code> and an absolute target <code>path</code>. A target that does
-not resolve below the root fails with <code>outside workspace root</code>. Writes also reject sensitive path
-fragments such as <code>.git</code>, <code>.env</code>, <code>.ssh</code>, <code>.aws</code>, and <code>node_modules</code>.</p>
+<p>File calls require an absolute <code>workspaceRoot</code> and target <code>path</code>. A path that resolves outside
+the root fails with <code>outside workspace root</code>. Writes also reject sensitive path fragments such as
+<code>.git</code>, <code>.env</code>, <code>.ssh</code>, <code>.aws</code>, and <code>node_modules</code>.</p>
 <p>Terminal calls require the same absolute <code>workspaceRoot</code>; <code>cwd</code> must remain below it. Commands
-run as an argv with <code>shell=False</code>. The checked-in allowlist contains bounded build and inspection
-commands; interpreters and shells such as <code>python</code>, <code>powershell</code>, <code>pwsh</code>, <code>cmd</code>, <code>bash</code>, <code>sh</code>,
-and <code>node</code> are explicitly blocked. Arguments must be a native list of strings without NUL or
-newline control characters.</p>
-<p>These checks reduce path traversal and shell injection risk, but they do not turn ACP into a
-general remote shell. Keep network routes behind the normal authentication and project boundary.</p>
+run as argv with <code>shell=False</code>. The checked-in allowlist contains bounded build and inspection
+commands. Interpreters and shells such as <code>python</code>, <code>powershell</code>, <code>pwsh</code>, <code>cmd</code>, <code>bash</code>, <code>sh</code>,
+and <code>node</code> are blocked. Arguments must be a native list of strings without NUL or newline control
+characters.</p>
+<p>These checks do not turn ACP into a general remote shell. Keep network routes behind the normal
+authentication and project boundary.</p>
 <h2  id="file-change-approval-limitation"><span id="file_change_approval_limitation"></span>File-change approval limitation<a class="heading-anchor" href="#file-change-approval-limitation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The server advertises an approval flow and can send <code>item/fileChange/requestApproval</code>; clients
-answer with <code>item/fileChange/respondApproval</code>. An unanswered request is declined after its
-configured timeout.</p>
-<p>The current <code>fs/write_text_file</code> handler does not automatically invoke that approval bridge. It
-performs a workspace-contained write after its own path checks. A client or outer workflow that
-requires human approval must enforce it before exposing the write method. The advertised
-<code>approvalFlow</code> capability describes the available bridge; record the approval event for each write.</p>
+<p>The server advertises an approval flow and sends the established
+<code>item/fileChange/requestApproval</code> notification. Clients answer with the canonical
+<code>_codegraph/item/fileChange/respondApproval</code> method; the unprefixed response name is accepted by
+the compatibility adapter. An unanswered request is declined after the configured timeout.</p>
+<p>The current <code>fs/write_text_file</code> handler does not automatically invoke that bridge. It performs a
+workspace-contained write after its own path checks. A client or outer workflow that requires
+human approval must enforce and record it before exposing the write operation.</p>
+<h2  id="runtime-limits"><span id="runtime_limits"></span>Runtime limits<a class="heading-anchor" href="#runtime-limits" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Defaults in <code>ACPRuntimeConfig</code> bound the service to 100 concurrent sessions with a 60-minute
+session timeout, 128 pending agent-to-client requests per connection, 256 queued stdio
+notifications, and a 300-second approval timeout. The same configuration also controls terminal
+wait and cleanup timing, bridge polling, and streamed chunk sizes. Deployments may override these
+values through the unified runtime configuration; clients must not assume that defaults were
+retained.</p>
 <h2  id="recovery-checklist"><span id="recovery_checklist"></span>Recovery checklist<a class="heading-anchor" href="#recovery-checklist" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Confirm the route prefix is <code>/api/v1/admin/runtime/acp</code>, not the historical <code>/acp</code> prefix.</li>
 <li>Verify transport authentication before debugging JSON-RPC parameters.</li>
-<li>Send <code>initialize</code>, then create or load a session or thread.</li>
-<li>For file or terminal errors, send absolute <code>workspaceRoot</code>, <code>path</code>, and <code>cwd</code> values and keep
-   every target under the same root.</li>
-<li>Treat a blocked terminal executable or missing approval as a policy outcome; do not retry it
-   through an inline shell command.</li>
+<li>Send one <code>initialize</code> request and keep that protocol profile for the connection.</li>
+<li>Use stdio or WebSocket for ACP v2 prompts and agent-to-client requests.</li>
+<li>For file or terminal errors, keep absolute <code>workspaceRoot</code>, <code>path</code>, and <code>cwd</code> values below the
+   same root.</li>
+<li>Treat a blocked executable, rejected MCP endpoint, or missing permission as a policy outcome.</li>
 </ol>
 <h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li><code>src/api/routers/collaboration_suite/acp.py</code> — HTTP/WebSocket routes and authentication.</li>
-<li><code>src/acp/server/core/agent.py</code> — method dispatch and initialization gate.</li>
-<li><code>src/acp/server/routing/handlers.py</code> — filesystem and terminal containment.</li>
-<li><code>src/acp/server/routing/approval_bridge.py</code> — approval request, timeout, and response handling.</li>
-<li><code>src/acp/cli.py</code> — the local <code>codegraph-acp</code> stdio entry point.</li>
+<li><code>src/api/routers/collaboration_suite/acp.py</code>: HTTP/WebSocket routes and authentication.</li>
+<li><code>src/acp/server/core/agent.py</code>: v1 dispatch, profile selection, client requests, and shared MCP
+  execution.</li>
+<li><code>src/acp/server/core/v2_profile.py</code>: experimental v2 session lifecycle and asynchronous turns.</li>
+<li><code>src/acp/server/core/session_manager.py</code>: session ownership, MCP setup, cancellation, and cleanup.</li>
+<li><code>src/acp/server/routing/handlers.py</code>: workspace containment and bounded terminal policy.</li>
+<li><code>src/acp/integration/mcp_bridge.py</code>: MCP descriptor validation and connection lifecycle.</li>
+<li><code>src/acp/transport/</code>: stdio, HTTP, and WebSocket behavior.</li>
+<li><code>src/config/runtime_sections/unified_config_runtime_models.py</code>: ACP runtime defaults.</li>
 </ul>
       </article>
 
@@ -311,9 +337,12 @@ requires human approval must enforce it before exposing the write method. The ad
       <ul class="doc-toc-list">
         <li><a href="#transports-and-routes" class="level-2" aria-current="location">Transports and routes</a></li>
 <li><a href="#authentication-boundary" class="level-2">Authentication boundary</a></li>
-<li><a href="#initialization-and-method-groups" class="level-2">Initialization and method groups</a></li>
+<li><a href="#acp-v1-methods" class="level-2">ACP v1 methods</a></li>
+<li><a href="#experimental-acp-v2-profile" class="level-2">Experimental ACP v2 profile</a></li>
+<li><a href="#mcp-servers-and-permission-flow" class="level-2">MCP servers and permission flow</a></li>
 <li><a href="#workspace-and-terminal-containment" class="level-2">Workspace and terminal containment</a></li>
 <li><a href="#file-change-approval-limitation" class="level-2">File-change approval limitation</a></li>
+<li><a href="#runtime-limits" class="level-2">Runtime limits</a></li>
 <li><a href="#recovery-checklist" class="level-2">Recovery checklist</a></li>
 <li><a href="#source-of-truth" class="level-2">Source of truth</a></li>
       </ul>
@@ -328,7 +357,7 @@ requires human approval must enforce it before exposing the write method. The ad
      - Evidence, Digital team, FAQ
      - Getting Started, Guides, API, Integrations, Reference, Enterprise
      - Technical overview, Security, AI engineering, AI index, Blog
-     - 2025-2026, All rights reserved.
+     - 2025–2026, All rights reserved.
 -->
 <footer data-shell-footer class="border-t border-cg-border bg-cg-surface-subtle py-12 pb-6 text-cg-ink dark:bg-cg-surface-inverse dark:text-cg-inverse">
   <div class="cg-content-shell mx-auto w-full px-4 md:px-6 lg:px-8">
@@ -401,7 +430,7 @@ requires human approval must enforce it before exposing the write method. The ad
     </div>
 
     <div class="border-t border-cg-border pt-6 text-center">
-      <p class="text-sm text-cg-muted dark:text-cg-inverse-secondary">&copy; 2025-2026 CodeGraph. All rights reserved.</p>
+      <p class="text-sm text-cg-muted dark:text-cg-inverse-secondary">&copy; 2025–2026 CodeGraph. All rights reserved.</p>
     </div>
   </div>
 </footer>
