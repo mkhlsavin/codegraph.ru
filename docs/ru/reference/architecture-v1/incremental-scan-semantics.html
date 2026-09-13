@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Invalidation, переход к full scan, equivalence и обработка partial run. Страница объясняет назначение, порядок применения и проверку результата.">
-  <meta name="cg:build-commit" content="e1c2a685b2a91f17e78fec770903f8197a1c63df">
+  <meta name="cg:build-commit" content="68ca223d60f39e61252b75ca615ca0fdbc34159a">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Семантика инкрементального сканирования — Документация CodeGraph">
@@ -175,7 +175,7 @@
         <h1>Семантика инкрементального сканирования</h1>
         <p class="doc-lead">Invalidation, переход к full scan, equivalence и обработка partial run. Страница объясняет назначение, порядок применения и проверку результата.</p>
 
-        <div class="doc-meta"><span>Справочник</span><time datetime="2026-09-09">Обновлено: 2026-09-09</time></div>
+        <div class="doc-meta"><span>Справочник</span><time datetime="2026-09-13">Обновлено: 2026-09-13</time></div>
       </header>
 
       <!-- Content -->
@@ -188,12 +188,32 @@ lifecycle, baseline/waiver states, coverage, semantic digest и gate decision
 <p>Изменения модели, public API, edge, strongly connected component, baseline и
 waiver расширяют invalidation. Модель всегда требует full. Порог full scan по
 умолчанию — affected ratio больше <code>0.20</code>.</p>
+<h2  id="refresh-i-reconciliation"><span id="refresh_i_reconciliation"></span>Refresh и reconciliation<a class="heading-anchor" href="#refresh-i-reconciliation" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Foreground refresh публикует только подготовленную файловую delta. Writer
+атомарно удаляет прежнюю file-owned generation и вставляет замену. Затем
+ограниченный semantic reconciliation сравнивает граф с authoritative source
+manifest и удаляет недостижимые поколения файлов, dangling edges, устаревшие
+индексы, file state и производные строки, которые входят в соответствующие
+retention contracts.</p>
+<p>Lifecycle получает статус <code>clean</code> только после успешной проверки целостности.
+Ошибка после публикации оставляет <code>reconciliation_pending</code> или <code>failed</code>;
+читатели не вправе молча считать старые строки актуальными. Если provenance не
+позволяет безопасно определить владельца, planner выбирает свежую полную
+регенерацию.</p>
+<p>Physical checkpoint, vacuum и copy rewrite относятся к отдельному решению по
+обслуживанию хранилища. Они не добавляются в каждый foreground refresh.</p>
+<h2  id="perehod-k-full-po-stoimosti"><span id="perehod_k_full_po_stoimosti"></span>Переход к full по стоимости<a class="heading-anchor" href="#perehod-k-full-po-stoimosti" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Planner раздельно учитывает длительность foreground, reconciliation, physical
+maintenance и недавней полной регенерации. Полный запуск выбирается, когда
+ограниченная стоимость incremental достигает настроенной доли сопоставимого
+full run, меняется source scope, provenance небезопасен или накопленный debt не
+снижается.</p>
 <h2  id="granitsa-otkaza"><span id="granitsa_otkaza"></span>Граница отказа<a class="heading-anchor" href="#granitsa-otkaza" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Partial enforcement получает одну синхронную full retry. Partial, failed,
 stale, mismatched или неполно инвалидированный результат остаётся
 <code>BLOCKED_INCOMPLETE</code>.</p>
 <h2  id="ispolnyaemyy-primer"><span id="ispolnyaemyy_primer"></span>Исполняемый пример<a class="heading-anchor" href="#ispolnyaemyy-primer" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">architecture</span> <span class="n">-run</span> <span class="s1">&#39;^TestStory1240FullIncrementalEquivalence$&#39;</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
+<div class="highlight"><pre><span></span><code><span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">incremental</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">storage</span><span class="p">/</span><span class="n">duckdb</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">server</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
 </code></pre></div>
       </article>
 
@@ -218,6 +238,8 @@ stale, mismatched или неполно инвалидированный рез�
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#invalidation" class="level-2" aria-current="location">Invalidation</a></li>
+<li><a href="#refresh-i-reconciliation" class="level-2">Refresh и reconciliation</a></li>
+<li><a href="#perehod-k-full-po-stoimosti" class="level-2">Переход к full по стоимости</a></li>
 <li><a href="#granitsa-otkaza" class="level-2">Граница отказа</a></li>
 <li><a href="#ispolnyaemyy-primer" class="level-2">Исполняемый пример</a></li>
       </ul>

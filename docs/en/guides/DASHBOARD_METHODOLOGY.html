@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="How CodeGraph calculates audit, compliance, release, SCA, quality, and the composite Health Score. See the examples and checks before applying it.">
-  <meta name="cg:build-commit" content="e1c2a685b2a91f17e78fec770903f8197a1c63df">
+  <meta name="cg:build-commit" content="68ca223d60f39e61252b75ca615ca0fdbc34159a">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Dashboard score methodology — Documentation">
@@ -147,6 +147,7 @@
         <li><a href="/docs/en/guides/scenarios/19-standards-check.html">Scenario 19: Standards check</a></li>
         <li><a href="/docs/en/guides/scenarios/20-dependencies.html">Scenario 20: Dependency analysis</a></li>
         <li><a href="/docs/en/guides/ARCHITECTURE_CONTROL_ADOPTION.html">Architecture control in CodeGraph</a></li>
+        <li><a href="/docs/en/guides/CPG_AUDIT.html">Run a CPG-backed project audit</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html" class="active" aria-current="page">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
@@ -199,7 +200,7 @@
         <h1>Dashboard score methodology</h1>
         <p class="doc-lead">How CodeGraph calculates audit, compliance, release, SCA, quality, and the composite Health Score. See the examples and checks before applying it.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-09-09">Updated: 2026-09-09</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-09-13">Updated: 2026-09-13</time></div>
       </header>
 
       <!-- Content -->
@@ -211,17 +212,23 @@
    Quality.</li>
 </ol>
 <p>Neither number replaces its underlying evidence. Before using it for a release
-decision, inspect the breakdown, provenance, and freshness. The audit&rsquo;s
-technical foundation is a Code Property Graph. See
+decision, inspect the breakdown, provenance, and freshness. A current audit
+publishes <code>quality_assessment</code> as its canonical Q1-Q12 result. Historical
+section scores remain labelled compatibility data and cannot replace a missing
+canonical score.</p>
+<p>The audit&rsquo;s technical foundation is a Code Property Graph. See
 <a href="../enterprise/GOCPG_VS_JOERN_ANALYSIS.html">How GoCPG builds a CPG and how the approach differs from Joern</a>
 for the graph construction and enrichment pipeline.
 The component model, architecture DSL, presets, baseline/waiver, and release
-profiles are covered in <a href="ARCHITECTURE_CONTROL_ADOPTION.html">Architecture control in CodeGraph</a>.</p>
+profiles are covered in <a href="ARCHITECTURE_CONTROL_ADOPTION.html">Architecture control in CodeGraph</a>.
+The complete operator workflow is in
+<a href="CPG_AUDIT.html">Run a CPG-backed project audit</a>.</p>
 <section class="doc-summary" aria-labelledby="how-the-q1q12-audit-is-scored"><h2  id="how-the-q1q12-audit-is-scored"><span id="how_the_q1q12_audit_is_scored"></span>How the Q1–Q12 audit is scored<a class="heading-anchor" href="#how-the-q1q12-audit-is-scored" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Each section combines findings from its source scenarios with quantitative CPG
-metrics where a reliable mapping exists. The following table matches the
-Dashboard&rsquo;s Help → Score source panel.</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="How the Q1–Q12 audit is scored"><table data-columns="3"><caption class="sr-only">How the Q1–Q12 audit is scored</caption>
+<p>Each factor has a stable ID and a versioned definition: assessed risk, eligible
+population, evidence sources, unit, normalization, scoring function,
+thresholds, applicability, and limitations. The table summarizes the current
+<code>unified-quality.v1</code> catalog.</p>
+<div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="How the Q1–Q12 audit is scored"><table data-columns="3"><caption class="sr-only">How the Q1–Q12 audit is scored</caption>
 <thead>
 <tr>
 <th scope="col">Section</th>
@@ -237,156 +244,98 @@ Dashboard&rsquo;s Help → Score source panel.</p>
 </tr>
 <tr>
 <td>Q2</td>
-<td>Module structure and reuse</td>
-<td>Architecture; dependency cycles and Martin instability.</td>
+<td>Architecture conformance</td>
+<td>Executed YAML invariants and GoCPG architecture findings for eligible dependencies.</td>
 </tr>
 <tr>
 <td>Q3</td>
-<td>Redundant or hard-to-maintain code</td>
-<td>Refactoring and technical debt; long methods, dead code, and unreachable code.</td>
+<td>Redundancy and dead code</td>
+<td>Reachability, clone analysis, references, and confirmed unused code.</td>
 </tr>
 <tr>
 <td>Q4</td>
-<td>Scalability</td>
-<td>Performance and architecture; structural bottlenecks.</td>
+<td>Structural efficiency</td>
+<td>Call graph, complexity, and architecture pressure; no runtime capacity claim.</td>
 </tr>
 <tr>
 <td>Q5</td>
-<td>Performance at volume</td>
-<td>Performance; average and maximum cyclomatic complexity.</td>
+<td>Performance risk</td>
+<td>Data flow, performance rules, and runtime measurements when available.</td>
 </tr>
 <tr>
 <td>Q6</td>
-<td>Architecture for growth</td>
-<td>Architecture audit. There is no reliable universal metric substitute.</td>
+<td>Modularity and boundaries</td>
+<td>Modelled components, dependency graph, cohesion, and boundary leakage.</td>
 </tr>
 <tr>
 <td>Q7</td>
-<td>Vulnerabilities</td>
-<td>Security and compliance; high-risk hotspots, <code>eval</code>/<code>exec</code>, weak cryptography, and hard-coded secrets.</td>
+<td>Security controls</td>
+<td>Taint paths, security rules, and evidence for required controls.</td>
 </tr>
 <tr>
 <td>Q8</td>
-<td>Injection and data exposure</td>
-<td>Security and entry points; SQL- and shell-injection paths.</td>
+<td>Entry-point safety</td>
+<td>Externally reachable inputs, validation, and source-to-sink exposure.</td>
 </tr>
 <tr>
 <td>Q9</td>
 <td>Maintainability</td>
-<td>Technical debt and refactoring; TODO/FIXME markers, maintainability index, and configuration errors.</td>
+<td>Complexity, technical debt, and change structure without cost estimation.</td>
 </tr>
 <tr>
 <td>Q10</td>
-<td>Testability and coverage</td>
-<td>Runtime line/method coverage and uncovered higher-risk methods.</td>
+<td>Test coverage and testability</td>
+<td>Runtime coverage, test call graph, and structural testability.</td>
 </tr>
 <tr>
 <td>Q11</td>
-<td>Coupling complexity and extensibility</td>
-<td>Architecture and technical debt; complex-method ratio and inheritance depth.</td>
+<td>Complexity and dependencies</td>
+<td>CFG, call graph, inheritance, and cohort-sensitive structural metrics.</td>
 </tr>
 <tr>
 <td>Q12</td>
-<td>Documentation</td>
-<td>Documentation and comment coverage for public entities.</td>
+<td>Documentation quality</td>
+<td>Documentation inventory, interface drift, and review evidence.</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="finding-contribution"><span id="finding_contribution"></span>Finding contribution<a class="heading-anchor" href="#finding-contribution" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>Synthetic findings already derived from metrics are not counted again in the
-severity weight. Other findings use these weights:</p>
-<div class="doc-table-scroll doc-table-scroll--compact" data-columns="2" tabindex="-1" role="region" aria-label="Finding contribution"><table data-columns="2"><caption class="sr-only">Finding contribution</caption>
-<thead>
-<tr>
-<th scope="col">Severity</th>
-<th scope="col" class="text-right">Weight</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>critical</td>
-<td class="text-right">1.00</td>
-</tr>
-<tr>
-<td>high</td>
-<td class="text-right">0.70</td>
-</tr>
-<tr>
-<td>medium</td>
-<td class="text-right">0.40</td>
-</tr>
-<tr>
-<td>low</td>
-<td class="text-right">0.15</td>
-</tr>
-<tr>
-<td>info</td>
-<td class="text-right">0.05</td>
-</tr>
-</tbody>
-</table></div>
-<p>Repeated findings of the same severity have diminishing impact. If <code>n</code> is the
-zero-based occurrence number within a severity:</p>
-<div class="highlight"><pre><span></span><code>weight(n) = severity_weight / (1 + 0.3 × n)
-W = sum of weight(n) for real findings in the section
-base_section_score = 10 × exp(-0.3 × W)
+<h3  id="contributions-and-factor-scores"><span id="contributions_and_factor_scores"></span>Contributions and factor scores<a class="heading-anchor" href="#contributions-and-factor-scores" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>Every canonical finding or metric signal has one primary factor. A report may
+cross-reference the same evidence from another factor, but it cannot apply the
+same contribution twice. Synthetic findings derived from a metric also share
+the metric&rsquo;s evidence identity.</p>
+<p>The model converts each accepted contribution to bounded badness in <code>[0, 1]</code>.
+Its versioned definition supplies the transform, weight, thresholds, and risk
+caps:</p>
+<div class="highlight"><pre><span></span><code>factor_score = 10 × (1 - min(1, sum(weight × badness)))
 </code></pre></div>
 
-<p>A critical finding therefore matters more than an informational one, while a
-large set of identical messages does not increase the penalty linearly.</p>
-<h3  id="metric-contribution-and-insufficient-data"><span id="metric_contribution_and_insufficient_data"></span>Metric contribution and insufficient data<a class="heading-anchor" href="#metric-contribution-and-insufficient-data" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>After the severity calculation, the scorer applies the section metric penalty
-<code>Pq</code>:</p>
-<div class="highlight"><pre><span></span><code>section_score = round(clamp(base_section_score - Pq, 0, 10), 1)
-</code></pre></div>
-
-<p>The metric penalty is capped at 3 points for Q1–Q9, Q11, and Q12. Q10 has a
-separate calculation and may subtract up to 9 points. Q6 has no metric penalty:
-an architecture scenario must provide its evidence.</p>
-<p>Missing data is not treated as a perfect result:</p>
+<p>The current model gives all twelve factors equal weight. Changing weights,
+normalization, or thresholds requires another model version and calibration
+decision. The exact report records <code>model_version</code>, basis digest, source and
+CPG revisions, capabilities, evidence ledger, and limitations.</p>
+<h3  id="missing-evidence-and-overall-score"><span id="missing_evidence_and_overall_score"></span>Missing evidence and overall score<a class="heading-anchor" href="#missing-evidence-and-overall-score" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>Each factor is <code>measured</code>, <code>partial</code>, <code>unavailable</code>, or <code>not_applicable</code>.
+Unsupported facts, query failures, missing denominators, and incomplete CPG
+coverage remain explicit. They are not converted to zero or a neutral passing
+value.</p>
+<p>The overall score is the weighted mean of applicable factor scores only when
+every required factor is complete and the report has no blocking limitation.
+Otherwise <code>score_eligible=false</code> and <code>overall_score=null</code>. In particular:</p>
 <ul>
-<li>if no source scenario succeeded and there is no permitted metric basis, the
-  section receives a neutral 5.0;</li>
-<li>if there are no findings but usable metrics exist, scoring starts at 10.0 and
-  applies the metric penalty;</li>
-<li>a thin set of primary findings may cap the section at 8.0 or 8.8;</li>
-<li>for metric-dependent Q1, Q3, Q5, Q9, Q10, Q11, and Q12, a missing
-  <code>total_methods</code> basis produces a neutral 1.5 penalty instead of a false 10.0.</li>
+<li>Q10 can show structural testability, but runtime coverage remains a separate
+  requirement when the selected project profile requires it;</li>
+<li>Q4 and Q5 structural proxies do not prove runtime throughput or capacity;</li>
+<li>Q12 docstring presence does not prove that documentation is correct or useful;</li>
+<li>an empty finding list does not repair a missing capability or stale CPG.</li>
 </ul>
-<h3  id="q10-coverage-rule"><span id="q10_coverage_rule"></span>Q10 coverage rule<a class="heading-anchor" href="#q10-coverage-rule" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>Method coverage has an 82% share and line coverage an 18% share:</p>
-<div class="highlight"><pre><span></span><code>coverage_score = clamp(
-  10 × (0.82 × method_coverage + 0.18 × line_coverage)
-  - risk_uncovered_penalty,
-  0, 10
-)
-P10 = 10 - coverage_score
-</code></pre></div>
-
-<p><code>risk_uncovered_penalty</code> includes uncovered critical/high methods, taint
-sources, API entry points, and graph-critical methods, capped at 2.5 points.
-Fail-safe caps also apply:</p>
-<ul>
-<li>unavailable runtime coverage caps Q10 at 5.0;</li>
-<li>line coverage &lt; 5% and method coverage &lt; 30% caps Q10 at 3.9;</li>
-<li>line coverage &lt; 20% and method coverage &lt; 60% caps Q10 at 5.9.</li>
-</ul>
-<p>A successful test count is not a substitute for runtime coverage.</p>
-<h3  id="overall-audit-score"><span id="overall_audit_score"></span>Overall Audit score<a class="heading-anchor" href="#overall-audit-score" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p><code>overall_score_raw</code> is first calculated as the mean of all twelve sections.
-CodeGraph then reduces the sensitivity of the headline number to the same risk
-being repeated in several sections. The defaults are:</p>
-<div class="highlight"><pre><span></span><code>blended = 0.30 × overall_score_raw + 0.70 × module_health
-audit_score = round(clamp(min(overall_score_raw + 3.5, blended), 0, 10), 1)
-</code></pre></div>
-
-<p><code>module_health</code> is a method-count-weighted mean across modules. Each module
-starts at 10 and receives bounded penalties for dead-code ratio (up to 3),
-maintainability index below 80 (up to 3), Martin instability (up to 2), and TODO
-density (up to 2). For a clean module with a maintainability index of at least
-90, the instability penalty is multiplied by 0.35. These coefficients are
-configurable; the configuration version and persisted audit snapshot are
-authoritative for a particular result.</p>
+<h3  id="legacy-compatibility-scores"><span id="legacy_compatibility_scores"></span>Legacy compatibility scores<a class="heading-anchor" href="#legacy-compatibility-scores" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>Older reports may contain severity-weighted section scores, metric penalties,
+<code>module_health</code>, and a numeric <code>overall_score</code>. CodeGraph preserves these values
+with their original version, or labels them <code>legacy-unversioned</code> when no version
+was stored. Current consumers must not use them as the decision score for a
+versioned report. Re-scoring is allowed only from complete saved input evidence
+and produces a separate derived evaluation with provenance.</p>
 <h2  id="how-the-other-components-are-scored"><span id="how_the_other_components_are_scored"></span>How the other components are scored<a class="heading-anchor" href="#how-the-other-components-are-scored" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <h3 id="compliance">Compliance<a class="heading-anchor" href="#compliance" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>The GOST R 56939 report assigns each process one status:</p>
@@ -450,7 +399,7 @@ contribution is zero and the unavailability reason remains in
 <p>Release maps <code>pass</code> to 1, <code>warn</code> to 0.5, and <code>fail</code> to 0. A deployment may
 override component weights, so the response&rsquo;s <code>score_breakdown</code> is
 authoritative for a particular result.</p>
-</section><h2  id="what-score-source-means"><span id="what_score_source_means"></span>What “Score source” means<a class="heading-anchor" href="#what-score-source-means" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+</section><h2  id="what-score-source-means"><span id="what_score_source_means"></span>What Score source means<a class="heading-anchor" href="#what-score-source-means" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The panel shows section provenance, not another score:</p>
 <ul>
 <li><code>current</code> — the section was recalculated from metrics for the current
@@ -546,9 +495,9 @@ the same result.</p>
       </div>
       <nav class="doc-page-nav">
 
-      <a href="/docs/en/guides/ARCHITECTURE_CONTROL_ADOPTION.html" class="doc-page-nav-prev">
+      <a href="/docs/en/guides/CPG_AUDIT.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Previous</span>
-        <span class="doc-page-nav-title">Architecture control in CodeGraph</span>
+        <span class="doc-page-nav-title">Run a CPG-backed project audit</span>
       </a>
 
       <a href="/docs/en/guides/DASHBOARD_OPERATIONS.html" class="doc-page-nav-next">
@@ -562,17 +511,16 @@ the same result.</p>
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#how-the-q1q12-audit-is-scored" class="level-2" aria-current="location">How the Q1–Q12 audit is scored</a></li>
-<li data-doc-toc-level="3" data-doc-parent="how-the-q1q12-audit-is-scored" hidden><a href="#finding-contribution" class="level-3">Finding contribution</a></li>
-<li data-doc-toc-level="3" data-doc-parent="how-the-q1q12-audit-is-scored" hidden><a href="#metric-contribution-and-insufficient-data" class="level-3">Metric contribution and insufficient data</a></li>
-<li data-doc-toc-level="3" data-doc-parent="how-the-q1q12-audit-is-scored" hidden><a href="#q10-coverage-rule" class="level-3">Q10 coverage rule</a></li>
-<li data-doc-toc-level="3" data-doc-parent="how-the-q1q12-audit-is-scored" hidden><a href="#overall-audit-score" class="level-3">Overall Audit score</a></li>
+<li data-doc-toc-level="3" data-doc-parent="how-the-q1q12-audit-is-scored" hidden><a href="#contributions-and-factor-scores" class="level-3">Contributions and factor scores</a></li>
+<li data-doc-toc-level="3" data-doc-parent="how-the-q1q12-audit-is-scored" hidden><a href="#missing-evidence-and-overall-score" class="level-3">Missing evidence and overall score</a></li>
+<li data-doc-toc-level="3" data-doc-parent="how-the-q1q12-audit-is-scored" hidden><a href="#legacy-compatibility-scores" class="level-3">Legacy compatibility scores</a></li>
 <li><a href="#how-the-other-components-are-scored" class="level-2">How the other components are scored</a></li>
 <li data-doc-toc-level="3" data-doc-parent="how-the-other-components-are-scored" hidden><a href="#compliance" class="level-3">Compliance</a></li>
 <li data-doc-toc-level="3" data-doc-parent="how-the-other-components-are-scored" hidden><a href="#release" class="level-3">Release</a></li>
 <li data-doc-toc-level="3" data-doc-parent="how-the-other-components-are-scored" hidden><a href="#sca" class="level-3">SCA</a></li>
 <li data-doc-toc-level="3" data-doc-parent="how-the-other-components-are-scored" hidden><a href="#quality" class="level-3">Quality</a></li>
 <li><a href="#composite-health-score" class="level-2">Composite Health Score</a></li>
-<li><a href="#what-score-source-means" class="level-2">What “Score source” means</a></li>
+<li><a href="#what-score-source-means" class="level-2">What Score source means</a></li>
 <li><a href="#when-the-composite-is-unavailable" class="level-2">When the composite is unavailable</a></li>
 <li><a href="#grades-and-risk-levels" class="level-2">Grades and risk levels</a></li>
 <li><a href="#reproducible-check" class="level-2">Reproducible check</a></li>

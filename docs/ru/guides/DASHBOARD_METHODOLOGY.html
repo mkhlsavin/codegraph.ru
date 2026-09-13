@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Как CodeGraph рассчитывает аудит, compliance, release, SCA, quality и итоговый Health Score. См. примеры и проверки перед применением.">
-  <meta name="cg:build-commit" content="e1c2a685b2a91f17e78fec770903f8197a1c63df">
+  <meta name="cg:build-commit" content="68ca223d60f39e61252b75ca615ca0fdbc34159a">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Методология оценки состояния проекта — Документация CodeGraph">
@@ -147,6 +147,7 @@
         <li><a href="/docs/ru/guides/scenarios/19-standards-check.html">Сценарий 19: проверка стандартов</a></li>
         <li><a href="/docs/ru/guides/scenarios/20-dependencies.html">Сценарий 20: анализ зависимостей</a></li>
         <li><a href="/docs/ru/guides/ARCHITECTURE_CONTROL_ADOPTION.html">Контроль архитектуры в CodeGraph</a></li>
+        <li><a href="/docs/ru/guides/CPG_AUDIT.html">Аудит проекта на основе CPG</a></li>
         <li><a href="/docs/ru/guides/DASHBOARD_METHODOLOGY.html" class="active" aria-current="page">Методология оценки состояния проекта</a></li>
         <li><a href="/docs/ru/guides/DASHBOARD_OPERATIONS.html">Эксплуатация дашборда</a></li>
         <li><a href="/docs/ru/guides/DASHBOARD_USER_GUIDE.html">Руководство пользователя дашборда</a></li>
@@ -199,7 +200,7 @@
         <h1>Методология оценки состояния проекта</h1>
         <p class="doc-lead">Как CodeGraph рассчитывает аудит, compliance, release, SCA, quality и итоговый Health Score. См. примеры и проверки перед применением.</p>
 
-        <div class="doc-meta"><span>Руководства</span><time datetime="2026-09-09">Обновлено: 2026-09-09</time></div>
+        <div class="doc-meta"><span>Руководства</span><time datetime="2026-09-13">Обновлено: 2026-09-13</time></div>
       </header>
 
       <!-- Content -->
@@ -211,16 +212,23 @@
    Release, SCA и Quality.</li>
 </ol>
 <p>Одно число не заменяет исходные доказательства. Перед решением о выпуске нужно
-проверить состав оценки, её источник и свежесть. Техническое основание аудита —
-Code Property Graph. Как GoCPG строит и обогащает этот граф, описано в статье
+проверить состав оценки, её источник и свежесть. Современный отчёт публикует
+<code>quality_assessment</code> как канонический результат Q1-Q12. Исторические оценки по
+секциям остаются явно помеченными данными совместимости и не заменяют
+отсутствующий канонический балл.</p>
+<p>Техническое основание аудита — Code Property Graph. Как GoCPG строит и
+обогащает этот граф, описано в статье
 <a href="../enterprise/GOCPG_VS_JOERN_ANALYSIS.html">«Как GoCPG строит CPG и чем этот подход отличается от Joern»</a>.
 Модель компонентов, архитектурный DSL, presets, baseline/waiver и release
-profiles собраны отдельно в <a href="ARCHITECTURE_CONTROL_ADOPTION.html">руководстве по контролю архитектуры</a>.</p>
+profiles собраны отдельно в <a href="ARCHITECTURE_CONTROL_ADOPTION.html">руководстве по контролю архитектуры</a>.
+Штатный порядок запуска и разбора результата приведён в
+<a href="CPG_AUDIT.html">руководстве по аудиту проекта на основе CPG</a>.</p>
 <h2  id="kak-otsenivaetsya-audit-q1q12"><span id="kak_otsenivaetsya_audit_q1q12"></span>Как оценивается аудит Q1–Q12<a class="heading-anchor" href="#kak-otsenivaetsya-audit-q1q12" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Каждый раздел объединяет замечания из профильных сценариев и, где это возможно,
-количественные метрики CPG. Таблица соответствует блоку «Справка → Источник
-оценки».</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Как оценивается аудит Q1–Q12"><table data-columns="3"><caption class="sr-only">Как оценивается аудит Q1–Q12</caption>
+<p>У каждого фактора есть стабильный ID и версионируемое определение: риск,
+eligible population, источники evidence, единица измерения, нормализация,
+формула, пороги, применимость и ограничения. В таблице приведён состав текущей
+модели <code>unified-quality.v1</code>.</p>
+<div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Как оценивается аудит Q1–Q12"><table data-columns="3"><caption class="sr-only">Как оценивается аудит Q1–Q12</caption>
 <thead>
 <tr>
 <th scope="col">Раздел</th>
@@ -236,157 +244,98 @@ profiles собраны отдельно в <a href="ARCHITECTURE_CONTROL_ADOPTI
 </tr>
 <tr>
 <td>Q2</td>
-<td>Структура модулей и повторное использование</td>
-<td>Архитектура; циклы зависимостей, нестабильность Мартина.</td>
+<td>Соответствие архитектуре</td>
+<td>Исполненные YAML-инварианты и архитектурные находки GoCPG для применимых зависимостей.</td>
 </tr>
 <tr>
 <td>Q3</td>
-<td>Избыточный и трудный в сопровождении код</td>
-<td>Рефакторинг и техдолг; длинные методы, мёртвый и недостижимый код.</td>
+<td>Избыточность и мёртвый код</td>
+<td>Reachability, clone analysis, ссылки и подтверждённый неиспользуемый код.</td>
 </tr>
 <tr>
 <td>Q4</td>
-<td>Масштабируемость</td>
-<td>Производительность и архитектура; структурные узкие места.</td>
+<td>Структурная эффективность</td>
+<td>Call graph, сложность и архитектурная нагрузка без заявления о runtime capacity.</td>
 </tr>
 <tr>
 <td>Q5</td>
-<td>Производительность на больших объёмах</td>
-<td>Производительность; средняя и максимальная цикломатическая сложность.</td>
+<td>Риск производительности</td>
+<td>Data flow, performance rules и runtime measurements, если они доступны.</td>
 </tr>
 <tr>
 <td>Q6</td>
-<td>Архитектура для роста</td>
-<td>Архитектурный аудит. Надёжного универсального метрического заместителя нет.</td>
+<td>Модульность и границы</td>
+<td>Смоделированные компоненты, граф зависимостей, cohesion и утечки через границы.</td>
 </tr>
 <tr>
 <td>Q7</td>
-<td>Уязвимости</td>
-<td>Security и compliance; high-risk hotspots, <code>eval</code>/<code>exec</code>, слабая криптография, секреты в коде.</td>
+<td>Средства защиты</td>
+<td>Taint paths, security rules и evidence обязательных контролей.</td>
 </tr>
 <tr>
 <td>Q8</td>
-<td>Инъекции и утечки данных</td>
-<td>Security и точки входа; SQL- и shell-injection paths.</td>
+<td>Безопасность точек входа</td>
+<td>Внешние входы, валидация и пути от source к sink.</td>
 </tr>
 <tr>
 <td>Q9</td>
 <td>Сопровождаемость</td>
-<td>Техдолг и рефакторинг; TODO/FIXME, индекс сопровождаемости, ошибки конфигурации.</td>
+<td>Сложность, техдолг и структура изменений без оценки стоимости.</td>
 </tr>
 <tr>
 <td>Q10</td>
-<td>Тестируемость и покрытие</td>
-<td>Runtime line/method coverage и непокрытые методы повышенного риска.</td>
+<td>Покрытие и тестируемость</td>
+<td>Runtime coverage, test call graph и структурная тестируемость.</td>
 </tr>
 <tr>
 <td>Q11</td>
-<td>Сложность связей и расширяемость</td>
-<td>Архитектура и техдолг; доля сложных методов, глубина наследования.</td>
+<td>Сложность и зависимости</td>
+<td>CFG, call graph, наследование и структурные метрики, зависящие от cohort.</td>
 </tr>
 <tr>
 <td>Q12</td>
-<td>Документация</td>
-<td>Покрытие публичных сущностей документацией и комментариями.</td>
+<td>Качество документации</td>
+<td>Инвентаризация документов, drift интерфейсов и evidence ревью.</td>
 </tr>
 </tbody>
 </table></div>
-<h3  id="vklad-zamechaniy"><span id="vklad_zamechaniy"></span>Вклад замечаний<a class="heading-anchor" href="#vklad-zamechaniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Синтетические замечания, уже полученные из метрик, второй раз в вес по уровню
-серьёзности не входят. Для остальных используются веса:</p>
-<div class="doc-table-scroll doc-table-scroll--compact" data-columns="2" tabindex="-1" role="region" aria-label="Вклад замечаний"><table data-columns="2"><caption class="sr-only">Вклад замечаний</caption>
-<thead>
-<tr>
-<th scope="col">Severity</th>
-<th scope="col" class="text-right">Вес</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>critical</td>
-<td class="text-right">1,00</td>
-</tr>
-<tr>
-<td>high</td>
-<td class="text-right">0,70</td>
-</tr>
-<tr>
-<td>medium</td>
-<td class="text-right">0,40</td>
-</tr>
-<tr>
-<td>low</td>
-<td class="text-right">0,15</td>
-</tr>
-<tr>
-<td>info</td>
-<td class="text-right">0,05</td>
-</tr>
-</tbody>
-</table></div>
-<p>Повторные замечания одного уровня имеют убывающий вклад. Если <code>n</code> — номер
-замечания внутри уровня, начиная с нуля, его вклад равен:</p>
-<div class="highlight"><pre><span></span><code>weight(n) = severity_weight / (1 + 0.3 × n)
-W = сумма weight(n) по реальным замечаниям раздела
-base_section_score = 10 × exp(-0.3 × W)
+<h3  id="vklad-evidence-i-ball-faktora"><span id="vklad_evidence_i_ball_faktora"></span>Вклад evidence и балл фактора<a class="heading-anchor" href="#vklad-evidence-i-ball-faktora" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>У каждой канонической находки или метрики есть один основной фактор. Отчёт
+может сослаться на то же evidence в другом разделе, но не вправе применить
+штраф повторно. Синтетическая находка, рассчитанная из метрики, сохраняет тот же
+идентификатор evidence.</p>
+<p>Модель переводит каждый принятый вклад в badness на отрезке <code>[0, 1]</code>. Версия
+определения задаёт преобразование, вес, пороги и ограничения по риску:</p>
+<div class="highlight"><pre><span></span><code>factor_score = 10 × (1 - min(1, sum(weight × badness)))
 </code></pre></div>
 
-<p>Так один critical влияет сильнее одного info, но сотня однотипных сообщений не
-умножает штраф линейно.</p>
-<h3  id="vklad-metrik-i-nehvatka-dannyh"><span id="vklad_metrik_i_nehvatka_dannyh"></span>Вклад метрик и нехватка данных<a class="heading-anchor" href="#vklad-metrik-i-nehvatka-dannyh" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>После severity-формулы применяется штраф <code>Pq</code> по метрикам раздела:</p>
-<div class="highlight"><pre><span></span><code>section_score = round(clamp(base_section_score - Pq, 0, 10), 1)
-</code></pre></div>
-
-<p>Для Q1–Q9, Q11 и Q12 штраф ограничен тремя баллами. Q10 рассчитывается отдельно
-и может дать штраф до девяти баллов. В Q6 метрического штрафа нет: раздел должен
-быть подтверждён архитектурным сценарием.</p>
-<p>Отсутствие данных не означает оценку без замечаний:</p>
+<p>В текущей модели все двенадцать факторов имеют одинаковый вес. Изменение весов,
+нормализации или порогов требует новой версии модели и отдельного решения о
+калибровке. В отчёте сохраняются <code>model_version</code>, digest основы, ревизии
+исходников и CPG, capabilities, ledger evidence и ограничения.</p>
+<h3  id="nehvatka-evidence-i-obschiy-ball"><span id="nehvatka_evidence_i_obschiy_ball"></span>Нехватка evidence и общий балл<a class="heading-anchor" href="#nehvatka-evidence-i-obschiy-ball" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>Фактор получает статус <code>measured</code>, <code>partial</code>, <code>unavailable</code> или
+<code>not_applicable</code>. Неподдерживаемые факты, ошибки запроса, отсутствующие
+знаменатели и неполное покрытие CPG остаются явными. Они не превращаются в ноль
+или нейтральный проходной балл.</p>
+<p>Общий балл считается как взвешенное среднее применимых факторов только тогда,
+когда все обязательные факторы полны и в отчёте нет блокирующих ограничений. В
+остальных случаях <code>score_eligible=false</code>, а <code>overall_score=null</code>. Дополнительные
+границы:</p>
 <ul>
-<li>если ни один исходный сценарий не завершился успешно и нет допустимой
-  метрической основы, раздел получает нейтральные 5,0;</li>
-<li>если замечаний нет, но есть пригодные метрики, расчёт начинается с 10,0 и
-  применяет метрический штраф;</li>
-<li>малая выборка первичных замечаний может ограничить максимум раздела 8,0 или
-  8,8;</li>
-<li>для метрик-зависимых Q1, Q3, Q5, Q9, Q10, Q11 и Q12 отсутствие
-  <code>total_methods</code> даёт нейтральный штраф 1,5, а не ложные 10,0.</li>
+<li>Q10 может показать структурную тестируемость, но runtime coverage остаётся
+  отдельным требованием, если оно обязательно для профиля проекта;</li>
+<li>структурные proxy Q4 и Q5 не доказывают runtime throughput или capacity;</li>
+<li>наличие docstring для Q12 не доказывает правильность и полезность документации;</li>
+<li>пустой список находок не исправляет отсутствующую capability или устаревший CPG.</li>
 </ul>
-<h3  id="osoboe-pravilo-q10"><span id="osoboe_pravilo_q10"></span>Особое правило Q10<a class="heading-anchor" href="#osoboe-pravilo-q10" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Покрытие методов весит 82%, строк — 18%:</p>
-<div class="highlight"><pre><span></span><code>coverage_score = clamp(
-  10 × (0.82 × method_coverage + 0.18 × line_coverage)
-  - risk_uncovered_penalty,
-  0, 10
-)
-P10 = 10 - coverage_score
-</code></pre></div>
-
-<p><code>risk_uncovered_penalty</code> учитывает непокрытые методы уровней critical/high,
-источники taint-анализа, точки входа API и критичные для графа методы; общий
-штраф ограничен 2,5 баллами.
-Дополнительно действуют fail-safe ограничения:</p>
-<ul>
-<li>фактическое покрытие при выполнении недоступно — Q10 не выше 5,0;</li>
-<li>line coverage &lt; 5% и method coverage &lt; 30% — не выше 3,9;</li>
-<li>line coverage &lt; 20% и method coverage &lt; 60% — не выше 5,9.</li>
-</ul>
-<p>Успешное число тестов не подменяет фактическое покрытие при выполнении.</p>
-<h3  id="itogovyy-audit"><span id="itogovyy_audit"></span>Итоговый Audit<a class="heading-anchor" href="#itogovyy-audit" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Сначала вычисляется <code>overall_score_raw</code> — среднее двенадцати секций. Затем
-CodeGraph снижает чувствительность общего числа к повторению одного риска в
-нескольких секциях. По умолчанию:</p>
-<div class="highlight"><pre><span></span><code>blended = 0.30 × overall_score_raw + 0.70 × module_health
-audit_score = round(clamp(min(overall_score_raw + 3.5, blended), 0, 10), 1)
-</code></pre></div>
-
-<p><code>module_health</code> — среднее по модулям с весом по числу методов. Для каждого
-модуля из 10 вычитаются ограниченные штрафы за долю мёртвого кода (до 3),
-индекс сопровождаемости ниже 80 (до 3), нестабильность Мартина (до 2) и
-плотность TODO (до 2). Для чистого модуля с индексом сопровождаемости не ниже
-90 штраф нестабильности умножается на 0,35. Эти коэффициенты конфигурируемы;
-для конкретного результата источником истины служат версия конфигурации и
-сохранённый снимок аудита.</p>
+<h3  id="istoricheskie-otsenki-sovmestimosti"><span id="istoricheskie_otsenki_sovmestimosti"></span>Исторические оценки совместимости<a class="heading-anchor" href="#istoricheskie-otsenki-sovmestimosti" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>Старые отчёты могут содержать severity-weighted оценки секций, metric penalties,
+<code>module_health</code> и числовой <code>overall_score</code>. CodeGraph сохраняет исходную версию
+этих значений либо помечает их как <code>legacy-unversioned</code>, если версия не была
+записана. Современные consumers не используют их как основной балл versioned
+report. Повторный расчёт допустим только при полном сохранённом input evidence и
+создаёт отдельную производную оценку с provenance.</p>
 <h2  id="kak-otsenivayutsya-ostalnye-komponenty"><span id="kak_otsenivayutsya_ostalnye_komponenty"></span>Как оцениваются остальные компоненты<a class="heading-anchor" href="#kak-otsenivayutsya-ostalnye-komponenty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <h3 id="compliance">Compliance<a class="heading-anchor" href="#compliance" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Отчёт ГОСТ Р 56939 присваивает каждому применимому процессу статус:</p>
@@ -543,9 +492,9 @@ quality = 0.40 × runtime_line_coverage
       </div>
       <nav class="doc-page-nav">
 
-      <a href="/docs/ru/guides/ARCHITECTURE_CONTROL_ADOPTION.html" class="doc-page-nav-prev">
+      <a href="/docs/ru/guides/CPG_AUDIT.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Назад</span>
-        <span class="doc-page-nav-title">Контроль архитектуры в CodeGraph</span>
+        <span class="doc-page-nav-title">Аудит проекта на основе CPG</span>
       </a>
 
       <a href="/docs/ru/guides/DASHBOARD_OPERATIONS.html" class="doc-page-nav-next">
@@ -559,10 +508,9 @@ quality = 0.40 × runtime_line_coverage
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
         <li><a href="#kak-otsenivaetsya-audit-q1q12" class="level-2" aria-current="location">Как оценивается аудит Q1–Q12</a></li>
-<li data-doc-toc-level="3" data-doc-parent="kak-otsenivaetsya-audit-q1q12" hidden><a href="#vklad-zamechaniy" class="level-3">Вклад замечаний</a></li>
-<li data-doc-toc-level="3" data-doc-parent="kak-otsenivaetsya-audit-q1q12" hidden><a href="#vklad-metrik-i-nehvatka-dannyh" class="level-3">Вклад метрик и нехватка данных</a></li>
-<li data-doc-toc-level="3" data-doc-parent="kak-otsenivaetsya-audit-q1q12" hidden><a href="#osoboe-pravilo-q10" class="level-3">Особое правило Q10</a></li>
-<li data-doc-toc-level="3" data-doc-parent="kak-otsenivaetsya-audit-q1q12" hidden><a href="#itogovyy-audit" class="level-3">Итоговый Audit</a></li>
+<li data-doc-toc-level="3" data-doc-parent="kak-otsenivaetsya-audit-q1q12" hidden><a href="#vklad-evidence-i-ball-faktora" class="level-3">Вклад evidence и балл фактора</a></li>
+<li data-doc-toc-level="3" data-doc-parent="kak-otsenivaetsya-audit-q1q12" hidden><a href="#nehvatka-evidence-i-obschiy-ball" class="level-3">Нехватка evidence и общий балл</a></li>
+<li data-doc-toc-level="3" data-doc-parent="kak-otsenivaetsya-audit-q1q12" hidden><a href="#istoricheskie-otsenki-sovmestimosti" class="level-3">Исторические оценки совместимости</a></li>
 <li><a href="#kak-otsenivayutsya-ostalnye-komponenty" class="level-2">Как оцениваются остальные компоненты</a></li>
 <li data-doc-toc-level="3" data-doc-parent="kak-otsenivayutsya-ostalnye-komponenty" hidden><a href="#compliance" class="level-3">Compliance</a></li>
 <li data-doc-toc-level="3" data-doc-parent="kak-otsenivayutsya-ostalnye-komponenty" hidden><a href="#release" class="level-3">Release</a></li>

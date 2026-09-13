@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Как описать архитектурную модель, проверить правила на CPG и постепенно включить release gate. См. примеры и проверки перед применением.">
-  <meta name="cg:build-commit" content="e1c2a685b2a91f17e78fec770903f8197a1c63df">
+  <meta name="cg:build-commit" content="68ca223d60f39e61252b75ca615ca0fdbc34159a">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Контроль архитектуры в CodeGraph — Документация CodeGraph">
@@ -147,6 +147,7 @@
         <li><a href="/docs/ru/guides/scenarios/19-standards-check.html">Сценарий 19: проверка стандартов</a></li>
         <li><a href="/docs/ru/guides/scenarios/20-dependencies.html">Сценарий 20: анализ зависимостей</a></li>
         <li><a href="/docs/ru/guides/ARCHITECTURE_CONTROL_ADOPTION.html" class="active" aria-current="page">Контроль архитектуры в CodeGraph</a></li>
+        <li><a href="/docs/ru/guides/CPG_AUDIT.html">Аудит проекта на основе CPG</a></li>
         <li><a href="/docs/ru/guides/DASHBOARD_METHODOLOGY.html">Методология оценки состояния проекта</a></li>
         <li><a href="/docs/ru/guides/DASHBOARD_OPERATIONS.html">Эксплуатация дашборда</a></li>
         <li><a href="/docs/ru/guides/DASHBOARD_USER_GUIDE.html">Руководство пользователя дашборда</a></li>
@@ -199,7 +200,7 @@
         <h1>Контроль архитектуры в CodeGraph</h1>
         <p class="doc-lead">Как описать архитектурную модель, проверить правила на CPG и постепенно включить release gate. См. примеры и проверки перед применением.</p>
 
-        <div class="doc-meta"><span>Руководства</span><time datetime="2026-09-09">Обновлено: 2026-09-09</time></div>
+        <div class="doc-meta"><span>Руководства</span><time datetime="2026-09-13">Обновлено: 2026-09-13</time></div>
       </header>
 
       <!-- Content -->
@@ -389,6 +390,12 @@ baseline/waiver states и semantic digest, что и у полного зап�
 component расширяет invalidation. При неполном результате enforcement выполняет
 одну синхронную полную попытку; любой неполный итог остаётся
 <code>BLOCKED_INCOMPLETE</code>.</p>
+<p>Обновление CPG сначала публикует подготовленную файловую delta, затем выполняет
+ограниченный semantic reconciliation по authoritative source manifest. Граф
+получает статус <code>clean</code> только после проверки stale generations, dangling
+edges, индексов, state и охваченных производных строк. Physical compaction
+запускается отдельно. Подробный контракт приведён в разделе
+<a href="../reference/architecture-v1/incremental-scan-semantics.html">«Семантика инкрементального сканирования»</a>.</p>
 <h2  id="diagnostika-rezultata"><span id="diagnostika_rezultata"></span>Диагностика результата<a class="heading-anchor" href="#diagnostika-rezultata" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">describe</span> <span class="p">-</span><span class="o">-file</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">docs</span><span class="p">/</span><span class="n">examples</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">/</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-component</span> <span class="n">ui</span> <span class="p">-</span><span class="n">-json</span>
 <span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">explain</span> <span class="p">-</span><span class="n">-db</span> <span class="p">./</span><span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span> <span class="p">-</span><span class="n">-run-id</span> <span class="n">RUN</span> <span class="p">-</span><span class="n">-fingerprint</span> <span class="n">SHA256</span> <span class="p">-</span><span class="n">-json</span>
@@ -495,8 +502,8 @@ denominator, missing capability, unresolved edge и untrusted manifest треб�
 из руководства на свежем CLI и проверяет JSON и отрицательные случаи; наличие
 внутреннего Go-теста в приложении само по себе не подтверждает пригодность
 документа для пользователя.</p>
-<p>Сейчас каталог v1 содержит три общих шаблона и девять language presets: C, C++,
-C#, Go, JavaScript, Kotlin, PHP, Python и TypeScript. Наличие соседнего языка не
+<p>Сейчас каталог v1 содержит три общих шаблона и одиннадцать language presets: 1С,
+C, C++, C#, Go, Java, JavaScript, Kotlin, PHP, Python и TypeScript. Наличие соседнего языка не
 доказывает поддержку: capability и fixture qualification проверяются отдельно.</p>
 <h2  id="sovmestimost-i-vosstanovlenie"><span id="sovmestimost_i_vosstanovlenie"></span>Совместимость и восстановление<a class="heading-anchor" href="#sovmestimost-i-vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Канонические результаты хранятся в <code>gocpg_architecture_results</code> и имеют head в
@@ -508,7 +515,7 @@ C#, Go, JavaScript, Kotlin, PHP, Python и TypeScript. Наличие сосед
 <p>Подробности построения графа и восстановления типов приведены в
 <a href="../enterprise/GOCPG_VS_JOERN_ANALYSIS.html">техническом разборе GoCPG</a>, а
 пользовательский сценарий — в <a href="scenarios/11-architecture.html">анализе архитектуры</a>.</p>
-<h2  id="skvoznoy-stsenariy-ot-ishodnika-do-resheniya"><span id="skvoznoy_stsenariy_ot_ishodnika_do_resheniya"></span>Сквозной сценарий: от исходника до решения<a class="heading-anchor" href="#skvoznoy-stsenariy-ot-ishodnika-do-resheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<h2  id="skvoznoy-stsenariy-prinyatiya-resheniya"><span id="skvoznoy_stsenariy_prinyatiya_resheniya"></span>Сквозной сценарий принятия решения<a class="heading-anchor" href="#skvoznoy-stsenariy-prinyatiya-resheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>В репозитории есть минимальное правило
 <code>gocpg/docs/examples/architecture-control/architecture.yaml</code>. Оно показывает
 границы UI и Storage и запрещает прямую зависимость. Сценарий состоит из пяти
@@ -525,20 +532,30 @@ C#, Go, JavaScript, Kotlin, PHP, Python и TypeScript. Наличие сосед
    Для PR с историей используйте <code>gocpg ci-update --input . --output
    cpg.duckdb --base-ref origin/main --head-ref HEAD --json</code>. Результат должен
    содержать revision и полноту построения.</li>
-<li><strong>Оценить правило.</strong> Универсальный <code>architecture evaluate</code> в текущем CLI не
-   заявлен. Полный enforcement выполняется production runner через настроенную
-   CodeGraph integration, где policy manifest связывает CPG facts, component
-   membership, rule set и release profile. Не подменяйте этот шаг командой
-   <code>validate</code> или внутренним тестом.</li>
+<li><strong>Оценить policy.</strong> Отдельная команда <code>architecture evaluate</code> в CLI не
+   заявлена. Подключите архитектурный анализ к <code>ci-update</code> и передайте четыре
+   поля: policy, ключ проекта, release control и путь к artifact. Выбранная
+   policy задаёт корни исходников, компоненты, правила и классификацию; GoCPG не
+   ищет manifest конкретного проекта. Не подменяйте этот шаг командой <code>validate</code>
+   или внутренним тестом.</li>
 <li><strong>Разобрать finding и исправить исходник.</strong> Из canonical run возьмите
    <code>run_id</code> и fingerprint, затем выполните <code>explain</code>. После исправления повторите
    полный или допустимый incremental run. Если completeness, capability или
    denominator не доказаны, итогом остаётся <code>BLOCKED_INCOMPLETE</code>.</li>
 </ol>
-<h3  id="minimalnyy-ci-fragment"><span id="minimalnyy_ci_fragment"></span>Минимальный CI-фрагмент<a class="heading-anchor" href="#minimalnyy-ci-fragment" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<h3  id="ci-fragment-tolko-dlya-cpg"><span id="ci_fragment_tolko_dlya_cpg"></span>CI-фрагмент только для CPG<a class="heading-anchor" href="#ci-fragment-tolko-dlya-cpg" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <!-- architecture-cli: ci-update -->
 
 <div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">ci-update</span> <span class="p">-</span><span class="n">-input</span> <span class="p">.</span> <span class="p">-</span><span class="n">-output</span> <span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span> <span class="p">-</span><span class="n">-base-ref</span> <span class="n">origin</span><span class="p">/</span><span class="n">main</span> <span class="p">-</span><span class="n">-head-ref</span> <span class="n">HEAD</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">python</span> <span class="p">-</span><span class="n">-json</span>
+</code></pre></div>
+
+<p>Без архитектурных полей команда только обновляет CPG. Чтобы запросить
+архитектурный анализ, передайте все четыре поля:</p>
+<div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">ci-update</span> <span class="p">-</span><span class="n">-input</span> <span class="p">.</span> <span class="p">-</span><span class="n">-output</span> <span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span> <span class="p">-</span><span class="n">-base-ref</span> <span class="n">origin</span><span class="p">/</span><span class="n">main</span> <span class="p">-</span><span class="n">-head-ref</span> <span class="n">HEAD</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">python</span> <span class="p">-</span><span class="n">-json</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-architecture-policy</span> <span class="n">config</span><span class="p">/</span><span class="n">architecture-policy</span><span class="p">.</span><span class="n">yaml</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-architecture-project-key</span> <span class="n">inventory-service</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-architecture-release-control</span> <span class="n">config</span><span class="p">/</span><span class="n">architecture-release-control</span><span class="p">.</span><span class="n">yaml</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-architecture-artifact</span> <span class="n">artifacts</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">.</span><span class="n">json</span>
 </code></pre></div>
 
 <!-- architecture-cli: validate -->
@@ -551,12 +568,12 @@ C#, Go, JavaScript, Kotlin, PHP, Python и TypeScript. Наличие сосед
 <div class="highlight"><pre><span></span><code><span class="n">gocpg</span> <span class="n">architecture</span> <span class="n">describe</span> <span class="p">-</span><span class="o">-file</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">docs</span><span class="p">/</span><span class="n">examples</span><span class="p">/</span><span class="n">architecture-control</span><span class="p">/</span><span class="n">architecture</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-component</span> <span class="n">ui</span> <span class="p">-</span><span class="n">-json</span>
 </code></pre></div>
 
-<p>CI должен проверить JSON, а не только коды возврата. У <code>validate</code> для
+<p>CI должен проверить JSON и architecture artifact, а не только код возврата. У <code>validate</code> для
 неподходящего языка возможен код 0 при <code>applicable=false</code>; это диагностический
-результат, не разрешение на выпуск. Для CodeGraph policy путь <code>ci-update</code>
-запускает production architecture control только при наличии доверенного
-manifest, policy и release-control конфигурации. Если этих входов нет, pipeline
-должен сообщить точную причину и остановить enforcement.</p>
+результат, не разрешение на выпуск. Если отсутствуют все четыре архитектурных
+поля, policy не запрошена. Неполный набор полей завершается ошибкой. Полный набор
+запускает выбранную policy; отсутствующий, повреждённый, небезопасный или внешний
+по отношению к репозиторию input блокируется, а не превращается в успешный skip.</p>
 <p>В CI дополнительно выполняется production-тест
 <code>TestCodeGraphPythonCIPipelineBlocksTheRevisionBoundRESTToMCPWitness</code>. Он читает
 сущности и зависимости из DuckDB CPG, применяет policy и проверяет, что finding
@@ -591,9 +608,9 @@ capability или governance.</p>
         <span class="doc-page-nav-title">Сценарий 20: анализ зависимостей</span>
       </a>
 
-      <a href="/docs/ru/guides/DASHBOARD_METHODOLOGY.html" class="doc-page-nav-next">
+      <a href="/docs/ru/guides/CPG_AUDIT.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Вперед</span>
-        <span class="doc-page-nav-title">Методология оценки состояния проекта</span>
+        <span class="doc-page-nav-title">Аудит проекта на основе CPG</span>
       </a>
     </nav>
     </main>
@@ -614,9 +631,9 @@ capability или governance.</p>
 <li><a href="#edinoe-rukovodstvo-i-spravochnye-prilozheniya" class="level-2">Единое руководство и справочные приложения</a></li>
 <li data-doc-toc-level="3" data-doc-parent="edinoe-rukovodstvo-i-spravochnye-prilozheniya" hidden><a href="#karta-17-tem" class="level-3">Карта 17 тем</a></li>
 <li><a href="#sovmestimost-i-vosstanovlenie" class="level-2">Совместимость и восстановление</a></li>
-<li><a href="#skvoznoy-stsenariy-ot-ishodnika-do-resheniya" class="level-2">Сквозной сценарий: от исходника до решения</a></li>
-<li data-doc-toc-level="3" data-doc-parent="skvoznoy-stsenariy-ot-ishodnika-do-resheniya" hidden><a href="#minimalnyy-ci-fragment" class="level-3">Минимальный CI-фрагмент</a></li>
-<li data-doc-toc-level="3" data-doc-parent="skvoznoy-stsenariy-ot-ishodnika-do-resheniya" hidden><a href="#chto-schitaetsya-ispravleniem" class="level-3">Что считается исправлением</a></li>
+<li><a href="#skvoznoy-stsenariy-prinyatiya-resheniya" class="level-2">Сквозной сценарий принятия решения</a></li>
+<li data-doc-toc-level="3" data-doc-parent="skvoznoy-stsenariy-prinyatiya-resheniya" hidden><a href="#ci-fragment-tolko-dlya-cpg" class="level-3">CI-фрагмент только для CPG</a></li>
+<li data-doc-toc-level="3" data-doc-parent="skvoznoy-stsenariy-prinyatiya-resheniya" hidden><a href="#chto-schitaetsya-ispravleniem" class="level-3">Что считается исправлением</a></li>
 <li><a href="#kak-vybirat-sleduyuschiy-razdel" class="level-2">Как выбирать следующий раздел</a></li>
       </ul>
     </aside>
