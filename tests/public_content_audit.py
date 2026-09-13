@@ -141,6 +141,24 @@ def _pages() -> list[Page]:
     return pages
 
 
+def _declared_public_routes() -> set[str]:
+    """Expand the public-page manifest into the routes covered by this audit."""
+    manifest = json.loads(
+        (LANDING_ROOT / "public-pages.json").read_text(encoding="utf-8")
+    )
+    excluded_prefixes = tuple(manifest.get("exclude", ()))
+    return {
+        path.relative_to(LANDING_ROOT).as_posix()
+        for pattern in manifest["include"]
+        for path in LANDING_ROOT.glob(pattern)
+        if path.is_file()
+        and not any(
+            path.relative_to(LANDING_ROOT).as_posix().startswith(prefix)
+            for prefix in excluded_prefixes
+        )
+    }
+
+
 def _clean_copy(node: Tag) -> str:
     clone = BeautifulSoup(str(node), "html.parser")
     for selector in (
@@ -563,12 +581,21 @@ def main() -> int:
     return 1 if findings else 0
 
 
+def test_editorial_audit_covers_every_declared_public_page() -> None:
+    """Keep editorial-audit coverage synchronized with the public-page manifest."""
+    pages, _ = audit()
+    actual_routes = {page.route for page in pages}
+    expected_routes = _declared_public_routes()
+    assert actual_routes == expected_routes, (
+        "Editorial audit route coverage differs from public-pages.json: "
+        f"missing={sorted(expected_routes - actual_routes)}, "
+        f"unexpected={sorted(actual_routes - expected_routes)}"
+    )  # FR-P1237-LEAD-PAGE-01
+
+
 def test_all_public_pages_pass_six_editorial_checks() -> None:
     """Require every declared public page to pass all editorial checks."""
-    pages, findings = audit()
-    assert (
-        len(pages) == 41
-    ), f"Expected 41 public pages, found {len(pages)}"  # FR-P1237-LEAD-PAGE-01
+    _, findings = audit()
     assert not findings, "Editorial audit findings:\n" + "\n".join(
         f"[{criterion}] {item}"
         for criterion, items in findings.items()
