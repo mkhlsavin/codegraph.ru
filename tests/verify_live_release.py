@@ -58,7 +58,9 @@ def _discover_required_doc_redirects(root: Path) -> dict[str, str]:
     return redirects
 
 
-REQUIRED_DOC_REDIRECTS = _discover_required_doc_redirects(Path(__file__).resolve().parents[1])
+REQUIRED_DOC_REDIRECTS = _discover_required_doc_redirects(
+    Path(__file__).resolve().parents[1]
+)
 FORBIDDEN_PUBLIC_DOC_ORIGINS = ("https://github.com/mkhlsavin/codegraph/",)
 REQUIRED_PUBLIC_ASSETS = (
     "css/tailwind.min.css",
@@ -130,7 +132,11 @@ class HomeContractParser(HTMLParser):
             self.canonical = attributes.get("href") or ""
         if tag == "link" and rel.casefold() == "stylesheet":
             self.stylesheet = attributes.get("href") or ""
-        if tag == "link" and rel.casefold() == "preload" and as_type.casefold() == "style":
+        if (
+            tag == "link"
+            and rel.casefold() == "preload"
+            and as_type.casefold() == "style"
+        ):
             self.style_preload = attributes.get("href") or ""
 
     def handle_endtag(self, tag: str) -> None:
@@ -233,13 +239,17 @@ def _fetch_plain(base_url: str, route: str) -> tuple[bytes, dict[str, str]]:
         return response.read(), headers
 
 
-def _fetch_many(base_url: str, routes: tuple[str, ...], release: str) -> dict[str, bytes]:
+def _fetch_many(
+    base_url: str, routes: tuple[str, ...], release: str
+) -> dict[str, bytes]:
     """Fetch the release route set concurrently without changing per-request checks."""
     if not routes:
         return {}
     workers = min(16, len(routes))
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = {route: executor.submit(_fetch, base_url, route, release) for route in routes}
+        futures = {
+            route: executor.submit(_fetch, base_url, route, release) for route in routes
+        }
         return {route: future.result() for route, future in futures.items()}
 
 
@@ -259,12 +269,18 @@ def _routes_from_sitemap(payload: bytes) -> tuple[str, ...]:
 
 def _expected_canonical(route: str) -> str:
     """Return the exact canonical expected for one published HTML route."""
-    return f"https://codegraph.ru/{route}" if route != "index.html" else "https://codegraph.ru/"
+    return (
+        f"https://codegraph.ru/{route}"
+        if route != "index.html"
+        else "https://codegraph.ru/"
+    )
 
 
 def _normalized_robots(value: str) -> str:
     """Normalize a robots content value for policy comparison."""
-    return ", ".join(part.strip().casefold() for part in value.split(",") if part.strip())
+    return ", ".join(
+        part.strip().casefold() for part in value.split(",") if part.strip()
+    )
 
 
 def _parse_home_contract(payload: bytes) -> HomeContractParser:
@@ -419,7 +435,9 @@ def _verify_docs_contract(
     expected_security = "Безопасность" if route.startswith("docs/ru/") else "Security"
     build_commit = contract.meta.get("cg:build-commit", "").strip()
     css_build = contract.meta.get("cg:css-build", "").strip()
-    expected_css_build = _normalized_sha256((root / "css/tailwind.min.css").read_bytes())[:12]
+    expected_css_build = _normalized_sha256(
+        (root / "css/tailwind.min.css").read_bytes()
+    )[:12]
     stylesheet = contract.stylesheets[0] if contract.stylesheets else ""
     failures = _docs_shell_failures(
         route,
@@ -504,7 +522,9 @@ def _verify_doc_redirects(
                 "forbidden private repository origin",
             ),
         )
-        failures.extend(f"{route}: {message}" for passed, message in checks if not passed)
+        failures.extend(
+            f"{route}: {message}" for passed, message in checks if not passed
+        )
     return evidence, failures
 
 
@@ -539,7 +559,9 @@ def _verify_route_contracts(
     return route_contracts, docs_contracts, failures
 
 
-def _homepage_failures(homepage: str, root_homepage: str, release: str) -> tuple[str, list[str]]:
+def _homepage_failures(
+    homepage: str, root_homepage: str, release: str
+) -> tuple[str, list[str]]:
     """Validate homepage semantics, parity, and forbidden claims."""
     public = _parse_home_contract(homepage.encode("utf-8"))
     root = _parse_home_contract(root_homepage.encode("utf-8"))
@@ -550,7 +572,9 @@ def _homepage_failures(homepage: str, root_homepage: str, release: str) -> tuple
         ("release", public.release.strip(), release),
     )
     failures.extend(
-        f"{label}={actual!r}" for label, actual, expected in expected_values if actual != expected
+        f"{label}={actual!r}"
+        for label, actual, expected in expected_values
+        if actual != expected
     )
     if (
         _normalized_text(root.title) != _normalized_text(public.title)
@@ -564,7 +588,9 @@ def _homepage_failures(homepage: str, root_homepage: str, release: str) -> tuple
         failures.append("root/index.html content hash mismatch")
     folded_homepage = homepage.casefold()
     failures.extend(
-        f"forbidden={text!r}" for text in FORBIDDEN_TEXT if text.casefold() in folded_homepage
+        f"forbidden={text!r}"
+        for text in FORBIDDEN_TEXT
+        if text.casefold() in folded_homepage
     )
     return public.release.strip(), failures
 
@@ -631,7 +657,9 @@ def verify_once(
     )
     hashes, hash_failures = _verify_hashes(root, routes, remote)
     asset_hashes, asset_failures = _verify_asset_hashes(root, remote_assets)
-    redirect_contracts, redirect_failures = _verify_doc_redirects(remote_redirects, root)
+    redirect_contracts, redirect_failures = _verify_doc_redirects(
+        remote_redirects, root
+    )
     failures.extend(route_failures)
     failures.extend(homepage_contract_failures)
     failures.extend(hash_failures)
@@ -660,7 +688,9 @@ def main() -> int:
     """Poll the public domain until the exact checked-out artifact is available."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="https://codegraph.ru/")
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
     parser.add_argument("--release", default=EXPECTED_RELEASE)
     parser.add_argument("--attempts", type=int, default=1)
     parser.add_argument("--interval", type=float, default=20.0)

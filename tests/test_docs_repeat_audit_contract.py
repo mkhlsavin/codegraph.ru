@@ -22,7 +22,9 @@ PRIVATE_REPOSITORY_ORIGIN = "https://github.com/mkhlsavin/codegraph/"
 
 def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> None:
     """Keep the production gate closed when docs or the JS bundle drift."""
-    source = (LANDING_ROOT / "tests" / "verify_live_release.py").read_text(encoding="utf-8")
+    source = (LANDING_ROOT / "tests" / "verify_live_release.py").read_text(
+        encoding="utf-8"
+    )
     for route in (
         "docs/ru/index.html",
         "docs/en/index.html",
@@ -52,7 +54,8 @@ def test_generated_public_docs_do_not_link_to_the_private_repository() -> None:
     violations = [
         path.relative_to(LANDING_ROOT).as_posix()
         for path in (LANDING_ROOT / "docs").rglob("*.html")
-        if PRIVATE_REPOSITORY_ORIGIN.casefold() in path.read_text(encoding="utf-8").casefold()
+        if PRIVATE_REPOSITORY_ORIGIN.casefold()
+        in path.read_text(encoding="utf-8").casefold()
     ]
     assert violations == []
 
@@ -118,19 +121,24 @@ def test_docs_shell_and_keyboard_contracts_cover_repeat_audit_findings() -> None
     assert "target.setAttribute('tabindex', '-1')" in js
     assert "target.focus({ preventScroll: true })" in js
     assert "data-doc-live" in js
-    assert "position: absolute" in css.split(".page-docs .doc-code-copy", 1)[1].split("}", 1)[0]
+    assert (
+        "position: absolute"
+        in css.split(".page-docs .doc-code-copy", 1)[1].split("}", 1)[0]
+    )
     assert "padding: 48px 18px 18px" in css
     toggle_css = css.split(".page-docs .doc-sidebar-toggle {", 1)[1].split("}", 1)[0]
-    toggle_icon_css = css.split(".page-docs .doc-sidebar-toggle::after {", 1)[1].split("}", 1)[0]
+    toggle_icon_css = css.split(".page-docs .doc-sidebar-toggle::after {", 1)[1].split(
+        "}", 1
+    )[0]
     assert "padding: 0 6px 0 0" in toggle_css
     assert "flex: 0 0 8px" in toggle_icon_css
 
 
 def test_generated_docs_use_heading_specific_table_labels_and_current_css() -> None:
     """Tables remain distinguishable to assistive technology and use the live CSS hash."""
-    page = (LANDING_ROOT / "docs" / "ru" / "enterprise" / "GOCPG_VS_JOERN_ANALYSIS.html").read_text(
-        encoding="utf-8"
-    )
+    page = (
+        LANDING_ROOT / "docs" / "ru" / "enterprise" / "GOCPG_VS_JOERN_ANALYSIS.html"
+    ).read_text(encoding="utf-8")
     css_hash = (
         __import__("hashlib")
         .sha256((LANDING_ROOT / "css" / "tailwind.min.css").read_bytes())
@@ -145,7 +153,9 @@ def test_generated_docs_use_heading_specific_table_labels_and_current_css() -> N
 
 def test_section_index_items_have_visible_descriptions_and_ordered_links() -> None:
     """Section indexes expose readable descriptions instead of bare title lists."""
-    page = (LANDING_ROOT / "docs" / "ru" / "enterprise" / "index.html").read_text(encoding="utf-8")
+    page = (LANDING_ROOT / "docs" / "ru" / "enterprise" / "index.html").read_text(
+        encoding="utf-8"
+    )
     descriptions = [
         re.sub(r"<[^>]+>", "", unescape(value)).strip()
         for value in re.findall(
@@ -157,7 +167,9 @@ def test_section_index_items_have_visible_descriptions_and_ordered_links() -> No
     hrefs = re.findall(r'<a href="([^"]+\.html)">', page)
     assert hrefs
     assert "…" not in " ".join(descriptions)
-    assert any("инфраструктур" in description.casefold() for description in descriptions)
+    assert any(
+        "инфраструктур" in description.casefold() for description in descriptions
+    )
 
 
 def test_russian_search_index_uses_localized_descriptions_and_keywords() -> None:
@@ -172,14 +184,16 @@ def test_russian_search_index_uses_localized_descriptions_and_keywords() -> None
     assert "интеграции" in acp["description"].casefold()
     assert any("ACP" in keyword for keyword in acp["keywords"])
     serialized_casefold = serialized.casefold()
-    assert not any(phrase in serialized_casefold for phrase in FORBIDDEN_RU_SEARCH_PHRASES)
+    assert not any(
+        phrase in serialized_casefold for phrase in FORBIDDEN_RU_SEARCH_PHRASES
+    )
 
 
 def test_competitive_matrix_separates_lead_from_snapshot_callout() -> None:
     """Keep the generated lead concise and preserve the snapshot sentence boundary."""
-    page = (LANDING_ROOT / "docs" / "ru" / "enterprise" / "COMPETITIVE_MATRIX.html").read_text(
-        encoding="utf-8"
-    )
+    page = (
+        LANDING_ROOT / "docs" / "ru" / "enterprise" / "COMPETITIVE_MATRIX.html"
+    ).read_text(encoding="utf-8")
     lead_match = re.search(r'<p class="doc-lead">(.*?)</p>', page, flags=re.DOTALL)
     assert lead_match
     lead = re.sub(r"<[^>]+>", "", unescape(lead_match.group(1))).replace("\xa0", " ")
@@ -203,10 +217,14 @@ def _canonical_public_release_date(index_html: str) -> str:
 def test_public_release_date_is_independent_from_the_runner_clock() -> None:
     """Use projection metadata even when its release date differs from the runner date."""
 
-    assert _canonical_public_release_date('{"dateModified": "2030-01-02"}') == "2030-01-02"
+    assert (
+        _canonical_public_release_date('{"dateModified": "2030-01-02"}') == "2030-01-02"
+    )
 
 
-def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_date() -> None:
+def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_date() -> (
+    None
+):
     """Every generated article is discoverable while README duplicates stay excluded."""
     namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     sitemap = ET.parse(LANDING_ROOT / "sitemap.xml")
@@ -220,7 +238,8 @@ def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_dat
     generated: list[tuple[str, Path]] = []
     for language in ("ru", "en"):
         generated.extend(
-            (language, document) for document in (LANDING_ROOT / "docs" / language).rglob("*.html")
+            (language, document)
+            for document in (LANDING_ROOT / "docs" / language).rglob("*.html")
         )
     for language, document in generated:
         relative = document.relative_to(LANDING_ROOT).as_posix()
@@ -237,10 +256,14 @@ def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_dat
             assert loc not in entries
             continue
         assert loc in entries
-        assert entries[loc].findtext("sm:lastmod", namespaces=namespace) == expected_date
+        assert (
+            entries[loc].findtext("sm:lastmod", namespaces=namespace) == expected_date
+        )
         if document.name.lower() == "index.html":
             expected_changefreq = (
-                "weekly" if document.parent == LANDING_ROOT / "docs" / language else "monthly"
+                "weekly"
+                if document.parent == LANDING_ROOT / "docs" / language
+                else "monthly"
             )
             expected_priority = (
                 "0.8"
@@ -250,34 +273,55 @@ def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_dat
         else:
             expected_changefreq = "monthly"
             expected_priority = "0.6"
-        assert entries[loc].findtext("sm:changefreq", namespaces=namespace) == expected_changefreq
-        assert entries[loc].findtext("sm:priority", namespaces=namespace) == expected_priority
-    assert "https://codegraph.ru/docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html" in entries
+        assert (
+            entries[loc].findtext("sm:changefreq", namespaces=namespace)
+            == expected_changefreq
+        )
+        assert (
+            entries[loc].findtext("sm:priority", namespaces=namespace)
+            == expected_priority
+        )
+    assert (
+        "https://codegraph.ru/docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html"
+        in entries
+    )
     for route in ("research/tochnost-otvetov-i-skorost-razbora.html",):
         assert f"https://codegraph.ru/{route}" not in entries
     assert "https://codegraph.ru/downloads/digital-role-passport/" in entries
-    assert "https://codegraph.ru/downloads/digital-role-passport/role-passport.html" in entries
+    assert (
+        "https://codegraph.ru/downloads/digital-role-passport/role-passport.html"
+        in entries
+    )
 
 
 def test_generated_docs_mark_documentation_as_the_current_global_section() -> None:
     """The shared shell exposes the current documentation section to all users."""
-    page = (LANDING_ROOT / "docs" / "ru" / "enterprise" / "GOCPG_VS_JOERN_ANALYSIS.html").read_text(
-        encoding="utf-8"
-    )
+    page = (
+        LANDING_ROOT / "docs" / "ru" / "enterprise" / "GOCPG_VS_JOERN_ANALYSIS.html"
+    ).read_text(encoding="utf-8")
     assert page.count('data-nav-link aria-current="page"') == 2
 
 
 def test_service_typography_meets_documentation_scale() -> None:
     """Search, sidebar and card metadata must not fall below the docs scale."""
     css = (LANDING_ROOT / "css" / "tailwind.css").read_text(encoding="utf-8")
-    assert "font-size: 12px;" in css.split(".page-docs .doc-sidebar-title", 1)[1].split("}", 1)[0]
-    assert "font-size: 14px;" in css.split(".page-docs .doc-search-input", 1)[1].split("}", 1)[0]
+    assert (
+        "font-size: 12px;"
+        in css.split(".page-docs .doc-sidebar-title", 1)[1].split("}", 1)[0]
+    )
+    assert (
+        "font-size: 14px;"
+        in css.split(".page-docs .doc-search-input", 1)[1].split("}", 1)[0]
+    )
     assert ".page-docs .doc-search-result-title { font-size: 14px; }" in css
     assert (
         ".page-docs .doc-search-result-section { margin-top: 2px; color: var(--doc-text-muted); font-size: 12px; }"
         in css
     )
-    assert "font-size: 12px;" in css.split(".page-docs .doc-card-count", 1)[1].split("}", 1)[0]
+    assert (
+        "font-size: 12px;"
+        in css.split(".page-docs .doc-card-count", 1)[1].split("}", 1)[0]
+    )
 
 
 def test_documentation_geometry_uses_shared_radius_and_shadow_tokens() -> None:
