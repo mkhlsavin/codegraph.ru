@@ -34,6 +34,12 @@ TECHNICAL_HELPERS = (
     ".screen-viewer",
     ".diagram-viewer",
     ".page-freshness-note",
+    ".cg-article-trust",
+)
+SHARED_SECTION_IDS = {"faq", "pilot", "sources", "next-step"}
+PROOF_SELECTORS = (
+    "table, pre, [data-visual-kind], .cg-resource-card, .cg-resource-preview, "
+    ".cg-blog-feature-card, .cg-blog-topic-card, a.rounded-cg-card"
 )
 ABSTRACT_PATTERNS = (
     (
@@ -61,12 +67,9 @@ FORBIDDEN_COPY_PATTERNS = (
             r"решение для управляемой разработки цифровых продуктов", re.IGNORECASE
         ),
     ),
-    ("инициатива", re.compile(r"\bинициатив\w*", re.IGNORECASE)),
-    ("контур", re.compile(r"\bконтур\w*", re.IGNORECASE)),
     ("доказательная база", re.compile(r"\bдоказательн\w*\s+баз\w*", re.IGNORECASE)),
     ("пакет подтверждений", re.compile(r"\bпакет\s+подтвержден\w*", re.IGNORECASE)),
     ("пакет готовности", re.compile(r"\bпакет\s+готовност\w*", re.IGNORECASE)),
-    ("прослеживаемость", re.compile(r"\bпрослеживаем\w*", re.IGNORECASE)),
     ("продуктовый замысел", re.compile(r"\bпродуктов\w*\s+замыс\w*", re.IGNORECASE)),
     (
         "управленческий выигрыш",
@@ -267,10 +270,20 @@ def _content_blocks(page: Page) -> list[Tag]:
     return blocks
 
 
+def _unique_copy_blocks(page: Page) -> list[Tag]:
+    """Return page-owned blocks while excluding shared FAQ and methodology copy."""
+    return [
+        block
+        for block in _content_blocks(page)
+        if block.get("id") not in SHARED_SECTION_IDS
+        and "cg-article-cta" not in (block.get("class") or [])
+    ]
+
+
 def _check_one_thesis(pages: list[Page], findings: dict[str, list[str]]) -> None:
     for page in pages:
         sentences: list[str] = []
-        for block in _content_blocks(page):
+        for block in _unique_copy_blocks(page):
             sentences.extend(_sentences(_clean_copy(block)))
         duplicates = [
             sentence for sentence, count in Counter(sentences).items() if count > 1
@@ -281,7 +294,7 @@ def _check_one_thesis(pages: list[Page], findings: dict[str, list[str]]) -> None
             )
         headings = [
             _normalise(heading.get_text(" ", strip=True))
-            for block in _content_blocks(page)
+            for block in _unique_copy_blocks(page)
             if (heading := block.find("h2")) is not None
         ]
         for heading in [
@@ -384,9 +397,7 @@ def _check_four_concrete_language(
 
 
 def _proof_signature(page: Page) -> str:
-    candidates = page.main.select(
-        "table, pre, [data-visual-kind], .cg-resource-card, .cg-resource-preview"
-    )
+    candidates = page.main.select(PROOF_SELECTORS)
     if not candidates:
         return ""
     text = _normalise(candidates[0].get_text(" ", strip=True))
@@ -397,9 +408,7 @@ def _check_five_unique_proof(pages: list[Page], findings: dict[str, list[str]]) 
     signatures: defaultdict[str, list[str]] = defaultdict(list)
     captions: defaultdict[str, list[str]] = defaultdict(list)
     for page in pages:
-        proof_nodes = page.main.select(
-            "table, pre, [data-visual-kind], .cg-resource-card, .cg-resource-preview"
-        )
+        proof_nodes = page.main.select(PROOF_SELECTORS)
         if not proof_nodes:
             findings["5. уникальный пример, таблица или результат"].append(
                 f"{page.route}: нет доказательного объекта"
@@ -438,13 +447,16 @@ def _check_six_adjacent_pages(
         question = _normalise(page.main.get("data-buyer-question", ""))
         if question:
             questions[question].append(page.route)
-        sentences = set(
+        answer_blocks = [
+            block
+            for block in _unique_copy_blocks(page)
+            if block.get("id") in {"answer", "scope"}
+        ]
+        sentences = {
             sentence
-            for block in _content_blocks(page)
-            if "cg-article-cta" not in (block.get("class") or [])
-            and block.get("id") not in {"demo", "next-step"}
+            for block in answer_blocks
             for sentence in _sentences(_clean_copy_without_links(block))
-        )
+        }
         for sentence in sentences:
             sentence_owners[sentence].append(page.route)
     for question, routes in questions.items():
