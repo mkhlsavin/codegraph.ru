@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Import local or remote source, verify the job, and select explicit project scope. The page explains the purpose, usage steps, and result checks.">
-  <meta name="cg:build-commit" content="a0bd0ccf710afbc998ddfce7a3de44cbc0b146cb">
+  <meta name="description" content="Import a Git repository through the UI, REST API, or server CLI, wait for the job to finish, and verify that its code graph is ready.">
+  <meta name="cg:build-commit" content="4d48b84048543ef7f6a188cd924492511949f495">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Import a project into CodeGraph — Documentation">
-  <meta property="og:description" content="Import local or remote source, verify the job, and select explicit project scope. The page explains the purpose, usage steps, and result checks.">
+  <meta property="og:description" content="Import a Git repository through the UI, REST API, or server CLI, wait for the job to finish, and verify that its code graph is ready.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/PROJECT_IMPORT.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Import a project into CodeGraph — Documentation">
-  <meta name="twitter:description" content="Import local or remote source, verify the job, and select explicit project scope. The page explains the purpose, usage steps, and result checks.">
+  <meta name="twitter:description" content="Import a Git repository through the UI, REST API, or server CLI, wait for the job to finish, and verify that its code graph is ready.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/PROJECT_IMPORT.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Import a project into CodeGraph — Documentation","description":"Import local or remote source, verify the job, and select explicit project scope. The page explains the purpose, usage steps, and result checks.","url":"https://codegraph.ru/docs/en/guides/PROJECT_IMPORT.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Import a project into CodeGraph — Documentation","description":"Import a Git repository through the UI, REST API, or server CLI, wait for the job to finish, and verify that its code graph is ready.","url":"https://codegraph.ru/docs/en/guides/PROJECT_IMPORT.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -198,59 +198,89 @@
         <span>Import a project into CodeGraph</span>
         </nav>
         <h1>Import a project into CodeGraph</h1>
-        <p class="doc-lead">Import local or remote source, verify the job, and select explicit project scope. The page explains the purpose, usage steps, and result checks.</p>
+        <p class="doc-lead">Import a Git repository through the UI, REST API, or server CLI, wait for the job to finish, and verify that its code graph is ready.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-09-24">Updated: 2026-09-24</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Project import creates or refreshes a named project from a local checkout or Git repository. Run
-it from the CodeGraph source checkout with the tenant/group scope approved by your administrator.</p>
-<h2  id="inspect-the-current-parser"><span id="inspect_the_current_parser"></span>Inspect the current parser<a class="heading-anchor" href="#inspect-the-current-parser" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">import</span> <span class="p">-</span><span class="n">-help</span>
+        <p>Project import creates or refreshes a project from a Git repository or a local checkout. Get the
+UI and API URLs and permission for the target project group from your administrator. Replace
+<code>&lt;API_URL&gt;</code> with your instance address without <code>/api/v1</code>. The REST schema is at
+<code>&lt;API_URL&gt;/api/docs</code> (Swagger UI) and <code>&lt;API_URL&gt;/api/openapi.json</code> (OpenAPI JSON).</p>
+<h2  id="import-through-ui-or-rest"><span id="import_through_ui_or_rest"></span>Import through UI or REST<a class="heading-anchor" href="#import-through-ui-or-rest" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>In the UI, open <code>&lt;UI_URL&gt;/dashboard/repositories</code>, select a configured Git provider, find the
+repository, and choose <strong>Import</strong>. Check the result at <code>&lt;UI_URL&gt;/dashboard/projects</code>. A Git
+binding and a ready CPG are separate states.</p>
+<p>If no provider is configured, obtain a personal token from <code>POST /api/v1/auth/token</code> with
+<code>username</code> and <code>password</code>, then call <code>POST /api/v1/import/start</code> with
+<code>Authorization: Bearer &lt;access-token&gt;</code> and <code>Content-Type: application/json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;repo_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://github.com/pallets/flask.git&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;full&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;create_domain_plugin&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;import_docs&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;group_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;GROUP_ID_FROM_GET_GROUPS&gt;&quot;</span>
+<span class="p">}</span>
 </code></pre></div>
 
-<p>The required source selector is exactly one of <code>--path</code> or <code>--repo</code>. The supported mode choices
-are shown as <code>--mode {full,selective,incremental}</code>.</p>
-<h2  id="import-a-local-checkout"><span id="import_a_local_checkout"></span>Import a local checkout<a class="heading-anchor" href="#import-a-local-checkout" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">import</span> <span class="p">-</span><span class="n">-path</span> <span class="p">&lt;</span><span class="n">source-directory</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-mode</span> <span class="n">full</span>
+<p>Confirm that the sample branch exists before sending the request. Replace the URL and branch
+for your repository. Get <code>group_id</code> from <code>GET /api/v1/groups</code>. Never embed credentials in the
+repository URL. The response contains <code>job_id</code>; poll
+<code>GET /api/v1/import/status/{job_id}</code> to a terminal status, then inspect
+<code>GET /api/v1/projects</code> and the CPG. CPG (Code Property Graph) records relationships among code
+elements. <code>import_docs: false</code> skips OpenViking document import but still builds the CPG.</p>
+<p>On a Windows workstation with PowerShell, after obtaining a token:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$api</span><span class="p">=</span><span class="s1">&#39;&lt;API_URL&gt;/api/v1&#39;</span>
+<span class="nv">$headers</span><span class="p">=@{</span><span class="n">Authorization</span><span class="p">=</span><span class="s1">&#39;Bearer &lt;access-token&gt;&#39;</span><span class="p">}</span>
+<span class="nv">$body</span><span class="p">=@{</span><span class="n">repo_url</span><span class="p">=</span><span class="s1">&#39;https://github.com/pallets/flask.git&#39;</span><span class="p">;</span><span class="n">branch</span><span class="p">=</span><span class="s1">&#39;main&#39;</span><span class="p">;</span><span class="n">mode</span><span class="p">=</span><span class="s1">&#39;full&#39;</span><span class="p">;</span><span class="n">create_domain_plugin</span><span class="p">=</span><span class="nv">$false</span><span class="p">;</span><span class="n">import_docs</span><span class="p">=</span><span class="nv">$false</span><span class="p">;</span><span class="n">group_id</span><span class="p">=</span><span class="s1">&#39;&lt;GROUP_ID_FROM_GET_GROUPS&gt;&#39;</span><span class="p">}</span> <span class="p">|</span> <span class="nb">ConvertTo-Json</span>
+<span class="nv">$job</span><span class="p">=</span><span class="nb">Invoke-RestMethod</span> <span class="n">-Method</span> <span class="n">Post</span> <span class="n">-Uri</span> <span class="s2">&quot;$api/import/start&quot;</span> <span class="n">-Headers</span> <span class="nv">$headers</span> <span class="n">-ContentType</span> <span class="s1">&#39;application/json&#39;</span> <span class="n">-Body</span> <span class="nv">$body</span>
+<span class="nb">Invoke-RestMethod</span> <span class="n">-Uri</span> <span class="s2">&quot;$api/import/status/</span><span class="p">$(</span><span class="nv">$job</span><span class="p">.</span><span class="n">job_id</span><span class="p">)</span><span class="s2">&quot;</span> <span class="n">-Headers</span> <span class="nv">$headers</span>
 </code></pre></div>
 
-<p>Use <code>--language</code> only when automatic detection is wrong. Use <code>--include</code> and <code>--exclude</code> to bound
-the source surface; verify those filters before relying on completeness claims.</p>
-<h2  id="import-a-remote-repository"><span id="import_a_remote_repository"></span>Import a remote repository<a class="heading-anchor" href="#import-a-remote-repository" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">import</span> <span class="p">-</span><span class="n">-repo</span> <span class="p">&lt;</span><span class="n">repository-url</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-branch</span> <span class="p">&lt;</span><span class="n">branch</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-mode</span> <span class="n">full</span>
+<p>On a macOS or Ubuntu workstation with Bash and Python 3:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">API</span><span class="o">=</span><span class="s1">&#39;&lt;API_URL&gt;/api/v1&#39;</span>
+<span class="nv">TOKEN</span><span class="o">=</span><span class="s1">&#39;&lt;access-token&gt;&#39;</span>
+<span class="nv">GROUP_ID</span><span class="o">=</span><span class="s1">&#39;&lt;GROUP_ID_FROM_GET_GROUPS&gt;&#39;</span>
+<span class="nv">JOB_ID</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>curl<span class="w"> </span>-fsS<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$API</span><span class="s2">/import/start&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span>-H<span class="w"> </span><span class="s1">&#39;Content-Type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data<span class="w"> </span><span class="s2">&quot;{\&quot;repo_url\&quot;:\&quot;https://github.com/pallets/flask.git\&quot;,\&quot;branch\&quot;:\&quot;main\&quot;,\&quot;mode\&quot;:\&quot;full\&quot;,\&quot;create_domain_plugin\&quot;:false,\&quot;import_docs\&quot;:false,\&quot;group_id\&quot;:\&quot;</span><span class="nv">$GROUP_ID</span><span class="s2">\&quot;}&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;import json,sys; print(json.load(sys.stdin)[&quot;job_id&quot;])&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+curl<span class="w"> </span>-fsS<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$API</span><span class="s2">/import/status/</span><span class="nv">$JOB_ID</span><span class="s2">&quot;</span>
 </code></pre></div>
 
-<p>Do not embed credentials in the URL. Use the customer-approved Git credential mechanism. Pin the
-branch, tag, or commit through the surrounding release procedure when reproducibility matters.</p>
-<h2  id="monitor-and-verify"><span id="monitor_and_verify"></span>Monitor and verify<a class="heading-anchor" href="#monitor-and-verify" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">jobs</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">projects</span> <span class="n">list</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">projects</span> <span class="n">info</span> <span class="p">&lt;</span><span class="n">project-name</span><span class="p">&gt;</span>
+<p>Run these commands on a workstation that can reach the API. Keep the token out of repository
+files and shell history; use a secret store for persistent configuration.</p>
+<h2  id="server-cli"><span id="server_cli"></span>Server CLI<a class="heading-anchor" href="#server-cli" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Run these commands over SSH on the Ubuntu server from the CodeGraph installation directory:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>api<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>import<span class="w"> </span>--help
+sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>api<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>import<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo<span class="w"> </span><span class="s1">&#39;https://github.com/pallets/flask.git&#39;</span><span class="w"> </span>--branch<span class="w"> </span>main<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>full<span class="w"> </span>--no-plugin<span class="w"> </span>--no-docs
+sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>api<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span><span class="nb">jobs</span>
+sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>api<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>projects<span class="w"> </span>list
 </code></pre></div>
 
-<p>Start a high-stakes analysis after the import job completes and project/CPG freshness is
-current. Import completion requires both the project row and a successful graph build.</p>
-<h2  id="select-explicit-project-scope"><span id="select_explicit_project_scope"></span>Select explicit project scope<a class="heading-anchor" href="#select-explicit-project-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Set a tenant/group default only when authorized:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">projects</span> <span class="nb">set-default</span> <span class="p">&lt;</span><span class="n">project-name</span><span class="p">&gt;</span>
+<p>CLI and REST may use different registration paths. If the CLI-imported project is absent from
+<code>GET /api/v1/projects</code>, the administrator registers it through <code>POST /api/v1/projects</code> with
+<code>group_id</code>, <code>name</code>, and the actual CPG <code>db_path</code> visible to the API container. Inspect the
+<code>ProjectCreate</code> schema in Swagger UI. Before auditing, check both the project listing and the
+fresh CPG.</p>
+<p>When working from a complete CodeGraph checkout without Compose, first inspect
+<code>python -m src.cli import --help</code>. The CLI accepts exactly one source: <code>--path</code> for a local
+directory or <code>--repo</code> for Git. Available modes: <code>--mode {full,selective,incremental}</code>.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>import<span class="w"> </span>--path<span class="w"> </span><span class="s1">&#39;&lt;source-directory&gt;&#39;</span><span class="w"> </span>--mode<span class="w"> </span>full
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>import<span class="w"> </span>--repo<span class="w"> </span><span class="s1">&#39;https://github.com/pallets/flask.git&#39;</span><span class="w"> </span>--branch<span class="w"> </span>main<span class="w"> </span>--mode<span class="w"> </span>full
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span><span class="nb">jobs</span>
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>projects<span class="w"> </span>list
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>projects<span class="w"> </span>info<span class="w"> </span><span class="s1">&#39;&lt;project-name&gt;&#39;</span>
 </code></pre></div>
 
-<p>Personal selection uses the <code>projects preference</code> subcommand; inspect its exact help before
-mutation. Use <code>projects info</code> and <code>projects resolve-scope</code> to diagnose ambiguous scope.</p>
-<h2  id="refresh-and-recovery"><span id="refresh_and_recovery"></span>Refresh and recovery<a class="heading-anchor" href="#refresh-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>incremental</code> is appropriate only when the current project state and source lineage are valid.</li>
-<li>Use <code>full</code> when the graph must be rebuilt from the selected source surface.</li>
-<li>If a job fails, preserve the job status and error, correct the source/access/configuration
-  cause, and rerun with the same explicit selector.</li>
-<li>Do not delete or rename a project as a troubleshooting shortcut; those are separate authorized
-  lifecycle changes.</li>
-</ul>
-<p>Project output supports professional analysis but does not establish product acceptance by
-itself.</p>
+<p>Only an authorized operator changes the group default with
+<code>python -m src.cli projects set-default '&lt;project-name&gt;'</code>. Check that the CPG path and source
+revision belong to the selected project.</p>
 <h2  id="contract-sources"><span id="contract_sources"></span>Contract sources<a class="heading-anchor" href="#contract-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><code>src/cli/__main__.py</code> — root command registration;</li>
@@ -281,12 +311,8 @@ itself.</p>
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#inspect-the-current-parser" class="level-2" aria-current="location">Inspect the current parser</a></li>
-<li><a href="#import-a-local-checkout" class="level-2">Import a local checkout</a></li>
-<li><a href="#import-a-remote-repository" class="level-2">Import a remote repository</a></li>
-<li><a href="#monitor-and-verify" class="level-2">Monitor and verify</a></li>
-<li><a href="#select-explicit-project-scope" class="level-2">Select explicit project scope</a></li>
-<li><a href="#refresh-and-recovery" class="level-2">Refresh and recovery</a></li>
+        <li><a href="#import-through-ui-or-rest" class="level-2" aria-current="location">Import through UI or REST</a></li>
+<li><a href="#server-cli" class="level-2">Server CLI</a></li>
 <li><a href="#contract-sources" class="level-2">Contract sources</a></li>
       </ul>
     </aside>
