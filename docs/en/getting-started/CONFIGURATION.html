@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Supported secret, environment, and non-secret configuration boundaries. The page explains the purpose, usage steps, and result checks.">
-  <meta name="cg:build-commit" content="a0bd0ccf710afbc998ddfce7a3de44cbc0b146cb">
+  <meta name="description" content="Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.">
+  <meta name="cg:build-commit" content="3d17f523dea146c604d65759f905bb04b9643321">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Configure a CodeGraph deployment — Documentation">
-  <meta property="og:description" content="Supported secret, environment, and non-secret configuration boundaries. The page explains the purpose, usage steps, and result checks.">
+  <meta property="og:description" content="Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/getting-started/CONFIGURATION.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Configure a CodeGraph deployment — Documentation">
-  <meta name="twitter:description" content="Supported secret, environment, and non-secret configuration boundaries. The page explains the purpose, usage steps, and result checks.">
+  <meta name="twitter:description" content="Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/getting-started/CONFIGURATION.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Configure a CodeGraph deployment — Documentation","description":"Supported secret, environment, and non-secret configuration boundaries. The page explains the purpose, usage steps, and result checks.","url":"https://codegraph.ru/docs/en/getting-started/CONFIGURATION.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Configure a CodeGraph deployment — Documentation","description":"Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.","url":"https://codegraph.ru/docs/en/getting-started/CONFIGURATION.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -154,9 +154,9 @@
         <span>Configure a CodeGraph deployment</span>
         </nav>
         <h1>Configure a CodeGraph deployment</h1>
-        <p class="doc-lead">Supported secret, environment, and non-secret configuration boundaries. The page explains the purpose, usage steps, and result checks.</p>
+        <p class="doc-lead">Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.</p>
 
-        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-09-24">Updated: 2026-09-24</time></div>
       </header>
 
       <!-- Content -->
@@ -229,6 +229,35 @@ release: removed or unknown keys may fail validation, and copying a configuratio
 version can silently change behavior only if that version still accepts the key.</p>
 <p>For project-specific configuration, use supported project or dashboard surfaces. Raw storage
 paths are runtime-owned and must not be passed through user- or agent-facing calls.</p>
+<h2  id="optional-openviking-memory"><span id="optional_openviking_memory"></span>Optional OpenViking memory<a class="heading-anchor" href="#optional-openviking-memory" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>OpenViking supports document search and long-term memory. <strong>Embedding</strong> maps text to vectors for
+search, <strong>rerank</strong> reorders retrieved results, and <strong>VLM</strong> generates text summaries and handles
+images when the model supports them. These are separate settings. If you only need CPG and
+deterministic source audit, disable document import with <code>import_docs: false</code> in REST or
+<code>--no-docs</code> in the CLI.</p>
+<p>On the Ubuntu server, <code>deploy/openviking/ov.local-models.conf</code> sets local embedding and
+rerank. Check the listed models&rsquo; license terms before use. Set these values in the protected
+<code>.env</code>:</p>
+<div class="highlight"><pre><span></span><code>COMPOSE_PROFILES=local-models
+OPENVIKING_CONFIG_TEMPLATE=ov.local-models.conf
+OPENVIKING_API_KEY=&lt;secret-from-approved-store&gt;
+</code></pre></div>
+
+<p>The shipped template configures Yandex VLM by default. For that provider, also set
+<code>YANDEX_API_KEY</code> and <code>YANDEX_FOLDER_ID</code> in <code>.env</code>. For OpenAI, copy the template and
+replace its <code>vlm</code> section: set <code>provider: "openai"</code>,
+<code>api_base: "https://api.openai.com/v1"</code>, an available <code>model</code>, and an <code>api_key</code> through a
+secret environment variable. Select the copy using <code>OPENVIKING_CONFIG_TEMPLATE</code>; add the key
+variable to the <code>openviking</code> service environment and its startup substitution list in Compose.
+The main API&rsquo;s <code>GIGACHAT_*</code> variables do not configure OpenViking. GigaChat needs a compatible
+endpoint with OAuth token refresh or a verified adapter.</p>
+<p>After the change, run this on the server from the installation directory:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--force-recreate<span class="w"> </span>openviking
+sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-T<span class="w"> </span>openviking<span class="w"> </span>curl<span class="w"> </span>-fsS<span class="w"> </span>http://127.0.0.1:1933/health
+</code></pre></div>
+
+<p>Then import project documentation and check <code>codegraph_project_context_sync_status</code> with <code>{}</code>.
+The <code>/health</code> response proves service availability, not completion of document import.</p>
 <h2  id="apply-and-verify-a-change"><span id="apply_and_verify_a_change"></span>Apply and verify a change<a class="heading-anchor" href="#apply-and-verify-a-change" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Back up the current <code>.env</code>, <code>config.yaml</code>, and project declaration.</li>
@@ -287,6 +316,7 @@ provenance, and customer-specific connectivity evidence.</p>
 <li><a href="#required-production-values" class="level-2">Required production values</a></li>
 <li><a href="#network-and-browser-origins" class="level-2">Network and browser origins</a></li>
 <li><a href="#non-secret-application-settings" class="level-2">Non-secret application settings</a></li>
+<li><a href="#optional-openviking-memory" class="level-2">Optional OpenViking memory</a></li>
 <li><a href="#apply-and-verify-a-change" class="level-2">Apply and verify a change</a></li>
 <li><a href="#troubleshooting-boundaries" class="level-2">Troubleshooting boundaries</a></li>
 <li><a href="#contract-sources" class="level-2">Contract sources</a></li>
