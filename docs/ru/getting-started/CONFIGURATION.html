@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Настройте секреты, сетевые параметры, модельного провайдера и OpenViking в установленном CodeGraph, затем проверьте готовность сервисов.">
-  <meta name="cg:build-commit" content="7b5d3a4691a0f556dd4a19ebcc3abbea977ff8b0">
+  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Конфигурация развёртывания CodeGraph — Документация CodeGraph">
@@ -108,6 +108,7 @@
         <li><a href="/docs/ru/getting-started/index.html">Обзор</a></li>
         <li><a href="/docs/ru/getting-started/INSTALLATION.html">Установка CodeGraph на Ubuntu-сервер заказчика</a></li>
         <li><a href="/docs/ru/getting-started/CONFIGURATION.html" class="active" aria-current="page">Конфигурация развёртывания CodeGraph</a></li>
+        <li><a href="/docs/ru/getting-started/ENVIRONMENT_VARIABLES.html">Переменные окружения серверной поставки CodeGraph</a></li>
         <li><a href="/docs/ru/getting-started/QUICK_START.html">Быстрый старт</a></li>
       </ul>
     </div>
@@ -156,7 +157,7 @@
         <h1>Конфигурация развёртывания CodeGraph</h1>
         <p class="doc-lead">Настройте секреты, сетевые параметры, модельного провайдера и OpenViking в установленном CodeGraph, затем проверьте готовность сервисов.</p>
 
-        <div class="doc-meta"><span>Начало работы</span><time datetime="2026-09-24">Обновлено: 2026-09-24</time></div>
+        <div class="doc-meta"><span>Начало работы</span><time datetime="2026-09-29">Обновлено: 2026-09-29</time></div>
       </header>
 
       <!-- Content -->
@@ -196,6 +197,8 @@
 </tr>
 </tbody>
 </table></div>
+<p>Полный перечень переменных серверной поставки, значений в образце и резервных значений
+Docker Compose приведён в <a href="ENVIRONMENT_VARIABLES.html">справочнике переменных окружения</a>.</p>
 <p>Не редактируйте Python-код для настройки развёртывания. Не помещайте credential в
 <code>config.yaml</code>, Git, аргументы командной строки, текст service unit или сохранённые логи.</p>
 <h2  id="obyazatelnye-production-znacheniya"><span id="obyazatelnye_production_znacheniya"></span>Обязательные production-значения<a class="heading-anchor" href="#obyazatelnye-production-znacheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
@@ -203,6 +206,7 @@
 <div class="highlight"><pre><span></span><code>POSTGRES_PASSWORD=&lt;secret-from-approved-store&gt;
 API_JWT_SECRET=&lt;random-secret-at-least-64-characters&gt;
 API_ADMIN_PASSWORD=&lt;unique-initial-admin-secret&gt;
+API_PROVIDER_SECRET_KEY=&lt;independent-random-encryption-secret&gt;
 ENVIRONMENT=production
 </code></pre></div>
 
@@ -213,6 +217,17 @@ ENVIRONMENT=production
 существующие токены перестают действовать, поэтому согласуйте restart и повторную авторизацию
 пользователей. Начальный credential администратора считайте bootstrap-секретом и меняйте по
 процедуре управления учётными данными заказчика.</p>
+<p><code>API_PROVIDER_SECRET_KEY</code> шифрует токены Git-провайдеров и секреты вебхуков, сохранённые
+через UI или REST. По умолчанию ключ пустой; в production без него нельзя сохранить
+токен подключения. Создайте отдельное случайное значение, например командой
+<code>python3 -c 'import secrets; print(secrets.token_urlsafe(48))'</code>, и сохраните его в защищённом
+<code>.env</code>. Передайте ключ API и worker, пересоздав контейнеры:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--no-deps<span class="w"> </span>--force-recreate<span class="w"> </span>api<span class="w"> </span>temporal-worker
+</code></pre></div>
+
+<p>Храните ключ вместе с защищённой резервной копией конфигурации: он нужен для расшифровки
+токенов из восстановленной базы. Не заменяйте его при обычном обновлении. При замене
+ключа ранее сохранённые токены необходимо заново ввести в подключения.</p>
 <h2  id="set-i-browser-origins"><span id="set_i_browser_origins"></span>Сеть и browser origins<a class="heading-anchor" href="#set-i-browser-origins" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Явно перечислите доступные снаружи hosts и browser origins:</p>
 <div class="highlight"><pre><span></span><code>CORS_ALLOWED_ORIGINS=https://codegraph.customer.example
@@ -223,6 +238,17 @@ API_ALLOWED_HOSTS=codegraph.customer.example,api,codegraph-api
 определённой проектом развёртывания, а наружу публикуются только одобренные endpoints.
 Подключения к модельным провайдерам, репозиториям, телеметрии и уведомлениям остаются
 выключенными или заблокированными до настройки credentials и сетевых направлений.</p>
+<p>Для внутреннего Git-сервера, чей DNS-адрес указывает на частную сеть, администратор может
+разрешить <strong>точный HTTPS-origin</strong> в защищённом <code>.env</code>:</p>
+<div class="highlight"><pre><span></span><code>CODEGRAPH_OUTBOUND_GIT_ORIGIN_ALLOWLIST=https://git.internal.example
+</code></pre></div>
+
+<p>Значение по умолчанию пустое: исключений для частных адресов нет. Несколько origin
+перечисляйте через запятую. Укажите только доверенные серверы; диапазоны IP и wildcard
+не поддерживаются. После изменения пересоздайте <code>api</code> и <code>temporal-worker</code>, затем проверьте
+создание подключения в UI или через <code>POST /api/v1/integrations/repositories/provider-connections</code>.
+Схема запроса доступна в Swagger по адресу <code>&lt;API_BASE_URL&gt;/api/docs</code>. Само разрешение URL
+не заменяет токен доступа к Git-серверу.</p>
 <h2  id="nesekretnye-nastroyki-prilozheniya"><span id="nesekretnye_nastroyki_prilozheniya"></span>Несекретные настройки приложения<a class="heading-anchor" href="#nesekretnye-nastroyki-prilozheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>В <code>config.yaml</code> хранятся типизированные несекретные параметры: включённые возможности runtime,
 лимиты, выбор провайдера и ссылки <code>${VARIABLE}</code>. Файл должен соответствовать установленной
@@ -231,6 +257,25 @@ API_ALLOWED_HOSTS=codegraph.customer.example,api,codegraph-api
 <p>Для настроек проекта используйте поддерживаемые project- или dashboard-поверхности. Пути к
 внутренним хранилищам определяет runtime; их не передают в пользовательские или agent-facing
 вызовы.</p>
+<h3  id="katalog-otchyotov-audita"><span id="katalog_otchyotov_audita"></span>Каталог отчётов аудита<a class="heading-anchor" href="#katalog-otchyotov-audita" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>Markdown-отчёты и файлы проверки их целостности сохраняются в каталоге
+<code>dashboard.audit_report_output_dir</code>. Значение по умолчанию —
+<code>data/dashboard-audit-reports</code>, относительно рабочего каталога сервера. В стандартной
+Compose-поставке это <code>/app/data/dashboard-audit-reports</code>: каталог <code>data</code> подключён
+с сервера и сохраняется при пересоздании контейнеров.</p>
+<p>Чтобы выбрать другое постоянное хранилище, добавьте параметр в существующую секцию
+<code>dashboard</code> файла <code>config.yaml</code>, сохранив остальные настройки:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">dashboard</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">audit_report_output_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/dashboard-audit-reports</span>
+</code></pre></div>
+
+<p>Нестандартный каталог должен быть подключён в контейнер <code>api</code> как постоянный том
+и доступен его пользователю для записи. Дождитесь завершения аудитов и перезапустите
+API с теми же Compose-файлами, которые используются в установленной поставке.
+Запустите аудит через UI или REST, скачайте доступный отчёт, затем повторите скачивание
+после пересоздания контейнера. Файлы отчётов и их <code>.manifest.json</code> должны сохраняться
+вместе. Этот параметр задаёт администратор сервера; передавать путь в REST или MCP
+не требуется. Выбор каталога не делает неполный отчёт завершённым.</p>
 <h2  id="neobyazatelnaya-pamyat-openviking"><span id="neobyazatelnaya_pamyat_openviking"></span>Необязательная память OpenViking<a class="heading-anchor" href="#neobyazatelnaya-pamyat-openviking" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>OpenViking нужен для поиска по документации и долговременной памяти. <strong>Embedding</strong> переводит
 текст в векторы для поиска, <strong>rerank</strong> уточняет порядок найденного, <strong>VLM</strong> создаёт текстовые
@@ -296,9 +341,9 @@ source provenance и доказательства связи с система
         <span class="doc-page-nav-title">Установка CodeGraph на Ubuntu-сервер заказчика</span>
       </a>
 
-      <a href="/docs/ru/getting-started/QUICK_START.html" class="doc-page-nav-next">
+      <a href="/docs/ru/getting-started/ENVIRONMENT_VARIABLES.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Вперед</span>
-        <span class="doc-page-nav-title">Быстрый старт</span>
+        <span class="doc-page-nav-title">Переменные окружения серверной поставки CodeGraph</span>
       </a>
     </nav>
     </main>
@@ -310,6 +355,7 @@ source provenance и доказательства связи с система
 <li><a href="#obyazatelnye-production-znacheniya" class="level-2">Обязательные production-значения</a></li>
 <li><a href="#set-i-browser-origins" class="level-2">Сеть и browser origins</a></li>
 <li><a href="#nesekretnye-nastroyki-prilozheniya" class="level-2">Несекретные настройки приложения</a></li>
+<li data-doc-toc-level="3" data-doc-parent="nesekretnye-nastroyki-prilozheniya" hidden><a href="#katalog-otchyotov-audita" class="level-3">Каталог отчётов аудита</a></li>
 <li><a href="#neobyazatelnaya-pamyat-openviking" class="level-2">Необязательная память OpenViking</a></li>
 <li><a href="#primenenie-i-proverka-izmeneniya" class="level-2">Применение и проверка изменения</a></li>
 <li><a href="#granitsy-diagnostiki" class="level-2">Границы диагностики</a></li>

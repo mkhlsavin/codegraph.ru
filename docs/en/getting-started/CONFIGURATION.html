@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.">
-  <meta name="cg:build-commit" content="7b5d3a4691a0f556dd4a19ebcc3abbea977ff8b0">
+  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Configure a CodeGraph deployment — Documentation">
@@ -108,6 +108,7 @@
         <li><a href="/docs/en/getting-started/index.html">Overview</a></li>
         <li><a href="/docs/en/getting-started/INSTALLATION.html">Install CodeGraph on a customer Ubuntu server</a></li>
         <li><a href="/docs/en/getting-started/CONFIGURATION.html" class="active" aria-current="page">Configure a CodeGraph deployment</a></li>
+        <li><a href="/docs/en/getting-started/ENVIRONMENT_VARIABLES.html">CodeGraph server environment variables</a></li>
         <li><a href="/docs/en/getting-started/QUICK_START.html">Quick start</a></li>
       </ul>
     </div>
@@ -156,7 +157,7 @@
         <h1>Configure a CodeGraph deployment</h1>
         <p class="doc-lead">Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.</p>
 
-        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-09-24">Updated: 2026-09-24</time></div>
+        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-09-29">Updated: 2026-09-29</time></div>
       </header>
 
       <!-- Content -->
@@ -196,6 +197,8 @@ change-control procedures, then rerun readiness checks.</p>
 </tr>
 </tbody>
 </table></div>
+<p>The <a href="ENVIRONMENT_VARIABLES.html">environment variable reference</a> lists all shipped server
+variables, sample values, and Docker Compose fallbacks.</p>
 <p>Do not modify Python source files to configure a deployment. Do not add credentials to
 <code>config.yaml</code>, Git, command-line arguments, service-unit text, or captured logs.</p>
 <h2  id="required-production-values"><span id="required_production_values"></span>Required production values<a class="heading-anchor" href="#required-production-values" aria-label="Copy link to section" title="Copy link to section"></a></h2>
@@ -203,6 +206,7 @@ change-control procedures, then rerun readiness checks.</p>
 <div class="highlight"><pre><span></span><code>POSTGRES_PASSWORD=&lt;secret-from-approved-store&gt;
 API_JWT_SECRET=&lt;random-secret-at-least-64-characters&gt;
 API_ADMIN_PASSWORD=&lt;unique-initial-admin-secret&gt;
+API_PROVIDER_SECRET_KEY=&lt;independent-random-encryption-secret&gt;
 ENVIRONMENT=production
 </code></pre></div>
 
@@ -212,6 +216,17 @@ sample values in the documentation only.</p>
 <p><code>API_JWT_SECRET</code> must be random and at least 64 characters. Rotating it invalidates existing
 tokens, so coordinate the restart and user reauthentication. Treat the initial admin credential
 as a bootstrap secret and rotate it under the customer&rsquo;s identity procedure.</p>
+<p><code>API_PROVIDER_SECRET_KEY</code> encrypts Git-provider tokens and webhook secrets stored through
+the UI or REST API. It is empty by default; production cannot store an inline connection
+token without it. Generate a separate random value, for example with
+<code>python3 -c 'import secrets; print(secrets.token_urlsafe(48))'</code>, and store it in the protected
+<code>.env</code>. Pass it to the API and worker by recreating their containers:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--no-deps<span class="w"> </span>--force-recreate<span class="w"> </span>api<span class="w"> </span>temporal-worker
+</code></pre></div>
+
+<p>Keep the key with the protected configuration backup: it decrypts tokens after database
+restoration. Preserve it during normal upgrades. Replacing it requires re-entering the
+previously stored connection tokens.</p>
 <h2  id="network-and-browser-origins"><span id="network_and_browser_origins"></span>Network and browser origins<a class="heading-anchor" href="#network-and-browser-origins" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Set the externally reachable hosts and browser origins explicitly:</p>
 <div class="highlight"><pre><span></span><code>CORS_ALLOWED_ORIGINS=https://codegraph.customer.example
@@ -222,6 +237,16 @@ API_ALLOWED_HOSTS=codegraph.customer.example,api,codegraph-api
 customer deployment design and expose only approved endpoints. Provider, repository, telemetry,
 and notification connections remain disabled or blocked until their credentials and network
 destinations are approved.</p>
+<p>If an internal Git server resolves to a private address, the administrator can approve its
+<strong>exact HTTPS origin</strong> in the protected <code>.env</code>:</p>
+<div class="highlight"><pre><span></span><code>CODEGRAPH_OUTBOUND_GIT_ORIGIN_ALLOWLIST=https://git.internal.example
+</code></pre></div>
+
+<p>The default is empty: no private Git origins are exempted. Separate multiple origins with
+commas. List only trusted servers; IP ranges and wildcards are unsupported. Recreate <code>api</code>
+and <code>temporal-worker</code> after changing the value, then test connection creation in the UI or
+through <code>POST /api/v1/integrations/repositories/provider-connections</code>. The request schema
+is available at <code>&lt;API_BASE_URL&gt;/api/docs</code>. URL approval does not replace a Git access token.</p>
 <h2  id="non-secret-application-settings"><span id="non_secret_application_settings"></span>Non-secret application settings<a class="heading-anchor" href="#non-secret-application-settings" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use <code>config.yaml</code> for typed, non-secret behavior such as enabled runtime capabilities, limits,
 provider selection, and <code>${VARIABLE}</code> references. Keep the file aligned with the installed
@@ -229,6 +254,25 @@ release: removed or unknown keys may fail validation, and copying a configuratio
 version can silently change behavior only if that version still accepts the key.</p>
 <p>For project-specific configuration, use supported project or dashboard surfaces. Raw storage
 paths are runtime-owned and must not be passed through user- or agent-facing calls.</p>
+<h3  id="audit-report-directory"><span id="audit_report_directory"></span>Audit report directory<a class="heading-anchor" href="#audit-report-directory" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>Markdown reports and their integrity manifests are stored in
+<code>dashboard.audit_report_output_dir</code>. The default is <code>data/dashboard-audit-reports</code>,
+relative to the server working directory. In the standard Compose deployment this is
+<code>/app/data/dashboard-audit-reports</code>: the <code>data</code> directory is mounted from the server
+and survives container recreation.</p>
+<p>To select another persistent location, add this parameter to the existing
+<code>dashboard</code> section of <code>config.yaml</code>, preserving its other settings:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">dashboard</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">audit_report_output_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data/dashboard-audit-reports</span>
+</code></pre></div>
+
+<p>A custom directory must be mounted into the <code>api</code> container as persistent storage
+and writable by its user. Wait for active audits to finish, then restart the API
+using the same Compose files as the installed deployment. Run an audit through the
+UI or REST, download the available report, and repeat the download after recreating
+the container. Keep each report and its <code>.manifest.json</code> together. The server
+administrator configures this path; no REST or MCP path argument is needed.
+Selecting a directory does not make an incomplete report complete.</p>
 <h2  id="optional-openviking-memory"><span id="optional_openviking_memory"></span>Optional OpenViking memory<a class="heading-anchor" href="#optional-openviking-memory" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>OpenViking supports document search and long-term memory. <strong>Embedding</strong> maps text to vectors for
 search, <strong>rerank</strong> reorders retrieved results, and <strong>VLM</strong> generates text summaries and handles
@@ -293,9 +337,9 @@ provenance, and customer-specific connectivity evidence.</p>
         <span class="doc-page-nav-title">Install CodeGraph on a customer Ubuntu server</span>
       </a>
 
-      <a href="/docs/en/getting-started/QUICK_START.html" class="doc-page-nav-next">
+      <a href="/docs/en/getting-started/ENVIRONMENT_VARIABLES.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Next</span>
-        <span class="doc-page-nav-title">Quick start</span>
+        <span class="doc-page-nav-title">CodeGraph server environment variables</span>
       </a>
     </nav>
     </main>
@@ -307,6 +351,7 @@ provenance, and customer-specific connectivity evidence.</p>
 <li><a href="#required-production-values" class="level-2">Required production values</a></li>
 <li><a href="#network-and-browser-origins" class="level-2">Network and browser origins</a></li>
 <li><a href="#non-secret-application-settings" class="level-2">Non-secret application settings</a></li>
+<li data-doc-toc-level="3" data-doc-parent="non-secret-application-settings" hidden><a href="#audit-report-directory" class="level-3">Audit report directory</a></li>
 <li><a href="#optional-openviking-memory" class="level-2">Optional OpenViking memory</a></li>
 <li><a href="#apply-and-verify-a-change" class="level-2">Apply and verify a change</a></li>
 <li><a href="#troubleshooting-boundaries" class="level-2">Troubleshooting boundaries</a></li>
