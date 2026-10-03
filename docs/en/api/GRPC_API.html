@@ -288,17 +288,23 @@ fields provide more detail. The <code>finally</code> block closes the channel af
   <code>WatchDatabaseStatus</code>; freshness, maintenance, and <code>plan_refresh</code> use the corresponding
   lifecycle RPCs, including <code>PlanRefresh</code>.</li>
 </ul>
-<p>Use the Python method signatures for typed client input and the protobuf files for the wire
-contract. Do not infer a request field from an older rendered copy of this page.</p>
+<p>Use the Python method signatures for typed client input and the protobuf files for request
+fields and the wire contract.</p>
 <h2  id="paths-and-deadlines"><span id="paths_and_deadlines"></span>Paths and deadlines<a class="heading-anchor" href="#paths-and-deadlines" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Database-scoped operations require an explicit <code>db_path</code> or typed request field that resolves to
 one. Source, repository, output, and database paths are normalized to absolute paths before the
 RPC is sent. The GoCPG server must be able to interpret those paths in its own runtime context;
 a client-local path is not automatically mounted into a remote server.</p>
-<p>The transport applies operation-specific deadlines: parse defaults to 3600 seconds; update and
-CI update to 600; index creation and maintenance to 300; query and pattern operations commonly
-use 60; navigation and unary status calls commonly use 30; status watching defaults to 60.
-Callers can provide the typed method&rsquo;s <code>timeout</code> when a different bounded deadline is required.</p>
+<p>The transport applies these default deadlines, in seconds:</p>
+<ul>
+<li><code>parse</code>: 3600.</li>
+<li><code>update</code> and <code>ci_update</code>: 600.</li>
+<li><code>create_indexes</code>, <code>scan</code>, and <code>run_maintenance</code>: 300.</li>
+<li><code>query</code>, <code>stats</code>, <code>quality_stats</code>, and <code>search</code>: 60.</li>
+<li><code>validate_rule</code>, navigation methods, unary lifecycle calls, and <code>plan_refresh</code>: 30.</li>
+<li><code>watch_database_status</code>: 60.</li>
+</ul>
+<p>Set the method&rsquo;s <code>timeout</code>, or the typed request&rsquo;s <code>timeout</code> field, to change its deadline.</p>
 <h2  id="failure-handling"><span id="failure_handling"></span>Failure handling<a class="heading-anchor" href="#failure-handling" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><code>DEADLINE_EXCEEDED</code> is mapped to <code>GoCPGTimeoutError</code>. Other gRPC statuses are mapped to
 <code>GoCPGProcessError</code> with the status name and server details. A parse or update stream that ends
@@ -312,10 +318,10 @@ the graph content and provenance show which data is available for analysis.</p>
 lightweight health or metadata call before retrying a long parse. Do not disable TLS or remove the
 API key merely to turn an authorization or certificate failure into a connection.</p>
 <h2  id="security-boundary"><span id="security_boundary"></span>Security boundary<a class="heading-anchor" href="#security-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The transport can carry an API key and validate a server certificate, but it does not decide
-tenant authorization or path ownership. Keep credentials out of source files, use a trusted
-secret provider, limit the server&rsquo;s filesystem access, and expose plaintext <code>insecure_channel</code>
-only on a protected local network boundary.</p>
+<p>The transport sends the configured API key as bearer metadata and validates the server
+certificate using the configured root CA. Keep credentials in a trusted secret provider and
+limit the server&rsquo;s filesystem access to the required paths. Use plaintext <code>insecure_channel</code>
+inside a protected local network boundary.</p>
 <p>Raw <code>db_path</code> belongs to the Python gRPC client. Agent-facing MCP calls resolve storage through
 project/runtime context.</p>
 <h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>

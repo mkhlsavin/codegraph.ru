@@ -287,17 +287,24 @@ python<span class="w"> </span>grpc_example.py
   <code>WatchDatabaseStatus</code>; freshness, обслуживание и <code>plan_refresh</code> используют соответствующие
   lifecycle RPC, включая <code>PlanRefresh</code>.</li>
 </ul>
-<p>Типизированный вход определяйте по сигнатуре Python-метода, wire-контракт — по protobuf. Не
-восстанавливайте поля запроса из старой опубликованной версии этой страницы.</p>
+<p>Типизированный вход определяйте по сигнатуре Python-метода, поля запроса и wire-контракт —
+по protobuf.</p>
 <h2  id="puti-i-dedlayny"><span id="puti_i_dedlayny"></span>Пути и дедлайны<a class="heading-anchor" href="#puti-i-dedlayny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Для операций с базой требуется явный <code>db_path</code> или соответствующее поле типизированного запроса.
 Пути к исходникам, репозиторию, результату и базе нормализуются до абсолютных перед RPC. Сервер GoCPG
 должен видеть эти пути в своей среде выполнения: локальный путь клиента не монтируется на
 удалённый сервер автоматически.</p>
-<p>Транспорт задаёт разные дедлайны для разных операций: parse — 3600 секунд; update и CI update —
-600; создание индексов и обслуживание — 300; query и pattern обычно — 60; navigation и одиночные
-status-запросы обычно — 30; наблюдение за статусом — 60. При необходимости передавайте
-ограниченный <code>timeout</code>, предусмотренный типизированным методом.</p>
+<p>Транспорт задаёт следующие сроки ожидания по умолчанию, в секундах:</p>
+<ul>
+<li><code>parse</code>: 3600.</li>
+<li><code>update</code> и <code>ci_update</code>: 600.</li>
+<li><code>create_indexes</code>, <code>scan</code> и <code>run_maintenance</code>: 300.</li>
+<li><code>query</code>, <code>stats</code>, <code>quality_stats</code> и <code>search</code>: 60.</li>
+<li><code>validate_rule</code>, методы навигации, одиночные lifecycle-вызовы и <code>plan_refresh</code>: 30.</li>
+<li><code>watch_database_status</code>: 60.</li>
+</ul>
+<p>Чтобы изменить срок ожидания, задайте <code>timeout</code> в аргументах метода или в его типизированном
+запросе.</p>
 <h2  id="obrabotka-sboev"><span id="obrabotka_sboev"></span>Обработка сбоев<a class="heading-anchor" href="#obrabotka-sboev" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Статус <code>DEADLINE_EXCEEDED</code> преобразуется в <code>GoCPGTimeoutError</code>. Остальные gRPC-статусы — в
 <code>GoCPGProcessError</code> с именем статуса и деталями сервера. Если поток parse или update завершился
@@ -312,11 +319,12 @@ status-запросы обычно — 30; наблюдение за стат�
 Перед повтором длительного разбора выполните короткий запрос состояния или метаданных.
 Не отключайте TLS и не убирайте ключ API, чтобы скрыть ошибку сертификата или авторизации.</p>
 <h2  id="granitsa-bezopasnosti"><span id="granitsa_bezopasnosti"></span>Граница безопасности<a class="heading-anchor" href="#granitsa-bezopasnosti" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Транспорт передаёт ключ API и проверяет сертификат сервера, но не определяет права организации
-или владельца пути. Храните секреты вне исходников, ограничивайте файловые права сервера
-и используйте незашифрованный <code>insecure_channel</code> только внутри защищённой локальной сети.</p>
-<p><code>db_path</code> здесь относится к Python gRPC-клиенту. Он не разрешает передавать пути хранилища в
-MCP-вызовы агента: там хранилище определяется из контекста проекта и среды выполнения.</p>
+<p>Транспорт передаёт настроенный ключ API в метаданных авторизации и проверяет сертификат
+сервера по заданному корневому CA. Храните секреты в доверенном хранилище и ограничивайте
+файловые права сервера нужными путями. Используйте незашифрованный <code>insecure_channel</code>
+внутри защищённой локальной сети.</p>
+<p>Python gRPC-клиент получает путь к базе через <code>db_path</code>. В MCP-вызовах агента хранилище
+определяется из контекста проекта и среды выполнения.</p>
 <h2  id="istochniki-istiny"><span id="istochniki_istiny"></span>Источники истины<a class="heading-anchor" href="#istochniki-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
 <li><code>src/services/gocpg/runtime/grpc_transport.py</code> — канал и основные CPG-операции.</li>
