@@ -166,7 +166,7 @@
       <article class="doc-content">
         <p>This reference covers the three application WebSockets used for chat, job status, and notifications. Dashboard refresh events use a distinct authentication and message contract described in <a href="DASHBOARD_WEBSOCKET_API.html">Dashboard WebSocket API</a>.</p>
 <h2  id="authentication-boundary"><span id="authentication_boundary"></span>Authentication boundary<a class="heading-anchor" href="#authentication-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Production clients must send an HTTP handshake header:</p>
+<p>For chat and job status, send the token in the HTTP handshake header:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>Authorization: Bearer &lt;access-token&gt;
 </code></pre></div>
 
@@ -176,7 +176,16 @@
 </code></pre></div>
 
 <p>The server verifies the current user state, token revocation, project access, job ownership where applicable, and connection/message quotas. A loopback client may omit credentials only when the explicit local-development unauthenticated-surface setting is enabled and both client and requested host are local.</p>
-<p>The browser-native WebSocket constructor cannot set an Authorization header. For a browser application, use an authenticated same-origin gateway or the separate dashboard WebSocket contract. Do not move bearer credentials into a query string.</p>
+<p>Connect to chat and job status through a client that supports headers or an authenticated
+same-origin gateway. The notifications route supports browser WebSockets: after the connection
+opens, send the token as the first message within 5 seconds:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;access-token&gt;&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>After checking the token and access, the server sends <code>connected</code>. The client can then send
+<code>ping</code> and receive notifications. An authentication timeout closes the connection with
+code 1008 and reason <code>Auth timeout</code>.</p>
+<p>Dashboard events are described in <a href="DASHBOARD_WEBSOCKET_API.html">Dashboard WebSocket API</a>.</p>
 <h2 id="routes">Routes<a class="heading-anchor" href="#routes" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Routes"><table data-columns="3"><caption class="sr-only">Routes</caption>
 <thead>
@@ -344,13 +353,14 @@ A <code>chat.query</code> needs <code>payload.query</code>. <code>request_id</co
 <p>Connect to the exact job route with a job identifier owned by the authenticated user. The server sends job.started with the current status. For terminal states it follows with job.completed or job.failed. Keep the HTTP/REST job response as the durable source; WebSocket delivery is a notification channel and can be interrupted.</p>
 <h2 id="notifications">Notifications<a class="heading-anchor" href="#notifications" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The notifications route is receive-oriented. Send only ping messages. Notification payloads may contain title, message, level, and action_url. Validate an action URL against the application’s navigation policy before opening it.</p>
-<h2  id="client-handshake-example"><span id="client_handshake_example"></span>Client handshake example<a class="heading-anchor" href="#client-handshake-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<h2  id="connect-to-notifications"><span id="connect_to_notifications"></span>Connect to notifications<a class="heading-anchor" href="#connect-to-notifications" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>A service client must support custom handshake headers. This example uses Node.js and <code>ws</code>.
 In your client project directory, install the dependency with <code>npm install ws</code>, save the code as
 <code>notifications.mjs</code>, and run <code>node notifications.mjs</code>. Set <code>CODEGRAPH_ACCESS_TOKEN</code>,
 <code>CODEGRAPH_PROJECT_ID</code>, and <code>CODEGRAPH_WS_URL</code> through your approved configuration channel.
 The URL variable contains the full notifications route. Do not pass credentials as command-line
-arguments. The expected response to <code>ping</code> is <code>pong</code>.</p>
+arguments. The client sends the token first, waits for <code>connected</code>, then sends <code>ping</code>.
+The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;ws&quot;</span><span class="p">;</span>
 
 <span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;CODEGRAPH_ACCESS_TOKEN&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_PROJECT_ID&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_WS_URL&quot;</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
@@ -361,7 +371,6 @@ arguments. The expected response to <code>ping</code> is <code>pong</code>.</p>
 <span class="w">  </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_WS_URL</span><span class="p">,</span>
 <span class="w">  </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">Authorization</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Bearer &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="p">,</span>
 <span class="w">      </span><span class="s2">&quot;X-Project-Id&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_PROJECT_ID</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
@@ -371,11 +380,15 @@ arguments. The expected response to <code>ping</code> is <code>pong</code>.</p>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">raw</span><span class="p">.</span><span class="nx">toString</span><span class="p">());</span>
 <span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;notification&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">payload</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;connected&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;pong&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;pong&quot;</span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">});</span>
 
 <span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">token</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="w"> </span><span class="p">}));</span>
 <span class="p">});</span>
 </code></pre></div>
 
@@ -445,7 +458,7 @@ arguments. The expected response to <code>ping</code> is <code>pong</code>.</p>
 <li><a href="#chat-request" class="level-2">Chat request</a></li>
 <li><a href="#job-status" class="level-2">Job status</a></li>
 <li><a href="#notifications" class="level-2">Notifications</a></li>
-<li><a href="#client-handshake-example" class="level-2">Client handshake example</a></li>
+<li><a href="#connect-to-notifications" class="level-2">Connect to notifications</a></li>
 <li><a href="#close-codes-and-recovery" class="level-2">Close codes and recovery</a></li>
 <li><a href="#source-contracts" class="level-2">Source contracts</a></li>
       </ul>

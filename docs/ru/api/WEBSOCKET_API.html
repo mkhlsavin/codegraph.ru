@@ -166,7 +166,7 @@
       <article class="doc-content">
         <p>Справочник описывает три WebSocket приложения: чат, статусы фоновых задач и уведомления. События обновления дашборда используют отдельную аутентификацию и формат; они описаны в <a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API дашборда</a>.</p>
 <h2  id="granitsa-autentifikatsii"><span id="granitsa_autentifikatsii"></span>Граница аутентификации<a class="heading-anchor" href="#granitsa-autentifikatsii" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>В production клиент передаёт заголовок HTTP handshake:</p>
+<p>Для чата и статусов задач клиент передаёт токен в заголовке HTTP handshake:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>Authorization: Bearer &lt;access-token&gt;
 </code></pre></div>
 
@@ -176,7 +176,16 @@
 </code></pre></div>
 
 <p>Сервер проверяет текущее состояние пользователя, отзыв токена, доступ к проекту, владение задачей там, где оно требуется, а также квоты соединений и сообщений. Клиент с loopback-адреса может работать без токена только при явно включённом локальном режиме и локальных адресах клиента и запрошенного хоста.</p>
-<p>Стандартный браузерный конструктор WebSocket не позволяет установить Authorization header. В браузерном приложении используйте аутентифицированный same-origin gateway либо отдельный контракт WebSocket дашборда. Не переносите bearer-токен в query string.</p>
+<p>Чат и статусы задач подключайте через клиент с поддержкой заголовков или аутентифицированный
+same-origin gateway. Маршрут уведомлений поддерживает браузерный WebSocket: после открытия
+соединения передайте токен первым сообщением в течение 5 секунд:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;access-token&gt;&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>После проверки токена и доступа сервер отправляет <code>connected</code>. Затем клиент может отправлять
+<code>ping</code> и получать уведомления. При превышении времени ожидания сервер закрывает соединение
+кодом 1008 с причиной <code>Auth timeout</code>.</p>
+<p>События дашборда описаны в <a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API дашборда</a>.</p>
 <h2 id="marshruty">Маршруты<a class="heading-anchor" href="#marshruty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Маршруты"><table data-columns="3"><caption class="sr-only">Маршруты</caption>
 <thead>
@@ -344,13 +353,14 @@
 <p>Подключайтесь к точному маршруту задачи, принадлежащей аутентифицированному пользователю. Сервер передаёт job.started с текущим состоянием, а для завершённой задачи — job.completed или job.failed. HTTP/REST-ответ остаётся постоянным источником; WebSocket — прерываемый канал уведомлений.</p>
 <h2 id="uvedomleniya">Уведомления<a class="heading-anchor" href="#uvedomleniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Маршрут уведомлений предназначен преимущественно для получения данных. Клиент отправляет только ping. Payload уведомления может включать title, message, level и action_url. Перед переходом проверяйте action_url по навигационной политике приложения.</p>
-<h2  id="primer-handshake"><span id="primer_handshake"></span>Пример handshake<a class="heading-anchor" href="#primer-handshake" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<h2  id="podklyuchenie-k-uvedomleniyam"><span id="podklyuchenie_k_uvedomleniyam"></span>Подключение к уведомлениям<a class="heading-anchor" href="#podklyuchenie-k-uvedomleniyam" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Сервисный клиент должен уметь передавать пользовательские HTTP-заголовки. Пример использует
 Node.js и пакет <code>ws</code>. В каталоге клиентского проекта установите зависимость <code>npm install ws</code>,
 сохраните код в <code>notifications.mjs</code> и запустите <code>node notifications.mjs</code>. Перед запуском
 задайте <code>CODEGRAPH_ACCESS_TOKEN</code>, <code>CODEGRAPH_PROJECT_ID</code> и <code>CODEGRAPH_WS_URL</code> через одобренный
 канал конфигурации. Последняя переменная содержит полный адрес маршрута уведомлений.
-Не передавайте секрет как аргумент командной строки. Ожидаемый ответ на <code>ping</code> — <code>pong</code>.</p>
+Не передавайте секрет как аргумент командной строки. Клиент отправляет токен первым сообщением, ждёт <code>connected</code>, затем отправляет <code>ping</code>.
+В консоли появится <code>pong</code>. Для остановки клиента нажмите Ctrl+C.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;ws&quot;</span><span class="p">;</span>
 
 <span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;CODEGRAPH_ACCESS_TOKEN&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_PROJECT_ID&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_WS_URL&quot;</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
@@ -361,7 +371,6 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
 <span class="w">  </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_WS_URL</span><span class="p">,</span>
 <span class="w">  </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">Authorization</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Bearer &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="p">,</span>
 <span class="w">      </span><span class="s2">&quot;X-Project-Id&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_PROJECT_ID</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
@@ -371,11 +380,15 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">raw</span><span class="p">.</span><span class="nx">toString</span><span class="p">());</span>
 <span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;notification&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">payload</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;connected&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;pong&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;pong&quot;</span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">});</span>
 
 <span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">token</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="w"> </span><span class="p">}));</span>
 <span class="p">});</span>
 </code></pre></div>
 
@@ -445,7 +458,7 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
 <li><a href="#zapros-chata" class="level-2">Запрос чата</a></li>
 <li><a href="#status-zadachi" class="level-2">Статус задачи</a></li>
 <li><a href="#uvedomleniya" class="level-2">Уведомления</a></li>
-<li><a href="#primer-handshake" class="level-2">Пример handshake</a></li>
+<li><a href="#podklyuchenie-k-uvedomleniyam" class="level-2">Подключение к уведомлениям</a></li>
 <li><a href="#kody-zakrytiya-i-vosstanovlenie" class="level-2">Коды закрытия и восстановление</a></li>
 <li><a href="#ishodnye-kontrakty" class="level-2">Исходные контракты</a></li>
       </ul>
