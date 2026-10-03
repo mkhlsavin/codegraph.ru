@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Create, list, compare, inspect, and export governed CodeGraph snapshots through the current project-scoped traceability API.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Traceability snapshot operations — Documentation">
   <meta property="og:description" content="Create, list, compare, inspect, and export governed CodeGraph snapshots through the current project-scoped traceability API.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/reference/SNAPSHOT_STORE.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8442b4f455ba">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Traceability snapshot operations — Documentation","description":"Create, list, compare, inspect, and export governed CodeGraph snapshots through the current project-scoped traceability API.","url":"https://codegraph.ru/docs/en/reference/SNAPSHOT_STORE.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -135,6 +135,9 @@
         <li><a href="/docs/en/reference/ANALYSIS_MODULES.html">Code analysis capability map</a></li>
         <li><a href="/docs/en/reference/FAQ.html">CodeGraph frequently asked questions</a></li>
         <li><a href="/docs/en/reference/SNAPSHOT_STORE.html" class="active" aria-current="page">Traceability snapshot operations</a></li>
+        <li><a href="/docs/en/reference/architecture-v1/execution-and-governance.html">Execute and govern GoCPG architecture checks</a></li>
+        <li><a href="/docs/en/reference/architecture-v1/interfaces-and-results.html">Inspect and export GoCPG architecture results</a></li>
+        <li><a href="/docs/en/reference/architecture-v1/model-and-rules.html">Model and rules for GoCPG architecture v1</a></li>
       </ul>
     </div>
     <div class="doc-sidebar-section" data-doc-expanded="false">
@@ -158,7 +161,7 @@
         <h1>Traceability snapshot operations</h1>
         <p class="doc-lead">Create, list, compare, inspect, and export governed CodeGraph snapshots through the current project-scoped traceability API.</p>
 
-        <div class="doc-meta"><span>Technical Reference</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Technical Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
@@ -167,7 +170,9 @@
 and export. Use the authenticated REST surface for user workflows; direct storage access belongs to
 maintainer diagnostics.</p>
 <h2  id="base-route-and-scope"><span id="base_route_and_scope"></span>Base route and scope<a class="heading-anchor" href="#base-route-and-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>All operations in this guide use:</p>
+<p>These examples use Bash and curl 7.76 or newer. You can run them from any directory; the export file is written to the current directory. <a href="../getting-started/QUICK_START.html">Sign in and get project access</a>. Set <code>CODEGRAPH_URL</code> to the HTTPS API origin without a trailing slash or <code>/api/v1</code>. Keep the access token in <code>CODEGRAPH_TOKEN</code> in the current terminal. Set <code>CODEGRAPH_PROJECT_ID</code> to the UUID of an accessible project from the projects API response. Keep the token outside the repository and disable command tracing (<code>set -x</code>).</p>
+<p>The examples pass the authorization header through standard input with <code>curl -H @-</code> to keep the token out of process arguments.</p>
+<p>All operations use:</p>
 <p><code>/api/v1/traceability/snapshots</code></p>
 <p>The route is mounted in <code>src/api/app_routers.py</code>, listed in <code>src/api/route_contracts.py</code>, and implemented by <code>src/api/routers/dashboard_core/dashboard_v2_snapshots.py</code>.</p>
 <p>Project and group access is resolved from the authenticated <code>ProjectContext</code>. Non-admin callers cannot use query fields to escape that context. Treat a snapshot ID as an identifier, not as authorization.</p>
@@ -208,8 +213,15 @@ maintainer diagnostics.</p>
 </table></div>
 <p>The live OpenAPI schema is authoritative for request and response fields. Do not reuse examples from older dashboard routes.</p>
 <h2  id="create-a-snapshot"><span id="create_a_snapshot"></span>Create a snapshot<a class="heading-anchor" href="#create-a-snapshot" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<p>Read <code>/policy</code> first. Check the available scopes, immutability and retention rules. The current contract does not support deleting or mutating snapshots; do not rely on ordinary cleanup to remove a created snapshot.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Authorization: Bearer %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span>
+curl<span class="w"> </span>--fail-with-body<span class="w"> </span>-H<span class="w"> </span>@-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots/policy&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Project-ID: </span><span class="nv">$CODEGRAPH_PROJECT_ID</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Authorization: Bearer %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span>
+curl<span class="w"> </span>--fail-with-body<span class="w"> </span>-H<span class="w"> </span>@-<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Project-ID: </span><span class="nv">$CODEGRAPH_PROJECT_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
 <span class="s1">    &quot;scope&quot;: &quot;project&quot;,</span>
@@ -221,33 +233,39 @@ maintainer diagnostics.</p>
 </code></pre></div>
 
 <p>For project scope, omit <code>project_name</code> to use the active project. Supplying another project does not bypass <code>ProjectContext</code>.</p>
+<p>A successful request returns JSON containing <code>id</code>. Save it as <code>SNAPSHOT_ID</code>. Comparison requires two actual snapshots: set their identifiers as <code>BASELINE_ID</code> and <code>CURRENT_ID</code>. Inspect <code>scope_ref</code>, <code>project_name</code>, <code>timestamp</code>, <code>immutable</code>, <code>basis_mode</code> and <code>coherence_status</code>; a stored snapshot can still contain incomplete data.</p>
 <h2  id="list-and-inspect"><span id="list_and_inspect"></span>List and inspect<a class="heading-anchor" href="#list-and-inspect" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots?scope=project&amp;limit=20&amp;offset=0&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Authorization: Bearer %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span>
+curl<span class="w"> </span>--fail-with-body<span class="w"> </span>-H<span class="w"> </span>@-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots?scope=project&amp;limit=20&amp;offset=0&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Project-ID: </span><span class="nv">$CODEGRAPH_PROJECT_ID</span><span class="s2">&quot;</span>
 
-curl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots/</span><span class="nv">$SNAPSHOT_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Authorization: Bearer %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span>
+curl<span class="w"> </span>--fail-with-body<span class="w"> </span>-H<span class="w"> </span>@-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots/</span><span class="nv">$SNAPSHOT_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Project-ID: </span><span class="nv">$CODEGRAPH_PROJECT_ID</span><span class="s2">&quot;</span>
 </code></pre></div>
 
-<p>The service applies the configured maximum page size even when a caller requests more.</p>
+<p>Omitting <code>limit</code> uses the configured maximum. Valid values are 1 through that maximum, with <code>offset</code> at least 0. An excessive limit or negative offset is rejected with HTTP 422; check the deployed OpenAPI schema for the maximum. The list response contains <code>items</code>, <code>total</code>, <code>limit</code>, <code>offset</code>, <code>has_next</code> and <code>has_prev</code>.</p>
 <h2  id="compare-snapshots"><span id="compare_snapshots"></span>Compare snapshots<a class="heading-anchor" href="#compare-snapshots" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Prefer immutable IDs for release evidence:</p>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots/compare&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Authorization: Bearer %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span>
+curl<span class="w"> </span>--fail-with-body<span class="w"> </span>-H<span class="w"> </span>@-<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots/compare&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Project-ID: </span><span class="nv">$CODEGRAPH_PROJECT_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s2">&quot;{\&quot;from_snapshot_id\&quot;:\&quot;</span><span class="nv">$BASELINE_ID</span><span class="s2">\&quot;,\&quot;to_snapshot_id\&quot;:\&quot;</span><span class="nv">$CURRENT_ID</span><span class="s2">\&quot;,\&quot;include_drilldown\&quot;:true}&quot;</span>
 </code></pre></div>
 
 <p>Timestamp comparison is supported for project snapshots. Aggregate <code>group</code> and <code>portfolio</code> comparisons require snapshot IDs.</p>
 <h2 id="export">Export<a class="heading-anchor" href="#export" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots/</span><span class="nv">$CURRENT_ID</span><span class="s2">/export&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Authorization: Bearer %s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span>
+curl<span class="w"> </span>--fail-with-body<span class="w"> </span>-H<span class="w"> </span>@-<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODEGRAPH_URL</span><span class="s2">/api/v1/traceability/snapshots/</span><span class="nv">$CURRENT_ID</span><span class="s2">/export&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Project-ID: </span><span class="nv">$CODEGRAPH_PROJECT_ID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-o<span class="w"> </span>snapshot-export.bin<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s2">&quot;{\&quot;format\&quot;:\&quot;json\&quot;,\&quot;language\&quot;:\&quot;en\&quot;,\&quot;baseline_snapshot_id\&quot;:\&quot;</span><span class="nv">$BASELINE_ID</span><span class="s2">\&quot;}&quot;</span>
 </code></pre></div>
 
 <p>When <code>baseline_snapshot_id</code> is present, the export is a comparison package rather than a standalone snapshot.</p>
+<p>Check the HTTP status, content type and creation of a new export file. With <code>format: json</code>, <code>snapshot-export.bin</code> contains JSON. <a href="https://curl.se/docs/manpage.html"><code>--fail-with-body</code></a> reports HTTP errors as command failures, but an export error body can still be written to the output file. File existence alone does not prove success.</p>
 <h2  id="operational-checks"><span id="operational_checks"></span>Operational checks<a class="heading-anchor" href="#operational-checks" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>Read <code>/policy</code> before relying on immutability, retention, or export behavior.</li>
@@ -276,9 +294,9 @@ curl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODE
         <span class="doc-page-nav-title">CodeGraph frequently asked questions</span>
       </a>
 
-      <a href="/docs/en/enterprise/index.html" class="doc-page-nav-next">
+      <a href="/docs/en/reference/architecture-v1/execution-and-governance.html" class="doc-page-nav-next">
         <span class="doc-page-nav-label">Next</span>
-        <span class="doc-page-nav-title">Enterprise</span>
+        <span class="doc-page-nav-title">Execute and govern GoCPG architecture checks</span>
       </a>
     </nav>
     </main>
@@ -351,7 +369,7 @@ curl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CODE
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

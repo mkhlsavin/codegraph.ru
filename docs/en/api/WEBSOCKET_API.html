@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Current routes, authentication boundary, message envelope, and recovery behavior for CodeGraph application WebSockets.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Application WebSocket API — Documentation">
   <meta property="og:description" content="Current routes, authentication boundary, message envelope, and recovery behavior for CodeGraph application WebSockets.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/api/WEBSOCKET_API.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8442b4f455ba">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Application WebSocket API — Documentation","description":"Current routes, authentication boundary, message envelope, and recovery behavior for CodeGraph application WebSockets.","url":"https://codegraph.ru/docs/en/api/WEBSOCKET_API.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -159,24 +159,33 @@
         <h1>Application WebSocket API</h1>
         <p class="doc-lead">Current routes, authentication boundary, message envelope, and recovery behavior for CodeGraph application WebSockets.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>This reference covers the three application WebSockets used for chat, job status, and notifications. Dashboard refresh events use a distinct authentication and message contract described in <a href="DASHBOARD_WEBSOCKET_API.html">Dashboard WebSocket API</a>.</p>
 <h2  id="authentication-boundary"><span id="authentication_boundary"></span>Authentication boundary<a class="heading-anchor" href="#authentication-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Production clients must send an HTTP handshake header:</p>
-<div class="highlight"><pre><span></span><code>Authorization: Bearer &lt;access-token&gt;
+<p>For chat and job status, send the token in the HTTP handshake header:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>Authorization: Bearer &lt;access-token&gt;
 </code></pre></div>
 
-<p>A token in the URL is rejected. The server closes a connection containing a token query parameter with code 1008 and reason “Query token transport is not allowed”.</p>
+<p>Send the token through the authentication method for the route. A <code>token</code> query parameter causes the server to reject the HTTP handshake with status 403 before the WebSocket opens. The handler uses the rejection reason <code>Query token transport is not allowed</code>.</p>
 <p>For project-bound access, also send the durable project identifier in the handshake:</p>
-<div class="highlight"><pre><span></span><code>X-Project-Id: &lt;project-uuid&gt;
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>X-Project-Id: &lt;project-uuid&gt;
 </code></pre></div>
 
 <p>The server verifies the current user state, token revocation, project access, job ownership where applicable, and connection/message quotas. A loopback client may omit credentials only when the explicit local-development unauthenticated-surface setting is enabled and both client and requested host are local.</p>
-<p>The browser-native WebSocket constructor cannot set an Authorization header. For a browser application, use an authenticated same-origin gateway or the separate dashboard WebSocket contract. Do not move bearer credentials into a query string.</p>
+<p>Connect to chat and job status through a client that supports headers or an authenticated
+same-origin gateway. The notifications route supports browser WebSockets: after the connection
+opens, send the token as the first message within 5 seconds:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;access-token&gt;&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>After checking the token and access, the server sends <code>connected</code>. The client can then send
+<code>ping</code> and receive notifications. An authentication timeout closes the connection with
+code 1008 and reason <code>Auth timeout</code>.</p>
+<p>Dashboard events are described in <a href="DASHBOARD_WEBSOCKET_API.html">Dashboard WebSocket API</a>.</p>
 <h2 id="routes">Routes<a class="heading-anchor" href="#routes" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Routes"><table data-columns="3"><caption class="sr-only">Routes</caption>
 <thead>
@@ -204,10 +213,10 @@
 </tr>
 </tbody>
 </table></div>
-<p>The job route sends code 4004 if the job does not exist. A job that exists but is outside the caller’s scope is denied with policy code 1008.</p>
+<p>The job route first checks subscription access. An unknown job or a job outside the caller’s scope produces <code>Job subscription denied</code> and close code 1008. After a subscription is authorized, the server reads the job state; if that read returns no job, it sends <code>Job not found</code> and closes with code 4004.</p>
 <h2  id="message-envelope"><span id="message_envelope"></span>Message envelope<a class="heading-anchor" href="#message-envelope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Every application message is JSON with this shape:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;chat.query&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
 <span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-08-24T00:00:00Z&quot;</span><span class="p">,</span>
@@ -215,7 +224,8 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>type and payload are required by the model. timestamp is generated by the server when omitted. request_id is optional and should be preserved when correlating streamed chat messages.</p>
+<p><code>type</code> is required. Omitted <code>payload</code> defaults to <code>{}</code> and <code>timestamp</code> to the current time.
+A <code>chat.query</code> needs <code>payload.query</code>. <code>request_id</code> is optional and should be preserved when correlating streamed chat messages.</p>
 <h2  id="current-message-types"><span id="current_message_types"></span>Current message types<a class="heading-anchor" href="#current-message-types" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Current message types"><table data-columns="3"><caption class="sr-only">Current message types</caption>
 <thead>
@@ -326,7 +336,7 @@
 <p>Not every message type is produced by every route. Consumers must ignore recognized messages that are irrelevant to their current workflow and must not treat an unknown message as success.</p>
 <h2  id="chat-request"><span id="chat_request"></span>Chat request<a class="heading-anchor" href="#chat-request" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Send chat.query only to the chat route:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;chat.query&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Show callers of the selected symbol&quot;</span><span class="p">,</span>
@@ -338,20 +348,30 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>A normal stream may contain chat.scenario, one or more chat.chunk messages, chat.response, and chat.done. An error message terminates the successful interpretation of that request even if the socket remains open.</p>
+<p>The values <code>optional-session</code> and <code>optional-scenario</code> stand for your session and scenario identifiers. Both fields are optional; omit them for a request without an explicit session or scenario.</p>
+<p>The chat handler sends <code>chat.scenario</code> for scenario selection, <code>chat.chunk</code> for answer fragments, and <code>chat.done</code> when the response ends. Assemble the answer from the chunks and correlate them through <code>request_id</code>. A processing failure produces <code>error</code> with the same request identifier.</p>
 <h2  id="job-status"><span id="job_status"></span>Job status<a class="heading-anchor" href="#job-status" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Connect to the exact job route with a job identifier owned by the authenticated user. The server sends job.started with the current status. For terminal states it follows with job.completed or job.failed. Keep the HTTP/REST job response as the durable source; WebSocket delivery is a notification channel and can be interrupted.</p>
 <h2 id="notifications">Notifications<a class="heading-anchor" href="#notifications" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The notifications route is receive-oriented. Send only ping messages. Notification payloads may contain title, message, level, and action_url. Validate an action URL against the application’s navigation policy before opening it.</p>
-<h2  id="client-handshake-example"><span id="client_handshake_example"></span>Client handshake example<a class="heading-anchor" href="#client-handshake-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>A service client must support custom handshake headers. The following Node.js example uses the ws package:</p>
-<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;ws&quot;</span><span class="p">;</span>
+<p>The notifications route is receive-oriented. After authentication, send <code>ping</code> messages. Notification payloads may contain title, message, level, and action_url. Validate an action URL against the application’s navigation policy before opening it.</p>
+<h2  id="connect-to-notifications"><span id="connect_to_notifications"></span>Connect to notifications<a class="heading-anchor" href="#connect-to-notifications" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>A service client must support custom handshake headers. This example uses Node.js and <code>ws</code>.
+In your client project directory, install the dependency with <code>npm install ws</code>, save the code as
+<code>notifications.mjs</code>, and run <code>node notifications.mjs</code>. Set <code>CODEGRAPH_ACCESS_TOKEN</code>,
+<code>CODEGRAPH_PROJECT_ID</code>, and <code>CODEGRAPH_WS_URL</code> through your approved configuration channel.
+The URL variable contains the full notifications route. Do not pass credentials as command-line
+arguments. The client sends the token first, waits for <code>connected</code>, then sends <code>ping</code>.
+The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;ws&quot;</span><span class="p">;</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;CODEGRAPH_ACCESS_TOKEN&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_PROJECT_ID&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_WS_URL&quot;</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">[</span><span class="nx">name</span><span class="p">])</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span><span class="s2">&quot;Missing &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">name</span><span class="p">);</span>
+<span class="p">}</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">socket</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span>
-<span class="w">  </span><span class="s2">&quot;wss://codegraph.example/api/v1/ws/notifications&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_WS_URL</span><span class="p">,</span>
 <span class="w">  </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">Authorization</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Bearer &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="p">,</span>
 <span class="w">      </span><span class="s2">&quot;X-Project-Id&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_PROJECT_ID</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
@@ -361,16 +381,21 @@
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">raw</span><span class="p">.</span><span class="nx">toString</span><span class="p">());</span>
 <span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;notification&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">payload</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;connected&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;pong&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;pong&quot;</span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">});</span>
 
 <span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">token</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="w"> </span><span class="p">}));</span>
 <span class="p">});</span>
 </code></pre></div>
 
 <p>Never log the token or full Authorization header.</p>
 <h2  id="close-codes-and-recovery"><span id="close_codes_and_recovery"></span>Close codes and recovery<a class="heading-anchor" href="#close-codes-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Rejections before the WebSocket opens appear as HTTP 403. The table describes server policy codes; clients receive a WebSocket close code only after a successful upgrade.</p>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Close codes and recovery"><table data-columns="3"><caption class="sr-only">Close codes and recovery</caption>
 <thead>
 <tr>
@@ -392,7 +417,7 @@
 </tr>
 <tr>
 <td>4004</td>
-<td>Job not found</td>
+<td>Job state not found after subscription authorization</td>
 <td>Verify the job identifier through the REST API before reconnecting</td>
 </tr>
 </tbody>
@@ -400,7 +425,7 @@
 <p>Use bounded exponential backoff with jitter for transient disconnects. Refresh credentials before reconnecting after 4001. Do not automatically retry 1008 until the rejected condition has changed.</p>
 <h2  id="source-contracts"><span id="source_contracts"></span>Source contracts<a class="heading-anchor" href="#source-contracts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li>src/api/websocket/routes.py — routes, bearer-header authentication, scope checks, and close behavior</li>
+<li>src/api/websocket/routes.py — routes, header or first-message authentication, scope checks, and close behavior</li>
 <li>src/api/websocket/models.py — envelope, payload models, and message enum</li>
 <li>src/api/websocket/authorization.py — user, project, token, and job decisions</li>
 <li>src/api/websocket/rate_limiter.py — connection and message quotas</li>
@@ -435,7 +460,7 @@
 <li><a href="#chat-request" class="level-2">Chat request</a></li>
 <li><a href="#job-status" class="level-2">Job status</a></li>
 <li><a href="#notifications" class="level-2">Notifications</a></li>
-<li><a href="#client-handshake-example" class="level-2">Client handshake example</a></li>
+<li><a href="#connect-to-notifications" class="level-2">Connect to notifications</a></li>
 <li><a href="#close-codes-and-recovery" class="level-2">Close codes and recovery</a></li>
 <li><a href="#source-contracts" class="level-2">Source contracts</a></li>
       </ul>
@@ -495,7 +520,7 @@
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

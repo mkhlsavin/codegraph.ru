@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Connect enterprise identity providers, map roles, validate login and recovery, and keep local authorization distinct from authentication.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Configure OAuth and LDAP identity — Documentation">
   <meta property="og:description" content="Connect enterprise identity providers, map roles, validate login and recovery, and keep local authorization distinct from authentication.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/enterprise/OAUTH_LDAP.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8442b4f455ba">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Configure OAuth and LDAP identity — Documentation","description":"Connect enterprise identity providers, map roles, validate login and recovery, and keep local authorization distinct from authentication.","url":"https://codegraph.ru/docs/en/enterprise/OAUTH_LDAP.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -168,9 +168,9 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>OAuth and LDAP authenticate a person against an external identity source. CodeGraph still owns the
-local user record, role, permissions, project scope, session, audit events, and revocation behavior.
-An identity-provider group becomes a CodeGraph permission through the approved mapping.</p>
+        <p>Login through an OAuth provider or LDAP links an external identity to a local user.
+CodeGraph manages the local role, permissions, project access, sessions, and audit events.
+Check the rights actually granted after login; an external group alone does not determine project access.</p>
 <h2  id="choose-the-integration"><span id="choose_the_integration"></span>Choose the integration<a class="heading-anchor" href="#choose-the-integration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use OAuth/OIDC when the provider supports a browser authorization-code flow and centrally managed
 client registration. Use LDAP or Active Directory when directory bind and group lookup are the
@@ -179,7 +179,7 @@ tested failure mode, and recovery path.</p>
 <p>Typed configuration lives in <code>src/api/config.py</code>. Provider and directory implementations live in
 <code>src/api/auth/providers/oauth.py</code> and <code>src/api/auth/providers/ldap_auth.py</code>.</p>
 <h2  id="current-routes"><span id="current_routes"></span>Current routes<a class="heading-anchor" href="#current-routes" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The authenticated application exposes these identity operations under <code>/api/v1/auth</code>:</p>
+<p>The application exposes these login operations under <code>/api/v1/auth</code>:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Current routes"><table data-columns="2"><caption class="sr-only">Current routes</caption>
 <thead>
 <tr>
@@ -198,7 +198,7 @@ tested failure mode, and recovery path.</p>
 </tr>
 <tr>
 <td><code>GET /api/v1/auth/oauth/{provider}/callback</code></td>
-<td>Validate state, exchange code, and establish a local session.</td>
+<td>Validate state, exchange code, and issue tokens for the local user.</td>
 </tr>
 <tr>
 <td><code>POST /api/v1/auth/ldap</code></td>
@@ -226,8 +226,8 @@ A provider is usable only when enabled and supplied with the required client det
 <p>Register the callback URI exactly. Do not use wildcard redirects, publish client secrets, or allow
 arbitrary caller-provided callback destinations.</p>
 <h2  id="validate-oauth"><span id="validate_oauth"></span>Validate OAuth<a class="heading-anchor" href="#validate-oauth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The start flow creates a signed or stored one-time <code>state</code> value. The callback must consume the same
-state and redirect context before exchanging the authorization code.</p>
+<p>The start flow creates a one-time <code>state</code> value. The callback consumes it, verifies the provider
+binding, and uses the stored redirect URI when exchanging the authorization code.</p>
 <p>For each enabled provider:</p>
 <ol>
 <li>confirm it appears in <code>/api/v1/auth/oauth/providers</code>;</li>
@@ -250,8 +250,9 @@ system must not pretend that directory authentication works.</p>
 or full directory entries.</p>
 <h2  id="map-roles-and-manage-lifecycle"><span id="map_roles_and_manage_lifecycle"></span>Map roles and manage lifecycle<a class="heading-anchor" href="#map-roles-and-manage-lifecycle" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Group-to-role mapping resolves directory groups to the local <code>viewer</code>, <code>analyst</code>, <code>reviewer</code>, or
-<code>admin</code> role. Review ambiguous and multi-group membership explicitly; do not depend on incidental
-directory ordering for privilege selection.</p>
+<code>admin</code> role. The current mapper checks matches in the order <code>admin</code>, <code>reviewer</code>, <code>analyst</code>, <code>viewer</code>;
+multiple matches select the most privileged role. No matching group returns <code>analyst</code>,
+not an automatic restriction to <code>viewer</code>. Test unmatched and multi-group users before enabling LDAP.</p>
 <p>Test joiner, mover, and leaver cases:</p>
 <ul>
 <li>first login and local user creation;</li>
@@ -261,7 +262,9 @@ directory ordering for privilege selection.</p>
 <li>existing sessions and API keys after deprovisioning;</li>
 <li>emergency local administrator access under customer policy.</li>
 </ul>
-<p>See <a href="RBAC.html">RBAC</a> for the permission contract after authentication.</p>
+<p>See <a href="RBAC.html">RBAC</a> for the permission contract after authentication.
+These are deployment checks, not a guarantee that an external group change automatically revokes
+existing sessions. Define and verify token lifetimes and revocation procedures separately.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Distinguish provider unavailability, invalid state, code exchange failure, TLS or DNS failure,
 directory bind failure, user search failure, group lookup failure, missing dependency, and local
@@ -356,7 +359,7 @@ checks after route, provider, dependency, role, or session-policy changes.</p>
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

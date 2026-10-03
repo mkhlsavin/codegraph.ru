@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="description" content="Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Production monitoring — Documentation">
-  <meta property="og:description" content="Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.">
+  <meta property="og:description" content="Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/MONITORING.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Production monitoring — Documentation">
-  <meta name="twitter:description" content="Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.">
+  <meta name="twitter:description" content="Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -26,8 +26,8 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/MONITORING.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Production monitoring — Documentation","description":"Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.","url":"https://codegraph.ru/docs/en/guides/MONITORING.html","inLanguage":"en"}</script>
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8442b4f455ba">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Production monitoring — Documentation","description":"Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.","url":"https://codegraph.ru/docs/en/guides/MONITORING.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -198,9 +198,9 @@
         <span>Production monitoring</span>
         </nav>
         <h1>Production monitoring</h1>
-        <p class="doc-lead">Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.</p>
+        <p class="doc-lead">Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
@@ -234,21 +234,41 @@ catalog or alert expressions into documentation.</p>
 <p>Treat the first route as network-sensitive even though it does not use user
 authentication. Restrict it with the deployment network policy, ingress, or
 scraper allowlist. Do not publish it on an unrestricted internet ingress.</p>
+<p>Both routes export the process-wide Prometheus registry. The dashboard route
+updates metrics for the selected scope before export, but the shared registry
+can retain project labels populated by earlier requests. Authentication does
+not establish that the entire response is limited to one project. Check which
+labels are present and whether the monitoring destination may receive them.</p>
 <p>The metric names and labels are defined in <code>src/monitoring/metrics.py</code>. Do not
 pin an expected metric count in an acceptance check: optional components and
 new collectors can change the exported set.</p>
 <h2  id="scrape-verification"><span id="scrape_verification"></span>Scrape verification<a class="heading-anchor" href="#scrape-verification" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>From the monitoring network:</p>
-<div class="highlight"><pre><span></span><code><span class="n">curl</span><span class="p">.</span><span class="n">exe</span> <span class="n">-fsS</span> <span class="n">http</span><span class="p">://&lt;</span><span class="n">api-host</span><span class="p">&gt;:</span><span class="n">8000</span><span class="p">/</span><span class="n">metrics</span>
+<p>Run this example in PowerShell from the monitoring network. The working directory does not matter; no files are created. <code>http://127.0.0.1:8000</code> applies only to an accessible local API. For another deployment, replace it with the approved API URL. Use HTTPS outside a protected local network.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$apiBaseUrl</span> <span class="p">=</span> <span class="s2">&quot;http://127.0.0.1:8000&quot;</span>
+<span class="nv">$response</span> <span class="p">=</span> <span class="nb">Invoke-WebRequest</span> <span class="n">-Uri</span> <span class="s2">&quot;$apiBaseUrl/metrics&quot;</span> <span class="n">-UseBasicParsing</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">StatusCode</span> <span class="o">-ne</span> <span class="n">200</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;Metrics HTTP status is not 200&quot;</span> <span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]</span> <span class="o">-notmatch</span> <span class="s1">&#39;^(text/plain|application/openmetrics-text)&#39;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="s2">&quot;Unexpected metrics content type&quot;</span>
+<span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">Content</span> <span class="o">-notmatch</span> <span class="s1">&#39;(?m)^# TYPE &#39;</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;No metric type declarations&quot;</span> <span class="p">}</span>
+<span class="nv">$response</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="p">@{</span><span class="n">Name</span><span class="p">=</span><span class="s1">&#39;ContentType&#39;</span><span class="p">;</span><span class="n">Expression</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]}}</span>
 </code></pre></div>
 
-<p>For dashboard metrics, use an approved API credential and project context:</p>
-<div class="highlight"><pre><span></span><code><span class="n">curl</span><span class="p">.</span><span class="n">exe</span> <span class="n">-fsS</span> <span class="n">-H</span> <span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span> <span class="n">-H</span> <span class="s2">&quot;X-Project-Id: &lt;project-id&gt;&quot;</span> <span class="n">http</span><span class="p">://&lt;</span><span class="n">api-host</span><span class="p">&gt;:</span><span class="n">8000</span><span class="p">/</span><span class="n">api</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">traceability</span><span class="p">/</span><span class="n">metrics</span>
+<p>Expect status <code>200</code>, a Prometheus content type, and no exceptions. This checks the API response, but does not yet confirm collection in Prometheus.</p>
+<p>For dashboard metrics, use an approved API credential. In the same session, replace <code>&lt;project-uuid&gt;</code> with the UUID of a project accessible to that account. This is not the project&rsquo;s string key. Supply <code>CODEGRAPH_API_TOKEN</code> from an approved secret store; do not write its value in the example or logs.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$env:CODEGRAPH_API_TOKEN</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;API token is not configured&quot;</span> <span class="p">}</span>
+<span class="nv">$headers</span> <span class="p">=</span> <span class="p">@{</span>
+    <span class="n">Authorization</span> <span class="p">=</span> <span class="s2">&quot;Bearer $env:CODEGRAPH_API_TOKEN&quot;</span>
+    <span class="s1">&#39;X-Project-Id&#39;</span> <span class="p">=</span> <span class="s1">&#39;&lt;project-uuid&gt;&#39;</span>
+<span class="p">}</span>
+<span class="nv">$projectResponse</span> <span class="p">=</span> <span class="nb">Invoke-WebRequest</span> <span class="n">-Uri</span> <span class="s2">&quot;$apiBaseUrl/api/v1/traceability/metrics&quot;</span> <span class="n">-Headers</span> <span class="nv">$headers</span> <span class="n">-UseBasicParsing</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$projectResponse</span><span class="p">.</span><span class="n">StatusCode</span> <span class="o">-ne</span> <span class="n">200</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;Project metrics HTTP status is not 200&quot;</span> <span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$projectResponse</span><span class="p">.</span><span class="n">Content</span> <span class="o">-notmatch</span> <span class="s1">&#39;(?m)^# TYPE &#39;</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;No metric type declarations&quot;</span> <span class="p">}</span>
+<span class="nv">$projectResponse</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="p">@{</span><span class="n">Name</span><span class="p">=</span><span class="s1">&#39;ContentType&#39;</span><span class="p">;</span><span class="n">Expression</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]}}</span>
 </code></pre></div>
 
-<p>Verify the HTTP status, Prometheus content type, a current scrape timestamp in
-Prometheus, and the expected target labels. This set of checks confirms that
-Prometheus ingested the series.</p>
+<p>Also check the second response&rsquo;s content type and expected project metrics. HTTP 400 can indicate an invalid UUID. If authentication or authorization fails, check credentials and scope; keep route protection enabled.</p>
+<p>In Prometheus, check the <code>codegraph-api</code> target, <code>up{job="codegraph-api"}</code>, the last scrape time, and target labels. <code>up</code> is <code>1</code> for a successful scrape and <code>0</code> for a failed scrape. An absent series means no matching target or data. A successful HTTP request alone does not establish that Prometheus ingested the series.</p>
 <h2  id="shipped-configuration-artifacts"><span id="shipped_configuration_artifacts"></span>Shipped configuration artifacts<a class="heading-anchor" href="#shipped-configuration-artifacts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Shipped configuration artifacts"><table data-columns="2"><caption class="sr-only">Shipped configuration artifacts</caption>
 <thead>
@@ -437,7 +457,7 @@ target can still export stale project evidence; use
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

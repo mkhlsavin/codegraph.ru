@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Configure pre-request and post-response DLP actions, inspect evidence, and separate detection from alert delivery.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Operate CodeGraph data-loss prevention — Documentation">
   <meta property="og:description" content="Configure pre-request and post-response DLP actions, inspect evidence, and separate detection from alert delivery.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/enterprise/DLP_SECURITY.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8442b4f455ba">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Operate CodeGraph data-loss prevention — Documentation","description":"Configure pre-request and post-response DLP actions, inspect evidence, and separate detection from alert delivery.","url":"https://codegraph.ru/docs/en/enterprise/DLP_SECURITY.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -184,7 +184,8 @@ and human review.</p>
 </ul>
 <p>The API exposes authenticated DLP configuration, policy, and activity operations under the live
 <code>/api/v1/security/dlp</code> surface. Consult the deployed OpenAPI schema for request and
-response fields.</p>
+response fields. Reading configuration requires an active user;
+changing configuration requires administrator access.</p>
 <h2  id="actions-and-meaning"><span id="actions_and_meaning"></span>Actions and meaning<a class="heading-anchor" href="#actions-and-meaning" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Actions and meaning"><table data-columns="2"><caption class="sr-only">Actions and meaning</caption>
 <thead>
@@ -215,6 +216,10 @@ response fields.</p>
 <p>The highest applicable action wins when several patterns match. A configured <code>WARN</code> or
 <code>LOG_ONLY</code> policy records the match and allows the configured flow to continue; use the deployment&rsquo;s
 access, network, provider, and review controls to manage egress.</p>
+<p>The table describes request actions. On a response match, <code>ContentScanner.scan_response()</code>
+always produces masked text and returns <code>blocked=False</code>, even when its <code>action</code> field
+contains <code>BLOCK</code>, <code>WARN</code> or <code>LOG_ONLY</code>. Check the actual result and modified text,
+not just the action label.</p>
 <h2  id="configure-policy"><span id="configure_policy"></span>Configure policy<a class="heading-anchor" href="#configure-policy" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The checked-in configuration has separate <code>pre_request</code> and <code>post_response</code> controls plus category,
 keyword, and webhook settings. The default categories include credentials, PII, and source-code
@@ -235,8 +240,9 @@ configured branch and remove it after the test.</p>
 <p>Before a protected model call, CodeGraph scans the system and user prompt through the configured
 pre-request policy. <code>BLOCK</code> stops the call; <code>MASK</code> forwards modified content; <code>WARN</code> and <code>LOG_ONLY</code>
 can still allow the original content to reach the selected provider.</p>
-<p>After the provider returns, post-response scanning applies its own policy before the response is
-returned through the protected surface. Review both directions when deciding what data may leave
+<p>For ordinary <code>SecureLLMProvider.generate()</code>, the response is scanned before returning it.
+In <code>generate_stream()</code>, chunks are yielded before the assembled response is scanned;
+that check cannot retract chunks already delivered. Review both directions when deciding what data may leave
 or re-enter the customer boundary. See <a href="LLM_SECURITY.html">LLM security</a> for the complete egress model.</p>
 <h2  id="alerts-and-siem"><span id="alerts_and_siem"></span>Alerts and SIEM<a class="heading-anchor" href="#alerts-and-siem" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>DLP can create webhook alerts and maps actions to SIEM event types including <code>dlp.block</code>,
@@ -248,9 +254,45 @@ or re-enter the customer boundary. See <a href="LLM_SECURITY.html">LLM security<
 <li>a configured handler reported delivery;</li>
 <li>the downstream webhook or SIEM actually received and indexed it.</li>
 </ol>
-<p>Confirm downstream receipt through handler status, retry or buffer state, and receiver-side evidence
-when delivery is an acceptance criterion. The local <code>alert_sent</code> flag and HTTP intake status record
+<p>Confirm downstream receipt and indexing with receiver-side evidence when delivery is an
+acceptance criterion. Handler status, retry and buffer state help diagnose delivery; they do not
+alone establish indexing. The local <code>alert_sent</code> flag and HTTP intake status record
 local processing state.</p>
+<h2  id="check-the-scanner-locally"><span id="check_the_scanner_locally"></span>Check the scanner locally<a class="heading-anchor" href="#check-the-scanner-locally" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>From the CodeGraph source root with its Python dependencies installed, save this example
+as <code>check_dlp.py</code> and run <code>python check_dlp.py</code>. The policy exists only in memory and
+does not change deployment configuration. The marker contains no real secret.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.security.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DLPAction</span><span class="p">,</span> <span class="n">DLPCategoryConfig</span><span class="p">,</span> <span class="n">DLPConfig</span><span class="p">,</span> <span class="n">DLPPatternConfig</span><span class="p">,</span>
+    <span class="n">DLPPreRequestConfig</span><span class="p">,</span> <span class="n">DLPPostResponseConfig</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.security.dlp.scanner</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContentScanner</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">DLPConfig</span><span class="p">(</span>
+    <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">categories</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;synthetic&quot;</span><span class="p">:</span> <span class="n">DLPCategoryConfig</span><span class="p">(</span>
+        <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="n">DLPAction</span><span class="o">.</span><span class="n">BLOCK</span><span class="p">,</span>
+        <span class="n">patterns</span><span class="o">=</span><span class="p">[</span><span class="n">DLPPatternConfig</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;demo_marker&quot;</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;DLP_DEMO_MARKER&quot;</span><span class="p">,</span> <span class="n">mask_with</span><span class="o">=</span><span class="s2">&quot;[MASKED]&quot;</span><span class="p">,</span>
+        <span class="p">)],</span>
+    <span class="p">)},</span>
+    <span class="n">pre_request</span><span class="o">=</span><span class="n">DLPPreRequestConfig</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">post_response</span><span class="o">=</span><span class="n">DLPPostResponseConfig</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">scanner</span> <span class="o">=</span> <span class="n">ContentScanner</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<span class="n">clean</span> <span class="o">=</span> <span class="n">scanner</span><span class="o">.</span><span class="n">scan_request</span><span class="p">(</span><span class="s2">&quot;ordinary example&quot;</span><span class="p">)</span>
+<span class="n">request</span> <span class="o">=</span> <span class="n">scanner</span><span class="o">.</span><span class="n">scan_request</span><span class="p">(</span><span class="s2">&quot;DLP_DEMO_MARKER&quot;</span><span class="p">)</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">scanner</span><span class="o">.</span><span class="n">scan_response</span><span class="p">(</span><span class="s2">&quot;DLP_DEMO_MARKER&quot;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="ow">not</span> <span class="n">clean</span><span class="o">.</span><span class="n">has_matches</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">clean</span><span class="o">.</span><span class="n">blocked</span>
+<span class="k">assert</span> <span class="n">request</span><span class="o">.</span><span class="n">has_matches</span> <span class="ow">and</span> <span class="n">request</span><span class="o">.</span><span class="n">blocked</span>
+<span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">has_matches</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">response</span><span class="o">.</span><span class="n">blocked</span>
+<span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">modified_content</span> <span class="o">==</span> <span class="s2">&quot;[MASKED]&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Clean request passed; marked request blocked; response masked&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Expect the printed message and exit status <code>0</code>. An <code>AssertionError</code> identifies an
+unexpected result. This checks the scanner only; it does not call a provider or test
+the API, streaming client or alert delivery.</p>
 <h2  id="validate-the-deployment"><span id="validate_the_deployment"></span>Validate the deployment<a class="heading-anchor" href="#validate-the-deployment" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use non-sensitive synthetic values for each enabled category:</p>
 <ol>
@@ -298,6 +340,7 @@ incident process. Policy changes made during recovery must have an owner, reason
 <li><a href="#configure-policy" class="level-2">Configure policy</a></li>
 <li><a href="#request-and-response-flow" class="level-2">Request and response flow</a></li>
 <li><a href="#alerts-and-siem" class="level-2">Alerts and SIEM</a></li>
+<li><a href="#check-the-scanner-locally" class="level-2">Check the scanner locally</a></li>
 <li><a href="#validate-the-deployment" class="level-2">Validate the deployment</a></li>
 <li><a href="#limits-and-incident-handling" class="level-2">Limits and incident handling</a></li>
       </ul>
@@ -357,7 +400,7 @@ incident process. Policy changes made during recovery must have an owner, reason
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>
