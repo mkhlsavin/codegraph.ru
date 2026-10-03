@@ -159,19 +159,19 @@
         <h1>WebSocket API дашборда</h1>
         <p class="doc-lead">События обновления дашборда через WebSocket: аутентификация первым сообщением, поддержание соединения и восстановление после разрыва.</p>
 
-        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-08-24">Обновлено: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-10-03">Обновлено: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Этот WebSocket сообщает открытому дашборду, что данные проекта могли измениться. Он не передаёт чат, состояние фоновой задачи или постоянный результат аудита. После <code>project_updated</code> клиент заново запрашивает нужный REST-ресурс.</p>
+        <p>Подключите открытый дашборд к событиям обновления проекта после подготовки отчёта аудита. Сервер отправляет <code>project_updated</code> с именем проекта и источником события. Клиент перечитывает нужные REST-ресурсы и обновляет экран. Справочник объясняет разработчику интерфейса аутентификацию, поля событий и восстановление соединения.</p>
 <h2  id="adres-podklyucheniya"><span id="adres_podklyucheniya"></span>Адрес подключения<a class="heading-anchor" href="#adres-podklyucheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>wss://codegraph.example/api/v1/traceability/ws
 </code></pre></div>
 
 <p>Используйте ws только в доверенной локальной HTTP-среде. Страница, открытая по HTTPS, должна подключаться через wss.</p>
 <h2 id="autentifikatsiya">Аутентификация<a class="heading-anchor" href="#autentifikatsiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Не передавайте токен в URL. Сервер отклоняет его кодом 1008 с точной причиной <code>Query token transport is not allowed</code>.</p>
+<p>Передайте токен первым сообщением. Если в URL есть параметр <code>token</code>, сервер отклоняет HTTP handshake со статусом 403 до открытия WebSocket. Обработчик использует причину отказа <code>Query token transport is not allowed</code>.</p>
 <p>Сервер принимает WebSocket и в течение 5 секунд ждёт первое сообщение клиента. Передайте объект с JWT:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;JWT&gt;&quot;</span><span class="p">}</span>
 </code></pre></div>
@@ -179,7 +179,7 @@
 <p>Сервер также принимает строку с токеном, но документированный контракт — JSON-объект. При ошибке аутентификации сервер отправляет событие error и закрывает соединение кодом 1008. Если первое сообщение не пришло за 5 секунд, соединение закрывается по тайм-ауту аутентификации.</p>
 <p>Работа без токена разрешена только при явно включённом локальном режиме и адресах обратной петли клиента и запрошенного хоста.</p>
 <h2 id="sobytiya">События<a class="heading-anchor" href="#sobytiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Сообщения дашборда используют поле event, а не обёртку <code>type</code>/<code>payload</code> WebSocket приложения.</p>
+<p>Каждое сообщение дашборда — JSON-объект. Поле <code>event</code> определяет событие, остальные поля содержат его данные.</p>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="События"><table data-columns="3"><caption class="sr-only">События</caption>
 <thead>
 <tr>
@@ -201,7 +201,7 @@
 </tr>
 <tr>
 <td>project_updated</td>
-<td>Аудит, compliance, release или другой источник событий сообщил об изменении данных</td>
+<td>Завершён отчёт аудита или другой источник вызвал функцию рассылки</td>
 <td>project_name, trigger, timestamp</td>
 </tr>
 <tr>
@@ -216,8 +216,7 @@
 </tr>
 </tbody>
 </table></div>
-<p>project_updated сообщает об изменении данных источника событий. Авторитетный результат передаётся
-отдельным сообщением или запрашивается через соответствующий маршрут API.</p>
+<p>По <code>project_name</code> выберите ресурсы дашборда для обновления. Поле <code>trigger</code> называет источник, который запросил обновление, а <code>timestamp</code> содержит время создания события в секундах Unix.</p>
 <h2  id="primer-dlya-brauzera"><span id="primer_dlya_brauzera"></span>Пример для браузера<a class="heading-anchor" href="#primer-dlya-brauzera" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Добавьте функцию в код аутентифицированного дашборда. Передайте действующий JWT и функцию
 <code>refreshDashboardResources(projectName)</code>, которая перечитывает нужные REST-ресурсы проекта.
@@ -244,7 +243,8 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Не записывайте accessToken в лог и не добавляйте его в URL. Храните его не дольше, чем требуется аутентифицированной браузерной сессии.</p>
+<p>Вызовите <code>connectDashboardSocket</code> с токеном текущей сессии и существующей функцией обновления ресурсов. Функция возвращает экземпляр <code>WebSocket</code>. После успешной аутентификации сервер отправляет <code>connected</code> с идентификатором клиента и интервалом heartbeat. Каждое событие <code>project_updated</code> вызывает вашу функцию обновления с именем проекта. Когда дашборд закрывается, вызовите <code>socket.close()</code>.</p>
+<p>Храните токен в памяти сессии; исключите его из URL и логов.</p>
 <h2  id="heartbeat-i-perepodklyuchenie"><span id="heartbeat_i_perepodklyuchenie"></span>Heartbeat и переподключение<a class="heading-anchor" href="#heartbeat-i-perepodklyuchenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>После настроенного интервала без входящих сообщений сервер отправляет heartbeat. Клиент может передать обычный текст ping и получить событие pong.</p>
 <p>Переподключайтесь с ограниченным экспоненциальным увеличением задержки и случайным разбросом. Если сессия истекла, до повторного подключения получите свежий токен. Не повторяйте соединение непрерывно после кода 1008: сначала устраните проблему аутентификации, конфигурации или лимитов запросов.</p>
