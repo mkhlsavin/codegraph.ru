@@ -213,7 +213,7 @@ code 1008 and reason <code>Auth timeout</code>.</p>
 </tr>
 </tbody>
 </table></div>
-<p>The job route sends code 4004 if the job does not exist. A job that exists but is outside the caller’s scope is denied with policy code 1008.</p>
+<p>The job route first checks subscription access. An unknown job or a job outside the caller’s scope produces <code>Job subscription denied</code> and close code 1008. After a subscription is authorized, the server reads the job state; if that read returns no job, it sends <code>Job not found</code> and closes with code 4004.</p>
 <h2  id="message-envelope"><span id="message_envelope"></span>Message envelope<a class="heading-anchor" href="#message-envelope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Every application message is JSON with this shape:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
@@ -348,7 +348,8 @@ A <code>chat.query</code> needs <code>payload.query</code>. <code>request_id</co
 <span class="p">}</span>
 </code></pre></div>
 
-<p>A normal stream may contain chat.scenario, one or more chat.chunk messages, chat.response, and chat.done. An error message terminates the successful interpretation of that request even if the socket remains open.</p>
+<p>The values <code>optional-session</code> and <code>optional-scenario</code> stand for your session and scenario identifiers. Both fields are optional; omit them for a request without an explicit session or scenario.</p>
+<p>The chat handler sends <code>chat.scenario</code> for scenario selection, <code>chat.chunk</code> for answer fragments, and <code>chat.done</code> when the response ends. Assemble the answer from the chunks and correlate them through <code>request_id</code>. A processing failure produces <code>error</code> with the same request identifier.</p>
 <h2  id="job-status"><span id="job_status"></span>Job status<a class="heading-anchor" href="#job-status" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Connect to the exact job route with a job identifier owned by the authenticated user. The server sends job.started with the current status. For terminal states it follows with job.completed or job.failed. Keep the HTTP/REST job response as the durable source; WebSocket delivery is a notification channel and can be interrupted.</p>
 <h2 id="notifications">Notifications<a class="heading-anchor" href="#notifications" aria-label="Copy link to section" title="Copy link to section"></a></h2>
@@ -416,7 +417,7 @@ The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
 </tr>
 <tr>
 <td>4004</td>
-<td>Job not found</td>
+<td>Job state not found after subscription authorization</td>
 <td>Verify the job identifier through the REST API before reconnecting</td>
 </tr>
 </tbody>
