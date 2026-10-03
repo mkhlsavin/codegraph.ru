@@ -163,7 +163,7 @@
         <h1>LLM data egress and security controls</h1>
         <p class="doc-lead">Understand which CodeGraph prompt data can reach an LLM provider and configure DLP, routing, audit, and deployment controls for that boundary.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
       </header>
 
       <!-- Content -->
@@ -180,19 +180,24 @@
 <li>The runtime calls <code>target_provider.generate(system_prompt, user_prompt, **kwargs)</code> with the filtered prompt values.</li>
 <li>For ordinary <code>generate</code>, post-response DLP scans the response before returning it to the caller.</li>
 </ol>
-<p>This sequence applies to <code>SecureLLMProvider</code>. Verify that the selected workflow uses this wrapper;
-its presence in the repository does not establish protection for every provider call.
-The provider receives <code>**kwargs</code> separately. The prompt-text scan does not establish filtering
-of attachments or other data passed through those arguments.</p>
-<p>For <code>generate_stream</code>, chunks are yielded to the caller immediately. After the stream completes,
-DLP scans the assembled response and records detections. It cannot modify or retract chunks
-already yielded. If responses must be checked before release, verify a separate buffering and
-filtering mechanism in the actual client workflow.</p>
-<p>If pre-request DLP is disabled in the effective configuration, the scanner does not remove data from the request. Operators must verify the effective runtime profile instead of relying on this page alone.</p>
+<p><code>SecureLLMProvider</code> performs this sequence for workflows that call the provider
+through the wrapper. The scanner processes <code>system_prompt</code> and <code>user_prompt</code>.
+Additional <code>**kwargs</code> arguments reach the provider separately. Configure checks
+for attachments and other data in these arguments within the calling workflow.</p>
+<p>For <code>generate</code>, DLP scans the completed response and replaces detected values
+when the action is <code>MASK</code> before returning it to the caller. For <code>generate_stream</code>, chunks are yielded immediately;
+after the stream completes, DLP scans the assembled response and records detections.
+Chunks already delivered retain their original text. To check a response before
+delivery, use ordinary generation with configured DLP or buffer and filter the
+stream within the client workflow.</p>
+<p>Request scanning is enabled through <code>dlp.enabled</code> and <code>dlp.pre_request.enabled</code>
+in the security configuration. When scanning is disabled, the provider receives
+the original prompt text.</p>
 <p><code>get_embeddings</code> also sends texts to a provider. The wrapper combines them for DLP scanning,
 filters them when a scanner is present, and forwards the prepared texts to
-<code>target_provider.get_embeddings</code>. Verify the embedding model and route separately from generation:
-a local model for answers alone does not establish local processing of every text.</p>
+<code>target_provider.get_embeddings</code>. The embedding model and route are configured
+separately from generation. Record the endpoints for both operations in the
+deployment profile.</p>
 <h2  id="what-can-cross-the-provider-boundary"><span id="what_can_cross_the_provider_boundary"></span>What can cross the provider boundary<a class="heading-anchor" href="#what-can-cross-the-provider-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="What can cross the provider boundary"><table data-columns="3"><caption class="sr-only">What can cross the provider boundary</caption>
 <thead>
@@ -262,7 +267,8 @@ a local model for answers alone does not establish local processing of every tex
 </tr>
 </tbody>
 </table></div>
-<p>Selecting a provider changes the data-processing boundary. A deployment statement is valid only for the profile actually running in the customer environment.</p>
+<p>A deployment profile connects each workflow to a provider endpoint and its
+data-handling rules. Use it when configuring routing and checking pilot requests.</p>
 <h2  id="dlp-behavior"><span id="dlp_behavior"></span>DLP behavior<a class="heading-anchor" href="#dlp-behavior" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The <code>ContentScanner</code> uses the effective configuration from <code>src/security/config.py</code> and <code>src/security/dlp/scanner.py</code>.</p>
 <ul>
@@ -271,7 +277,10 @@ a local model for answers alone does not establish local processing of every tex
 <li><code>WARN</code> records the detection but can still allow the request.</li>
 <li><code>LOG_ONLY</code> records the event and allows the request.</li>
 </ul>
-<p><code>WARN</code> and <code>LOG_ONLY</code> are not redaction. <code>MASK</code> depends on the patterns and categories currently enabled. Unknown sensitive data can remain undetected, so repository scope and prompt construction remain primary controls.</p>
+<p><code>WARN</code> and <code>LOG_ONLY</code> forward the original text and record the detection.
+<code>MASK</code> replaces matches from enabled patterns and categories. Configure patterns
+for each sensitive-data category and verify them with a canary value. Include
+the context needed for the selected task in each prompt.</p>
 <h2  id="operator-checklist"><span id="operator_checklist"></span>Operator checklist<a class="heading-anchor" href="#operator-checklist" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Before enabling a remote provider:</p>
 <ol>
