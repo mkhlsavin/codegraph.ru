@@ -198,13 +198,12 @@ the shared repository lifecycle is described in <a href="../guides/PROJECT_IMPOR
 </tr>
 <tr>
 <td>Review comment publication</td>
-<td>Yes through a generic review snapshot job; no dedicated GitHub route</td>
+<td>Yes through a review snapshot job that publishes to the pull request</td>
 </tr>
 </tbody>
 </table></div>
-<p>The implementation source is
-<code>src/project_import/repository_suite/repository_provider_adapters.py</code>. Do not infer GitHub
-features from another provider&rsquo;s guide.</p>
+<p>The adapter in <code>src/project_import/repository_suite/repository_provider_adapters.py</code>
+retrieves repository metadata, branch HEAD, and repository lists through the GitHub API.</p>
 <h2  id="connect-and-import"><span id="connect_and_import"></span>Connect and import<a class="heading-anchor" href="#connect-and-import" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Run these PowerShell commands from the CodeGraph source root with its Python dependencies
 and server access configured. Replace <code>OWNER/REPOSITORY</code> with the repository full name.
@@ -228,10 +227,15 @@ is enabled by default; use <code>--ca-bundle-path</code> for a private CA.</p>
 <p>Subscribe to <code>push</code> and <code>pull_request</code>. Configure the same secret in GitHub and the CodeGraph
 runtime as <code>GITHUB_WEBHOOK_SECRET</code>. GitHub sends the event name in <code>X-GitHub-Event</code> and the
 HMAC-SHA256 signature in <code>X-Hub-Signature-256</code>.</p>
-<p>A <code>202 Accepted</code> status alone does not establish that a job started. Inspect the response body:
-an unsupported event returns <code>status=skipped</code> without starting processing. For an accepted event,
-correlate job details with repository status to confirm CPG and review completion.
-A repeated event may be deduplicated.</p>
+<p>The receiver responds with <code>202 Accepted</code> and returns <code>status</code>, <code>event_type</code>,
+<code>job_id</code>, and <code>detail</code>. For a push event, <code>detail</code> includes the platform, changed
+file count, commit, and ingestion result in <code>ingest_status</code>. For a pull request,
+the response includes <code>review_id</code>, <code>action</code>, and <code>snapshot_id</code>.</p>
+<p>Find the job by <code>job_id</code>, then check its final status and the repository state.
+These records show CPG updates and review snapshot creation. Deduplication handles
+repeated events. For <code>ping</code>, the receiver returns <code>status=accepted</code> and
+<code>message=pong</code>. For an unsupported event, it returns <code>status=skipped</code> and
+<code>reason=unsupported_event_type</code>.</p>
 <h2  id="observe-and-recover"><span id="observe_and_recover"></span>Observe and recover<a class="heading-anchor" href="#observe-and-recover" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The shared REST surface begins at:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>/api/v1/integrations/repositories

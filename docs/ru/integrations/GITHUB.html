@@ -198,13 +198,12 @@ push-событий и создаёт снимки ревью для pull reque
 </tr>
 <tr>
 <td>Публикация комментария ревью</td>
-<td>Да, через общее задание снимка; отдельной точки GitHub нет</td>
+<td>Да, через задание снимка ревью с публикацией в pull request</td>
 </tr>
 </tbody>
 </table></div>
-<p>Источник реализации —
-<code>src/project_import/repository_suite/repository_provider_adapters.py</code>. Возможности других
-провайдеров нельзя автоматически переносить на GitHub.</p>
+<p>Адаптер <code>src/project_import/repository_suite/repository_provider_adapters.py</code>
+получает метаданные репозитория, HEAD ветки и список репозиториев через API GitHub.</p>
 <h2  id="podklyuchenie-i-import"><span id="podklyuchenie_i_import"></span>Подключение и импорт<a class="heading-anchor" href="#podklyuchenie-i-import" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Выполняйте примеры в PowerShell из корня исходников CodeGraph с установленными Python-зависимостями
 и настроенным доступом к серверу. Замените <code>OWNER/REPOSITORY</code> полным именем репозитория.
@@ -228,10 +227,15 @@ push-событий и создаёт снимки ревью для pull reque
 <p>Подпишитесь на <code>push</code> и <code>pull_request</code>. Один и тот же секрет задайте в GitHub и в окружении
 CodeGraph как <code>GITHUB_WEBHOOK_SECRET</code>. Тип события приходит в <code>X-GitHub-Event</code>, подпись
 HMAC-SHA256 — в <code>X-Hub-Signature-256</code>.</p>
-<p>Код <code>202 Accepted</code> сам по себе не подтверждает запуск задания. Проверьте тело ответа:
-неподдерживаемое событие получает <code>status=skipped</code> и не запускает обработку.
-Для принятого события сопоставьте сведения о задании со статусом репозитория, чтобы
-подтвердить обновление CPG и ревью. Повторное событие может быть дедуплицировано.</p>
+<p>Приёмник отвечает <code>202 Accepted</code> и возвращает поля <code>status</code>, <code>event_type</code>,
+<code>job_id</code> и <code>detail</code>. Для push-события <code>detail</code> содержит платформу, количество
+изменённых файлов, commit и результат приёма <code>ingest_status</code>. Для pull request
+ответ содержит <code>review_id</code>, <code>action</code> и <code>snapshot_id</code>.</p>
+<p>Найдите задание по <code>job_id</code>, затем проверьте его итоговый статус и состояние
+репозитория. Эти данные показывают обновление CPG и создание снимка ревью.
+Повторные события обрабатывает механизм дедупликации. Для <code>ping</code> приёмник
+возвращает <code>status=accepted</code> и <code>message=pong</code>; для неподдерживаемого события —
+<code>status=skipped</code> и <code>reason=unsupported_event_type</code>.</p>
 <h2  id="nablyudenie-i-vosstanovlenie"><span id="nablyudenie_i_vosstanovlenie"></span>Наблюдение и восстановление<a class="heading-anchor" href="#nablyudenie-i-vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Общий REST-контур начинается с пути:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>/api/v1/integrations/repositories
@@ -240,7 +244,7 @@ POST /api/v1/integrations/repositories/review-snapshots/{snapshot_id}/rerun
 
 <p>Через него или команды <code>python -m src.cli repos ...</code> можно проверить привязки, задания
 синхронизации, очередь, снимки ревью, приостановку и возобновление и ошибки, допускающие повтор. Авторизованному
-оператору также доступен состояние сервисов:</p>
+оператору также доступно состояние сервисов:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>GET /api/v1/admin/runtime/webhooks/status/{project_id}
 </code></pre></div>
 
