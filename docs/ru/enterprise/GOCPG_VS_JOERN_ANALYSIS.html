@@ -6,7 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Узнайте, как GoCPG строит CPG и восстанавливает типы Python и JavaScript. Сравните конвейеры GoCPG и Joern для задач структурного анализа.">
   <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
-  <meta name="cg:css-build" content="8442b4f455ba">
+  <meta name="cg:css-build" content="71de88b005be">
 
   <meta property="og:title" content="Как GoCPG строит CPG и чем этот подход отличается от Joern — Документация CodeGraph">
   <meta property="og:description" content="Узнайте, как GoCPG строит CPG и восстанавливает типы Python и JavaScript. Сравните конвейеры GoCPG и Joern для задач структурного анализа.">
@@ -168,29 +168,29 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Code Property Graph — не «карта файлов» и не результат одного парсера. Это
-единая модель программы, где синтаксическая структура связана с потоком
+        <p>Code Property Graph (CPG) — единая модель программы. В ней синтаксическая
+структура связана с потоком
 управления, вызовами, типами, зависимостями данных и исходными координатами.
 CodeGraph использует эти связи для поиска дефектов, архитектурных нарушений и
 метрик аудита.</p>
 <p>Эта статья отвечает на два вопроса:</p>
 <ol>
 <li>как текущий GoCPG строит и обогащает граф;</li>
-<li>что можно честно сравнивать с Joern без неподтверждённых заявлений о
-   скорости или точности.</li>
+<li>чем отличаются способы хранения графа, запросов и применения результатов
+   в GoCPG и Joern.</li>
 </ol>
 <p>Формулы, которые превращают замечания и метрики графа в Q1–Q12 и Health Score,
 описаны в <a href="../guides/DASHBOARD_METHODOLOGY.html">методологии Dashboard</a>.</p>
-<h2  id="korotko-gde-prohodit-granitsa-gocpg"><span id="korotko_gde_prohodit_granitsa_gocpg"></span>Коротко: где проходит граница GoCPG<a class="heading-anchor" href="#korotko-gde-prohodit-granitsa-gocpg" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<h2  id="rol-gocpg-v-codegraph"><span id="rol_gocpg_v_codegraph"></span>Роль GoCPG в CodeGraph<a class="heading-anchor" href="#rol-gocpg-v-codegraph" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>GoCPG отвечает за построение и хранение CPG проекта. Языковой адаптер
 (<code>frontend</code>) создаёт базовые узлы и связи, затем упорядоченные проходы анализа
 (<code>passes</code>) добавляют семантические слои.
 Результат сохраняется в DuckDB; CodeGraph получает типизированные результаты
 через сервисные контракты. Прикладной слой не строит второй «канонический» граф
 поверх первого.</p>
-<p>Состав конвейера определяется текущим кодом и профилем. Поэтому документация не
-фиксирует маркетинговое число проходов: стандартный набор может расширяться
-доменной разметкой, VCS-enrichment и профильными анализаторами.</p>
+<p>Профиль определяет состав конвейера. К стандартным проходам можно добавить
+доменную разметку, сведения об изменениях из системы контроля версий
+(VCS-enrichment) и профильные анализаторы.</p>
 <h2  id="1-ot-ishodnikov-do-bazovogo-grafa"><span id="1_ot_ishodnikov_do_bazovogo_grafa"></span>1. От исходников до базового графа<a class="heading-anchor" href="#1-ot-ishodnikov-do-bazovogo-grafa" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <h3  id="vybor-yazykovogo-adaptera"><span id="vybor_yazykovogo_adaptera"></span>Выбор языкового адаптера<a class="heading-anchor" href="#vybor-yazykovogo-adaptera" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>GoCPG регистрирует отдельные языковые адаптеры для C, C++, Go, Python, JavaScript,
@@ -204,9 +204,8 @@ TypeScript, Java, Kotlin, C#, PHP и 1C. Большинство использ�
 <li>импорты, аннотации, комментарии и координаты в исходном коде;</li>
 <li>связи AST, аргументов, получателей вызова и исходных файлов.</li>
 </ul>
-<p>Успешный разбор ещё не означает полный анализ. Например, языковой адаптер видит
-синтаксическую форму динамического вызова, но его целевой метод может остаться
-неразрешённым до восстановления типов и разрешения импортов.</p>
+<p>Языковой адаптер извлекает синтаксическую форму динамического вызова.
+Восстановление типов и разрешение импортов затем уточняют его целевой метод.</p>
 <h3 id="materializatsiya">Материализация<a class="heading-anchor" href="#materializatsiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Полная сборка проходит так:</p>
 <ol>
@@ -221,8 +220,8 @@ TypeScript, Java, Kotlin, C#, PHP и 1C. Большинство использ�
 <li>Семантические проходы читают уже построенные слои, создают новые узлы/рёбра и
    сохраняют изменения.</li>
 </ol>
-<p>Неполный разбор, пропущенный файл или недоступный адаптер ограничивает основу,
-а не «чистый» результат.</p>
+<p>Ошибки разбора и пропущенные файлы входят в сведения о покрытии проекта.
+По ним команда определяет, какие части исходников нужно обработать повторно.</p>
 <h2  id="2-semanticheskiy-konveyer"><span id="2_semanticheskiy_konveyer"></span>2. Семантический конвейер<a class="heading-anchor" href="#2-semanticheskiy-konveyer" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Порядок важен: call graph нельзя надёжно строить до imports и type recovery, а
 PDG — до control/data-flow.</p>
@@ -293,8 +292,8 @@ PDG — до control/data-flow.</p>
 <h2  id="3-vosstanovlenie-tipov-v-python-i-javascript"><span id="3_vosstanovlenie_tipov_v_python_i_javascript"></span>3. Восстановление типов в Python и JavaScript<a class="heading-anchor" href="#3-vosstanovlenie-tipov-v-python-i-javascript" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Для компилируемого проекта тип часто доступен из объявления или toolchain. В
 Python и JavaScript один и тот же идентификатор может получить тип только во
-время выполнения. GoCPG не притворяется, что эта неопределённость исчезает:
-он собирает статические свидетельства, применяет их итеративно и сохраняет
+время выполнения. GoCPG собирает статические свидетельства, применяет их
+итеративно и сохраняет
 происхождение и уверенность там, где это предусмотрено схемой.</p>
 <h3  id="istochniki-tipovyh-faktov"><span id="istochniki_tipovyh_faktov"></span>Источники типовых фактов<a class="heading-anchor" href="#istochniki-tipovyh-faktov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Первая, внутрипроцедурная стадия использует:</p>
@@ -309,10 +308,10 @@ Python и JavaScript один и тот же идентификатор мож�
   Knowledge Base.</li>
 </ul>
 <p>Для Python и JavaScript есть отдельные наборы встроенных функций и типовых
-заглушек. Это не полное окружение выполнения: пользовательская метапрограммная
-логика, monkey
-patching, <code>eval</code>, динамические импорты и произвольное изменение object shape
-могут остаться неразрешёнными.</p>
+заглушек. Они предоставляют возвращаемые типы известных функций и методов.
+Для метапрограммирования, monkey patching, <code>eval</code>, динамических импортов и
+изменения структуры объектов проход сохраняет доступные статические факты;
+неразрешённые типы остаются в результате анализа.</p>
 <h3  id="iteratsii-i-shodimost"><span id="iteratsii_i_shodimost"></span>Итерации и сходимость<a class="heading-anchor" href="#iteratsii-i-shodimost" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>На последующих итерациях GoCPG распространяет:</p>
 <ul>
@@ -378,8 +377,9 @@ patching, <code>eval</code>, динамические импорты и про�
 </ul>
 <p>Architecture v1 содержит три общих шаблона и одиннадцать языковых наборов: 1C, C,
 C++, C#, Go, Java, JavaScript, Kotlin, PHP, Python и TypeScript. Для каждого языка
-проверяются отдельный манифест возможностей и квалификация примеров. Наличие набора
-в реестре не доказывает полноту фактов выбранного проекта или готовность обязательной проверки.</p>
+проверяются отдельный манифест возможностей и квалификация примеров.
+При запуске анализатор сопоставляет требования выбранных правил с фактами
+конкретного проекта и формирует результат проверки покрытия.</p>
 <h3  id="polnota-baseline-i-waiver"><span id="polnota_baseline_i_waiver"></span>Полнота, baseline и waiver<a class="heading-anchor" href="#polnota-baseline-i-waiver" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Capability registry объявляет, какие семейства фактов даёт каждый language
 adapter. Недостающая обязательная capability не усредняется с успешными:
@@ -474,15 +474,15 @@ plugins. Frontend и набор overlays зависят от release, поэт�
 указывает, что он не создаёт песочницу; процесс и его сетевой доступ нужно изолировать
 отдельно. Одна аутентификация не ограничивает последствия выполнения запросов. Проверяйте
 эту границу по условиям развёртывания, а не как показатель точности анализа.</p>
-<h2  id="7-pochemu-zdes-net-staryh-tsifr-proizvoditelnosti"><span id="7_pochemu_zdes_net_staryh_tsifr_proizvoditelnosti"></span>7. Почему здесь нет старых цифр производительности<a class="heading-anchor" href="#7-pochemu-zdes-net-staryh-tsifr-proizvoditelnosti" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Историческая версия этой статьи содержала конкретные времена, числа
-узлов/рёбер и выводы о Python call graph. Эти измерения относились к старым
-версиям GoCPG и Joern, двум конкретным checkout и известной проблеме
-нормализации путей Python. Без исходного манифеста, журналов, digest корпуса и
-повторного запуска такие значения нельзя выдавать за состояние текущего
-продукта.</p>
-<p>Техническая структура исходной статьи восстановлена, а численные выводы
-намеренно не перенесены. Это не отказ от сравнения, а граница проверяемости.</p>
+<h2  id="7-kak-vybrat-kriterii-pilota"><span id="7_kak_vybrat_kriterii_pilota"></span>7. Как выбрать критерии пилота<a class="heading-anchor" href="#7-kak-vybrat-kriterii-pilota" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Начните с задачи команды. Для исследования отдельной уязвимости сравните
+удобство запросов и просмотра путей данных. Для регулярной проверки проекта
+сравните импорт, сохранение результатов, повторные запуски и включение
+архитектурных правил в процесс выпуска.</p>
+<p>Выберите несколько ожидаемых фактов: цель вызова, поток данных от входа к
+опасной операции и запрещённую зависимость между компонентами. Эти факты
+позволят проверить результат анализа на одном и том же наборе исходников.
+Измерения времени и ресурсов проводите по протоколу ниже.</p>
 <h2  id="8-vosproizvodimyy-benchmark"><span id="8_vosproizvodimyy_benchmark"></span>8. Воспроизводимый benchmark<a class="heading-anchor" href="#8-vosproizvodimyy-benchmark" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Для численного вывода нужен неизменяемый манифест измерения
 (<code>immutable benchmark manifest</code>, далее benchmark manifest):</p>
@@ -546,7 +546,7 @@ plugins. Frontend и набор overlays зависят от release, поэт�
     <aside class="doc-toc" id="doc-toc-panel" aria-label="На этой странице">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#korotko-gde-prohodit-granitsa-gocpg" class="level-2" aria-current="location">Коротко: где проходит граница GoCPG</a></li>
+        <li><a href="#rol-gocpg-v-codegraph" class="level-2" aria-current="location">Роль GoCPG в CodeGraph</a></li>
 <li><a href="#1-ot-ishodnikov-do-bazovogo-grafa" class="level-2">1. От исходников до базового графа</a></li>
 <li data-doc-toc-level="3" data-doc-parent="1-ot-ishodnikov-do-bazovogo-grafa" hidden><a href="#vybor-yazykovogo-adaptera" class="level-3">Выбор языкового адаптера</a></li>
 <li data-doc-toc-level="3" data-doc-parent="1-ot-ishodnikov-do-bazovogo-grafa" hidden><a href="#materializatsiya" class="level-3">Материализация</a></li>
@@ -561,7 +561,7 @@ plugins. Frontend и набор overlays зависят от release, поэт�
 <li data-doc-toc-level="3" data-doc-parent="5-strukturnyy-analiz-architecture-v1" hidden><a href="#polnota-baseline-i-waiver" class="level-3">Полнота, baseline и waiver</a></li>
 <li data-doc-toc-level="3" data-doc-parent="5-strukturnyy-analiz-architecture-v1" hidden><a href="#rezultaty-i-release-gate" class="level-3">Результаты и release gate</a></li>
 <li><a href="#6-karta-resheniya-gocpg-i-joern" class="level-2">6. Карта решения: GoCPG и Joern</a></li>
-<li><a href="#7-pochemu-zdes-net-staryh-tsifr-proizvoditelnosti" class="level-2">7. Почему здесь нет старых цифр производительности</a></li>
+<li><a href="#7-kak-vybrat-kriterii-pilota" class="level-2">7. Как выбрать критерии пилота</a></li>
 <li><a href="#8-vosproizvodimyy-benchmark" class="level-2">8. Воспроизводимый benchmark</a></li>
 <li><a href="#istochniki-istiny-gocpg" class="level-2">Источники истины GoCPG</a></li>
       </ul>
