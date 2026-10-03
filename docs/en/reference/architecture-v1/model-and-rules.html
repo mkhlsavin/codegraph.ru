@@ -350,8 +350,8 @@ storage. A permitted import from UI to an application layer would require a
 different component model and contract. A zero-match selector must follow the
 model&rsquo;s empty-selection policy. Configure that policy for the project&rsquo;s expected component population.</p>
 <h2  id="capability-registry"><span id="capability_registry"></span>Capability Registry<a class="heading-anchor" href="#capability-registry" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The <code>gocpg/configs/architecture/conformance/v1/registry.yaml</code> in the CodeGraph source checkout
-records fact families by language. Current v1 qualification covers C, C++, C#,
+<p><code>FoundationCapabilityManifests</code> in <code>gocpg/pkg/architecture/graph.go</code> in the CodeGraph source checkout
+defines fact families by language. Current v1 qualification covers C, C++, C#,
 Go, Java, JavaScript, Kotlin, PHP, Python, TypeScript and 1C independently. It includes
 families such as <code>includes</code>, <code>imports</code>, <code>calls</code>, <code>inheritance</code>, <code>implements</code>,
 <code>annotations</code>, <code>type_references</code>, <code>source_sets</code> and dynamic or type-only imports
@@ -384,6 +384,15 @@ of fixture records directs qualification to source files, whose hashes and actua
 </code></pre></div>
 
 <p>The valid source imports <code>fixture_public.api</code>; the invalid source imports <code>fixture_internal.private_api</code>. Catalog <code>source</code> paths are relative to the directory containing <code>fixtures.yaml</code>. Update hashes and expected facts when changing the source files.</p>
+<p>Qualification normalizes CRLF line endings to LF before calculating SHA-256. From the <code>gocpg</code> module root, calculate the hash in the same way:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$source</span> <span class="p">=</span> <span class="no">[IO.File]</span><span class="p">::</span><span class="n">ReadAllText</span><span class="p">(</span><span class="s2">&quot;configs/architecture/presets/v1/language/python/fixtures/valid.py&quot;</span><span class="p">)</span>
+<span class="nv">$bytes</span> <span class="p">=</span> <span class="no">[Text.Encoding]</span><span class="p">::</span><span class="n">UTF8</span><span class="p">.</span><span class="n">GetBytes</span><span class="p">(</span><span class="nv">$source</span><span class="p">.</span><span class="n">Replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">`r`n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">`n</span><span class="s2">&quot;</span><span class="p">))</span>
+<span class="nv">$sha</span> <span class="p">=</span> <span class="no">[Security.Cryptography.SHA256]</span><span class="p">::</span><span class="n">Create</span><span class="p">()</span>
+<span class="p">(</span><span class="nv">$sha</span><span class="p">.</span><span class="n">ComputeHash</span><span class="p">(</span><span class="nv">$bytes</span><span class="p">)</span> <span class="p">|</span> <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span> <span class="nv">$_</span><span class="p">.</span><span class="n">ToString</span><span class="p">(</span><span class="s2">&quot;x2&quot;</span><span class="p">)</span> <span class="p">})</span> <span class="n">-join</span> <span class="s2">&quot;&quot;</span>
+<span class="nv">$sha</span><span class="p">.</span><span class="n">Dispose</span><span class="p">()</span>
+</code></pre></div>
+
+<p>For the supplied <code>valid.py</code>, expect <code>2b84c4226bd23ab9625636d21826036d2fc2a3e3f0df63b010c4794293f38ec1</code>. After changing the file, place its new hash in each corresponding <code>source_sha256</code> entry in <code>fixtures.yaml</code>.</p>
 <p>When preparing a preset change:</p>
 <ol>
 <li>Keep its registered <code>id</code>, set an exact version and declare one language. <code>LoadV1PresetRegistry</code> defines the v1 package set; extending that set includes changing the registry and its checks.</li>
