@@ -168,6 +168,9 @@
       <article class="doc-content">
         <p>Это руководство объясняет, как результат архитектурного анализа становится решением о выпуске. Оно предназначено для владельцев репозиториев и операторов CI, у которых уже есть проверенная модель и CPG нужной ревизии. Начните с <a href="model-and-rules.html">модели и правил</a>, чтобы определить компоненты и контракты. Для изучения выходных данных используйте <a href="interfaces-and-results.html">интерфейсы и результаты</a>.</p>
 <p><code>gocpg architecture validate</code> проверяет только схему правила и применимость языка. Рабочему процессу CI нужны политика проекта, ключ проекта, документ управления выпуском и выходной файл. Также требуется подтверждение, что граф, факты, модель и правила относятся к проверяемому коммиту.</p>
+<h2  id="vyberite-profil-dlya-etapa-vnedreniya"><span id="vyberite_profil_dlya_etapa_vnedreniya"></span>Выберите профиль для этапа внедрения<a class="heading-anchor" href="#vyberite-profil-dlya-etapa-vnedreniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Начните с <code>discovery</code>, когда ещё определяете компоненты. Используйте <code>advisory</code>, чтобы рассмотреть находки и настроить политику вместе с командой. После фиксации базового долга <code>enforce_new</code> проверяет новые нарушения. Выберите <code>enforce_all</code>, когда выпуск должен учитывать и существующий долг, или <code>strict</code>, когда требуется полная матрица проверок, включая пустые выборки.</p>
+<p>Профиль задаёт отношение к находкам, а полнота входных данных определяет, может ли система принять блокирующее решение.</p>
 <h2  id="profili-usloviy-vypuska"><span id="profili_usloviy_vypuska"></span>Профили условий выпуска<a class="heading-anchor" href="#profili-usloviy-vypuska" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Проверка оценивает полноту доказательств до подсчёта находок. Требуются актуальный CPG, полный запуск или эквивалентный инкрементальный запуск, результат каждого активного правила, все обязательные возможности, известные знаменатели зависимостей, покрытие классификации и разрешения зависимостей, а также доверенные решения управления.</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Профили условий выпуска"><table data-columns="3"><caption class="sr-only">Профили условий выпуска</caption>
@@ -217,6 +220,33 @@
 </code></pre></div>
 
 <p>Четыре архитектурных флага передаются вместе. Минимальный документ управления выпуском для рассмотрения находок может выбрать <code>advisory</code>, но всё равно должен соответствовать текущей схеме и требованиям к доказательствам репозитория. Проверьте идентичность запуска, полноту, результаты правил и статус условий выпуска в выходном файле. Успешного кода завершения CLI недостаточно для подтверждения <code>PASS</code>. <a href="../../guides/ARCHITECTURE_CONTROL_ADOPTION.html">Руководство по внедрению</a> объясняет общую последовательность перехода.</p>
+<h2  id="deystvie-po-rezultatu"><span id="deystvie_po_rezultatu"></span>Действие по результату<a class="heading-anchor" href="#deystvie-po-rezultatu" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Действие по результату"><table data-columns="2"><caption class="sr-only">Действие по результату</caption>
+<thead>
+<tr>
+<th scope="col">Результат</th>
+<th scope="col">Следующее действие</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PASS</code></td>
+<td>Используйте архитектурный результат в пакете приёмки выпуска.</td>
+</tr>
+<tr>
+<td><code>FAIL_VIOLATIONS</code></td>
+<td>Рассмотрите блокирующие находки: исправьте зависимости или получите решение об исключении для текущей области. Затем повторите анализ.</td>
+</tr>
+<tr>
+<td><code>BLOCKED_INCOMPLETE</code></td>
+<td>Проверьте ревизию CPG, полноту результатов правил и доверие к документу управления. Обновите недостающие входы и повторите запуск.</td>
+</tr>
+<tr>
+<td><code>NOT_APPLICABLE</code></td>
+<td>Рассмотрите результаты discovery/advisory и выберите блокирующий профиль, когда политика готова к применению.</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="bazovyy-nabor-izvestnyh-nahodok"><span id="bazovyy_nabor_izvestnyh_nahodok"></span>Базовый набор известных находок<a class="heading-anchor" href="#bazovyy-nabor-izvestnyh-nahodok" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Базовый набор фиксирует уже рассмотренный долг для точного правила, версии отпечатка, отпечатка находки и семантического хеша правила. В <code>enforce_new</code> точная известная находка исключается из числа новых нарушений. <code>enforce_all</code> и <code>strict</code> продолжают учитывать известный долг без исключений. Базовый набор подтверждает рассмотрение находки, но не делает зависимость допустимой и не изменяет граф.</p>
 <p>Например, UI импортирует хранилище. Если отпечаток рассмотрен как существующий долг, следующий идентичный запуск может считать находку известной. При смене <code>direct</code> на <code>transitive</code> меняется семантический хеш: прежнее решение переходит в <code>needs_review</code>. Если импорт исчезает и затем возвращается, находка считается повторно появившейся, а не автоматически известной.</p>
@@ -269,7 +299,9 @@
     <aside class="doc-toc" id="doc-toc-panel" aria-label="На этой странице">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#profili-usloviy-vypuska" class="level-2" aria-current="location">Профили условий выпуска</a></li>
+        <li><a href="#vyberite-profil-dlya-etapa-vnedreniya" class="level-2" aria-current="location">Выберите профиль для этапа внедрения</a></li>
+<li><a href="#profili-usloviy-vypuska" class="level-2">Профили условий выпуска</a></li>
+<li><a href="#deystvie-po-rezultatu" class="level-2">Действие по результату</a></li>
 <li><a href="#bazovyy-nabor-izvestnyh-nahodok" class="level-2">Базовый набор известных находок</a></li>
 <li><a href="#isklyucheniya-i-doverie" class="level-2">Исключения и доверие</a></li>
 <li><a href="#inkrementalnye-proverki" class="level-2">Инкрементальные проверки</a></li>
