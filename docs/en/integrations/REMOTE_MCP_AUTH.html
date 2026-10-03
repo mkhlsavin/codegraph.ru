@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Install a CodeGraph client plugin, connect MCP, and authorize Codex, VS Code, Cursor, GitHub Copilot, or OpenCode for your instance.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="55f40aff81a7">
 
   <meta property="og:title" content="Remote MCP authentication — Documentation">
   <meta property="og:description" content="Install a CodeGraph client plugin, connect MCP, and authorize Codex, VS Code, Cursor, GitHub Copilot, or OpenCode for your instance.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/integrations/REMOTE_MCP_AUTH.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=55f40aff81a7">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Remote MCP authentication — Documentation","description":"Install a CodeGraph client plugin, connect MCP, and authorize Codex, VS Code, Cursor, GitHub Copilot, or OpenCode for your instance.","url":"https://codegraph.ru/docs/en/integrations/REMOTE_MCP_AUTH.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -163,7 +163,7 @@
         <h1>Remote MCP authentication</h1>
         <p class="doc-lead">Install a CodeGraph client plugin, connect MCP, and authorize Codex, VS Code, Cursor, GitHub Copilot, or OpenCode for your instance.</p>
 
-        <div class="doc-meta"><span>Integrations</span><time datetime="2026-09-28">Updated: 2026-09-28</time></div>
+        <div class="doc-meta"><span>Integrations</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
@@ -173,7 +173,7 @@ targets Agent Plugins 1.0.0 and contains one fixed Streamable HTTP URL. It does 
 API key, OAuth client secret, credential reference, stdio command, SSE endpoint, or fallback.</p>
 <p>The package format deliberately has no OAuth fields. The client receives a <code>401</code> Bearer challenge,
 discovers CodeGraph authorization metadata, registers a public client, opens the browser, uses S256
-PKCE, and stores the resulting credentials in its own secure store. This is different from the
+PKCE, and manages the resulting credentials in its own credential store. This is different from the
 native Codex package, which is a separate artifact using trusted stdio.</p>
 <h2  id="client-for-an-internal-server"><span id="client_for_an_internal_server"></span>Client for an internal server<a class="heading-anchor" href="#client-for-an-internal-server" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>If CodeGraph runs in your organization&rsquo;s network, first <a href="../getting-started/QUICK_START.html">sign in and get project access</a>.
@@ -183,6 +183,7 @@ network, use the HTTPS URL directly; no local SSH tunnel is needed. The package 
 separately through an approved channel. The commands below show <code>scp</code> as an optional way to transfer
 the package; it does not create an MCP tunnel or carry MCP traffic. Run the commands on your
 <strong>workstation</strong>. Install Codex through an approved channel and check <code>codex --version</code>.</p>
+<p>The archive commands below install the native Codex plugin using stdio. For a direct HTTPS connection, follow <a href="#https-access-through-a-reverse-proxy">HTTPS access through a reverse proxy</a>; that connection does not require the native plugin.</p>
 <p><strong>Windows PowerShell</strong> (<code>ssh</code> and <code>scp</code> are needed only for the optional package transfer):</p>
 <p>If you obtained the archive through another approved channel, skip the optional <code>scp</code> command.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">Set-Location</span> <span class="s2">&quot;$env:USERPROFILE\Downloads&quot;</span>
@@ -205,7 +206,11 @@ the package; it does not create an MCP tunnel or carry MCP traffic. Run the comm
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/Downloads&quot;</span>
 scp<span class="w"> </span>-r<span class="w"> </span>-o<span class="w"> </span><span class="s1">&#39;User=&lt;SSH_LOGIN&gt;&#39;</span><span class="w"> </span><span class="s1">&#39;&lt;SSH_HOST&gt;:&lt;DISTRIBUTION_PATH&gt;&#39;</span><span class="w"> </span>.
 <span class="nb">cd</span><span class="w"> </span><span class="s1">&#39;&lt;DISTRIBUTION_DIRECTORY&gt;&#39;</span>
-<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Darwin<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span><span class="w"> </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>-c<span class="w"> </span>SHA256SUMS<span class="p">;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>sha256sum<span class="w"> </span>-c<span class="w"> </span>SHA256SUMS<span class="p">;</span><span class="w"> </span><span class="k">fi</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>uname<span class="w"> </span>-s<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Darwin<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span>shasum<span class="w"> </span>-a<span class="w"> </span><span class="m">256</span><span class="w"> </span>-c<span class="w"> </span>SHA256SUMS<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">else</span>
+<span class="w">  </span>sha256sum<span class="w"> </span>-c<span class="w"> </span>SHA256SUMS<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span>codex-plugin
 unzip<span class="w"> </span><span class="s1">&#39;&lt;CODEX_PLUGIN_ARCHIVE.zip&gt;&#39;</span><span class="w"> </span>-d<span class="w"> </span>codex-plugin
 <span class="nb">export</span><span class="w"> </span><span class="nv">CODEX_HOME</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.codex-codegraph/my-project&quot;</span>
@@ -217,7 +222,7 @@ codex<span class="w"> </span>mcp<span class="w"> </span>get<span class="w"> </sp
 </code></pre></div>
 
 <p>Replace angle-bracket parameters with your distribution values; the marketplace name is in
-the package manifest. Use one <code>CODEX_HOME</code> for installation and working sessions. <code>codex login</code>
+the package manifest. Stop if SHA-256 verification fails and obtain the archive again. Extract it only after successful verification. Use one <code>CODEX_HOME</code> for installation and working sessions. <code>codex login</code>
 authorizes Codex itself; CodeGraph requires a separate sign-in.</p>
 <h3  id="https-access-through-a-reverse-proxy"><span id="https_access_through_a_reverse_proxy"></span>HTTPS access through a reverse proxy<a class="heading-anchor" href="#https-access-through-a-reverse-proxy" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>The administrator configures an internal DNS name and TLS certificate for the reverse proxy. The
@@ -368,8 +373,7 @@ inspect it with <code>/mcp list</code>, then run:</p>
 human-login package; automation must use the separately administered CodeGraph API-key or service-
 account contract and an operating-system keychain or secret manager.</p>
 <h2  id="opencode-adapter-scope"><span id="opencode_adapter_scope"></span>OpenCode adapter scope<a class="heading-anchor" href="#opencode-adapter-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>OpenCode is not listed in the Agent Plugins compatible-client registry, so do not claim that it
-loads this portable package. Configure the same remote MCP URL in <code>opencode.json</code> instead:</p>
+<p>OpenCode is not listed in the <a href="https://agent-plugins.org/compatible-clients">Agent Plugins compatible-client registry</a>. Configure the same remote MCP URL in <code>opencode.json</code> instead:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;$schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://opencode.ai/config.json&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;mcp&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -381,7 +385,7 @@ loads this portable package. Configure the same remote MCP URL in <code>opencode
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Then run <code>opencode mcp auth codegraph</code> (or select CodeGraph under <code>/connect</code>), check
+<p>Run <code>opencode mcp auth codegraph</code> in your terminal, check
 <code>opencode mcp list</code>, and remove credentials with <code>opencode mcp logout codegraph</code>. OpenCode owns its
 OAuth credential store; the repository and portable package must remain secret-free.</p>
 <h2  id="machine-access"><span id="machine_access"></span>Machine access<a class="heading-anchor" href="#machine-access" aria-label="Copy link to section" title="Copy link to section"></a></h2>
@@ -394,6 +398,7 @@ request needs <code>X-API-Key</code>, <code>X-Project-ID</code>, and
 in user-level MCP configuration. Cursor and Copilot CLI should use their private credential store,
 keychain, or secret-manager integration. Agent Plugins <code>headers</code> are visible package data and must
 not contain these values. CodeGraph does not repair an OAuth failure by trying a machine key.</p>
+<p>Verify the connection by checking that the client shows an active server, a read-only call returns a response, and the selected project is correct. Unavailable server memory or a stale index is a separate service issue; a successful connection does not prove analysis readiness.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><code>401</code> with <code>resource_metadata</code>: no valid credential; use the client&rsquo;s native login action.</li>
@@ -410,7 +415,7 @@ not contain these values. CodeGraph does not repair an OAuth failure by trying a
 <a href="https://agent-plugins.org/compatible-clients">compatible clients</a>,
 <a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli">Codex MCP</a>,
 <a href="https://code.visualstudio.com/api/extension-guides/ai/mcp">VS Code MCP authorization</a>,
-<a href="https://docs.cursor.com/en/cli/reference/parameters">Cursor MCP CLI</a>,
+<a href="https://prod.cursor.com/docs/cli/mcp">Cursor MCP CLI</a>,
 <a href="https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference">GitHub Copilot CLI commands</a>,
 and <a href="https://opencode.ai/docs/mcp-servers/">OpenCode MCP</a>.</p>
       </article>
@@ -502,7 +507,7 @@ and <a href="https://opencode.ai/docs/mcp-servers/">OpenCode MCP</a>.</p>
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="55f40aff81a7">
 
   <meta property="og:title" content="ACP integration — Documentation">
   <meta property="og:description" content="Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/api/ACP_INTEGRATION.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=55f40aff81a7">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"ACP integration — Documentation","description":"Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.","url":"https://codegraph.ru/docs/en/api/ACP_INTEGRATION.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -215,6 +215,12 @@ configured mTLS requirements. Transport authentication finishes before JSON-RPC 
 parsed. Both ACP initialize responses advertise an empty <code>authMethods</code> list; the legacy v1
 <code>authenticate</code> method therefore operates only inside an already verified transport boundary.</p>
 <h2  id="acp-v1-methods"><span id="acp_v1_methods"></span>ACP v1 methods<a class="heading-anchor" href="#acp-v1-methods" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>For an already authenticated transport connection, the minimal initialization request is:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;jsonrpc&quot;</span><span class="p">:</span><span class="s2">&quot;2.0&quot;</span><span class="p">,</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;method&quot;</span><span class="p">:</span><span class="s2">&quot;initialize&quot;</span><span class="p">,</span><span class="nt">&quot;params&quot;</span><span class="p">:{</span><span class="nt">&quot;protocolVersion&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">}}</span>
+</code></pre></div>
+
+<p>Match the response by <code>id: 1</code> and check <code>result.protocolVersion: 1</code>. An error response does not
+initialize the connection. This request alone does not create a session or execute a prompt.</p>
 <p>Call <code>initialize</code> with <code>protocolVersion: 1</code> before any other method. The server rejects an
 uninitialized request with <code>-32002</code>.</p>
 <p>The standard v1 surface contains <code>session/new</code>, <code>session/load</code>, <code>session/prompt</code>, and
@@ -259,7 +265,11 @@ shell. Environment and header entries must use name/value objects; names are val
 cannot contain NUL, carriage-return, or newline characters.</p>
 <p>HTTP MCP descriptors accept public HTTPS endpoints only. Credentials in the URL, query strings,
 fragments, loopback addresses, private networks, link-local addresses, and plaintext HTTP are
-rejected. Redirect handling remains subject to the shared outbound URL policy.</p>
+rejected by the default URL policy. An explicitly configured platform administrator allowlist
+can change the policy outcome. The initial URL is validated, but the current HTTP client uses
+<code>follow_redirects=True</code> without an explicit per-redirect URL-policy check in this connection path.
+Do not treat initial validation as proof that every redirect target is checked; enforce the
+deployment&rsquo;s outbound network restrictions.</p>
 <p>Every declared MCP server must connect during session creation. If any connection fails, the
 server closes connections already opened for that request and removes the incomplete ACP session.
 Before invoking an MCP tool, CodeGraph sends <code>session/request_permission</code>; a denial or timeout
@@ -268,11 +278,13 @@ exit so session close and transport shutdown can release subprocesses and networ
 <h2  id="workspace-and-terminal-containment"><span id="workspace_and_terminal_containment"></span>Workspace and terminal containment<a class="heading-anchor" href="#workspace-and-terminal-containment" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>File calls require an absolute <code>workspaceRoot</code> and target <code>path</code>. A path that resolves outside
 the root fails with <code>outside workspace root</code>. Writes also reject sensitive path fragments such as
-<code>.git</code>, <code>.env</code>, <code>.ssh</code>, <code>.aws</code>, and <code>node_modules</code>.</p>
+<code>.git</code>, <code>.env</code>, <code>.ssh</code>, <code>.aws</code>, <code>.credentials</code>, <code>__pycache__</code>, and <code>node_modules</code>.
+The check matches these fragments anywhere in the normalized, lowercase path, not only
+as complete directory names.</p>
 <p>Terminal calls require the same absolute <code>workspaceRoot</code>; <code>cwd</code> must remain below it. Commands
 run as argv with <code>shell=False</code>. The checked-in allowlist contains bounded build and inspection
 commands. Interpreters and shells such as <code>python</code>, <code>powershell</code>, <code>pwsh</code>, <code>cmd</code>, <code>bash</code>, <code>sh</code>,
-and <code>node</code> are blocked. Arguments must be a native list of strings without NUL or newline control
+<code>py</code>, <code>python3</code>, and <code>node</code> are blocked. Arguments must be a native list of strings without NUL or newline control
 characters.</p>
 <p>These checks do not turn ACP into a general remote shell. Keep network routes behind the normal
 authentication and project boundary.</p>
@@ -402,7 +414,7 @@ retained.</p>
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

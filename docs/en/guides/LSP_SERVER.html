@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Configure CPG-backed diagnostics, hover, CodeLens and quick fixes in an LSP client. The page explains the purpose, usage steps, and result checks.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="description" content="Connect an LSP client to CodeGraph through GoCPG gRPC, verify diagnostics and method information, and diagnose missing results.">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="55f40aff81a7">
 
   <meta property="og:title" content="CodeGraph LSP server — Documentation">
-  <meta property="og:description" content="Configure CPG-backed diagnostics, hover, CodeLens and quick fixes in an LSP client. The page explains the purpose, usage steps, and result checks.">
+  <meta property="og:description" content="Connect an LSP client to CodeGraph through GoCPG gRPC, verify diagnostics and method information, and diagnose missing results.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/LSP_SERVER.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CodeGraph LSP server — Documentation">
-  <meta name="twitter:description" content="Configure CPG-backed diagnostics, hover, CodeLens and quick fixes in an LSP client. The page explains the purpose, usage steps, and result checks.">
+  <meta name="twitter:description" content="Connect an LSP client to CodeGraph through GoCPG gRPC, verify diagnostics and method information, and diagnose missing results.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -26,8 +26,8 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/LSP_SERVER.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"CodeGraph LSP server — Documentation","description":"Configure CPG-backed diagnostics, hover, CodeLens and quick fixes in an LSP client. The page explains the purpose, usage steps, and result checks.","url":"https://codegraph.ru/docs/en/guides/LSP_SERVER.html","inLanguage":"en"}</script>
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=55f40aff81a7">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"CodeGraph LSP server — Documentation","description":"Connect an LSP client to CodeGraph through GoCPG gRPC, verify diagnostics and method information, and diagnose missing results.","url":"https://codegraph.ru/docs/en/guides/LSP_SERVER.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -198,32 +198,39 @@
         <span>CodeGraph LSP server</span>
         </nav>
         <h1>CodeGraph LSP server</h1>
-        <p class="doc-lead">Configure CPG-backed diagnostics, hover, CodeLens and quick fixes in an LSP client. The page explains the purpose, usage steps, and result checks.</p>
+        <p class="doc-lead">Connect an LSP client to CodeGraph through GoCPG gRPC, verify diagnostics and method information, and diagnose missing results.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>The CodeGraph language server exposes graph-backed code intelligence to an LSP
-client. It reads an existing GoCPG-managed DuckDB CPG; it does not build or
-refresh that graph.</p>
+client. It queries an existing GoCPG-managed DuckDB CPG through GoCPG gRPC;
+it does not build or refresh that graph.</p>
 <h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Before starting the server:</p>
 <ol>
-<li>Install CodeGraph so that the <code>codegraph-lsp</code> console entry point and its LSP
-   dependencies are available.</li>
+<li>Install CodeGraph and its dependencies using the local source setup in the
+   <a href="CLI_GUIDE.html">CLI guide</a>. Activate that Python environment so that
+   <code>codegraph-lsp</code> is available to the editor process.</li>
 <li>Build or update the target project CPG with the supported project workflow.</li>
 <li>Confirm that no writer is replacing or migrating the database during the
    editor session.</li>
 <li>Keep the database path inside the approved customer workspace.</li>
+<li>Make the GoCPG gRPC service available to the LSP process. A database file alone
+   is insufficient: the query pool has no direct DuckDB fallback.</li>
 </ol>
 <h2  id="verify-the-entry-point"><span id="verify_the_entry_point"></span>Verify the entry point<a class="heading-anchor" href="#verify-the-entry-point" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">codegraph-lsp</span> <span class="p">-</span><span class="n">-help</span>
 </code></pre></div>
 
 <p>Start the standard input/output transport with an existing graph:</p>
-<div class="highlight"><pre><span></span><code><span class="n">codegraph-lsp</span> <span class="p">-</span><span class="n">-db</span> <span class="p">&lt;</span><span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span><span class="p">&gt;</span>
+<p>The examples use PowerShell. The working directory is not significant when
+the console command is installed. Replace the quoted placeholder below with
+the approved database path, as seen by the GoCPG service. Keep the quotes when
+the path contains spaces. Use the same graph as the repository opened in the editor.</p>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph-lsp</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">&quot;&lt;cpg.duckdb&gt;&quot;</span>
 </code></pre></div>
 
 <p>The source checkout also supports <code>python -m codegraph_lsp</code> as a compatibility
@@ -265,7 +272,7 @@ command.</p>
 </tbody>
 </table></div>
 <p>TCP mode is intended for a controlled local or protected network boundary:</p>
-<div class="highlight"><pre><span></span><code><span class="n">codegraph-lsp</span> <span class="p">-</span><span class="n">-db</span> <span class="p">&lt;</span><span class="n">cpg</span><span class="p">.</span><span class="n">duckdb</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-transport</span> <span class="n">tcp</span> <span class="p">-</span><span class="n">-host</span> <span class="n">127</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">1</span> <span class="p">-</span><span class="n">-port</span> <span class="n">2087</span> <span class="p">-</span><span class="n">-log-level</span> <span class="n">info</span>
+<div class="highlight"><pre><span></span><code><span class="n">codegraph-lsp</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">&quot;&lt;cpg.duckdb&gt;&quot;</span> <span class="p">-</span><span class="n">-transport</span> <span class="n">tcp</span> <span class="p">-</span><span class="n">-host</span> <span class="n">127</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">1</span> <span class="p">-</span><span class="n">-port</span> <span class="n">2087</span> <span class="p">-</span><span class="n">-log-level</span> <span class="n">info</span>
 </code></pre></div>
 
 <p>The server does not add authentication or TLS to TCP transport. Do not bind it
@@ -284,7 +291,15 @@ set to the installed environment:</p>
 </code></pre></div>
 
 <p>The angle-bracket path is a placeholder, not valid JSON configuration for a
-real session. Replace it with the exact customer-approved CPG path.</p>
+real session. Replace it with the exact customer-approved CPG path. Escape
+Windows backslashes in JSON, for example <code>C:\\workspace\\project.duckdb</code>.</p>
+<p>Restart the client&rsquo;s LSP connection after changing this configuration. Open a
+file present in the selected graph and save it. Verify the client&rsquo;s <code>initialize</code>
+response, server logs, published diagnostics, hover on a known method, and
+CodeLens results. Compare returned filenames and method information with the
+current source. A running process or an empty diagnostics list alone does not
+confirm a working graph query. Quick fixes require a finding with stored fix data;
+they are not expected for every file.</p>
 <h2  id="advertised-capabilities"><span id="advertised_capabilities"></span>Advertised capabilities<a class="heading-anchor" href="#advertised-capabilities" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The server handles document open, save and close events. It currently
 advertises:</p>
@@ -310,7 +325,7 @@ a <code>fix</code> value. Review every edit before saving: the language server r
 stored replacement and does not establish semantic correctness for the whole
 program.</p>
 <h2  id="freshness-and-path-matching"><span id="freshness_and_path_matching"></span>Freshness and path matching<a class="heading-anchor" href="#freshness-and-path-matching" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The LSP server opens read connections to the selected CPG and normalizes file
+<p>The LSP server uses read-only GoCPG query adapters and normalizes file
 URIs to workspace-relative forward-slash paths. If an editor shows no result:</p>
 <ol>
 <li>Check the server log for a startup or query error.</li>
@@ -318,15 +333,17 @@ URIs to workspace-relative forward-slash paths. If an editor shows no result:</p
 <li>Refresh the CPG through the supported project workflow.</li>
 <li>Save or reopen the file to request diagnostics again.</li>
 <li>Check that stored filenames can match the editor&rsquo;s workspace-relative path.</li>
+<li>Check that GoCPG gRPC is reachable and can query the selected database.</li>
 </ol>
 <p>Do not solve a stale graph by editing the DuckDB file directly. Stop or
 coordinate writers before database maintenance.</p>
 <h2  id="connection-behavior"><span id="connection_behavior"></span>Connection behavior<a class="heading-anchor" href="#connection-behavior" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The server creates a small query pool and releases a connection after each
-request. An exhausted or locked pool usually indicates a concurrent writer,
-slow query, unavailable graph or an interrupted client. Restarting the LSP
-client may clear an interrupted session, but it will not repair a stale or
-invalid CPG.</p>
+<p>The server limits its query-adapter pool to three connections and releases an
+adapter after each request. <code>Connection pool exhausted</code> means all adapters are
+in use. <code>GoCPG gRPC transport unavailable for LSP</code> means the transport could not
+be acquired. Inspect the actual error before choosing a recovery action.
+Restarting the LSP client can clear an interrupted session, but does not repair
+a stale or invalid CPG or make an unavailable GoCPG service reachable.</p>
 <h2  id="maintained-sources"><span id="maintained_sources"></span>Maintained sources<a class="heading-anchor" href="#maintained-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><code>pyproject.toml</code> registers the <code>codegraph-lsp</code> console entry point.</li>
@@ -427,7 +444,7 @@ differs from the installed revision.</p>
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

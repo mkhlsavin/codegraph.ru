@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="55f40aff81a7">
 
   <meta property="og:title" content="Configure a CodeGraph deployment — Documentation">
   <meta property="og:description" content="Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/getting-started/CONFIGURATION.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=55f40aff81a7">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Configure a CodeGraph deployment — Documentation","description":"Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.","url":"https://codegraph.ru/docs/en/getting-started/CONFIGURATION.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -157,7 +157,7 @@
         <h1>Configure a CodeGraph deployment</h1>
         <p class="doc-lead">Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.</p>
 
-        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-09-29">Updated: 2026-09-29</time></div>
+        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
@@ -220,7 +220,7 @@ as a bootstrap secret and rotate it under the customer&rsquo;s identity procedur
 the UI or REST API. It is empty by default; production cannot store an inline connection
 token without it. Generate a separate random value, for example with
 <code>python3 -c 'import secrets; print(secrets.token_urlsafe(48))'</code>, and store it in the protected
-<code>.env</code>. Pass it to the API and worker by recreating their containers:</p>
+<code>.env</code>. Generate it in a protected terminal without recording its output in logs or evidence. From <code>/opt/codegraph</code>, use Bash and the Compose files selected for this deployment to recreate the API and worker containers:</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--no-deps<span class="w"> </span>--force-recreate<span class="w"> </span>api<span class="w"> </span>temporal-worker
 </code></pre></div>
 
@@ -254,6 +254,113 @@ release: removed or unknown keys may fail validation, and copying a configuratio
 version can silently change behavior only if that version still accepts the key.</p>
 <p>For project-specific configuration, use supported project or dashboard surfaces. Raw storage
 paths are runtime-owned and must not be passed through user- or agent-facing calls.</p>
+<h3  id="project-audit-scope"><span id="project_audit_scope"></span>Project audit scope<a class="heading-anchor" href="#project-audit-scope" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>In versions supporting <code>metadata.audit.scope</code>, configure each project separately.
+You need administrator permissions or the group&rsquo;s <code>editor</code> role with access to the
+project. Do not change server-wide settings to select one repository&rsquo;s directories.</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Project audit scope"><table data-columns="3"><caption class="sr-only">Project audit scope</caption>
+<thead>
+<tr>
+<th scope="col">Field</th>
+<th scope="col">Default</th>
+<th scope="col">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>version</code></td>
+<td><code>1</code></td>
+<td>Format version; other values are rejected</td>
+</tr>
+<tr>
+<td><code>include_paths</code></td>
+<td><code>["."]</code></td>
+<td>Nonempty list of included paths relative to the project root</td>
+</tr>
+<tr>
+<td><code>exclude_paths</code></td>
+<td>Standard exclusions below</td>
+<td>An explicit list replaces the standard exclusions</td>
+</tr>
+<tr>
+<td><code>test_paths</code></td>
+<td><code>[]</code></td>
+<td>Test paths and patterns within the included scope</td>
+</tr>
+</tbody>
+</table></div>
+<p>Standard exclusions are <code>.git</code>, <code>.svn</code>, <code>.hg</code>, <code>node_modules</code>, <code>__pycache__</code>, <code>.venv</code>,
+<code>venv</code>, <code>vendor</code>, <code>third_party</code>, <code>build</code>, <code>dist</code>, <code>target</code>, <code>bin</code>, <code>obj</code>, <code>.idea</code>, and <code>.vscode</code>.
+Version-control directories remain excluded even with an empty <code>exclude_paths</code>.
+Paths are case-sensitive. Patterns support <code>*</code>, <code>?</code>, and <code>**</code>; absolute paths,
+<code>..</code>, and patterns containing <code>!</code>, <code>{}</code>, or <code>[]</code> are rejected. <code>test_paths</code> cannot
+expand the scope: include test directories and do not exclude them.</p>
+<p>This example includes the entire project with standard exclusions and classifies
+<code>tests</code> as a test directory. Replace <code>test_paths</code> with your project&rsquo;s paths. Save
+the code as <code>configure-audit-scope.py</code> on your workstation. Python 3 is required;
+no third-party packages are needed. Run <code>python3 configure-audit-scope.py</code> on
+Linux/macOS or <code>py -3 configure-audit-scope.py</code> on Windows. Obtain the API URL from
+your administrator, for example <code>https://codegraph.customer.example</code>. Swagger is
+available at <code>&lt;API_BASE_URL&gt;/api/docs</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">getpass</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">urlsplit</span>
+
+<span class="n">base</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;API base URL: &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="n">parsed</span> <span class="o">=</span> <span class="n">urlsplit</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+<span class="n">local_http</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span> <span class="o">==</span> <span class="s2">&quot;http&quot;</span> <span class="ow">and</span> <span class="n">parsed</span><span class="o">.</span><span class="n">hostname</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;localhost&quot;</span><span class="p">,</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="s2">&quot;::1&quot;</span><span class="p">}</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">parsed</span><span class="o">.</span><span class="n">hostname</span> <span class="ow">or</span> <span class="n">parsed</span><span class="o">.</span><span class="n">username</span> <span class="ow">or</span> <span class="n">parsed</span><span class="o">.</span><span class="n">password</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;API URL must contain a host and no credentials&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span> <span class="o">!=</span> <span class="s2">&quot;https&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">local_http</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Use HTTPS; HTTP is allowed only for a local loopback API&quot;</span><span class="p">)</span>
+<span class="n">username</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Username: &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getpass</span><span class="p">(</span><span class="s2">&quot;Password: &quot;</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">call</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">token</span><span class="p">:</span>
+        <span class="n">headers</span><span class="p">[</span><span class="s2">&quot;Authorization&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Bearer &quot;</span> <span class="o">+</span> <span class="n">token</span>
+    <span class="n">request</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">Request</span><span class="p">(</span>
+        <span class="n">base</span> <span class="o">+</span> <span class="n">path</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span>
+    <span class="p">)</span>
+    <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+<span class="n">token</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="s2">&quot;/api/v1/auth/token&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">password</span>
+<span class="p">})[</span><span class="s2">&quot;access_token&quot;</span><span class="p">]</span>
+<span class="k">del</span> <span class="n">password</span>
+<span class="n">projects</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="s2">&quot;/api/v1/projects&quot;</span><span class="p">,</span> <span class="n">token</span><span class="p">)[</span><span class="s2">&quot;projects&quot;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Available projects:&quot;</span><span class="p">,</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">))</span>
+<span class="n">name</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Project name: &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="n">project_id</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">projects</span> <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">name</span><span class="p">)</span>
+<span class="n">project</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="s2">&quot;/api/v1/projects/&quot;</span> <span class="o">+</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+<span class="n">metadata</span> <span class="o">=</span> <span class="n">project</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
+<span class="n">scope</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;include_paths&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;.&quot;</span><span class="p">],</span> <span class="s2">&quot;test_paths&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tests&quot;</span><span class="p">]}</span>
+<span class="n">metadata</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;audit&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="s2">&quot;scope&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scope</span>
+<span class="n">call</span><span class="p">(</span><span class="s2">&quot;/api/v1/projects/&quot;</span> <span class="o">+</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span>
+     <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">},</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;PUT&quot;</span><span class="p">)</span>
+<span class="n">saved</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="s2">&quot;/api/v1/projects/&quot;</span> <span class="o">+</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">saved</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;audit&quot;</span><span class="p">][</span><span class="s2">&quot;scope&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">scope</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Saved scope:&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">scope</span><span class="p">))</span>
+</code></pre></div>
+
+<p>The script accepts HTTPS URLs and local loopback HTTP URLs only. It rejects credentials embedded in the URL before requesting a password. Use this example only for an approved project-scope change.</p>
+<p>The example reads existing <code>metadata</code> and preserves other fields, including the
+architecture policy. Coordinate the update with colleagues; do not edit this object
+concurrently. Then start a new audit through the UI or Swagger:
+<code>POST /api/v1/traceability/projects/{project_name}/audit-report-jobs</code>, with
+<code>{"language":"en","force_refresh":true}</code> and your Bearer token. Use the project
+name returned by the API; UUIDs are used only for <code>/api/v1/projects/{id}</code> requests.</p>
+<p>Poll <code>GET /api/v1/traceability/audit-report-jobs/{id}</code> using the job <code>id</code> returned
+by the start request. A scope change requires a new CPG freshness check even without
+a new Git commit. Check <code>source_revision</code> and <code>scope_digest</code> in the downloaded report
+and its manifest. A report with <code>report_quality_status: "incomplete"</code> is diagnostic;
+a populated <code>download_url</code> does not prove completeness. When <code>score_eligible: false</code>,
+the overall score is unavailable. <code>unsupported</code>, <code>not_measured</code>, and <code>timeout</code> do
+not mean zero violations.</p>
 <h3  id="audit-report-directory"><span id="audit_report_directory"></span>Audit report directory<a class="heading-anchor" href="#audit-report-directory" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Markdown reports and their integrity manifests are stored in
 <code>dashboard.audit_report_output_dir</code>. The default is <code>data/dashboard-audit-reports</code>,
@@ -351,6 +458,7 @@ provenance, and customer-specific connectivity evidence.</p>
 <li><a href="#required-production-values" class="level-2">Required production values</a></li>
 <li><a href="#network-and-browser-origins" class="level-2">Network and browser origins</a></li>
 <li><a href="#non-secret-application-settings" class="level-2">Non-secret application settings</a></li>
+<li data-doc-toc-level="3" data-doc-parent="non-secret-application-settings" hidden><a href="#project-audit-scope" class="level-3">Project audit scope</a></li>
 <li data-doc-toc-level="3" data-doc-parent="non-secret-application-settings" hidden><a href="#audit-report-directory" class="level-3">Audit report directory</a></li>
 <li><a href="#optional-openviking-memory" class="level-2">Optional OpenViking memory</a></li>
 <li><a href="#apply-and-verify-a-change" class="level-2">Apply and verify a change</a></li>
@@ -412,7 +520,7 @@ provenance, and customer-specific connectivity evidence.</p>
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

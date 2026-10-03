@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Separate software inventory from vulnerability evidence and policy thresholds. The page explains the purpose, usage steps, and result checks.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="description" content="Generate a dependency inventory, inspect vulnerability reports, and account for missing versions, source availability, and exit codes.">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="55f40aff81a7">
 
   <meta property="og:title" content="Generate an SBOM and audit dependencies — Documentation">
-  <meta property="og:description" content="Separate software inventory from vulnerability evidence and policy thresholds. The page explains the purpose, usage steps, and result checks.">
+  <meta property="og:description" content="Generate a dependency inventory, inspect vulnerability reports, and account for missing versions, source availability, and exit codes.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/SCA_SBOM.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Generate an SBOM and audit dependencies — Documentation">
-  <meta name="twitter:description" content="Separate software inventory from vulnerability evidence and policy thresholds. The page explains the purpose, usage steps, and result checks.">
+  <meta name="twitter:description" content="Generate a dependency inventory, inspect vulnerability reports, and account for missing versions, source availability, and exit codes.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -26,8 +26,8 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/SCA_SBOM.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Generate an SBOM and audit dependencies — Documentation","description":"Separate software inventory from vulnerability evidence and policy thresholds. The page explains the purpose, usage steps, and result checks.","url":"https://codegraph.ru/docs/en/guides/SCA_SBOM.html","inLanguage":"en"}</script>
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=55f40aff81a7">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Generate an SBOM and audit dependencies — Documentation","description":"Generate a dependency inventory, inspect vulnerability reports, and account for missing versions, source availability, and exit codes.","url":"https://codegraph.ru/docs/en/guides/SCA_SBOM.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -198,22 +198,61 @@
         <span>Generate an SBOM and audit dependencies</span>
         </nav>
         <h1>Generate an SBOM and audit dependencies</h1>
-        <p class="doc-lead">Separate software inventory from vulnerability evidence and policy thresholds. The page explains the purpose, usage steps, and result checks.</p>
+        <p class="doc-lead">Generate a dependency inventory, inspect vulnerability reports, and account for missing versions, source availability, and exit codes.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-02">Updated: 2026-10-02</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>An SBOM records detected components and versions. An SCA audit relates that inventory to
-vulnerability sources and policy thresholds. Neither result alone proves that a release is safe;
-a professional security owner must review reachability, fixes, exceptions, and freshness.</p>
+        <p>An SBOM is an inventory of software components. This guide helps developers generate
+that inventory and check dependencies against vulnerability sources. Report completeness
+depends on supported dependency files, exact versions, and source availability.
+A security reviewer must assess whether findings apply to the release configuration.</p>
+<h2  id="prerequisites-and-complete-example"><span id="prerequisites_and_complete_example"></span>Prerequisites and complete example<a class="heading-anchor" href="#prerequisites-and-complete-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Install Python 3.11 or later and CodeGraph dependencies using the prerequisites in
+the <a href="CLI_GUIDE.html">CLI guide</a>. This example uses
+PowerShell and a source checkout for local development. Start in the CodeGraph
+repository root. Use a new <code>sbom-demo</code> directory; the commands create example files.</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env:PYTHONPATH</span> <span class="p">=</span> <span class="p">(</span><span class="nb">Get-Location</span><span class="p">).</span><span class="n">Path</span>
+<span class="nb">New-Item</span> <span class="n">-ItemType</span> <span class="n">Directory</span> <span class="n">-Path</span> <span class="n">sbom-demo</span>
+<span class="nb">Set-Content</span> <span class="n">sbom-demo</span><span class="p">/</span><span class="n">requirements</span><span class="p">.</span><span class="n">txt</span> <span class="s1">&#39;requests==2.31.0&#39;</span> <span class="n">-Encoding</span> <span class="n">utf8</span>
+<span class="nb">Set-Content</span> <span class="n">sbom-demo</span><span class="p">/</span><span class="n">config</span><span class="p">.</span><span class="n">yaml</span> <span class="s2">&quot;security:</span><span class="se">`n</span><span class="s2">  local_cli_enabled: true&quot;</span> <span class="n">-Encoding</span> <span class="n">utf8</span>
+<span class="nb">Push-Location</span> <span class="n">sbom-demo</span>
+<span class="k">try</span> <span class="p">{</span>
+  <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">generate</span> <span class="p">-</span><span class="n">-format</span> <span class="n">cyclonedx</span> <span class="p">-</span><span class="n">-output</span> <span class="n">sbom</span><span class="p">.</span><span class="n">json</span>
+  <span class="nv">$sbom</span> <span class="p">=</span> <span class="nb">Get-Content</span> <span class="n">sbom</span><span class="p">.</span><span class="n">json</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
+  <span class="nv">$sbom</span><span class="p">.</span><span class="n">components</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">name</span><span class="p">,</span> <span class="n">version</span>
+  <span class="nb">Get-FileHash</span> <span class="n">sbom</span><span class="p">.</span><span class="n">json</span> <span class="n">-Algorithm</span> <span class="n">SHA256</span>
+<span class="p">}</span> <span class="k">finally</span> <span class="p">{</span>
+  <span class="nb">Pop-Location</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Expected output: <code>SBOM written to sbom.json (cyclonedx, 1 components)</code>.
+The file <code>sbom-demo/sbom.json</code> contains <code>bomFormat: CycloneDX</code>, <code>specVersion: 1.5</code>,
+and a <code>requests</code> component. You do not need to install the package: the command
+reads its dependency declaration. <code>security.local_cli_enabled</code> enables the CLI
+for local development. Without it, the CLI reports that it is disabled; exit code 0
+does not prove that an SBOM was created. Check both the file and its contents.</p>
+<p>In the current implementation, this example produces an empty <code>version</code> and
+<code>bom-ref: pkg:requests@</code>. The exporter uses the resolved version, which scanning
+this <code>requirements.txt</code> did not establish. Declaring <code>==2.31.0</code> does not guarantee
+an exact version in the SBOM. This output cannot serve as a complete version
+inventory for a security assessment.</p>
 <h2  id="generate-the-inventory"><span id="generate_the_inventory"></span>Generate the inventory<a class="heading-anchor" href="#generate-the-inventory" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">generate</span> <span class="p">-</span><span class="n">-project</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">cyclonedx</span> <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sbom</span><span class="p">.</span><span class="n">json</span><span class="p">&gt;</span>
 </code></pre></div>
 
-<p>The current format choices are <code>--format {cyclonedx,spdx}</code>. Retain the project revision, command,
-output file, and digest with the SBOM.</p>
+<p>Replace <code>&lt;project&gt;</code> with a registered project name and <code>&lt;sbom.json&gt;</code> with the
+output path. Without <code>--project</code>, the command scans the current directory.
+If the project name cannot be resolved, the implementation also uses the current
+directory. Check which source files it contains before running the command.</p>
+<p>Format choices are <code>--format {cyclonedx,spdx}</code>; the default is <code>cyclonedx</code>.
+Retain the source revision, command, output file, and SHA-256 digest.
+<code>No dependencies found.</code> returns 0 without creating an SBOM. Check the directory
+and supported dependency files; this result does not prove that the project has
+no third-party components.</p>
 <h2  id="audit-vulnerabilities"><span id="audit_vulnerabilities"></span>Audit vulnerabilities<a class="heading-anchor" href="#audit-vulnerabilities" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">audit</span> <span class="p">`</span>
   <span class="p">-</span><span class="n">-project</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">`</span>
@@ -222,14 +261,20 @@ output file, and digest with the SBOM.</p>
   <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sca</span><span class="p">.</span><span class="n">sarif</span><span class="p">&gt;</span>
 </code></pre></div>
 
-<p>Audit choices are <code>--format {sarif,json,markdown,gost}</code> and
-<code>--fail-on {critical,high,medium,low}</code>. The exit threshold is an operational CI policy, not a
-replacement for governed product acceptance.</p>
-<p>Use <code>sbom sync</code> under the approved network policy to refresh vulnerability data. Record source
-and timestamp so that later reviewers can distinguish a clean scan from a stale cache.</p>
+<p>Report formats are <code>--format {sarif,json,markdown,gost}</code>; the default is <code>json</code>.
+Set sources with <code>--sources osv,nvd,bdu</code>; the default is <code>osv</code>.
+<code>--fail-on {critical,high,medium,low}</code> returns 1 when a finding reaches or exceeds
+the selected severity. No severity threshold applies when this option is omitted.
+Exit code 2 indicates an error handled by the command. Check the report file,
+its contents, and source error messages before using the result in CI.</p>
+<p>Run <code>python -m src.cli sbom sync --sources osv,nvd,bdu</code> to refresh vulnerability
+data when network access to those sources is permitted. Record the sources and
+update time. No findings with an unavailable source, stale cache, or unknown
+versions does not establish dependency safety.</p>
 <h2  id="rest-and-dashboard"><span id="rest_and_dashboard"></span>REST and dashboard<a class="heading-anchor" href="#rest-and-dashboard" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Project-scoped SCA operations are under <code>/api/v1/security/sca</code>. Consult the generated REST
-reference for the exact live operation and schema instead of copying route lists from this guide.</p>
+<p>Project-scoped SCA operations are under <code>/api/v1/security/sca</code>. Check the REST
+reference of your deployed CodeGraph instance for exact operations and request
+schemas. This section does not provide a separate reproducible API workflow.</p>
 <h2 id="triage">Triage<a class="heading-anchor" href="#triage" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Confirm package name, version, ecosystem, and dependency path.</li>
@@ -241,9 +286,10 @@ reference for the exact live operation and schema instead of copying route lists
 <h2  id="contract-sources"><span id="contract_sources"></span>Contract sources<a class="heading-anchor" href="#contract-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><code>src/cli/security_suite/sbom_commands.py</code> — CLI parser;</li>
-<li><code>src/sca/</code> — inventory, advisory, and reporting implementation;</li>
+<li><code>src/dependencies/</code> — dependency scanning and SBOM export;</li>
+<li><code>src/sca/</code> — advisory processing and reporting;</li>
 <li><code>src/api/routers/security_suite/</code> — live project-scoped SCA routes;</li>
-<li><code>scripts/validate_sca_sbom_docs.py</code> — documentation/source contract validator.</li>
+<li><code>scripts/validate_sca_docs.py</code> — documentation/source contract validator.</li>
 </ul>
       </article>
 
@@ -267,7 +313,8 @@ reference for the exact live operation and schema instead of copying route lists
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#generate-the-inventory" class="level-2" aria-current="location">Generate the inventory</a></li>
+        <li><a href="#prerequisites-and-complete-example" class="level-2" aria-current="location">Prerequisites and complete example</a></li>
+<li><a href="#generate-the-inventory" class="level-2">Generate the inventory</a></li>
 <li><a href="#audit-vulnerabilities" class="level-2">Audit vulnerabilities</a></li>
 <li><a href="#rest-and-dashboard" class="level-2">REST and dashboard</a></li>
 <li><a href="#triage" class="level-2">Triage</a></li>
@@ -329,7 +376,7 @@ reference for the exact live operation and schema instead of copying route lists
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Select a maintained deployment profile, protect secrets and data, and collect upgrade, rollback, backup, restore, and runtime evidence.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="55f40aff81a7">
 
   <meta property="og:title" content="Deploy CodeGraph in customer infrastructure — Documentation">
   <meta property="og:description" content="Select a maintained deployment profile, protect secrets and data, and collect upgrade, rollback, backup, restore, and runtime evidence.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/enterprise/DEPLOYMENT_GUIDE.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=55f40aff81a7">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Deploy CodeGraph in customer infrastructure — Documentation","description":"Select a maintained deployment profile, protect secrets and data, and collect upgrade, rollback, backup, restore, and runtime evidence.","url":"https://codegraph.ru/docs/en/enterprise/DEPLOYMENT_GUIDE.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -163,7 +163,7 @@
         <h1>Deploy CodeGraph in customer infrastructure</h1>
         <p class="doc-lead">Select a maintained deployment profile, protect secrets and data, and collect upgrade, rollback, backup, restore, and runtime evidence.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
@@ -224,8 +224,9 @@ artifact explicitly adds them.</p>
 <p>Do not place real secrets in Git, Helm values committed to source, screenshots, tickets, or command
 history. Resolve them through the customer-approved secret channel.</p>
 <h2  id="validate-a-source-checkout"><span id="validate_a_source_checkout"></span>Validate a source checkout<a class="heading-anchor" href="#validate-a-source-checkout" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The maintained local-stack commands are documented in
-<code>docs/development/reference/operator/CODEGRAPH_RUNTIME_RELEASE_RUNBOOK.md</code>:</p>
+<p>Use PowerShell from the approved CodeGraph source checkout, with its Python dependencies
+installed. These commands apply to the local integration stack, not a customer production
+service. <code>restart</code> stops and starts local processes; <code>logs</code> can contain sensitive data.</p>
 <div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_app_stack</span><span class="p">.</span><span class="n">py</span> <span class="n">status</span> <span class="p">-</span><span class="n">-local</span> <span class="p">-</span><span class="n">-with-mcp</span>
 <span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_app_stack</span><span class="p">.</span><span class="n">py</span> <span class="n">restart</span> <span class="p">-</span><span class="n">-local</span> <span class="p">-</span><span class="n">-with-mcp</span>
 <span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_app_stack</span><span class="p">.</span><span class="n">py</span> <span class="n">logs</span> <span class="p">-</span><span class="n">-local</span> <span class="p">-</span><span class="n">-with-mcp</span>
@@ -237,16 +238,30 @@ with an API or MCP health check tied to that revision.</p>
 <h2  id="deploy-with-compose-or-helm"><span id="deploy_with_compose_or_helm"></span>Deploy with Compose or Helm<a class="heading-anchor" href="#deploy-with-compose-or-helm" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For Compose, treat the checked-in files as the contract and inspect the effective configuration
 before startup:</p>
-<div class="highlight"><pre><span></span><code><span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">yml</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">prod</span><span class="p">.</span><span class="n">yml</span> <span class="n">config</span>
+<div class="highlight"><pre><span></span><code><span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">yml</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">prod</span><span class="p">.</span><span class="n">yml</span> <span class="n">config</span> <span class="p">-</span><span class="n">-quiet</span>
 <span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">yml</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">prod</span><span class="p">.</span><span class="n">yml</span> <span class="n">up</span> <span class="n">-d</span>
 <span class="n">docker</span> <span class="n">compose</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">yml</span> <span class="o">-f</span> <span class="n">docker-compose</span><span class="p">.</span><span class="n">prod</span><span class="p">.</span><span class="n">yml</span> <span class="nb">ps</span>
 </code></pre></div>
 
+<p>Run the Compose commands from the approved checkout with Docker Engine, the Compose plugin,
+and a protected <code>.env</code> configured. <code>config --quiet</code> validates without printing resolved secrets.
+Inspect the effective configuration only in a protected session. The files include <code>latest</code>
+image defaults: bind the deployed images to the approved immutable release and record their digests.
+A healthy container does not prove authentication, graph freshness, or backup readiness.</p>
 <p>For Kubernetes, render the maintained chart with the customer values before applying it:</p>
 <div class="highlight"><pre><span></span><code><span class="n">helm</span> <span class="n">template</span> <span class="n">codegraph</span> <span class="n">deploy</span><span class="p">/</span><span class="n">helm</span><span class="p">/</span><span class="n">codegraph</span> <span class="o">-f</span> <span class="n">customer-values</span><span class="p">.</span><span class="n">yaml</span> <span class="p">&gt;</span> <span class="n">rendered</span><span class="p">.</span><span class="n">yaml</span>
 <span class="n">helm</span> <span class="n">upgrade</span> <span class="p">-</span><span class="n">-install</span> <span class="n">codegraph</span> <span class="n">deploy</span><span class="p">/</span><span class="n">helm</span><span class="p">/</span><span class="n">codegraph</span> <span class="o">-f</span> <span class="n">customer-values</span><span class="p">.</span><span class="n">yaml</span> <span class="p">-</span><span class="n">-atomic</span>
 </code></pre></div>
 
+<p>Run Helm from the checkout root with a configured Kubernetes context and namespace.
+Use a protected <code>customer-values.yaml</code> prepared for that cluster. Rendering can write
+base64-encoded Secret values to <code>rendered.yaml</code>; base64 is not encryption. Restrict access
+to both files and keep them out of Git and public artifacts. Verify the target context before
+<code>upgrade --install</code>, then check rollout, readiness, and the application through its approved URL.</p>
+<p>The chart deploys the API with an optional OpenViking sidecar, not the whole Compose stack.
+Provision its other dependencies separately. The image helper uses registry, repository,
+and tag, not an <code>image.digest</code> field. Set a protected immutable tag and verify the resolved
+image digest after deployment. Default values are not a production configuration.</p>
 <p>Review <code>rendered.yaml</code> for image digests, namespaces, security contexts, volumes, ingress, and
 secret references. <code>--atomic</code> helps with Helm release state; it does not restore application data
 or external services.</p>
@@ -397,7 +412,7 @@ traceability, support, and financial-control closure keep their own evidence.</p
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>

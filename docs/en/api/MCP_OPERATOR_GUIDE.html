@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
-  <meta name="cg:css-build" content="ab0fe44d2d3a">
+  <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
+  <meta name="cg:css-build" content="55f40aff81a7">
 
   <meta property="og:title" content="MCP operator guide — Documentation">
   <meta property="og:description" content="Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/api/MCP_OPERATOR_GUIDE.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=55f40aff81a7">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"MCP operator guide — Documentation","description":"Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.","url":"https://codegraph.ru/docs/en/api/MCP_OPERATOR_GUIDE.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -42,7 +42,7 @@
 -->
 <a href="#main-content" data-shell-skip-link class="cg-skip-link fixed left-4 top-0 -translate-y-full rounded-b-cg-card bg-cg-primary px-6 py-3 font-semibold text-cg-inverse transition-transform duration-200 focus:translate-y-0 focus:text-cg-inverse">Skip to main content</a>
 <header data-shell-header data-scrolled="false" class="cg-shell-header fixed inset-x-0 top-0 border-b border-cg-border bg-cg-surface/95 text-cg-ink transition-shadow duration-200 dark:bg-cg-surface-inverse-raised/95 dark:text-cg-inverse">
-  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Основная навигация">
+  <nav class="cg-shell-nav mx-auto flex w-full items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Main navigation">
     <a href="/" data-shell-logo class="cg-shell-logo flex min-w-0 shrink-0 items-center pr-4 leading-none">
       <img src="../../../assets/svg/logo-golden-ratio-lockup-20260720.svg" alt="CodeGraph" width="160" height="40" class="cg-shell-logo-image h-auto dark:brightness-0 dark:invert">
     </a>
@@ -159,7 +159,7 @@
         <h1>MCP operator guide</h1>
         <p class="doc-lead">Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
@@ -167,6 +167,14 @@
         <p>Use this guide to start and diagnose the MCP server. The callable tool catalog depends on the active
 profile and changes with the runtime. Inspect
 the client-visible catalog after every profile change or server restart.</p>
+<p>Run the commands from the approved CodeGraph checkout with its Python environment and
+configured server dependencies. Do not start a second process on an occupied port. For a
+managed deployment, use the MCP connection supplied by its administrator instead of starting
+a local source server. Source commands below use Bash; the profile diagnostic uses PowerShell.</p>
+<p>The server accepts <code>MCP 2026-07-28</code>. The client must initialize with that version and send
+<code>notifications/initialized</code> before tool discovery and calls. A transport connection alone
+does not establish a usable MCP session. For a managed remote login, follow
+<a href="../integrations/REMOTE_MCP_AUTH.html">OAuth and MCP</a>.</p>
 <section class="doc-summary" aria-labelledby="choose-a-transport"><h2  id="choose-a-transport"><span id="choose_a_transport"></span>Choose a transport<a class="heading-anchor" href="#choose-a-transport" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For a local client that starts CodeGraph as a subprocess, use stdio:</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>stdio
@@ -190,15 +198,14 @@ may bind only to a loopback host:</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w"> </span>--no-auth
 </code></pre></div>
 
-<p>Tool calls require the handler to verify the required role, exact carrier, and persisted approval.
+<p>Governed mutations require the handler to verify the required role, exact carrier, and persisted approval.
 A full or owner-scoped profile defines the catalog available to the operator.</p>
 <h2  id="select-and-verify-a-tool-profile"><span id="select_and_verify_a_tool_profile"></span>Select and verify a tool profile<a class="heading-anchor" href="#select-and-verify-a-tool-profile" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The command starts with the <code>codex</code> profile unless <code>CODEGRAPH_MCP_TOOL_PROFILE</code> is set. Owner
 profiles are the normal route to lane-specific tools. Derive the current tool catalog from the
 selected profile.</p>
 <p>For a source-checkout diagnostic, derive the current set instead of copying a count into docs:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">$env:CODEGRAPH_MCP_TOOL_PROFILE</span> <span class="p">=</span> <span class="s2">&quot;full&quot;</span>
-<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;from src.mcp.surface_catalog import profile_family_tool_names; print(len(profile_family_tool_names(&#39;full&#39;)))&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;from src.mcp.surface_catalog import profile_family_tool_names; print(len(profile_family_tool_names(&#39;full&#39;)))&quot;</span>
 </code></pre></div>
 
 <p>Use <code>profile_family_tool_names</code> only as a local source diagnostic. The catalog returned to the
@@ -357,7 +364,7 @@ connected MCP client is the runtime evidence that matters.</p>
             <li><a href="../../../cpg.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Code Property Graph</a></li>
             <li><a href="../../../ai-engineering.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI engineering</a></li>
             <li><a href="../../../blog/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Blog</a></li>
-            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Материалы</a></li>
+            <li><a href="../../../downloads/" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Downloads</a></li>
             <li><a href="../../../llms.txt" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">AI index</a></li>
           </ul>
         </div>
