@@ -372,9 +372,25 @@ fixture record binds its source path and SHA-256 to an expected fact profile and
 evaluator outcome. Qualification rejects missing or escaping paths, symlinks,
 digest mismatch, aliases to another language, and unexpected outcomes. A list
 of synthetic fixture IDs is insufficient evidence.</p>
-<p>Use this sequence when publishing a preset:</p>
+<p>Changing a shipped preset requires a CodeGraph source checkout and Go 1.27, as declared in <code>gocpg/go.mod</code>. The v1 registry loads 14 packages: three generic and eleven language packages. This is the complete <code>gocpg/configs/architecture/presets/v1/language/python/manifest.yaml</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python/module-boundaries</span>
+<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0.0</span>
+<span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">]</span>
+<span class="nt">required_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">imports</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">source_sets</span><span class="p p-Indicator">]</span>
+<span class="nt">fixture_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1-contract-pairs</span>
+<span class="nt">fixture_catalog</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fixtures.yaml</span>
+</code></pre></div>
+
+<p><code>fixture_catalog</code> locates the fixture catalog relative to the manifest. For each of the 12 contracts, it lists valid and invalid source files, their SHA-256 hashes and <code>facts_profile</code>. From the <code>gocpg</code> module root, inspect the supplied files:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">Get-Content</span> <span class="n">configs</span><span class="p">/</span><span class="n">architecture</span><span class="p">/</span><span class="n">presets</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">language</span><span class="p">/</span><span class="n">python</span><span class="p">/</span><span class="n">fixtures</span><span class="p">.</span><span class="n">yaml</span>
+<span class="nb">Get-Content</span> <span class="n">configs</span><span class="p">/</span><span class="n">architecture</span><span class="p">/</span><span class="n">presets</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">language</span><span class="p">/</span><span class="n">python</span><span class="p">/</span><span class="n">fixtures</span><span class="p">/</span><span class="n">valid</span><span class="p">.</span><span class="n">py</span>
+<span class="nb">Get-Content</span> <span class="n">configs</span><span class="p">/</span><span class="n">architecture</span><span class="p">/</span><span class="n">presets</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">language</span><span class="p">/</span><span class="n">python</span><span class="p">/</span><span class="n">fixtures</span><span class="p">/</span><span class="n">invalid</span><span class="p">.</span><span class="n">py</span>
+</code></pre></div>
+
+<p>The valid source imports <code>fixture_public.api</code>; the invalid source imports <code>fixture_internal.private_api</code>. Catalog <code>source</code> paths are relative to the directory containing <code>fixtures.yaml</code>. Update hashes and expected facts when changing the source files.</p>
+<p>When preparing a preset change:</p>
 <ol>
-<li>Choose a stable <code>id@version</code> and declare one language.</li>
+<li>Keep its registered <code>id</code>, set an exact version and declare one language. <code>LoadV1PresetRegistry</code> defines the v1 package set; extending that set includes changing the registry and its checks.</li>
 <li>Select only capabilities proven for that adapter and enrichment profile.</li>
 <li>Add valid and invalid source files for every included contract.</li>
 <li>Record their hashes, fact profiles and expected outcomes.</li>

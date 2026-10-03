@@ -306,9 +306,25 @@
 <p><code>complete</code> означает доступность всех требуемых возможностей. <code>degraded</code> означает отсутствие необязательного семейства. <code>insufficient</code> означает отсутствие обязательного семейства. Для блокирующей проверки нужен <code>complete</code> по каждому выбранному языку и каждой требуемой возможности. Наличие парсера само по себе не доказывает полноту архитектурных фактов.</p>
 <h2  id="sozdanie-nabora-pravil"><span id="sozdanie_nabora_pravil"></span>Создание набора правил<a class="heading-anchor" href="#sozdanie-nabora-pravil" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Языковой набор правил требует одного языка, точной семантической версии, манифеста возможностей и корректных и ошибочных тестовых исходников для каждого контракта. Запись тестового примера связывает путь и SHA-256 исходника с ожидаемыми фактами и результатом вычисления. Квалификация отклоняет отсутствующие пути, выход за разрешённый каталог, символические ссылки, несовпадающие хеши, псевдонимы другого языка и неожиданные результаты. Список искусственных идентификаторов примеров не является достаточным доказательством.</p>
-<p>При публикации набора:</p>
+<p>Для изменения поставляемого набора нужна исходная рабочая копия CodeGraph и Go 1.27, указанный в <code>gocpg/go.mod</code>. Реестр v1 загружает 14 пакетов: три общих и одиннадцать языковых. Ниже полный манифест <code>gocpg/configs/architecture/presets/v1/language/python/manifest.yaml</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python/module-boundaries</span>
+<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0.0</span>
+<span class="nt">languages</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">python</span><span class="p p-Indicator">]</span>
+<span class="nt">required_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">imports</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">source_sets</span><span class="p p-Indicator">]</span>
+<span class="nt">fixture_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1-contract-pairs</span>
+<span class="nt">fixture_catalog</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fixtures.yaml</span>
+</code></pre></div>
+
+<p><code>fixture_catalog</code> задаёт каталог примеров относительно манифеста. В нём для каждого из 12 контрактов перечислены корректные и ошибочные исходники, их SHA-256 и <code>facts_profile</code>. Из корня модуля <code>gocpg</code> прочитайте поставляемые файлы:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">Get-Content</span> <span class="n">configs</span><span class="p">/</span><span class="n">architecture</span><span class="p">/</span><span class="n">presets</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">language</span><span class="p">/</span><span class="n">python</span><span class="p">/</span><span class="n">fixtures</span><span class="p">.</span><span class="n">yaml</span>
+<span class="nb">Get-Content</span> <span class="n">configs</span><span class="p">/</span><span class="n">architecture</span><span class="p">/</span><span class="n">presets</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">language</span><span class="p">/</span><span class="n">python</span><span class="p">/</span><span class="n">fixtures</span><span class="p">/</span><span class="n">valid</span><span class="p">.</span><span class="n">py</span>
+<span class="nb">Get-Content</span> <span class="n">configs</span><span class="p">/</span><span class="n">architecture</span><span class="p">/</span><span class="n">presets</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">language</span><span class="p">/</span><span class="n">python</span><span class="p">/</span><span class="n">fixtures</span><span class="p">/</span><span class="n">invalid</span><span class="p">.</span><span class="n">py</span>
+</code></pre></div>
+
+<p>В корректном исходнике импорт идёт из <code>fixture_public.api</code>, в ошибочном — из <code>fixture_internal.private_api</code>. Пути <code>source</code> в каталоге отсчитываются от каталога <code>fixtures.yaml</code>. При изменении исходников обновите их хеши и ожидаемые факты.</p>
+<p>При подготовке изменения набора:</p>
 <ol>
-<li>Выберите устойчивый <code>id@version</code> и объявите один язык.</li>
+<li>Сохраните его зарегистрированный <code>id</code>, задайте точную версию и объявите один язык. Состав пакетов v1 определяет <code>LoadV1PresetRegistry</code>; расширение состава включает изменение этого реестра и его проверок.</li>
 <li>Включите только возможности, подтверждённые для адаптера и профиля обогащения.</li>
 <li>Добавьте корректные и ошибочные исходники для каждого контракта.</li>
 <li>Запишите хеши, ожидаемые факты и результаты.</li>
