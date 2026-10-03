@@ -163,120 +163,249 @@
         <h1>Интеграция событий безопасности CodeGraph с SIEM</h1>
         <p class="doc-lead">Настройте отправку событий CodeGraph в SIEM. Проверьте транспорт, очередь повторной отправки, потерю событий и подтверждение получения на стороне SIEM.</p>
 
-        <div class="doc-meta"><span>Корпоративная эксплуатация</span><time datetime="2026-08-24">Обновлено: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Корпоративная эксплуатация</span><time datetime="2026-10-03">Обновлено: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph формирует события безопасности и отправляет их через обработчики Syslog, CEF и LEEF.
-Различайте создание события, постановку в очередь, отправку и получение системой SIEM.
-Для приёмки сохраняйте подтверждение требуемого этапа, а не только успешный результат локального вызова.</p>
-<h2  id="kontrakt-i-istochniki"><span id="kontrakt_i_istochniki"></span>Контракт и источники<a class="heading-anchor" href="#kontrakt-i-istochniki" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Текущая граница реализации:</p>
-<ul>
-<li><code>src/security/siem/base_handler.py</code> — <code>SecurityEventType</code>, поля события и интерфейс обработчика;</li>
-<li><code>src/security/siem/dispatcher.py</code> — регистрация обработчиков, попытки отправки, состояние и сведения о работе;</li>
-<li><code>src/security/siem/buffer.py</code> — ограниченная очередь повторной отправки;</li>
-<li><code>src/security/siem/syslog_handler.py</code>, <code>cef_handler.py</code>, <code>leef_handler.py</code> — форматы;</li>
-<li><code>src/security/config.py</code> и раздел <code>security.siem</code> в <code>config.yaml</code> — типизированные настройки.</li>
-</ul>
-<p>Аутентифицированные маршруты конфигурации, статистики и последних событий доступны под актуальной
-поверхностью <code>/api/v1/security/siem</code>. Схемы берите из OpenAPI развёрнутой версии.</p>
-<h2  id="kontrakt-sobytiya"><span id="kontrakt_sobytiya"></span>Контракт события<a class="heading-anchor" href="#kontrakt-sobytiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p><code>SecurityEvent</code> содержит тип события, время, идентификатор запроса, сообщение, уровень серьёзности и опциональные поля
-пользователя, сессии, сети, провайдера, модели, DLP, токенов, задержки, проекта, группы и деталей.
-Источник истины по типам — текущее перечисление <code>SecurityEventType</code>; не фиксируйте его количество в политике.</p>
-<p>События охватывают запросы, ответы и ошибки LLM, действия DLP, доступ и ротацию Vault,
-успех и отказ аутентификации, ограничение частоты запросов, общие оповещения безопасности, нарушения доступа к путям и IDOR, webhook
-replay и отказ MCP аутентификации. Новые релизы могут добавлять типы без изменения настройки транспорта.</p>
-<h2  id="nastroyte-obrabotchiki"><span id="nastroyte_obrabotchiki"></span>Настройте обработчики<a class="heading-anchor" href="#nastroyte-obrabotchiki" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Включайте только форматы, которые использует SOC-получатель:</p>
-<div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Настройте обработчики"><table data-columns="3"><caption class="sr-only">Настройте обработчики</caption>
+        <p>CodeGraph передаёт события безопасности в систему, с которой уже работает SOC.
+Аутентификация, обращения к LLM и действия DLP попадают в общий поток расследования.
+Поле <code>request_id</code> связывает событие с запросом; тип, время, серьёзность и сведения
+о пользователе помогают настроить поиск и оповещения.</p>
+<p>Диспетчер отправляет одно событие в несколько обработчиков. Syslog, CEF и LEEF
+поддерживают UDP, TCP и TLS. Для каждого обработчика CodeGraph хранит результат
+последних попыток и состояние <code>healthy</code> или <code>degraded</code>.</p>
+<h2  id="vyberite-format-i-transport"><span id="vyberite_format_i_transport"></span>Выберите формат и транспорт<a class="heading-anchor" href="#vyberite-format-i-transport" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Выберите формат и транспорт"><table data-columns="3"><caption class="sr-only">Выберите формат и транспорт</caption>
 <thead>
 <tr>
-<th scope="col">Обработчик</th>
-<th scope="col">Граница конфигурации</th>
-<th scope="col">Обычный транспорт</th>
+<th scope="col">Формат</th>
+<th scope="col">Настройки</th>
+<th scope="col">Для чего используется</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Syslog</td>
-<td>адрес, порт, протокол, категория syslog, имя приложения</td>
-<td>UDP, TCP или TLS по политике.</td>
+<td><code>host</code>, <code>port</code>, <code>protocol</code>, <code>facility</code>, <code>app_name</code></td>
+<td>Передача событий в формате RFC 5424.</td>
 </tr>
 <tr>
 <td>CEF</td>
-<td>адрес, порт, изготовитель, продукт и версия устройства</td>
-<td>Совместимый с получателем сетевой транспорт.</td>
+<td><code>host</code>, <code>port</code>, <code>protocol</code>, <code>device_vendor</code>, <code>device_product</code>, <code>device_version</code></td>
+<td>Приёмник Common Event Format.</td>
 </tr>
 <tr>
 <td>LEEF</td>
-<td>адрес и порт</td>
-<td>Совместимый с получателем сетевой транспорт.</td>
+<td><code>host</code>, <code>port</code>, <code>protocol</code>, <code>product_vendor</code>, <code>product_name</code>, <code>product_version</code></td>
+<td>Приёмник Log Event Extended Format.</td>
 </tr>
 </tbody>
 </table></div>
-<p>Используйте DNS и сертификаты под управлением заказчика. Между границами доверия предпочитайте
-аутентифицированный и зашифрованный транспорт. Ограничьте исходящие соединения получателем и не храните пароли и
-приватные ключи в закоммиченной конфигурации.</p>
-<p>Диспетчер может инициализировать несколько обработчиков. Результат каждого обработчика проверяйте отдельно.</p>
-<p>Все три формата используют общий транспорт с вариантами <code>udp</code>, <code>tcp</code>, <code>tls</code>.
-Текущий TLS-отправитель проверяет сертификат сервера стандартным хранилищем доверия и его имя.
-Он не настраивает клиентский сертификат: выбор <code>tls</code> сам по себе не включает взаимную TLS-аутентификацию.
-Проверьте совместимость с требованиями приёмника до включения отправки.</p>
-<h2  id="otpravka-i-ochered"><span id="otpravka_i_ochered"></span>Отправка и очередь<a class="heading-anchor" href="#otpravka-i-ochered" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Без очереди синхронная отправка сообщает, отправил ли событие хотя бы один обработчик. С очередью метод
-<code>dispatch</code> может подтвердить постановку в очередь до фактической отправки получателю. Переполнение очереди или исчерпание попыток отправки означает деградацию контроля безопасности.</p>
-<p>Очередь хранится в памяти процесса, а не в устойчивом журнале. Перезапуск не гарантирует сохранение
-ожидающих событий. При заполнении очереди новое событие вытесняет самое старое, увеличивает
-счётчик <code>dropped</code>, а добавление возвращает <code>True</code>. Поэтому успешное добавление не доказывает
-отсутствие потерь. Проверяйте счётчики и получение событий на стороне SIEM.</p>
-<p>Фиксируйте:</p>
-<ul>
-<li>включённые и успешно инициализированные обработчики;</li>
-<li>состояние каждого обработчика <code>healthy</code> или <code>degraded</code> и описание последней ошибки;</li>
-<li>последние попытки отправки со статусом <code>sent</code> или <code>failed</code>;</li>
-<li>размер очереди, число потерянных и повторно отправленных событий, результат отправки очереди и исчерпание попыток;</li>
-<li>идентификатор события и время приёма на стороне SIEM.</li>
-</ul>
-<p>Не называйте подтверждение постановки в очередь доставкой.</p>
-<h2  id="skvoznaya-proverka"><span id="skvoznaya_proverka"></span>Сквозная проверка<a class="heading-anchor" href="#skvoznaya-proverka" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Используйте синтетическое событие без секретов репозитория:</p>
+<p>Согласуйте с SOC адрес, порт, формат и правила индексации. Для TLS используйте
+DNS-имя, которое соответствует сертификату приёмника. Отправитель проверяет имя
+сервера и цепочку сертификата по стандартному хранилищу доверия.</p>
+<h2  id="nastroyte-otpravku"><span id="nastroyte_otpravku"></span>Настройте отправку<a class="heading-anchor" href="#nastroyte-otpravku" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Параметры находятся в <code>security.siem</code> файла <code>config.yaml</code>. В рабочей конфигурации
+укажите адрес и порт приёмника SOC. В следующем примере локальный TCP-приёмник
+слушает <code>127.0.0.1:15140</code>; формат — Syslog, категория — <code>LOCAL0</code> (<code>16</code>).</p>
+<p>Сохраните пример как <code>config.yaml</code> в отдельной папке проверки. Используйте окружение
+Python с установленным исходным пакетом CodeGraph.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">security</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">siem</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">syslog</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tcp</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15140</span>
+<span class="w">      </span><span class="nt">facility</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
+<span class="w">      </span><span class="nt">app_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codegraph</span>
+<span class="w">    </span><span class="nt">cef</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">leef</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">buffer</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">max_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span>
+<span class="w">      </span><span class="nt">flush_interval_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">      </span><span class="nt">retry_attempts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">      </span><span class="nt">retry_backoff_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.0</span>
+</code></pre></div>
+
+<p>Включите нужные обработчики через <code>enabled</code>. Для одновременной отправки в два
+формата задайте адреса обоих приёмников. Диспетчер проверяет результат каждого.</p>
+<h2  id="proverte-otpravku-i-poluchenie"><span id="proverte_otpravku_i_poluchenie"></span>Проверьте отправку и получение<a class="heading-anchor" href="#proverte-otpravku-i-poluchenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Этот пример отправляет одно синтетическое событие <code>security.alert</code> через настоящий
+TCP-транспорт. Приёмник печатает строку Syslog, а отправитель — результат и <code>request_id</code>.</p>
 <ol>
-<li>сохраните ревизию выпуска, действующую конфигурацию SIEM и индекс или канал приёмника;</li>
-<li>создайте событие типа, ожидаемого настроенным обработчиком;</li>
-<li>проверьте локальное событие и идентификатор запроса;</li>
-<li>проверьте сведения об отправке каждого обработчика и состояние очереди;</li>
-<li>найдите тот же идентификатор в системе SIEM;</li>
-<li>запишите задержку, нормализацию, уровень серьёзности и сопоставление полей;</li>
-<li>повторите контролируемую проверку отказа с недоступным получателем или неверным TLS.</li>
+<li>Сохраните следующий код как <code>receive_siem_test.py</code> в папке проверки.</li>
 </ol>
-<p>Для UDP проверяйте доставку по записи события у получателя. Для TCP или TLS индексация подтверждается
-записью у получателя.</p>
-<h2  id="monitoring-i-opovescheniya"><span id="monitoring_i_opovescheniya"></span>Мониторинг и оповещения<a class="heading-anchor" href="#monitoring-i-opovescheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Оповещайте об отключении обязательного обработчика, деградации, росте очереди, повторных отправках
-и потере событий. Отслеживайте время последней успешной отправки и перерывы в приёме событий. Пороговые значения должны
-опираться на SLO заказчика и измеренную частоту событий.</p>
-<p>Проверьте, какие чувствительные поля следует редактировать до отправки. SIEM — отдельный получатель
-данных, поэтому включайте его в правила классификации, хранения, доступа и удаления.</p>
-<h2  id="oshibka-i-vosstanovlenie"><span id="oshibka_i_vosstanovlenie"></span>Ошибка и восстановление<a class="heading-anchor" href="#oshibka-i-vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>При отказе доставки:</p>
-<ol>
-<li>сохраните первую ошибку и действующую конфигурацию без секретов;</li>
-<li>разделите ошибки форматирования, DNS, сети, TLS, приёмника и ограничения частоты;</li>
-<li>защитите очередь от бесконечного роста и тихой перезаписи;</li>
-<li>восстановите обработчика или примените одобренный альтернативный канал;</li>
-<li>выполните отправку очереди и сверку ожидающих событий;</li>
-<li>получите подтверждение SIEM и определите, какие события за время отказа удалось восстановить.</li>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="sd">&quot;&quot;&quot;Receive one local TCP Syslog message for the SIEM transport check.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+
+<span class="k">with</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span> <span class="k">as</span> <span class="n">server</span><span class="p">:</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">bind</span><span class="p">((</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="mi">15140</span><span class="p">))</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Listening on 127.0.0.1:15140&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">connection</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">connection</span><span class="p">,</span> <span class="n">connection</span><span class="o">.</span><span class="n">makefile</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(),</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<ol start="2">
+<li>Сохраните отправитель как <code>send_siem_test.py</code> в той же папке.</li>
 </ol>
-<p>Не отключайте SIEM молча ради доступности приложения. Если допускается работа с деградацией,
-зафиксируйте согласовавшего, срок, компенсирующее наблюдение, план отправки накопленных событий и условие завершения.</p>
-<h2  id="dokazatelstva-priyomki"><span id="dokazatelstva_priyomki"></span>Доказательства приёмки<a class="heading-anchor" href="#dokazatelstva-priyomki" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Пакет доказательств приёмки должен включать хеш конфигурации, список обработчиков, синтетические
-успешные и неуспешные проверки, локальные сведения об отправке, статистику очереди, подтверждение получателя,
-маршрутизацию оповещений, владельца хранения, известные пробелы и результаты восстановления. Это доказывает только контур
-SIEM, но не то, что каждое значимое действие продукта формирует требуемое событие.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="sd">&quot;&quot;&quot;Send a synthetic security event using the selected SIEM configuration.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="kn">import</span> <span class="n">uuid4</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.security.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecurityConfigSource</span><span class="p">,</span> <span class="n">load_security_config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.security.siem.base_handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecurityEvent</span><span class="p">,</span> <span class="n">SecurityEventType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.security.siem.dispatcher</span><span class="w"> </span><span class="kn">import</span> <span class="n">SIEMDispatcher</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">load_security_config</span><span class="p">(</span><span class="n">SecurityConfigSource</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&quot;config.yaml&quot;</span><span class="p">))</span>
+<span class="n">event</span> <span class="o">=</span> <span class="n">SecurityEvent</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">event_type</span><span class="o">=</span><span class="n">SecurityEventType</span><span class="o">.</span><span class="n">SECURITY_ALERT</span><span class="p">,</span>
+    <span class="n">message</span><span class="o">=</span><span class="s2">&quot;SIEM integration test event&quot;</span><span class="p">,</span>
+    <span class="n">request_id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">uuid4</span><span class="p">()),</span>
+    <span class="n">severity</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="s2">&quot;documentation-check&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="k">with</span> <span class="n">SIEMDispatcher</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">siem</span><span class="p">)</span> <span class="k">as</span> <span class="n">dispatcher</span><span class="p">:</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">dispatcher</span><span class="o">.</span><span class="n">dispatch_sync_detailed</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;request_id&quot;</span><span class="p">:</span> <span class="n">event</span><span class="o">.</span><span class="n">request_id</span><span class="p">,</span> <span class="s2">&quot;handlers&quot;</span><span class="p">:</span> <span class="n">results</span><span class="p">}))</span>
+    <span class="n">succeeded</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;dispatched&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">results</span><span class="p">)</span>
+<span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">succeeded</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+
+<ol start="3">
+<li>В первом терминале запустите приёмник:</li>
+</ol>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python<span class="w"> </span>receive_siem_test.py
+</code></pre></div>
+
+<p>Дождитесь строки <code>Listening on 127.0.0.1:15140</code>.</p>
+<ol start="4">
+<li>Во втором терминале, из той же папки, отправьте событие:</li>
+</ol>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python<span class="w"> </span>send_siem_test.py
+</code></pre></div>
+
+<p>Отправитель завершается с кодом <code>0</code>. В массиве <code>handlers</code> найдите <code>dispatched: true</code>.
+В строке приёмника должны быть <code>event_type="security.alert"</code>, сообщение
+<code>SIEM integration test event</code> и тот же <code>request_id</code>, что в JSON отправителя.
+После получения одной строки приёмник завершает работу.</p>
+<ol start="5">
+<li>Повторите команду отправителя после завершения приёмника. Она завершается с
+кодом <code>1</code>; обработчик возвращает <code>dispatched: false</code> и <code>error_summary</code>.
+Это проверяет диагностику недоступного TCP-получателя.</li>
+</ol>
+<p>Для подключения SOC замените адрес и порт в рабочей конфигурации. Найдите событие
+по <code>request_id</code> в индексе SIEM и проверьте время, тип и уровень серьёзности. При UDP
+запись у получателя подтверждает приём; при TCP/TLS она также показывает результат
+индексации после сетевой отправки.</p>
+<h2  id="kak-rabotaet-ochered"><span id="kak_rabotaet_ochered"></span>Как работает очередь<a class="heading-anchor" href="#kak-rabotaet-ochered" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p><code>dispatch(event)</code> ставит событие в очередь процесса. Фоновый поток отправляет
+накопленные события с периодом <code>flush_interval_seconds</code>. При сбое очередь повторяет
+попытки по <code>retry_attempts</code> и <code>retry_backoff_seconds</code>.</p>
+<p>Очередь вмещает <code>max_size</code> событий. При заполнении новое событие вытесняет самое
+старое, счётчик <code>dropped</code> увеличивается. При перезапуске процесса очередь создаётся
+заново. Учитывайте эти свойства при выборе размера очереди и режима обновления.</p>
+<p><code>dispatch_sync(event)</code> отправляет событие сразу и возвращает успешный результат
+хотя бы одного обработчика. <code>dispatch_sync_detailed(event)</code> возвращает отдельный
+результат каждого обработчика. <code>flush()</code> запускает отправку накопленной очереди.</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Как работает очередь"><table data-columns="3"><caption class="sr-only">Как работает очередь</caption>
+<thead>
+<tr>
+<th scope="col">Счётчик</th>
+<th scope="col">Что показывает</th>
+<th scope="col">Действие оператора</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enqueued</code></td>
+<td>События, добавленные в очередь.</td>
+<td>Сопоставьте с интенсивностью потока.</td>
+</tr>
+<tr>
+<td><code>sent</code></td>
+<td>Успешные отправки из очереди.</td>
+<td>Проверьте приём в SIEM.</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td>Неуспешные попытки отправки.</td>
+<td>Проверьте адрес, транспорт и приёмник.</td>
+</tr>
+<tr>
+<td><code>retried</code></td>
+<td>Повторные попытки.</td>
+<td>Найдите причину нестабильности доставки.</td>
+</tr>
+<tr>
+<td><code>dropped</code></td>
+<td>Потерянные события.</td>
+<td>Настройте оповещение и разберите период потери.</td>
+</tr>
+</tbody>
+</table></div>
+<h2  id="kontroliruyte-integratsiyu-cherez-api"><span id="kontroliruyte_integratsiyu_cherez_api"></span>Контролируйте интеграцию через API<a class="heading-anchor" href="#kontroliruyte-integratsiyu-cherez-api" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Войдите в CodeGraph и используйте маршруты <a href="../api/REST_API.html">REST API</a>:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Контролируйте интеграцию через API"><table data-columns="3"><caption class="sr-only">Контролируйте интеграцию через API</caption>
+<thead>
+<tr>
+<th scope="col">Метод и маршрут</th>
+<th scope="col">Результат</th>
+<th scope="col">Доступ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/v1/security/siem/config</code></td>
+<td>Действующая конфигурация.</td>
+<td>Активный пользователь.</td>
+</tr>
+<tr>
+<td><code>PUT /api/v1/security/siem/config</code></td>
+<td>Обновлённая конфигурация.</td>
+<td>Администратор.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/security/siem/stats</code></td>
+<td>Статистика и состояние доставки.</td>
+<td>Активный пользователь.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/security/siem/events?limit=20</code></td>
+<td>Последние попытки отправки.</td>
+<td>Активный пользователь.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Схемы запросов и ответов доступны в <code>/docs</code> развёрнутого API. Для изменения
+конфигурации выполните вход с ролью администратора.</p>
+<h2  id="nastroyte-ekspluatatsiyu"><span id="nastroyte_ekspluatatsiyu"></span>Настройте эксплуатацию<a class="heading-anchor" href="#nastroyte-ekspluatatsiyu" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Оповещайте SOC о состоянии <code>degraded</code>, росте очереди, повторных отправках и <code>dropped</code>.
+Задайте пороги по измеренной частоте событий и допустимой задержке приёма.
+Согласуйте правила обработки чувствительных полей, срок хранения и доступ к индексу.</p>
+<p>При отказе сохраните <code>error_summary</code>, время и конфигурацию без секретов. Проверьте
+DNS, сеть, TLS и состояние приёмника. После восстановления отправьте очередь и
+сопоставьте её счётчики с событиями в SIEM. Для периода деградации зафиксируйте
+ответственного, дополнительный канал наблюдения и условие завершения восстановления.</p>
+<p>Для приёмки сохраните конфигурацию, результаты синтетического события и проверки
+отказа, статистику очереди, запись в индексе SIEM и настройки оповещений.
+Проверку событий аутентификации и DLP проводите через соответствующие пользовательские
+действия: <a href="OAUTH_LDAP.html">OAuth/LDAP</a> и <a href="DLP_SECURITY.html">DLP</a>.</p>
+<h2  id="polya-i-realizatsiya"><span id="polya_i_realizatsiya"></span>Поля и реализация<a class="heading-anchor" href="#polya-i-realizatsiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Событие содержит <code>event_type</code>, <code>timestamp</code>, <code>request_id</code>, <code>message</code> и <code>severity</code>.
+Дополнительные поля описывают пользователя, сеть, провайдера, модель и действие DLP.
+Значения <code>severity</code> соответствуют шкале Syslog <code>0–7</code>.</p>
+<p>Типы и поля определены в <code>src/security/siem/base_handler.py</code>. Диспетчер и очередь
+реализованы в <code>dispatcher.py</code> и <code>buffer.py</code> того же каталога. Типизированные настройки
+загружаются через <code>src.security.config</code> из <code>security.siem</code>.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -299,14 +428,13 @@ SIEM, но не то, что каждое значимое действие пр
     <aside class="doc-toc" id="doc-toc-panel" aria-label="На этой странице">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#kontrakt-i-istochniki" class="level-2" aria-current="location">Контракт и источники</a></li>
-<li><a href="#kontrakt-sobytiya" class="level-2">Контракт события</a></li>
-<li><a href="#nastroyte-obrabotchiki" class="level-2">Настройте обработчики</a></li>
-<li><a href="#otpravka-i-ochered" class="level-2">Отправка и очередь</a></li>
-<li><a href="#skvoznaya-proverka" class="level-2">Сквозная проверка</a></li>
-<li><a href="#monitoring-i-opovescheniya" class="level-2">Мониторинг и оповещения</a></li>
-<li><a href="#oshibka-i-vosstanovlenie" class="level-2">Ошибка и восстановление</a></li>
-<li><a href="#dokazatelstva-priyomki" class="level-2">Доказательства приёмки</a></li>
+        <li><a href="#vyberite-format-i-transport" class="level-2" aria-current="location">Выберите формат и транспорт</a></li>
+<li><a href="#nastroyte-otpravku" class="level-2">Настройте отправку</a></li>
+<li><a href="#proverte-otpravku-i-poluchenie" class="level-2">Проверьте отправку и получение</a></li>
+<li><a href="#kak-rabotaet-ochered" class="level-2">Как работает очередь</a></li>
+<li><a href="#kontroliruyte-integratsiyu-cherez-api" class="level-2">Контролируйте интеграцию через API</a></li>
+<li><a href="#nastroyte-ekspluatatsiyu" class="level-2">Настройте эксплуатацию</a></li>
+<li><a href="#polya-i-realizatsiya" class="level-2">Поля и реализация</a></li>
       </ul>
     </aside>
   </div>
