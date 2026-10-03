@@ -203,7 +203,7 @@
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">compliance</span> <span class="n">gost</span><span class="p">-</span><span class="n">56939</span> <span class="p">-</span><span class="n">-project</span> <span class="nv">$ProjectName</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-format</span> <span class="n">gost</span> <span class="p">-</span><span class="n">-language</span> <span class="n">ru</span> <span class="p">-</span><span class="n">-include-traceability</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">&quot;gost-56939-report.md&quot;</span>
 </code></pre></div>
 
-<p>Используйте &ndash;auto-collect только когда разрешено генерировать недостающие входные данные. <code>--force-collect</code> обходит кеш сбора только вместе с <code>--auto-collect</code>; сбор может работать дольше. Сохраняйте эти флаги: они меняют происхождение доказательств.</p>
+<p>Используйте <code>--auto-collect</code> только когда разрешено генерировать недостающие входные данные. <code>--force-collect</code> обходит кеш сбора только вместе с <code>--auto-collect</code>; сбор может работать дольше. Сохраняйте эти флаги: они меняют происхождение доказательств.</p>
 <h2  id="istoriya-i-sravnenie"><span id="istoriya_i_sravnenie"></span>История и сравнение<a class="heading-anchor" href="#istoriya-i-sravnenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Сохраните первую оценку с <code>--save-history</code>. После изменения артефактов повторите команду и сохраните второй отчёт. Используйте два напечатанных идентификатора для сравнения:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">compliance</span> <span class="n">gost</span><span class="p">-</span><span class="n">56939</span> <span class="p">-</span><span class="n">-project</span> <span class="nv">$ProjectName</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span> <span class="p">-</span><span class="n">-save-history</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">&quot;gost-56939-before.json&quot;</span>
@@ -228,7 +228,8 @@
 <p>После сохранения двух отчётов <code>history</code> показывает две новые строки с их идентификаторами и итоговыми процентами. Если артефакты и настройки между запусками одинаковы, <code>delta</code> выводит изменение <code>+0.0%</code> и <code>Unchanged: 25 processes</code>. После изменения входов изучите разделы <code>Improved</code> и <code>Degraded</code>: они перечисляют процессы, у которых изменился статус.</p>
 <h2  id="reestr-protsessov"><span id="reestr_protsessov"></span>Реестр процессов<a class="heading-anchor" href="#reestr-protsessov" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Таблица описывает тип оценки и область покрытия. Итоговый статус зависит от фактически найденных
-артефактов и поведения evaluator.</p>
+артефактов и правил обработчиков оценки.</p>
+<p>Тип <code>automated</code> обозначает программный сбор артефактов, <code>external</code> — материалы внешних инструментов, <code>organizational</code> — организационные данные, <code>mixed</code> — сочетание источников.</p>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Реестр процессов"><table data-columns="3"><caption class="sr-only">Реестр процессов</caption>
 <thead>
 <tr>
@@ -375,7 +376,7 @@
 </ul>
 <p>Процент равен сумме баллов применимых процессов, делённой на их количество. Он отражает доказательства,
 распознанные настроенными обработчиками оценки. Используйте его вместе со статусами и артефактами каждого процесса.</p>
-<p>manual_overrides позволяет запросить статус процесса, но запрос FULL ограничен completion threshold и не может обойти отсутствие достаточных доказательств. Если управление требует обоснования, храните основание, согласование и исходный артефакт рядом с отчётом.</p>
+<p>Поле <code>manual_overrides</code> задаёт запрошенный статус процесса. Для FULL обработчик проверяет порог полноты доказательств (<code>completion_threshold</code>) и соответствующие артефакты. Сохраните основание, согласование и исходный артефакт рядом с отчётом.</p>
 <p>В JSON статусы записаны как <code>full</code>, <code>partial</code>, <code>gap</code> и <code>n_a</code>. Например, один FULL,
 один PARTIAL и один N/A дают <code>(1 + 0,5) / 2 × 100 = 75%</code>. Если все процессы имеют N/A,
 модель возвращает <code>0.0</code>, а список применимых процессов остаётся пустым. FULL присваивается
@@ -432,10 +433,10 @@
 </ul>
 <h2  id="oshibki-i-vosstanovlenie"><span id="oshibki_i_vosstanovlenie"></span>Ошибки и восстановление<a class="heading-anchor" href="#oshibki-i-vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
-<li>Проект определился как <code>unknown</code> или имя файла базы: повторите с &ndash;project и &ndash;db.</li>
+<li>Проект определился как <code>unknown</code> или имя файла базы: повторите с <code>--project</code> и <code>--db</code>.</li>
 <li>Не хватает артефактов: изучите checklist, исправьте пути и повторите сбор.</li>
 <li>Неожиданный FULL или PARTIAL: проверьте артефакты процесса и manual_overrides.</li>
-<li>Нет истории: проверьте &ndash;save-history и history_db_path.</li>
+<li>Нет истории: проверьте <code>--save-history</code> и history_db_path.</li>
 <li>Delta не строится: проверьте оба идентификатора в одной истории. Для неизвестного идентификатора команда печатает <code>Error: One or both report IDs not found</code> и возвращает <code>1</code>.</li>
 <li>Команда прошла, но данных недостаточно: для закрытия оценки добавьте требуемые свидетельства и
   решение ответственной линии.</li>
