@@ -244,6 +244,38 @@ neighboring <code>grpc_transport_*.py</code> mixins.</p>
 <code>grpc.aio.insecure_channel</code>; this is suitable only inside an already trusted boundary. Supplying
 a certificate creates a server-authenticated TLS channel. It does not configure client-certificate
 authentication.</p>
+<h2  id="read-graph-statistics"><span id="read_graph_statistics"></span>Read graph statistics<a class="heading-anchor" href="#read-graph-statistics" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Prepare the Python environment using the <a href="../getting-started/INSTALLATION.html">installation guide</a>.
+Run the example from the CodeGraph repository root with that environment activated. A GoCPG gRPC
+server must be available at <code>localhost:50051</code>, and the server must have access to the selected CPG.
+This example uses the default local connection settings shown above.</p>
+<p>Save the following code as <code>grpc_example.py</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.services.gocpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrpcTransport</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">transport</span> <span class="o">=</span> <span class="n">GrpcTransport</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">transport</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;CODEGRAPH_CPG_PATH&quot;</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_nodes</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">total_edges</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">transport</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</code></pre></div>
+
+<p>Set the absolute path to an existing CPG and run the file in Bash:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">CODEGRAPH_CPG_PATH</span><span class="o">=</span><span class="s2">&quot;&lt;absolute-cpg-path&gt;&quot;</span>
+python<span class="w"> </span>grpc_example.py
+</code></pre></div>
+
+<p>The output contains two integers: the graph&rsquo;s node count and edge count. They depend on the
+selected graph. <code>stats</code> returns a <code>GoCPGStatsResult</code>; its <code>methods</code>, <code>calls</code>, <code>files</code>, and <code>tables</code>
+fields provide more detail. The <code>finally</code> block closes the channel after success or failure.</p>
 <h2  id="operation-groups"><span id="operation_groups"></span>Operation groups<a class="heading-anchor" href="#operation-groups" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><code>parse</code>, <code>update</code>, <code>ci_update</code>, and <code>create_indexes</code> build or update a DuckDB CPG. Parse and
@@ -320,6 +352,7 @@ project/runtime context.</p>
       <ul class="doc-toc-list">
         <li><a href="#canonical-services" class="level-2" aria-current="location">Canonical services</a></li>
 <li><a href="#connection-configuration" class="level-2">Connection configuration</a></li>
+<li><a href="#read-graph-statistics" class="level-2">Read graph statistics</a></li>
 <li><a href="#operation-groups" class="level-2">Operation groups</a></li>
 <li><a href="#paths-and-deadlines" class="level-2">Paths and deadlines</a></li>
 <li><a href="#failure-handling" class="level-2">Failure handling</a></li>

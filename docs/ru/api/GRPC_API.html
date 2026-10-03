@@ -242,6 +242,38 @@
 <p>Размер отправляемого и принимаемого сообщения ограничен 64 MiB. Без <code>grpc_tls_cert</code> клиент
 использует <code>grpc.aio.insecure_channel</code>, поэтому такой режим допустим только внутри уже защищённой
 границы. Сертификат включает TLS с проверкой сервера, но не настраивает клиентский сертификат.</p>
+<h2  id="poluchenie-statistiki-grafa"><span id="poluchenie_statistiki_grafa"></span>Получение статистики графа<a class="heading-anchor" href="#poluchenie-statistiki-grafa" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Подготовьте Python-окружение по <a href="../getting-started/INSTALLATION.html">руководству установки</a>.
+Выполните пример из корня репозитория CodeGraph с активированным окружением. Нужен gRPC-сервер
+GoCPG по адресу <code>localhost:50051</code>, которому доступен выбранный CPG. Пример использует настройки
+локального соединения по умолчанию из таблицы выше.</p>
+<p>Сохраните следующий код в <code>grpc_example.py</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.services.gocpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrpcTransport</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">transport</span> <span class="o">=</span> <span class="n">GrpcTransport</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">transport</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;CODEGRAPH_CPG_PATH&quot;</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_nodes</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">total_edges</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">transport</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</code></pre></div>
+
+<p>Задайте абсолютный путь к существующему CPG и запустите файл в Bash:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">CODEGRAPH_CPG_PATH</span><span class="o">=</span><span class="s2">&quot;&lt;absolute-cpg-path&gt;&quot;</span>
+python<span class="w"> </span>grpc_example.py
+</code></pre></div>
+
+<p>Программа выводит два целых числа: количество узлов и рёбер графа. Значения зависят от выбранного
+графа. Метод <code>stats</code> возвращает <code>GoCPGStatsResult</code>; поля <code>methods</code>, <code>calls</code>, <code>files</code> и <code>tables</code>
+дают более подробную статистику. Блок <code>finally</code> закрывает канал после успешного вызова или ошибки.</p>
 <h2  id="gruppy-operatsiy"><span id="gruppy_operatsiy"></span>Группы операций<a class="heading-anchor" href="#gruppy-operatsiy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
 <li><code>parse</code>, <code>update</code>, <code>ci_update</code> и <code>create_indexes</code> создают или обновляют DuckDB CPG. Parse и
@@ -319,6 +351,7 @@ MCP-вызовы агента: там хранилище определяетс�
       <ul class="doc-toc-list">
         <li><a href="#kanonicheskie-servisy" class="level-2" aria-current="location">Канонические сервисы</a></li>
 <li><a href="#nastroyka-soedineniya" class="level-2">Настройка соединения</a></li>
+<li><a href="#poluchenie-statistiki-grafa" class="level-2">Получение статистики графа</a></li>
 <li><a href="#gruppy-operatsiy" class="level-2">Группы операций</a></li>
 <li><a href="#puti-i-dedlayny" class="level-2">Пути и дедлайны</a></li>
 <li><a href="#obrabotka-sboev" class="level-2">Обработка сбоев</a></li>
