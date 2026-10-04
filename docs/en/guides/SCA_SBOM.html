@@ -205,8 +205,13 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>An SBOM is an inventory of software components. This guide helps developers generate
-that inventory and check dependencies against vulnerability sources. Report completeness
+        <p>An SBOM is an inventory of software components that you can attach to a release
+or share with the security team. It shows third-party packages and helps match
+dependencies to vulnerability reports. CodeGraph exports CycloneDX or SPDX
+inventories and produces audit reports in JSON, SARIF, Markdown or GOST format.</p>
+<p>Start with the inventory: generate the file, inspect component names and versions,
+and retain it with the source revision. Then run the audit and triage its findings
+before updating dependencies. Report completeness
 depends on supported dependency files, exact versions, and source availability.
 A security reviewer must assess whether findings apply to the release configuration.</p>
 <h2  id="prerequisites-and-complete-example"><span id="prerequisites_and_complete_example"></span>Prerequisites and complete example<a class="heading-anchor" href="#prerequisites-and-complete-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
@@ -254,6 +259,7 @@ Retain the source revision, command, output file, and SHA-256 digest.
 and supported dependency files; this result does not prove that the project has
 no third-party components.</p>
 <h2  id="audit-vulnerabilities"><span id="audit_vulnerabilities"></span>Audit vulnerabilities<a class="heading-anchor" href="#audit-vulnerabilities" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p><code>sbom audit</code> scans the selected project manifests again and checks the resulting dependency graph through the chosen sources. Generate the SBOM and run the audit against the same revision to match components to findings.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">audit</span> <span class="p">`</span>
   <span class="p">-</span><span class="n">-project</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">`</span>
   <span class="p">-</span><span class="n">-format</span> <span class="n">sarif</span> <span class="p">`</span>
@@ -267,14 +273,11 @@ Set sources with <code>--sources osv,nvd,bdu</code>; the default is <code>osv</c
 the selected severity. No severity threshold applies when this option is omitted.
 Exit code 2 indicates an error handled by the command. Check the report file,
 its contents, and source error messages before using the result in CI.</p>
-<p>Run <code>python -m src.cli sbom sync --sources osv,nvd,bdu</code> to refresh vulnerability
-data when network access to those sources is permitted. Record the sources and
-update time. No findings with an unavailable source, stale cache, or unknown
-versions does not establish dependency safety.</p>
+<p><code>python -m src.cli sbom sync --sources osv,nvd,bdu</code> records a synchronization marker for the listed sources and prints local cache statistics. Vulnerability lookups run through <code>sbom audit</code>. Retain the report, source messages and check time with the project revision; if a source fails, restore access and repeat the audit.</p>
 <h2  id="rest-and-dashboard"><span id="rest_and_dashboard"></span>REST and dashboard<a class="heading-anchor" href="#rest-and-dashboard" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Project-scoped SCA operations are under <code>/api/v1/security/sca</code>. Check the REST
 reference of your deployed CodeGraph instance for exact operations and request
-schemas. This section does not provide a separate reproducible API workflow.</p>
+schemas. See the <a href="scenarios/20-dependencies.html#use-the-registered-project-rest-api">dependency analysis scenario</a> for registered-project preparation and the principal routes.</p>
 <h2 id="triage">Triage<a class="heading-anchor" href="#triage" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Confirm package name, version, ecosystem, and dependency path.</li>
