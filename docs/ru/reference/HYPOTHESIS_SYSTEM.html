@@ -161,7 +161,7 @@
         <h1>Анализ гипотез безопасности</h1>
         <p class="doc-lead">Создайте, отфильтруйте и экспортируйте гипотезы безопасности по CPG через CLI или MCP. Проверьте охват и подтвердите находки перед исправлением.</p>
 
-        <div class="doc-meta"><span>Справочник</span><time datetime="2026-10-03">Обновлено: 2026-10-03</time></div>
+        <div class="doc-meta"><span>Справочник</span><time datetime="2026-10-04">Обновлено: 2026-10-04</time></div>
       </header>
 
       <!-- Content -->
@@ -231,6 +231,66 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <p>JSON-отчёт содержит идентификатор пакета, счётчики выполнения и результатов, время и ограниченный
 набор полей гипотез. Сохраняйте рядом проиндексированную Git-ревизию и аргументы команды.</p>
+<h2  id="proverte-izmenenie-na-uchebnom-primere"><span id="proverte_izmenenie_na_uchebnom_primere"></span>Проверьте изменение на учебном примере<a class="heading-anchor" href="#proverte-izmenenie-na-uchebnom-primere" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>В этом примере функция получает текст из переменной окружения через <code>getenv</code>
+и передаёт его в <code>system</code>. Гипотеза командной инъекции проверяет сочетание источника
+ввода и выполнения команд в этой функции. Затем мы заменим выполнение команды
+выводом текста через <code>puts</code>, обновим граф и сравним результаты.</p>
+<p>Выполняйте команды в Bash из корня CodeGraph. В <code>GOCPG_BIN</code> укажите абсолютный путь
+к установленному исполняемому файлу GoCPG вместо <code>&lt;path-to-gocpg&gt;</code>; на Windows это
+файл <code>gocpg.exe</code>. Нужен доступный GoCPG gRPC-сервис, как для предыдущих команд. Вместо <code>&lt;new-demo-dir&gt;</code> укажите новый каталог для исходников,
+графов и отчётов примера. Учебный исходник разбирайте анализатором; компилировать и запускать
+его для проверки гипотезы не требуется.</p>
+<p>Создайте исходник, постройте CPG и сохраните отчёт:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">GOCPG_BIN</span><span class="o">=</span><span class="s2">&quot;&lt;path-to-gocpg&gt;&quot;</span>
+<span class="nv">DEMO_DIR</span><span class="o">=</span><span class="s2">&quot;&lt;new-demo-dir&gt;&quot;</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/before&quot;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/before/example.c&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;C&#39;</span>
+<span class="s">#include &lt;stdio.h&gt;</span>
+<span class="s">#include &lt;stdlib.h&gt;</span>
+
+<span class="s">void run_action(void) {</span>
+<span class="s">    char *command = getenv(&quot;C</span>ODEGRAPH_DEMO_COMMAND<span class="s2">&quot;);</span>
+<span class="s2">    if (command != NULL) {</span>
+<span class="s2">        system(command);</span>
+<span class="s2">    }</span>
+<span class="s2">}</span>
+<span class="s2">C</span>
+
+<span class="s2">&quot;</span><span class="nv">$GOCPG_BIN</span><span class="s2">&quot; parse --input &quot;</span><span class="nv">$DEMO_DIR</span>/before<span class="s2">&quot; \</span>
+<span class="s2">  --output &quot;</span><span class="nv">$DEMO_DIR</span>/before.duckdb<span class="s2">&quot; --lang c</span>
+<span class="s2">export CODEGRAPH_ALLOW_LOCAL_PYTHON_CLI=1</span>
+<span class="s2">python -m src.cli hypothesis run \</span>
+<span class="s2">  --db &quot;</span><span class="nv">$DEMO_DIR</span>/before.duckdb<span class="s2">&quot; \</span>
+<span class="s2">  --language C --category command_injection \</span>
+<span class="s2">  --max 50 --min-priority 0.5 --format json \</span>
+<span class="s2">  --output &quot;</span><span class="nv">$DEMO_DIR</span>/before.json<span class="s2">&quot; --human-language ru</span>
+</code></pre></div>
+
+<p>Откройте <code>&lt;new-demo-dir&gt;/before.json</code>. Для этого исходника ожидается одна выполненная
+проверка (<code>executed_queries: 1</code>) и одна подтверждённая гипотеза
+(<code>confirmed_hypotheses: 1</code>) категории <code>command_injection</code>. В её <code>cwe_ids</code> входит
+<code>CWE-78</code>. В исходнике проследите передачу <code>command</code> от <code>getenv</code> в <code>system</code>:
+именно этот участок команда получает для ревью.</p>
+<p>Замените <code>system(command)</code> на <code>puts(command)</code>, сохранив новую версию отдельно.
+Перестройте CPG и повторите ту же проверку:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after&quot;</span>
+sed<span class="w"> </span><span class="s1">&#39;s/system(command);/puts(command);/&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/before/example.c&quot;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after/example.c&quot;</span>
+<span class="s2">&quot;</span><span class="nv">$GOCPG_BIN</span><span class="s2">&quot;</span><span class="w"> </span>parse<span class="w"> </span>--input<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after.duckdb&quot;</span><span class="w"> </span>--lang<span class="w"> </span>c
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>hypothesis<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after.duckdb&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--language<span class="w"> </span>C<span class="w"> </span>--category<span class="w"> </span>command_injection<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--max<span class="w"> </span><span class="m">50</span><span class="w"> </span>--min-priority<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after.json&quot;</span><span class="w"> </span>--human-language<span class="w"> </span>ru
+</code></pre></div>
+
+<p>В <code>&lt;new-demo-dir&gt;/after.json</code> ожидаются <code>executed_queries: 1</code>,
+<code>confirmed_hypotheses: 0</code> и <code>rejected_hypotheses: 1</code>. Число проверок сохранилось,
+а гипотеза командной инъекции стала отклонённой: новая версия выводит значение
+как текст через <code>puts</code>. Два исходника, два графа и два отчёта позволяют показать
+ревьюеру само изменение и результат повторной проверки.</p>
 <h2  id="ogranichenie-oblasti-proverki"><span id="ogranichenie_oblasti_proverki"></span>Ограничение области проверки<a class="heading-anchor" href="#ogranichenie-oblasti-proverki" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Обычный <code>run</code> применяет повторяемый <code>--category</code> и список <code>--cve</code> через запятую.
 Аргумент <code>run --cwe</code> принимается парсером, но текущий обработчик его не использует.
@@ -332,6 +392,7 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 <li><a href="#kogda-etot-analiz-polezen" class="level-2">Когда этот анализ полезен</a></li>
 <li><a href="#vyberite-interfeys" class="level-2">Выберите интерфейс</a></li>
 <li><a href="#zapusk-cherez-cli" class="level-2">Запуск через CLI</a></li>
+<li><a href="#proverte-izmenenie-na-uchebnom-primere" class="level-2">Проверьте изменение на учебном примере</a></li>
 <li><a href="#ogranichenie-oblasti-proverki" class="level-2">Ограничение области проверки</a></li>
 <li><a href="#proverka-pokrytiya-i-eksport-tseley" class="level-2">Проверка покрытия и экспорт целей</a></li>
 <li><a href="#zapusk-cherez-mcp" class="level-2">Запуск через MCP</a></li>

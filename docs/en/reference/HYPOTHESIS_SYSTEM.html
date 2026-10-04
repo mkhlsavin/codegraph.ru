@@ -161,7 +161,7 @@
         <h1>Security hypothesis analysis</h1>
         <p class="doc-lead">Generate, filter and export CPG-backed security hypotheses through CodeGraph CLI and MCP. Check coverage and confirm findings before remediation.</p>
 
-        <div class="doc-meta"><span>Technical Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>Technical Reference</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
       </header>
 
       <!-- Content -->
@@ -229,6 +229,66 @@ python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> 
 
 <p>The JSON report includes the batch identity, execution counts, result counts, timing, and bounded
 hypothesis fields. Preserve the indexed Git revision and command arguments beside the report.</p>
+<h2  id="check-a-change-with-a-worked-example"><span id="check_a_change_with_a_worked_example"></span>Check a change with a worked example<a class="heading-anchor" href="#check-a-change-with-a-worked-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>In this example, a function reads text from an environment variable through <code>getenv</code>
+and passes it to <code>system</code>. The command-injection hypothesis checks for the input source
+and command execution within that function. We then replace command execution with
+text output through <code>puts</code>, rebuild the graph and compare the results.</p>
+<p>Run these Bash commands from the CodeGraph repository root. Set <code>GOCPG_BIN</code> to the
+absolute path of your installed GoCPG executable in place of <code>&lt;path-to-gocpg&gt;</code>;
+on Windows, use the <code>gocpg.exe</code> file. You also need an accessible GoCPG gRPC service,
+as for the preceding commands. Replace <code>&lt;new-demo-dir&gt;</code> with a new directory for the
+example sources, graphs and reports. Parse the teaching source with the analyzer;
+you do not need to compile or execute it to check the hypothesis.</p>
+<p>Create the source, build its CPG and save the report:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">GOCPG_BIN</span><span class="o">=</span><span class="s2">&quot;&lt;path-to-gocpg&gt;&quot;</span>
+<span class="nv">DEMO_DIR</span><span class="o">=</span><span class="s2">&quot;&lt;new-demo-dir&gt;&quot;</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/before&quot;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/before/example.c&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;C&#39;</span>
+<span class="s">#include &lt;stdio.h&gt;</span>
+<span class="s">#include &lt;stdlib.h&gt;</span>
+
+<span class="s">void run_action(void) {</span>
+<span class="s">    char *command = getenv(&quot;C</span>ODEGRAPH_DEMO_COMMAND<span class="s2">&quot;);</span>
+<span class="s2">    if (command != NULL) {</span>
+<span class="s2">        system(command);</span>
+<span class="s2">    }</span>
+<span class="s2">}</span>
+<span class="s2">C</span>
+
+<span class="s2">&quot;</span><span class="nv">$GOCPG_BIN</span><span class="s2">&quot; parse --input &quot;</span><span class="nv">$DEMO_DIR</span>/before<span class="s2">&quot; \</span>
+<span class="s2">  --output &quot;</span><span class="nv">$DEMO_DIR</span>/before.duckdb<span class="s2">&quot; --lang c</span>
+<span class="s2">export CODEGRAPH_ALLOW_LOCAL_PYTHON_CLI=1</span>
+<span class="s2">python -m src.cli hypothesis run \</span>
+<span class="s2">  --db &quot;</span><span class="nv">$DEMO_DIR</span>/before.duckdb<span class="s2">&quot; \</span>
+<span class="s2">  --language C --category command_injection \</span>
+<span class="s2">  --max 50 --min-priority 0.5 --format json \</span>
+<span class="s2">  --output &quot;</span><span class="nv">$DEMO_DIR</span>/before.json<span class="s2">&quot; --human-language en</span>
+</code></pre></div>
+
+<p>Open <code>&lt;new-demo-dir&gt;/before.json</code>. For this source, expect one executed check
+(<code>executed_queries: 1</code>) and one confirmed hypothesis (<code>confirmed_hypotheses: 1</code>)
+in category <code>command_injection</code>. Its <code>cwe_ids</code> include <code>CWE-78</code>. In the source,
+follow <code>command</code> from <code>getenv</code> to <code>system</code>: this is the code the team receives for review.</p>
+<p>Replace <code>system(command)</code> with <code>puts(command)</code> and keep the new version separately.
+Rebuild the CPG and repeat the same check:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after&quot;</span>
+sed<span class="w"> </span><span class="s1">&#39;s/system(command);/puts(command);/&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/before/example.c&quot;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after/example.c&quot;</span>
+<span class="s2">&quot;</span><span class="nv">$GOCPG_BIN</span><span class="s2">&quot;</span><span class="w"> </span>parse<span class="w"> </span>--input<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after.duckdb&quot;</span><span class="w"> </span>--lang<span class="w"> </span>c
+python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>hypothesis<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--db<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after.duckdb&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--language<span class="w"> </span>C<span class="w"> </span>--category<span class="w"> </span>command_injection<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--max<span class="w"> </span><span class="m">50</span><span class="w"> </span>--min-priority<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEMO_DIR</span><span class="s2">/after.json&quot;</span><span class="w"> </span>--human-language<span class="w"> </span>en
+</code></pre></div>
+
+<p>In <code>&lt;new-demo-dir&gt;/after.json</code>, expect <code>executed_queries: 1</code>,
+<code>confirmed_hypotheses: 0</code> and <code>rejected_hypotheses: 1</code>. The number of checks stays
+the same, while the command-injection hypothesis becomes rejected: the new version
+prints the value as text through <code>puts</code>. The two sources, graphs and reports let the
+reviewer inspect both the change and its repeated check.</p>
 <h2  id="limit-the-scope"><span id="limit_the_scope"></span>Limit the scope<a class="heading-anchor" href="#limit-the-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>A regular <code>run</code> applies repeatable <code>--category</code> and comma-separated <code>--cve</code> arguments.
 The parser accepts <code>run --cwe</code>, but the current handler does not use it.
@@ -330,6 +390,7 @@ structure and details of identified weaknesses.</p>
 <li><a href="#when-to-use-this-analysis" class="level-2">When to use this analysis</a></li>
 <li><a href="#choose-an-interface" class="level-2">Choose an interface</a></li>
 <li><a href="#run-from-the-cli" class="level-2">Run from the CLI</a></li>
+<li><a href="#check-a-change-with-a-worked-example" class="level-2">Check a change with a worked example</a></li>
 <li><a href="#limit-the-scope" class="level-2">Limit the scope</a></li>
 <li><a href="#inspect-coverage-and-export-targets" class="level-2">Inspect coverage and export targets</a></li>
 <li><a href="#run-through-mcp" class="level-2">Run through MCP</a></li>
