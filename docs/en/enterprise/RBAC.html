@@ -6,7 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Assign roles and permissions to CodeGraph users. Configure corporate identity mapping and check access through the API, user interface, and MCP.">
   <meta name="cg:build-commit" content="adca62dab60cbf13008711316880de2d30cd002d">
-  <meta name="cg:css-build" content="8442b4f455ba">
+  <meta name="cg:css-build" content="71de88b005be">
 
   <meta property="og:title" content="RBAC and Authorization — Documentation">
   <meta property="og:description" content="Assign roles and permissions to CodeGraph users. Configure corporate identity mapping and check access through the API, user interface, and MCP.">
@@ -170,7 +170,8 @@
       <article class="doc-content">
         <p>This reference helps administrators and developers check user roles, API permissions and
 machine-account access. User roles, project scope and machine-account permissions are
-separate checks; the role table alone does not describe every condition for request access.</p>
+separate authorization layers. Start with the role permissions, then check the
+project assignments and machine-account scopes for the request.</p>
 <h2  id="scope-and-source-of-truth"><span id="scope_and_source_of_truth"></span>Scope and Source of Truth<a class="heading-anchor" href="#scope-and-source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>This document describes the implementation currently present under <code>src/</code>.</p>
 <p>Canonical code surfaces:</p>
@@ -622,7 +623,7 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 <li><code>has_permission()</code> considers role grants first and explicit scope strings second.</li>
 </ul>
 <h2  id="fastapi-auth-context"><span id="fastapi_auth_context"></span>FastAPI Auth Context<a class="heading-anchor" href="#fastapi-auth-context" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p><code>AuthContext</code> is defined in <code>src/api/auth/providers/middleware.py</code>.</p>
+<p><code>AuthContext</code> is defined in <code>src/contracts/auth_context.py</code> and exported through <code>src.api.auth.middleware</code>. It combines the access subject (<code>AuthSubject</code>) and permission scope (<code>AuthScope</code>).</p>
 <p>Fields:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="FastAPI Auth Context"><table data-columns="2"><caption class="sr-only">FastAPI Auth Context</caption>
 <thead>
@@ -720,14 +721,6 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>POST /register</code></td>
-<td>Create a local user and return tokens</td>
-</tr>
-<tr>
-<td><code>POST /login</code></td>
-<td>Login alias for token issuance</td>
-</tr>
-<tr>
 <td><code>POST /token</code></td>
 <td>Primary username/password token endpoint</td>
 </tr>
@@ -736,16 +729,12 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 <td>Rotate refresh token and issue new tokens</td>
 </tr>
 <tr>
-<td><code>DELETE /logout</code></td>
-<td>Blacklist current bearer token</td>
-</tr>
-<tr>
 <td><code>POST /oauth/token</code></td>
 <td>RFC 6749-compatible password and refresh-token grants</td>
 </tr>
 </tbody>
 </table></div>
-<p>Local passwords are hashed with <code>bcrypt</code>. New self-registered users receive the <code>analyst</code> role.</p>
+<p>An administrator creates a local account through <code>POST /api/v1/admin/identity/users</code> and assigns its role; the default is <code>analyst</code>. The response discloses the password once. Local passwords are hashed with <code>bcrypt</code>. To log out, call <code>DELETE /api/v1/me/logout</code> with the current bearer token; the route adds that token to the blacklist.</p>
 <h3  id="jwt-bearer-tokens"><span id="jwt_bearer_tokens"></span>JWT Bearer Tokens<a class="heading-anchor" href="#jwt-bearer-tokens" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>JWT code lives in <code>src/api/auth/tokens/jwt_handler.py</code>.</p>
 <p><code>TokenPayload</code> fields:</p>
