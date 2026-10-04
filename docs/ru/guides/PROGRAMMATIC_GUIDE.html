@@ -200,7 +200,7 @@
         <h1>Типизированный вызов сценария</h1>
         <p class="doc-lead">Составьте типизированный запрос сценария, задайте область принятой задачи и обработайте отказ политики или неполный результат выполнения.</p>
 
-        <div class="doc-meta"><span>Руководства</span><time datetime="2026-10-02">Обновлено: 2026-10-02</time></div>
+        <div class="doc-meta"><span>Руководства</span><time datetime="2026-10-04">Обновлено: 2026-10-04</time></div>
       </header>
 
       <!-- Content -->
@@ -208,18 +208,17 @@
         <p>CodeGraph экспортирует типизированный Python-контракт выполнения сценария
 с проверкой ответственного сотрудника. Он подходит для внутрипроцессной интеграции, уже связанной
 с управляемой задачей CodeGraph. Агентскому или удалённому клиенту следует
-использовать зарегистрированную MCP/API-поверхность, а не импортировать
-внутренние модули репозитория.</p>
+использовать зарегистрированный интерфейс MCP или API; настройка описана
+в <a href="../api/MCP_OPERATOR_GUIDE.html">руководстве оператора MCP</a>.</p>
 <h2  id="minimalnyy-zapros"><span id="minimalnyy_zapros"></span>Минимальный запрос<a class="heading-anchor" href="#minimalnyy-zapros" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Пример выполняется из корня локального репозитория CodeGraph в Python-окружении
 с установленными зависимостями; подготовка описана в <a href="CLI_GUIDE.html">руководстве CLI</a>.
 Для рабочего сценария нужны зарегистрированный проект, принятая задача,
 настроенные сервисы контекста и провайдер LLM. Конфигурацию экземпляра описывает
 <a href="../getting-started/CONFIGURATION.html">руководство настройки</a>.
-Выберите значения <code>project_key</code>, <code>namespace</code> и <code>task_id</code> из принятой задачи.
-Замените <code>source_refs</code> реальными ссылками на проверяемые исходники.
-<code>source://current-contract</code> и <code>&lt;task-id&gt;</code> — обозначения для замены.
-Ни установка Python, ни заполнение полей не гарантируют готовность runtime.</p>
+Замените <code>&lt;project-key&gt;</code>, <code>&lt;namespace&gt;</code> и <code>&lt;task-id&gt;</code> значениями принятой задачи,
+а <code>source://current-contract</code> — ссылкой на текущий исходник. Перед вызовом
+проверьте настройки сервисов проекта и выбранного провайдера LLM.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">,</span>
     <span class="n">invoke_role_bound_scenario_request</span><span class="p">,</span>
@@ -228,8 +227,8 @@
 <span class="n">request</span> <span class="o">=</span> <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">(</span>
     <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Обнови документацию интерфейса для выбранной задачи.&quot;</span><span class="p">,</span>
     <span class="n">context</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;project_key&quot;</span><span class="p">:</span> <span class="s2">&quot;codegraph&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;project_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;project-key&gt;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;namespace&gt;&quot;</span><span class="p">,</span>
         <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;task-id&gt;&quot;</span><span class="p">,</span>
         <span class="s2">&quot;source_refs&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;source://current-contract&quot;</span><span class="p">],</span>
     <span class="p">},</span>
@@ -255,10 +254,9 @@ carrier задачи.</p>
 <p>При неполной области вызов закрывается с ошибкой
 <code>role_bound_scenario_contract_missing:&lt;fields&gt;</code>. Затем runtime разрешает или
 проверяет ответственного <code>employee_id</code>, его право на сценарий, строит evidence
-вызова и выполняет preflight. Поэтому синтаксически правильный запрос тоже
-может быть отклонён.</p>
-<p>Нельзя перехватывать governance-ошибку и повторять операцию через низкоуровневый
-handler. Восстановите carrier, policy, event или отсутствующее evidence.</p>
+вызова и выполняет preflight.</p>
+<p>При отказе восстановите область задачи, политику сотрудника, событие или
+указанные в сообщении свидетельства. Затем повторите тот же типизированный вызов.</p>
 <h2  id="polya-zaprosa"><span id="polya_zaprosa"></span>Поля запроса<a class="heading-anchor" href="#polya-zaprosa" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Поля запроса"><table data-columns="2"><caption class="sr-only">Поля запроса</caption>
 <thead>
@@ -295,8 +293,8 @@ handler. Восстановите carrier, policy, event или отсутств
 </tbody>
 </table></div>
 <p>Если <code>scenario_id</code> не задан, runtime классифицирует запрос. Для воспроизводимой
-автоматизации обычно лучше явный идентификатор: так сохраняется назначенная
-ответственный сотрудник и проще диагностируется отказ политики.</p>
+автоматизации обычно лучше явный идентификатор: так сохраняется выбранный
+сценарий и проще диагностируется отказ политики.</p>
 <h2  id="kontrakt-rezultata"><span id="kontrakt_rezultata"></span>Контракт результата<a class="heading-anchor" href="#kontrakt-rezultata" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Возвращается словарь выбранного сценария. Обёртка ролевого вызова добавляет общие
 поля:</p>
@@ -308,9 +306,11 @@ handler. Восстановите carrier, policy, event или отсутств
   выполнения, workflow, ссылка evidence и статус preflight;</li>
 <li><code>metadata.scenario_invocation_evidence</code> — полный объект evidence вызова.</li>
 </ul>
-<p>Поля конкретных сценариев различаются. Сначала проверяйте общую оболочку,
-затем — поля конкретного сценария. Нельзя предполагать единые недокументированные
-поля <code>answer</code>, <code>sources</code> или оценку уверенности для всех сценариев.</p>
+<p>По общей оболочке определите выбранный workflow и результат его предварительной
+проверки. Затем прочитайте поля выбранного сценария; для этого примера используйте
+<a href="scenarios/03-documentation.html">руководство по документации</a>. В сценарии документации
+поле <code>error</code>, если оно заполнено, содержит ошибку выполнения. Обработайте её
+отдельно от исключения, которое отклоняет запрос до запуска сценария.</p>
 <h2  id="obrabotka-oshibok"><span id="obrabotka_oshibok"></span>Обработка ошибок<a class="heading-anchor" href="#obrabotka-oshibok" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Считайте стабильный префикс категорией, но сохраняйте полное сообщение в
 диагностике:</p>
@@ -334,23 +334,26 @@ handler. Восстановите carrier, policy, event или отсутств
     <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;role_bound_&quot;</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">IntegrationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CodeGraph отклонил сценарий: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
     <span class="k">raise</span>
+
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="n">IntegrationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CodeGraph не выполнил сценарий документации: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p>Этот фрагмент продолжает пример выше и использует тот же <code>request</code>.
+<p>Этот фрагмент заменяет последнюю строку вызова в первом примере и использует
+тот же <code>request</code>.
 Для проверки ошибки без запуска LLM создайте запрос с <code>context={}</code>:
 вызов выдаст <code>role_bound_scenario_contract_missing</code> до получения контекста
 и выполнения сценария. Сохраните полное сообщение: оно перечисляет недостающие поля.
-Не подставляйте другой сценарий молча. Область задачи и ответственный сотрудник
-определяют смысл операции.</p>
+После восстановления условий повторите запрос с той же областью задачи
+и выбранным сотрудником.</p>
 <h2  id="konkurentnost-i-pobochnye-effekty"><span id="konkurentnost_i_pobochnye_effekty"></span>Конкурентность и побочные эффекты<a class="heading-anchor" href="#konkurentnost-i-pobochnye-effekty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Для вызывающего кода операция синхронна. Выбранный workflow может обращаться к
 сервисам проекта или формировать управляемое evidence. Если вызов способен
 блокировать, не выполняйте его в основном потоке async event loop. Для
 долговечного удалённого выполнения используйте orchestration-поверхность вашей
 установки.</p>
-<p>Типизированный запрос не даёт права на произвольное редактирование файлов,
-публикацию или изменение состояния. Для таких действий по-прежнему нужны
-carrier задачи, владелец lane и approvals соответствующего контракта.</p>
+<p>Редактирование файлов, публикация и изменение состояния выполняются через
+носитель задачи, ответственную роль и разрешения соответствующего контракта.</p>
 <h2  id="podderzhivaemye-istochniki"><span id="podderzhivaemye_istochniki"></span>Поддерживаемые источники<a class="heading-anchor" href="#podderzhivaemye-istochniki" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
 <li><code>src/digital_employees/runtime/scenarios/__init__.py</code> определяет
@@ -360,8 +363,8 @@ carrier задачи, владелец lane и approvals соответству�
 <li><code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code>
   определяет employee/scenario/event policy и evidence вызова.</li>
 </ul>
-<p>При расхождении с установленной ревизией авторитетен экспортируемый контракт
-исходного кода.</p>
+<p>При обновлении интеграции сверяйте экспортируемые имена и поля запроса
+с этими модулями установленной версии.</p>
       </article>
 
       <div class="doc-maintenance">

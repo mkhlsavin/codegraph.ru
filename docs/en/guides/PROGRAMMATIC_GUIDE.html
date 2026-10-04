@@ -200,7 +200,7 @@
         <h1>Typed scenario invocation</h1>
         <p class="doc-lead">Build a typed scenario request, bind it to an accepted task scope, and handle policy rejection or incomplete execution results.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-02">Updated: 2026-10-02</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
       </header>
 
       <!-- Content -->
@@ -208,16 +208,17 @@
         <p>CodeGraph exports one typed Python request surface for role-bound scenario
 execution. Use it for an in-process integration that already participates in a
 governed CodeGraph task. For an agent or remote client, prefer the registered
-MCP/API surface for that client instead of importing repository internals.</p>
+MCP or API interface for that client; see the
+<a href="../api/MCP_OPERATOR_GUIDE.html">MCP operator guide</a> for setup.</p>
 <h2  id="minimal-request"><span id="minimal_request"></span>Minimal request<a class="heading-anchor" href="#minimal-request" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Run the example from a local CodeGraph repository root with the project dependencies
 installed; see the prerequisites in the <a href="CLI_GUIDE.html">CLI guide</a>.
 A working scenario needs a registered project, an accepted task, configured context
 services, and an LLM provider. See the <a href="../getting-started/CONFIGURATION.html">configuration guide</a>
-for instance settings. Use <code>project_key</code>, <code>namespace</code>, and <code>task_id</code> from the accepted
-task and replace <code>source_refs</code> with current source references.
-<code>source://current-contract</code> and <code>&lt;task-id&gt;</code> are placeholders.
-Installing Python and filling in these fields does not establish runtime readiness.</p>
+for instance settings.
+Replace <code>&lt;project-key&gt;</code>, <code>&lt;namespace&gt;</code> and <code>&lt;task-id&gt;</code> with accepted task values,
+and <code>source://current-contract</code> with a current source reference. Before invocation,
+check the project service settings and selected LLM provider in your instance configuration.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">,</span>
     <span class="n">invoke_role_bound_scenario_request</span><span class="p">,</span>
@@ -226,8 +227,8 @@ Installing Python and filling in these fields does not establish runtime readine
 <span class="n">request</span> <span class="o">=</span> <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">(</span>
     <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Update the interface documentation for the selected task.&quot;</span><span class="p">,</span>
     <span class="n">context</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;project_key&quot;</span><span class="p">:</span> <span class="s2">&quot;codegraph&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;project_key&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;project-key&gt;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;namespace&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;namespace&gt;&quot;</span><span class="p">,</span>
         <span class="s2">&quot;task_id&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;task-id&gt;&quot;</span><span class="p">,</span>
         <span class="s2">&quot;source_refs&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;source://current-contract&quot;</span><span class="p">],</span>
     <span class="p">},</span>
@@ -253,10 +254,9 @@ it.</p>
 <p>An empty scope fails closed with
 <code>role_bound_scenario_contract_missing:&lt;fields&gt;</code>. The runtime also resolves or
 validates the accountable <code>employee_id</code>, verifies that the employee may run the
-selected scenario, builds invocation evidence and runs the scenario preflight.
-Those checks can reject a syntactically valid request.</p>
-<p>Do not catch a governance error and retry through a lower-level handler. Repair
-the missing carrier, policy, event or evidence condition.</p>
+selected scenario, builds invocation evidence and runs the scenario preflight.</p>
+<p>When preflight rejects a request, restore the task scope, employee policy, event or
+evidence named in the message. Then repeat the same typed invocation.</p>
 <h2  id="request-fields"><span id="request_fields"></span>Request fields<a class="heading-anchor" href="#request-fields" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Request fields"><table data-columns="2"><caption class="sr-only">Request fields</caption>
 <thead>
@@ -306,9 +306,11 @@ fields added by the role-bound wrapper include:</p>
   workflow, evidence reference and preflight status;</li>
 <li><code>metadata.scenario_invocation_evidence</code>: the full invocation evidence object.</li>
 </ul>
-<p>Scenario-specific fields can differ. Check for the shared envelope first, then
-validate the fields required by the selected scenario. Do not assume an
-undocumented <code>answer</code>, <code>sources</code> or confidence shape across every workflow.</p>
+<p>Use the shared envelope to identify the selected workflow and its preflight result.
+Then read the selected scenario fields; for this example, see the
+<a href="scenarios/03-documentation.html">documentation scenario guide</a>. In that workflow,
+a populated <code>error</code> field contains an execution error. Handle it separately from
+an exception that rejects the request before the scenario starts.</p>
 <h2  id="error-handling"><span id="error_handling"></span>Error handling<a class="heading-anchor" href="#error-handling" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Treat stable prefixes as categories and preserve their complete message in
 diagnostics:</p>
@@ -332,14 +334,18 @@ diagnostics:</p>
     <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;role_bound_&quot;</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">IntegrationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CodeGraph scenario rejected: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
     <span class="k">raise</span>
+
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="n">IntegrationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CodeGraph documentation workflow failed: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;error&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p>This fragment continues the preceding example and uses its <code>request</code>.
+<p>This fragment replaces the final invocation line in the first example and uses
+the same <code>request</code>.
 To check rejection without calling an LLM, create a request with <code>context={}</code>.
 Invocation raises <code>role_bound_scenario_contract_missing</code> before context retrieval
 or scenario execution. Preserve the complete message: it lists missing fields.
-Keep task scope and the accountable employee with the selected scenario;
-they define the operation&rsquo;s meaning.</p>
+After restoring the required conditions, repeat the request with the same task
+scope and selected employee.</p>
 <h2  id="concurrency-and-side-effects"><span id="concurrency_and_side_effects"></span>Concurrency and side effects<a class="heading-anchor" href="#concurrency-and-side-effects" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Invocation is synchronous from the caller&rsquo;s perspective. The selected workflow
 may query project services or produce governed evidence. Run it outside an
@@ -356,8 +362,8 @@ changes run through the task carrier, lane ownership and approval defined by the
 <li><code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code>
   defines employee/scenario/event policy and invocation evidence.</li>
 </ul>
-<p>When the installed source differs from this guide, the exported source contract
-is authoritative.</p>
+<p>When updating the integration, compare exported names and request fields with
+these modules in your installed version.</p>
       </article>
 
       <div class="doc-maintenance">
