@@ -269,11 +269,23 @@
   <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sca</span><span class="p">.</span><span class="n">sarif</span><span class="p">&gt;</span>
 </code></pre></div>
 
+<p>Для каталога из полного примера выполните аудит и просмотрите находки:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">Push-Location</span> <span class="n">sbom-demo</span>
+<span class="k">try</span> <span class="p">{</span>
+  <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">audit</span> <span class="p">-</span><span class="n">-sources</span> <span class="n">osv</span> <span class="p">-</span><span class="n">-format</span> <span class="n">sarif</span> <span class="p">-</span><span class="n">-fail-on</span> <span class="n">high</span> <span class="p">-</span><span class="n">-output</span> <span class="n">sca</span><span class="p">.</span><span class="n">sarif</span>
+  <span class="nv">$report</span> <span class="p">=</span> <span class="nb">Get-Content</span> <span class="n">sca</span><span class="p">.</span><span class="n">sarif</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
+  <span class="nv">$report</span><span class="p">.</span><span class="n">runs</span><span class="p">[</span><span class="n">0</span><span class="p">].</span><span class="n">results</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">ruleId</span><span class="p">,</span> <span class="n">level</span>
+  <span class="nv">$report</span><span class="p">.</span><span class="n">runs</span><span class="p">[</span><span class="n">0</span><span class="p">].</span><span class="n">tool</span><span class="p">.</span><span class="n">driver</span><span class="p">.</span><span class="n">rules</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">id</span><span class="p">,</span> <span class="n">properties</span>
+<span class="p">}</span> <span class="k">finally</span> <span class="p">{</span>
+  <span class="nb">Pop-Location</span>
+<span class="p">}</span>
+</code></pre></div>
+
 <p>Форматы отчёта: <code>--format {sarif,json,markdown,gost}</code>, по умолчанию <code>json</code>.
 Источники задаются через <code>--sources osv,nvd,bdu_fstec</code>; по умолчанию используется <code>osv</code>.
 Параметр <code>--fail-on {critical,high,medium,low}</code> возвращает код 1 при обнаружении
 уязвимости указанной серьёзности или выше. Без параметра этот порог не применяется.
-Код 2 обозначает обработанную командой ошибку. Проверьте наличие отчёта, его
+Находки с серьёзностью <code>unknown</code> остаются в отчёте, но не входят в сравнение с порогом <code>--fail-on</code>. Для SARIF проверьте <code>tool.driver.rules[].properties.severity</code> и сопоставьте правило с <code>results[].ruleId</code>. Разберите такие находки по сведениям источника, чтобы назначить серьёзность и выбрать исправление. Код 2 обозначает обработанную командой ошибку. Проверьте наличие отчёта, его
 содержимое и сообщения об ошибках источников, прежде чем использовать результат в CI.</p>
 <p>Команда <code>python -m src.cli sbom sync --sources osv,nvd,bdu_fstec</code> записывает отметку синхронизации для перечисленных источников и выводит статистику локального кэша. При проверке уязвимостей данные запрашивает <code>sbom audit</code>. Сохраните отчёт, сообщения источников и время проверки вместе с ревизией проекта; при ошибке источника восстановите доступ и повторите аудит.</p>
 <h2  id="rest-i-dashboard"><span id="rest_i_dashboard"></span>REST и dashboard<a class="heading-anchor" href="#rest-i-dashboard" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>

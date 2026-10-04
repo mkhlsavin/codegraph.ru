@@ -267,11 +267,23 @@ no third-party components.</p>
   <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sca</span><span class="p">.</span><span class="n">sarif</span><span class="p">&gt;</span>
 </code></pre></div>
 
+<p>Audit the directory from the complete example and inspect the findings:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nb">Push-Location</span> <span class="n">sbom-demo</span>
+<span class="k">try</span> <span class="p">{</span>
+  <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">audit</span> <span class="p">-</span><span class="n">-sources</span> <span class="n">osv</span> <span class="p">-</span><span class="n">-format</span> <span class="n">sarif</span> <span class="p">-</span><span class="n">-fail-on</span> <span class="n">high</span> <span class="p">-</span><span class="n">-output</span> <span class="n">sca</span><span class="p">.</span><span class="n">sarif</span>
+  <span class="nv">$report</span> <span class="p">=</span> <span class="nb">Get-Content</span> <span class="n">sca</span><span class="p">.</span><span class="n">sarif</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
+  <span class="nv">$report</span><span class="p">.</span><span class="n">runs</span><span class="p">[</span><span class="n">0</span><span class="p">].</span><span class="n">results</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">ruleId</span><span class="p">,</span> <span class="n">level</span>
+  <span class="nv">$report</span><span class="p">.</span><span class="n">runs</span><span class="p">[</span><span class="n">0</span><span class="p">].</span><span class="n">tool</span><span class="p">.</span><span class="n">driver</span><span class="p">.</span><span class="n">rules</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">id</span><span class="p">,</span> <span class="n">properties</span>
+<span class="p">}</span> <span class="k">finally</span> <span class="p">{</span>
+  <span class="nb">Pop-Location</span>
+<span class="p">}</span>
+</code></pre></div>
+
 <p>Report formats are <code>--format {sarif,json,markdown,gost}</code>; the default is <code>json</code>.
 Set sources with <code>--sources osv,nvd,bdu_fstec</code>; the default is <code>osv</code>.
 <code>--fail-on {critical,high,medium,low}</code> returns 1 when a finding reaches or exceeds
 the selected severity. No severity threshold applies when this option is omitted.
-Exit code 2 indicates an error handled by the command. Check the report file,
+Findings with <code>unknown</code> severity stay in the report and are excluded from the <code>--fail-on</code> threshold comparison. In SARIF, inspect <code>tool.driver.rules[].properties.severity</code> and match each rule to <code>results[].ruleId</code>. Review those findings against the source advisory to assign severity and choose a fix. Exit code 2 indicates an error handled by the command. Check the report file,
 its contents, and source error messages before using the result in CI.</p>
 <p><code>python -m src.cli sbom sync --sources osv,nvd,bdu_fstec</code> records a synchronization marker for the listed sources and prints local cache statistics. Vulnerability lookups run through <code>sbom audit</code>. Retain the report, source messages and check time with the project revision; if a source fails, restore access and repeat the audit.</p>
 <h2  id="rest-and-dashboard"><span id="rest_and_dashboard"></span>REST and dashboard<a class="heading-anchor" href="#rest-and-dashboard" aria-label="Copy link to section" title="Copy link to section"></a></h2>
