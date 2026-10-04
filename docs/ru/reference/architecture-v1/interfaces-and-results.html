@@ -214,6 +214,45 @@
 </code></pre></div>
 
 <p>В JSON-ответе <code>grpcurl</code> поля имеют имена <code>runId</code>, <code>projectKey</code>, <code>commitHash</code>, <code>executionMode</code>, <code>findingCount</code> и <code>complete</code>. Сверьте <code>runId</code> с запрошенным запуском, <code>commitHash</code> — с проверяемой ревизией, а <code>findingCount</code> — с числом сохранённых находок. В определении protobuf те же поля названы <code>run_id</code>, <code>project_key</code>, <code>commit_hash</code>, <code>execution_mode</code> и <code>finding_count</code>; имя <code>complete</code> совпадает. Отсутствующий запуск или некорректная каноническая идентичность вызывает ошибку. В удалённой установке используйте настроенные TLS и метаданные авторизации из <a href="../../api/GRPC_API.html">руководства gRPC</a>.</p>
+<h3  id="vybor-formata-eksporta"><span id="vybor_formata_eksporta"></span>Выбор формата экспорта<a class="heading-anchor" href="#vybor-formata-eksporta" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>Вызовите <code>ExportArchitectureResults</code> с теми же <code>db</code> и <code>run_id</code>, что использовали для просмотра запуска, и укажите поле <code>format</code>:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Выбор формата экспорта"><table data-columns="3"><caption class="sr-only">Выбор формата экспорта</caption>
+<thead>
+<tr>
+<th scope="col"><code>format</code></th>
+<th scope="col">Результат</th>
+<th scope="col">Для чего использовать</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>json</code></td>
+<td>Канонический результат, <code>application/json</code></td>
+<td>Сохранить запуск вместе с правилами, находками и идентичностью.</td>
+</tr>
+<tr>
+<td><code>sarif</code></td>
+<td>SARIF 2.1.0, <code>application/sarif+json</code></td>
+<td>Передать находки в инструмент просмотра результатов анализа.</td>
+</tr>
+<tr>
+<td><code>graph_json</code></td>
+<td>Граф компонентов и находок, <code>application/json</code></td>
+<td>Обработать узлы и связи программно.</td>
+</tr>
+<tr>
+<td><code>mermaid</code></td>
+<td>Диаграмма, <code>text/vnd.mermaid</code></td>
+<td>Показать зависимости в документе с поддержкой Mermaid.</td>
+</tr>
+<tr>
+<td><code>plantuml</code></td>
+<td>Диаграмма, <code>text/x-plantuml</code></td>
+<td>Получить изображение через PlantUML.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ответ содержит выбранный <code>format</code>, тип содержимого <code>mediaType</code> и байты файла в <code>content</code>. В JSON-ответе <code>grpcurl</code> поле <code>content</code> закодировано в Base64: декодируйте его перед сохранением файла. Типизированный gRPC-клиент получает байты непосредственно. Для JSON проверьте <code>run.run_id</code> и <code>run.commit_hash</code> в декодированном файле; для SARIF — версию <code>2.1.0</code> и массив результатов. Диаграммы используйте вместе с каноническим JSON, чтобы сохранить сведения о запуске и находках.</p>
 <h2  id="shema-json"><span id="shema_json"></span>Схема JSON<a class="heading-anchor" href="#shema-json" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Канонический результат связывает запуск с проектом, ревизией репозитория, режимом выполнения, полнотой, хешами модели и правил, ревизией управления, покрытием, результатом каждого активного правила, находками и семантическим хешем. Находка содержит правило, контракт, устойчивые UID компонентов, отпечаток и его версию, семантический хеш, состояние жизненного цикла, доказательства отношений и исходные положения. ID запуска выбирает один сохранённый результат. Отпечаток выбирает одну находку внутри него.</p>
 <p><code>ExportArchitectureResults</code> проверяет идентичность запуска, поддерживаемый режим выполнения, уникальность и возможность повторного вычисления отпечатков перед успешной записью представления. Детерминированный порядок массивов позволяет сравнивать один запуск. Разбор JSON проверяет только формат: логика выпуска также должна учитывать полноту, результаты правил и решение. Контракт таблиц и столбцов DuckDB описан в <code>gocpg/docs/api/schema.md</code> исходной рабочей копии CodeGraph.</p>
@@ -342,6 +381,7 @@
       <ul class="doc-toc-list">
         <li><a href="#komandnaya-stroka" class="level-2" aria-current="location">Командная строка</a></li>
 <li><a href="#grpc" class="level-2">gRPC</a></li>
+<li data-doc-toc-level="3" data-doc-parent="grpc" hidden><a href="#vybor-formata-eksporta" class="level-3">Выбор формата экспорта</a></li>
 <li><a href="#shema-json" class="level-2">Схема JSON</a></li>
 <li><a href="#predstavlenie-sarif" class="level-2">Представление SARIF</a></li>
 <li><a href="#diagrammy-mermaid-i-plantuml" class="level-2">Диаграммы Mermaid и PlantUML</a></li>
