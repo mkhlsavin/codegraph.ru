@@ -205,8 +205,11 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Начинайте с диагностики без изменения данных. Перед восстановлением проверьте причину ошибки,
-затрагиваемый проект, резервную копию и способ отката.</p>
+        <p>Если CodeGraph не запускается, проект не виден или анализ возвращает ошибку,
+<code>doctor</code> помогает определить область сбоя: конфигурацию, проект, CPG или сервисы.
+Соберите отчёт, выберите проверку по симптому и выполните предложенное действие
+для нужного проекта. Перед восстановлением проверьте целевые данные, резервную
+копию и способ отката.</p>
 <h2  id="1-soberite-obschuyu-diagnostiku"><span id="1_soberite_obschuyu_diagnostiku"></span>1. Соберите общую диагностику<a class="heading-anchor" href="#1-soberite-obschuyu-diagnostiku" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Установите CLI по <a href="CLI_GUIDE.html">руководству</a>. Откройте PowerShell в корне исходного
 репозитория установленной версии. Для сервисных проверок нужны доступные сервисы CodeGraph.</p>
@@ -221,7 +224,34 @@
 вместе с результатами отдельных проверок. Поле <code>overall_status</code> показывает общий результат,
 <code>primary_issue</code> — основную проблему, а <code>checks</code> — результаты по областям.
 Каждая проверка содержит <code>id</code>, <code>status</code>, <code>summary</code> и предложенное действие <code>suggested_action</code>.
-Сохраните ревизию CodeGraph, время, окружение, проект и наблюдаемый симптом.
+Разберите статус каждой проверки:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="1. Соберите общую диагностику"><table data-columns="2"><caption class="sr-only">1. Соберите общую диагностику</caption>
+<thead>
+<tr>
+<th scope="col"><code>status</code></th>
+<th scope="col">Следующий шаг</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pass</code></td>
+<td>Перейдите к другим проверкам отчёта.</td>
+</tr>
+<tr>
+<td><code>warn</code></td>
+<td>Прочитайте <code>summary</code> и выполните предложенное <code>suggested_action</code>.</td>
+</tr>
+<tr>
+<td><code>fail</code></td>
+<td>Начните восстановление с указанной причины и проверьте результат повторной диагностикой.</td>
+</tr>
+<tr>
+<td><code>skip</code></td>
+<td>Изучите причину пропуска и подготовьте условия для нужной проверки.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Сохраните ревизию CodeGraph, время, окружение, проект и наблюдаемый симптом.
 Перед передачей удалите токены, пароли, пользовательские исходники и персональные данные.</p>
 <h2  id="2-vyberite-proverku-po-simptomu"><span id="2_vyberite_proverku_po_simptomu"></span>2. Выберите проверку по симптому<a class="heading-anchor" href="#2-vyberite-proverku-po-simptomu" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">doctor</span> <span class="n">config</span>
@@ -238,9 +268,17 @@
 <h2  id="3-proverte-lokalnye-servisy-razrabotki"><span id="3_proverte_lokalnye_servisy_razrabotki"></span>3. Проверьте локальные сервисы разработки<a class="heading-anchor" href="#3-proverte-lokalnye-servisy-razrabotki" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Только для локального окружения из исходников:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_app_stack</span><span class="p">.</span><span class="n">py</span> <span class="n">status</span> <span class="p">-</span><span class="n">-local</span> <span class="p">-</span><span class="n">-with-mcp</span>
+<span class="nv">$stackExit</span> <span class="p">=</span> <span class="nv">$LASTEXITCODE</span>
 <span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_app_stack</span><span class="p">.</span><span class="n">py</span> <span class="n">logs</span> <span class="p">-</span><span class="n">-local</span> <span class="p">-</span><span class="n">-with-mcp</span>
+<span class="nv">$logsExit</span> <span class="p">=</span> <span class="nv">$LASTEXITCODE</span>
 </code></pre></div>
 
+<p><code>status</code> выводит состояние процессов и результаты readiness-проверок.
+Для локального стека <code>$stackExit</code> равен <code>0</code>, когда проверки готовности пройдены
+и необходимые процессы работают; <code>1</code> требует разбора выведенных причин.</p>
+<p><code>logs</code> выводит пути к stdout/stderr журналам сервисов. Откройте нужный файл
+и найдите сообщения за время ошибки. <code>$logsExit</code> относится к получению этого
+списка путей; сохраните его вместе с <code>$stackExit</code>.</p>
 <p>На Ubuntu-развёртывании заказчика используйте
 <code>systemctl</code>, Compose и readiness-команды из руководства по установке.</p>
 <h2  id="4-proverte-plan-vosstanovleniya"><span id="4_proverte_plan_vosstanovleniya"></span>4. Проверьте план восстановления<a class="heading-anchor" href="#4-proverte-plan-vosstanovleniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
