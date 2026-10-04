@@ -205,9 +205,13 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>This guide connects CodeGraph to an external Prometheus and Alertmanager stack.
-It deliberately references maintained artifacts instead of copying the metric
-catalog or alert expressions into documentation.</p>
+        <p>Monitoring helps operators detect API failures, rising project risks, and
+blocked releases. Prometheus collects CodeGraph metrics and evaluates alert
+rules. Alertmanager groups events and sends them to receivers. Dashboards show
+the state of the deployment and its projects.</p>
+<p>Connect collection, load the rules, configure a receiver, and verify delivery
+of a test alert. Use the files in “Shipped configuration artifacts” to configure
+the stack.</p>
 <h2  id="two-metrics-surfaces"><span id="two_metrics_surfaces"></span>Two metrics surfaces<a class="heading-anchor" href="#two-metrics-surfaces" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>CodeGraph exposes two different Prometheus responses:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Two metrics surfaces"><table data-columns="3"><caption class="sr-only">Two metrics surfaces</caption>
@@ -235,13 +239,12 @@ catalog or alert expressions into documentation.</p>
 authentication. Restrict it with the deployment network policy, ingress, or
 scraper allowlist. Do not publish it on an unrestricted internet ingress.</p>
 <p>Both routes export the process-wide Prometheus registry. The dashboard route
-updates metrics for the selected scope before export, but the shared registry
-can retain project labels populated by earlier requests. Authentication does
-not establish that the entire response is limited to one project. Check which
-labels are present and whether the monitoring destination may receive them.</p>
-<p>The metric names and labels are defined in <code>src/monitoring/metrics.py</code>. Do not
-pin an expected metric count in an acceptance check: optional components and
-new collectors can change the exported set.</p>
+first updates metrics for the selected scope. The registry also retains project
+labels populated by earlier requests. When configuring the receiver, check the
+labels and which data the destination is authorized to receive.</p>
+<p>Metric names and labels are defined in <code>src/monitoring/metrics.py</code>. Select the
+metrics required by your dashboards and alerts, then check their names and
+labels. Enabled components and collectors determine the exported set.</p>
 <h2  id="scrape-verification"><span id="scrape_verification"></span>Scrape verification<a class="heading-anchor" href="#scrape-verification" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Run this example in PowerShell from the monitoring network. The working directory does not matter; no files are created. <code>http://127.0.0.1:8000</code> applies only to an accessible local API. For another deployment, replace it with the approved API URL. Use HTTPS outside a protected local network.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$apiBaseUrl</span> <span class="p">=</span> <span class="s2">&quot;http://127.0.0.1:8000&quot;</span>
@@ -254,7 +257,7 @@ new collectors can change the exported set.</p>
 <span class="nv">$response</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="p">@{</span><span class="n">Name</span><span class="p">=</span><span class="s1">&#39;ContentType&#39;</span><span class="p">;</span><span class="n">Expression</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]}}</span>
 </code></pre></div>
 
-<p>Expect status <code>200</code>, a Prometheus content type, and no exceptions. This checks the API response, but does not yet confirm collection in Prometheus.</p>
+<p>Expect status <code>200</code>, a Prometheus content type, and no exceptions. Next, verify that Prometheus receives the series as described below.</p>
 <p>For dashboard metrics, use an approved API credential. In the same session, replace <code>&lt;project-uuid&gt;</code> with the UUID of a project accessible to that account. This is not the project&rsquo;s string key. Supply <code>CODEGRAPH_API_TOKEN</code> from an approved secret store; do not write its value in the example or logs.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$env:CODEGRAPH_API_TOKEN</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;API token is not configured&quot;</span> <span class="p">}</span>
 <span class="nv">$headers</span> <span class="p">=</span> <span class="p">@{</span>
@@ -268,7 +271,7 @@ new collectors can change the exported set.</p>
 </code></pre></div>
 
 <p>Also check the second response&rsquo;s content type and expected project metrics. HTTP 400 can indicate an invalid UUID. If authentication or authorization fails, check credentials and scope; keep route protection enabled.</p>
-<p>In Prometheus, check the <code>codegraph-api</code> target, <code>up{job="codegraph-api"}</code>, the last scrape time, and target labels. <code>up</code> is <code>1</code> for a successful scrape and <code>0</code> for a failed scrape. An absent series means no matching target or data. A successful HTTP request alone does not establish that Prometheus ingested the series.</p>
+<p>In Prometheus, check the <code>codegraph-api</code> target, <code>up{job="codegraph-api"}</code>, the last scrape time, and target labels. <code>up</code> is <code>1</code> for a successful scrape and <code>0</code> for a failed scrape. An absent series means no matching target or data.</p>
 <h2  id="shipped-configuration-artifacts"><span id="shipped_configuration_artifacts"></span>Shipped configuration artifacts<a class="heading-anchor" href="#shipped-configuration-artifacts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Shipped configuration artifacts"><table data-columns="2"><caption class="sr-only">Shipped configuration artifacts</caption>
 <thead>

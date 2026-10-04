@@ -205,9 +205,13 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Это руководство описывает подключение CodeGraph к внешнему контуру Prometheus
-и Alertmanager. Каталог метрик и выражения оповещений не копируются в статью:
-оператор использует поддерживаемые файлы из репозитория.</p>
+        <p>Мониторинг помогает оператору обнаружить сбой API, рост рисков проекта и
+блокировку выпуска. Prometheus собирает метрики CodeGraph и вычисляет правила
+оповещений. Alertmanager группирует события и направляет их получателям.
+Дашборды показывают состояние установки и проектов.</p>
+<p>Подключите сбор, загрузите правила, настройте получателя и проверьте доставку
+тестового оповещения. Для настройки используйте файлы из раздела
+«Поставляемые артефакты».</p>
 <h2  id="dve-poverhnosti-metrik"><span id="dve_poverhnosti_metrik"></span>Две поверхности метрик<a class="heading-anchor" href="#dve-poverhnosti-metrik" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>CodeGraph возвращает два разных ответа в формате Prometheus:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Две поверхности метрик"><table data-columns="3"><caption class="sr-only">Две поверхности метрик</caption>
@@ -235,13 +239,12 @@
 ingress или списком разрешённых scraper-узлов. Не публикуйте его через
 неограниченный интернет-ingress.</p>
 <p>Оба маршрута экспортируют общий реестр Prometheus процесса. Маршрут дашборда
-перед экспортом обновляет метрики выбранной области, но общий реестр может
-содержать метки проектов, обновлённых предыдущими запросами. Аутентификация
-запроса не означает, что весь ответ ограничен одним проектом. Проверьте состав
-меток и допустимость их передачи в выбранную систему мониторинга.</p>
-<p>Имена и labels определены в <code>src/monitoring/metrics.py</code>. Не закрепляйте в
-приёмочных проверках ожидаемое количество метрик: дополнительные компоненты и
-новые collectors могут менять набор.</p>
+сначала обновляет метрики выбранной области. Реестр сохраняет также метки
+проектов, обновлённых предыдущими запросами. При настройке получателя проверьте
+состав меток и разрешённые для передачи данные.</p>
+<p>Имена и labels определены в <code>src/monitoring/metrics.py</code>. Выберите метрики,
+нужные для ваших панелей и оповещений, и проверяйте их имена и метки.
+Подключённые компоненты и collectors определяют состав экспортируемого набора.</p>
 <h2  id="proverka-sbora"><span id="proverka_sbora"></span>Проверка сбора<a class="heading-anchor" href="#proverka-sbora" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Выполните пример в PowerShell из сети мониторинга. Рабочий каталог не важен; файлы не создаются. Адрес <code>http://127.0.0.1:8000</code> подходит только для доступного локального API. Для другой установки замените его на одобренный адрес API. За пределами защищённой локальной сети используйте HTTPS.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$apiBaseUrl</span> <span class="p">=</span> <span class="s2">&quot;http://127.0.0.1:8000&quot;</span>
@@ -254,7 +257,7 @@ ingress или списком разрешённых scraper-узлов. Не п
 <span class="nv">$response</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="p">@{</span><span class="n">Name</span><span class="p">=</span><span class="s1">&#39;ContentType&#39;</span><span class="p">;</span><span class="n">Expression</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]}}</span>
 </code></pre></div>
 
-<p>Ожидайте статус <code>200</code>, тип содержимого Prometheus и отсутствие исключений. Это проверяет ответ API, но ещё не подтверждает сбор в Prometheus.</p>
+<p>Ожидайте статус <code>200</code>, тип содержимого Prometheus и отсутствие исключений. Затем проверьте поступление рядов в Prometheus по инструкции ниже.</p>
 <p>Для метрик дашборда используйте одобренные учётные данные. В той же сессии замените <code>&lt;project-uuid&gt;</code> на UUID проекта, доступного этой учётной записи. Это не строковый ключ проекта. Передайте токен из одобренного хранилища в <code>CODEGRAPH_API_TOKEN</code>; не записывайте его значение в пример или лог.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$env:CODEGRAPH_API_TOKEN</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;API token is not configured&quot;</span> <span class="p">}</span>
 <span class="nv">$headers</span> <span class="p">=</span> <span class="p">@{</span>
@@ -268,7 +271,7 @@ ingress или списком разрешённых scraper-узлов. Не п
 </code></pre></div>
 
 <p>Для второго запроса также проверьте тип содержимого и наличие ожидаемых метрик проекта. HTTP 400 может означать некорректный UUID. При отказе аутентификации или авторизации проверьте учётные данные и область доступа; не отключайте защиту маршрута.</p>
-<p>В Prometheus проверьте цель <code>codegraph-api</code>, запрос <code>up{job="codegraph-api"}</code>, время последнего сбора и метки цели. Для доступной цели <code>up</code> равен <code>1</code>; <code>0</code> означает неуспешный сбор. Отсутствие ряда означает отсутствие подходящей цели или данных. Успешный HTTP-запрос сам по себе не доказывает приём рядов Prometheus.</p>
+<p>В Prometheus проверьте цель <code>codegraph-api</code>, запрос <code>up{job="codegraph-api"}</code>, время последнего сбора и метки цели. Для доступной цели <code>up</code> равен <code>1</code>; <code>0</code> означает неуспешный сбор. Отсутствие ряда означает отсутствие подходящей цели или данных.</p>
 <h2  id="postavlyaemye-artefakty"><span id="postavlyaemye_artefakty"></span>Поставляемые артефакты<a class="heading-anchor" href="#postavlyaemye-artefakty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Поставляемые артефакты"><table data-columns="2"><caption class="sr-only">Поставляемые артефакты</caption>
 <thead>
