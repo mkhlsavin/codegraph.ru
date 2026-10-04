@@ -205,9 +205,46 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>The CodeGraph language server exposes graph-backed code intelligence to an LSP
-client. It queries an existing GoCPG-managed DuckDB CPG through GoCPG gRPC;
-it does not build or refresh that graph.</p>
+        <p>The CodeGraph LSP server helps you inspect methods in your editor: view complexity,
+call relationships, and analysis findings alongside the source. Use it when learning
+a repository or reviewing a change. Open a method, inspect its metrics, and follow
+its relationships to understand the surrounding code.</p>
+<p>The editor sends requests through the Language Server Protocol (LSP). CodeGraph
+matches the open file URI to a path in the existing CPG and queries that graph
+through GoCPG gRPC. Refresh the CPG through the project workflow before reviewing
+a new revision.</p>
+<h2  id="what-the-editor-shows"><span id="what_the_editor_shows"></span>What the editor shows<a class="heading-anchor" href="#what-the-editor-shows" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="What the editor shows"><table data-columns="3"><caption class="sr-only">What the editor shows</caption>
+<thead>
+<tr>
+<th scope="col">Task</th>
+<th scope="col">LSP feature</th>
+<th scope="col">Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Assess a method before changing it</td>
+<td>Hover</td>
+<td>Complexity, size, parameter count, and call relationships in a tooltip.</td>
+</tr>
+<tr>
+<td>Inspect a method’s context</td>
+<td>CodeLens</td>
+<td>Caller and callee counts above the declaration, plus an available taint-flow hint.</td>
+</tr>
+<tr>
+<td>Review analysis findings</td>
+<td>Diagnostics on open and save</td>
+<td>Findings attached to lines in the file.</td>
+</tr>
+<tr>
+<td>Apply a stored replacement</td>
+<td>Quick fix</td>
+<td>A proposed edit for a finding that contains <code>fix</code> data.</td>
+</tr>
+</tbody>
+</table></div>
 <h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Before starting the server:</p>
 <ol>
@@ -218,8 +255,9 @@ it does not build or refresh that graph.</p>
 <li>Confirm that no writer is replacing or migrating the database during the
    editor session.</li>
 <li>Keep the database path inside the approved customer workspace.</li>
-<li>Make the GoCPG gRPC service available to the LSP process. A database file alone
-   is insufficient: the query pool has no direct DuckDB fallback.</li>
+<li>Make GoCPG gRPC available to the LSP process at <code>localhost:50051</code>: the current
+   LSP adapter creates its client with this default address. All CPG queries use
+   that service.</li>
 </ol>
 <h2  id="verify-the-entry-point"><span id="verify_the_entry_point"></span>Verify the entry point<a class="heading-anchor" href="#verify-the-entry-point" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">codegraph-lsp</span> <span class="p">-</span><span class="n">-help</span>
@@ -297,10 +335,10 @@ Windows backslashes in JSON, for example <code>C:\\workspace\\project.duckdb</co
 file present in the selected graph and save it. Verify the client&rsquo;s <code>initialize</code>
 response, server logs, published diagnostics, hover on a known method, and
 CodeLens results. Compare returned filenames and method information with the
-current source. A running process or an empty diagnostics list alone does not
-confirm a working graph query. Quick fixes require a finding with stored fix data;
-they are not expected for every file.</p>
-<h2  id="advertised-capabilities"><span id="advertised_capabilities"></span>Advertised capabilities<a class="heading-anchor" href="#advertised-capabilities" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+current source. To verify a graph query, choose a known method: hover should show its name and
+metrics, and CodeLens should show its call relationships. To verify a quick fix,
+choose a finding with stored replacement data.</p>
+<h2  id="events-and-analysis-results"><span id="events_and_analysis_results"></span>Events and analysis results<a class="heading-anchor" href="#events-and-analysis-results" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The server handles document open, save and close events. It currently
 advertises:</p>
 <ul>
@@ -310,20 +348,21 @@ advertises:</p>
 <li><code>textDocument/codeAction</code> for supported quick fixes;</li>
 <li>diagnostics published after a document is opened or saved.</li>
 </ul>
-<p>Diagnostics can include security findings, dead methods, cyclomatic complexity
-and non-security pattern findings. Results depend on the tables and columns
-present in the selected CPG. A query failure can produce an empty feature
-result, so the editor displays only findings returned by the current CPG query. Confirm the
-code state with the repository checks used for the change.</p>
+<p>Diagnostics combine security findings, dead methods, complexity findings, and
+other pattern findings from the selected CPG. For a method whose complexity
+exceeds <code>--complexity-threshold</code>, the server publishes a <code>high-complexity</code> finding.
+Closing a file clears its diagnostics.</p>
+<p>If an expected finding is missing, check the query log and the selected CPG tables
+and columns using the “Freshness and path matching” section.</p>
 <h2  id="hover-codelens-and-quick-fixes"><span id="hover_codelens_and_quick_fixes"></span>Hover, CodeLens and quick fixes<a class="heading-anchor" href="#hover-codelens-and-quick-fixes" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Hover reads method complexity, fan-in, fan-out, callers, LOC, parameter count,
-flags and security-finding count when the current schema supports them.</p>
+and method flags. The Security findings field counts findings with category
+<code>security</code> for the file in <code>cpg_pattern_results</code>.</p>
 <p>CodeLens displays callers and callees for methods and may append a taint path
 derived from <code>edges_reaching_def</code>.</p>
 <p>A quick fix is offered only when a diagnostic&rsquo;s persisted <code>match_data</code> contains
-a <code>fix</code> value. Review every edit before saving: the language server returns the
-stored replacement and does not establish semantic correctness for the whole
-program.</p>
+a <code>fix</code> value. Review the stored replacement before saving, then run the tests and review
+checks used for the change.</p>
 <h2  id="freshness-and-path-matching"><span id="freshness_and_path_matching"></span>Freshness and path matching<a class="heading-anchor" href="#freshness-and-path-matching" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The LSP server uses read-only GoCPG query adapters and normalizes file
 URIs to workspace-relative forward-slash paths. If an editor shows no result:</p>
@@ -378,11 +417,12 @@ differs from the installed revision.</p>
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#prerequisites" class="level-2" aria-current="location">Prerequisites</a></li>
+        <li><a href="#what-the-editor-shows" class="level-2" aria-current="location">What the editor shows</a></li>
+<li><a href="#prerequisites" class="level-2">Prerequisites</a></li>
 <li><a href="#verify-the-entry-point" class="level-2">Verify the entry point</a></li>
 <li><a href="#supported-options" class="level-2">Supported options</a></li>
 <li><a href="#opencode-example" class="level-2">OpenCode example</a></li>
-<li><a href="#advertised-capabilities" class="level-2">Advertised capabilities</a></li>
+<li><a href="#events-and-analysis-results" class="level-2">Events and analysis results</a></li>
 <li><a href="#hover-codelens-and-quick-fixes" class="level-2">Hover, CodeLens and quick fixes</a></li>
 <li><a href="#freshness-and-path-matching" class="level-2">Freshness and path matching</a></li>
 <li><a href="#connection-behavior" class="level-2">Connection behavior</a></li>

@@ -205,9 +205,45 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Языковой сервер CodeGraph передаёт LSP-клиенту информацию о коде из графа. Он
-запрашивает существующий DuckDB CPG через GoCPG gRPC, но не строит и не
-обновляет этот граф.</p>
+        <p>LSP-сервер CodeGraph помогает разбирать методы прямо в редакторе: видеть сложность,
+связи вызовов и замечания анализа рядом с исходным кодом. Это удобно при знакомстве
+с репозиторием и ревью изменений: откройте метод, изучите его метрики и переходите
+к связанным участкам кода.</p>
+<p>Редактор отправляет запросы по Language Server Protocol (LSP). CodeGraph сопоставляет
+URI открытого файла с путём в существующем CPG и запрашивает граф через GoCPG gRPC.
+Обновляйте CPG рабочим процессом проекта перед проверкой новой ревизии.</p>
+<h2  id="chto-pokazyvaet-redaktor"><span id="chto_pokazyvaet_redaktor"></span>Что показывает редактор<a class="heading-anchor" href="#chto-pokazyvaet-redaktor" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Что показывает редактор"><table data-columns="3"><caption class="sr-only">Что показывает редактор</caption>
+<thead>
+<tr>
+<th scope="col">Задача</th>
+<th scope="col">Возможность LSP</th>
+<th scope="col">Результат</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Оценить метод перед изменением</td>
+<td>Hover</td>
+<td>Сложность, размер, число параметров и связи вызовов в подсказке.</td>
+</tr>
+<tr>
+<td>Найти контекст метода</td>
+<td>CodeLens</td>
+<td>Число вызывающих и вызываемых методов над объявлением; доступная подсказка о taint flow.</td>
+</tr>
+<tr>
+<td>Разобрать замечания анализа</td>
+<td>Диагностика при открытии и сохранении</td>
+<td>Замечания с привязкой к строкам файла.</td>
+</tr>
+<tr>
+<td>Применить сохранённую замену</td>
+<td>Quick fix</td>
+<td>Предложение правки для замечания с данными <code>fix</code>.</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="predvaritelnye-usloviya"><span id="predvaritelnye_usloviya"></span>Предварительные условия<a class="heading-anchor" href="#predvaritelnye-usloviya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Перед запуском:</p>
 <ol>
@@ -215,7 +251,7 @@
 <li>Постройте или обновите CPG целевого проекта поддерживаемым способом.</li>
 <li>Убедитесь, что другой процесс не заменяет базу и не изменяет её схему во время сессии редактора.</li>
 <li>Храните путь к базе внутри одобренной рабочей области заказчика.</li>
-<li>Обеспечьте доступ процесса LSP к сервису GoCPG gRPC. Одного файла базы недостаточно: пул запросов не использует прямой доступ к DuckDB как резервный вариант.</li>
+<li>Обеспечьте доступ процесса LSP к GoCPG gRPC на <code>localhost:50051</code>: текущий адаптер LSP создаёт клиент с этим адресом по умолчанию. Все запросы к CPG проходят через этот сервис.</li>
 </ol>
 <h2  id="proverka-komandy"><span id="proverka_komandy"></span>Проверка команды<a class="heading-anchor" href="#proverka-komandy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">codegraph-lsp</span> <span class="p">-</span><span class="n">-help</span>
@@ -293,10 +329,10 @@ Windows, например <code>C:\\workspace\\project.duckdb</code>.</p>
 файл, присутствующий в выбранном графе, и сохраните его. Проверьте ответ
 <code>initialize</code>, журнал сервера, опубликованную диагностику, hover на известном
 методе и результаты CodeLens. Сверьте имена файлов и сведения о методах с
-текущими исходниками. Работающий процесс или пустой список диагностики сами
-по себе не подтверждают успешный запрос к графу. Быстрое исправление требует
-замечания с сохранёнными данными правки; оно доступно не для каждого файла.</p>
-<h2  id="zayavlennye-vozmozhnosti"><span id="zayavlennye_vozmozhnosti"></span>Заявленные возможности<a class="heading-anchor" href="#zayavlennye-vozmozhnosti" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+текущими исходниками. Для проверки запроса к графу выберите известный метод: его имя и метрики должны
+появиться в hover, а связи вызовов — в CodeLens. Для проверки quick fix выберите
+замечание с сохранёнными данными правки.</p>
+<h2  id="sobytiya-i-rezultaty-analiza"><span id="sobytiya_i_rezultaty_analiza"></span>События и результаты анализа<a class="heading-anchor" href="#sobytiya-i-rezultaty-analiza" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Сервер обрабатывает открытие, сохранение и закрытие документа. Сейчас он
 предоставляет:</p>
 <ul>
@@ -305,14 +341,16 @@ Windows, например <code>C:\\workspace\\project.duckdb</code>.</p>
 <li><code>textDocument/codeAction</code> для поддерживаемых быстрых исправлений;</li>
 <li>диагностику после открытия или сохранения документа.</li>
 </ul>
-<p>Диагностика может включать результаты security-правил, мёртвые методы,
-цикломатическую сложность и остальные pattern findings. Результат зависит от
-таблиц и столбцов выбранного CPG. Ошибка запроса может привести к пустому
-ответу. Чистоту кода подтверждают результаты проверки; отсутствие сообщения требует
-проверить ошибку запроса.</p>
+<p>Диагностика объединяет результаты security-правил, мёртвые методы, замечания
+о цикломатической сложности и остальные pattern findings из выбранного CPG.
+Для метода со сложностью выше <code>--complexity-threshold</code> сервер публикует замечание
+<code>high-complexity</code>. При закрытии файла сервер очищает его диагностику.</p>
+<p>Если ожидаемое замечание отсутствует, проверьте журнал запроса, таблицы и столбцы
+выбранного CPG по разделу «Свежесть и сопоставление путей».</p>
 <h2  id="hover-codelens-i-bystrye-ispravleniya"><span id="hover_codelens_i_bystrye_ispravleniya"></span>Hover, CodeLens и быстрые исправления<a class="heading-anchor" href="#hover-codelens-i-bystrye-ispravleniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Hover читает сложность метода, fan-in, fan-out, callers, LOC, число параметров,
-признаки и количество security findings, если это позволяет текущая схема.</p>
+<p>Hover читает сложность метода, fan-in, fan-out, callers, LOC, число параметров
+и признаки метода. Поле Security findings показывает количество замечаний категории
+<code>security</code> в файле из таблицы <code>cpg_pattern_results</code>.</p>
 <p>CodeLens показывает callers и callees и может добавить путь taint из
 <code>edges_reaching_def</code>.</p>
 <p>Быстрое исправление предлагается только тогда, когда сохранённое <code>match_data</code>
@@ -371,11 +409,12 @@ Windows, например <code>C:\\workspace\\project.duckdb</code>.</p>
     <aside class="doc-toc" id="doc-toc-panel" aria-label="На этой странице">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#predvaritelnye-usloviya" class="level-2" aria-current="location">Предварительные условия</a></li>
+        <li><a href="#chto-pokazyvaet-redaktor" class="level-2" aria-current="location">Что показывает редактор</a></li>
+<li><a href="#predvaritelnye-usloviya" class="level-2">Предварительные условия</a></li>
 <li><a href="#proverka-komandy" class="level-2">Проверка команды</a></li>
 <li><a href="#podderzhivaemye-parametry" class="level-2">Поддерживаемые параметры</a></li>
 <li><a href="#primer-dlya-opencode" class="level-2">Пример для OpenCode</a></li>
-<li><a href="#zayavlennye-vozmozhnosti" class="level-2">Заявленные возможности</a></li>
+<li><a href="#sobytiya-i-rezultaty-analiza" class="level-2">События и результаты анализа</a></li>
 <li><a href="#hover-codelens-i-bystrye-ispravleniya" class="level-2">Hover, CodeLens и быстрые исправления</a></li>
 <li><a href="#svezhest-i-sopostavlenie-putey" class="level-2">Свежесть и сопоставление путей</a></li>
 <li><a href="#rabota-soedineniy" class="level-2">Работа соединений</a></li>
