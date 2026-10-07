@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Supported source-checkout CLI entry points, scope rules, and automation boundaries. The page explains the purpose, usage steps, and result checks.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="description" content="Run the CLI from a CodeGraph checkout, inspect project scope, find code elements, and compare files before applying a change.">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="CodeGraph command-line guide — Documentation">
-  <meta property="og:description" content="Supported source-checkout CLI entry points, scope rules, and automation boundaries. The page explains the purpose, usage steps, and result checks.">
+  <meta property="og:description" content="Run the CLI from a CodeGraph checkout, inspect project scope, find code elements, and compare files before applying a change.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/CLI_GUIDE.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CodeGraph command-line guide — Documentation">
-  <meta name="twitter:description" content="Supported source-checkout CLI entry points, scope rules, and automation boundaries. The page explains the purpose, usage steps, and result checks.">
+  <meta name="twitter:description" content="Run the CLI from a CodeGraph checkout, inspect project scope, find code elements, and compare files before applying a change.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/CLI_GUIDE.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"CodeGraph command-line guide — Documentation","description":"Supported source-checkout CLI entry points, scope rules, and automation boundaries. The page explains the purpose, usage steps, and result checks.","url":"https://codegraph.ru/docs/en/guides/CLI_GUIDE.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"CodeGraph command-line guide — Documentation","description":"Run the CLI from a CodeGraph checkout, inspect project scope, find code elements, and compare files before applying a change.","url":"https://codegraph.ru/docs/en/guides/CLI_GUIDE.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -198,45 +198,62 @@
         <span>CodeGraph command-line guide</span>
         </nav>
         <h1>CodeGraph command-line guide</h1>
-        <p class="doc-lead">Supported source-checkout CLI entry points, scope rules, and automation boundaries. The page explains the purpose, usage steps, and result checks.</p>
+        <p class="doc-lead">Run the CLI from a CodeGraph checkout, inspect project scope, find code elements, and compare files before applying a change.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-09-13">Updated: 2026-09-13</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-02">Updated: 2026-10-02</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>The root CodeGraph CLI is a source-checkout interface. From the repository root, use:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="p">-</span><span class="n">-help</span>
+        <p>This guide is for developers working with a local CodeGraph source checkout.
+You need Python 3.11 or later and the project dependencies. From an approved
+source checkout, create a virtual environment and install the package:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">venv</span> <span class="p">.</span><span class="n">venv</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">python</span><span class="p">.</span><span class="n">exe</span> <span class="n">-m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">-e</span> <span class="p">.</span>
 </code></pre></div>
 
-<p>Do not assume that installing the Python wheel creates a <code>codegraph</code> executable. The current
-<code>pyproject.toml</code> publishes only <code>codegraph-acp</code> and <code>codegraph-lsp</code> console scripts. A deployment
+<p>In the following examples, <code>python</code> means that environment&rsquo;s interpreter.
+You can replace it with <code>.\.venv\Scripts\python.exe</code> instead of activating the
+environment. Installation needs permitted access to Python packages or a configured
+internal mirror. Use a separate local environment; server deployment follows the
+<a href="../getting-started/INSTALLATION.html">server installation guide</a>.
+CLI execution requires <code>security.local_cli_enabled: true</code> in the local
+<code>config.yaml</code>. Change only that setting and preserve the rest of the configuration.
+Enable it only for local development. If the CLI prints <code>CodeGraph CLI is disabled.</code>,
+the requested check did not run, even if the process returned 0. Check expected
+output data as well as the exit code.
+The file comparison example also requires Git.</p>
+<p>From the repository root, run:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="p">-</span><span class="n">-help</span>
+</code></pre></div>
+
+<p>The Python package publishes <code>codegraph-acp</code> and <code>codegraph-lsp</code> console scripts.
+Run the main source-checkout CLI through <code>python -m src.cli</code>. A deployment
 may provide its own operator wrapper; verify that wrapper with its own <code>--help</code> before use.</p>
 <h2  id="command-shape"><span id="command_shape"></span>Command shape<a class="heading-anchor" href="#command-shape" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The canonical source form is:</p>
-<div class="highlight"><pre><span></span><code>python -m src.cli &lt;command&gt; [subcommand] [options]
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python -m src.cli &lt;command&gt; [subcommand] [options]
 </code></pre></div>
 
 <p>Start with help at the exact level you need:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">import</span> <span class="p">-</span><span class="n">-help</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">import</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">projects</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">audit</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">review</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">doctor</span> <span class="p">-</span><span class="n">-help</span>
 </code></pre></div>
 
-<p>Help output from the installed release is authoritative for flags and value choices. Examples in
-documentation never authorize retired aliases or parameters absent from that output.</p>
+<p>Help from the installed release lists the supported flags and value choices. Use it when
+composing a command for that release.</p>
 <h2  id="safe-first-commands"><span id="safe_first_commands"></span>Safe first commands<a class="heading-anchor" href="#safe-first-commands" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Run diagnostics before mutation:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">doctor</span> <span class="p">-</span><span class="n">-json</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">doctor</span> <span class="p">-</span><span class="n">-json</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">projects</span> <span class="n">list</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">languages</span>
 </code></pre></div>
 
-<p>For a project-specific action, pass or resolve an explicit project scope. Do not rely on an
-unexplained active-project fallback, and do not pass raw storage paths through agent-facing
-interfaces.</p>
+<p>For a project-specific action, pass or resolve an explicit project scope. Agent-facing
+interfaces use the project identifier; the server resolves its storage binding from context.</p>
 <h2  id="common-workflows"><span id="common_workflows"></span>Common workflows<a class="heading-anchor" href="#common-workflows" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Common workflows"><table data-columns="3"><caption class="sr-only">Common workflows</caption>
 <thead>
@@ -282,20 +299,43 @@ interfaces.</p>
 <p>Use <a href="PROJECT_IMPORT.html">Project import</a> for the full import lifecycle,
 <a href="CPG_AUDIT.html">Run a CPG-backed project audit</a> for audit modes and evidence,
 and <a href="TROUBLESHOOTING.html">Troubleshooting</a> for recovery.</p>
-<h2  id="source-target-search-and-diff-preview"><span id="source_target_search_and_diff_preview"></span>Source target search and diff preview<a class="heading-anchor" href="#source-target-search-and-diff-preview" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The current edit surface supports <strong>find and preview only</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">edit</span> <span class="n">find</span> <span class="p">&lt;</span><span class="n">pattern</span><span class="p">&gt;</span> <span class="p">-</span><span class="o">-file</span> <span class="n">PATH</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">edit</span> <span class="n">preview</span> <span class="n">file</span><span class="p">.</span><span class="n">py</span><span class="p">::</span><span class="n">name</span> <span class="p">-</span><span class="n">-new-code</span><span class="o">-file</span> <span class="n">PATH</span>
+<h2  id="find-a-function-and-compare-files"><span id="find_a_function_and_compare_files"></span>Find a function and compare files<a class="heading-anchor" href="#find-a-function-and-compare-files" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The <code>edit find</code> command searches source code elements. To try it with a small
+example, save this complete file as <code>example.py</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">greeting</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;Hello, &quot;</span> <span class="o">+</span> <span class="n">name</span>
 </code></pre></div>
 
-<p><code>find</code> searches supported source files. <code>preview</code> reads the target and proposed replacement and
-prints a diff; it does not write the source file. The registered <code>apply, undo, and history</code>
-subcommands are <strong>not yet implemented</strong> and return exit code 1. There is no public REST or MCP
-editing route. Apply an accepted change through the governed implementation workflow with tests,
-review, and rollback rather than treating a preview as mutation evidence.</p>
+<p>From the CodeGraph checkout root, run this command in PowerShell. If the file
+is elsewhere, replace <code>example.py</code> with its quoted path:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">edit</span> <span class="n">find</span> <span class="n">greeting</span> <span class="p">-</span><span class="o">-file</span> <span class="n">example</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="o">-exact</span>
+</code></pre></div>
+
+<p>The output should identify the <code>greeting</code> function in <code>example.py</code>. If no name
+matches, the command prints <code>No targets found matching</code> and returns exit code 0.
+Check the returned elements as well as the exit code. The source file is unchanged.</p>
+<p>The current implementation registers <code>edit preview</code>, but a call with a valid
+target fails with <code>AttributeError: 'DiffGenerator' object has no attribute
+'generate_diff'</code>. Do not rely on this command for a working preview.</p>
+<p>To compare two files, save the proposed version as <code>replacement.py</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">greeting</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">!&quot;</span>
+</code></pre></div>
+
+<p>With Git installed, run:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">git</span> <span class="nb">diff </span><span class="p">-</span><span class="n">-no-index</span> <span class="p">--</span> <span class="n">example</span><span class="p">.</span><span class="n">py</span> <span class="n">replacement</span><span class="p">.</span><span class="n">py</span>
+</code></pre></div>
+
+<p>The output should remove <code>return "Hello, " + name</code> and add
+<code>return f"Hello, {name}!"</code>. Git returns exit code 1 when the files differ and 0
+when they match. This compares whole files and leaves both unchanged. The proposed greeting ends with an
+exclamation mark.</p>
+<p>The <code>apply</code>, <code>undo</code>, and <code>history</code> commands are not implemented and return exit
+code 1 with a <code>not yet implemented</code> message. Apply an approved change in your
+editor, then run the project&rsquo;s tests and review its diff.</p>
 <h2  id="service-account-lifecycle"><span id="service_account_lifecycle"></span>Service-account lifecycle<a class="heading-anchor" href="#service-account-lifecycle" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Administrators can inspect the supported machine-identity lifecycle from the current parser:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">auth</span> <span class="n">service-account</span> <span class="p">-</span><span class="n">-help</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">auth</span> <span class="n">service-account</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">auth</span> <span class="n">service-account</span> <span class="n">create</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">auth</span> <span class="n">service-account</span> <span class="n">list</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">auth</span> <span class="n">service-account</span> <span class="n">inspect</span> <span class="p">-</span><span class="n">-help</span>
@@ -310,7 +350,7 @@ secret in evidence, and verify revoke or deactivate before closing an access-rem
 <a href="../enterprise/RBAC.html">RBAC</a> for authorization and mTLS boundaries.</p>
 <h2  id="traceability-snapshots"><span id="traceability_snapshots"></span>Traceability snapshots<a class="heading-anchor" href="#traceability-snapshots" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The dashboard CLI exposes the current snapshot lifecycle:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">snapshot</span> <span class="p">-</span><span class="n">-help</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">snapshot</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">snapshot</span> <span class="n">show</span> <span class="p">-</span><span class="n">-help</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">snapshot</span> <span class="n">policy</span> <span class="p">-</span><span class="n">-help</span>
 </code></pre></div>
@@ -324,8 +364,8 @@ operation; release and portfolio evidence must preserve snapshot identity. See
 <li>Pin the CodeGraph release and repository revision.</li>
 <li>Call <code>--help</code> during compatibility checks instead of copying a frozen command inventory.</li>
 <li>Use explicit output paths for durable artifacts.</li>
-<li>Treat nonzero exit status as a failed operational postcondition, not as product acceptance
-  evidence.</li>
+<li>Check what the exit code means for each command. For example, <code>git diff</code> returns
+  1 when files differ. An exit code alone does not establish product acceptance.</li>
 <li>Keep tokens and passwords in the approved secret mechanism, never command arguments or logs.</li>
 </ul>
 <h2  id="contract-sources"><span id="contract_sources"></span>Contract sources<a class="heading-anchor" href="#contract-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
@@ -335,7 +375,7 @@ operation; release and portfolio evidence must preserve snapshot identity. See
 <li><code>src/cli/core_commands/auth_commands.py</code> — service-account lifecycle commands;</li>
 <li><code>src/cli/dashboard_suite/dashboard_command_registration.py</code> — snapshot commands;</li>
 <li><code>src/cli/governance_suite/doctor_commands.py</code> — diagnostic command surface;</li>
-<li><code>src/cli/docs_suite/edit_commands.py</code> — supported target search/diff preview and explicit stateful stubs;</li>
+<li><code>src/cli/docs_suite/edit_commands.py</code> — target search, preview implementation, and file-editing stubs;</li>
 <li><code>pyproject.toml</code> — installed <code>codegraph-acp</code> and <code>codegraph-lsp</code> entry points.</li>
 </ul>
 <p>See also: <a href="QUICK_REFERENCE.html">Quick reference</a> · <a href="OPENCODE_QUICK_START.html">OpenCode quick start</a></p>
@@ -364,7 +404,7 @@ operation; release and portfolio evidence must preserve snapshot identity. See
         <li><a href="#command-shape" class="level-2" aria-current="location">Command shape</a></li>
 <li><a href="#safe-first-commands" class="level-2">Safe first commands</a></li>
 <li><a href="#common-workflows" class="level-2">Common workflows</a></li>
-<li><a href="#source-target-search-and-diff-preview" class="level-2">Source target search and diff preview</a></li>
+<li><a href="#find-a-function-and-compare-files" class="level-2">Find a function and compare files</a></li>
 <li><a href="#service-account-lifecycle" class="level-2">Service-account lifecycle</a></li>
 <li><a href="#traceability-snapshots" class="level-2">Traceability snapshots</a></li>
 <li><a href="#automation" class="level-2">Automation</a></li>

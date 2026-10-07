@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Connect enterprise identity providers, map roles, validate login and recovery, and keep local authorization distinct from authentication.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Configure OAuth and LDAP identity — Documentation">
@@ -168,9 +168,9 @@
 
       <!-- Content -->
       <article class="doc-content">
-        <p>OAuth and LDAP authenticate a person against an external identity source. CodeGraph still owns the
-local user record, role, permissions, project scope, session, audit events, and revocation behavior.
-An identity-provider group becomes a CodeGraph permission through the approved mapping.</p>
+        <p>Login through an OAuth provider or LDAP links an external identity to a local user.
+CodeGraph manages the local role, permissions, project access, sessions, and audit events.
+Check the rights actually granted after login; an external group alone does not determine project access.</p>
 <h2  id="choose-the-integration"><span id="choose_the_integration"></span>Choose the integration<a class="heading-anchor" href="#choose-the-integration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use OAuth/OIDC when the provider supports a browser authorization-code flow and centrally managed
 client registration. Use LDAP or Active Directory when directory bind and group lookup are the
@@ -179,7 +179,7 @@ tested failure mode, and recovery path.</p>
 <p>Typed configuration lives in <code>src/api/config.py</code>. Provider and directory implementations live in
 <code>src/api/auth/providers/oauth.py</code> and <code>src/api/auth/providers/ldap_auth.py</code>.</p>
 <h2  id="current-routes"><span id="current_routes"></span>Current routes<a class="heading-anchor" href="#current-routes" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The authenticated application exposes these identity operations under <code>/api/v1/auth</code>:</p>
+<p>The application exposes these login operations under <code>/api/v1/auth</code>:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Current routes"><table data-columns="2"><caption class="sr-only">Current routes</caption>
 <thead>
 <tr>
@@ -198,7 +198,7 @@ tested failure mode, and recovery path.</p>
 </tr>
 <tr>
 <td><code>GET /api/v1/auth/oauth/{provider}/callback</code></td>
-<td>Validate state, exchange code, and establish a local session.</td>
+<td>Validate state, exchange code, and issue tokens for the local user.</td>
 </tr>
 <tr>
 <td><code>POST /api/v1/auth/ldap</code></td>
@@ -226,8 +226,8 @@ A provider is usable only when enabled and supplied with the required client det
 <p>Register the callback URI exactly. Do not use wildcard redirects, publish client secrets, or allow
 arbitrary caller-provided callback destinations.</p>
 <h2  id="validate-oauth"><span id="validate_oauth"></span>Validate OAuth<a class="heading-anchor" href="#validate-oauth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The start flow creates a signed or stored one-time <code>state</code> value. The callback must consume the same
-state and redirect context before exchanging the authorization code.</p>
+<p>The start flow creates a one-time <code>state</code> value. The callback consumes it, verifies the provider
+binding, and uses the stored redirect URI when exchanging the authorization code.</p>
 <p>For each enabled provider:</p>
 <ol>
 <li>confirm it appears in <code>/api/v1/auth/oauth/providers</code>;</li>
@@ -238,20 +238,21 @@ state and redirect context before exchanging the authorization code.</p>
 <li>verify logout, session expiry, disablement, and audit events;</li>
 <li>test a disabled or misconfigured provider without exposing secrets.</li>
 </ol>
-<p>Browser success alone is insufficient; verify the resulting CodeGraph authorization boundary.</p>
+<p>After login, verify the operations and projects available to the local CodeGraph user.</p>
 <h2  id="configure-ldap"><span id="configure_ldap"></span>Configure LDAP<a class="heading-anchor" href="#configure-ldap" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>LDAP settings include enabled state, server, port, TLS choice, base DN, user and group search bases,
 bind identity, bind secret, object classes, identity attributes, membership attribute, and role
 mapping. Prefer <code>ldaps://</code> or another customer-approved protected transport across trust boundaries.</p>
 <p>The optional <code>ldap3</code> package must be installed for the authenticator to be available. When LDAP is
-configured but <code>ldap3</code> is missing, <code>/api/v1/auth/ldap/status</code> reports degraded availability; the
-system must not pretend that directory authentication works.</p>
+configured but <code>ldap3</code> is missing, <code>/api/v1/auth/ldap/status</code> reports degraded availability.
+Install the package and repeat the availability check before testing login.</p>
 <p>Use a least-privilege bind identity. Never log submitted passwords, bind secrets, raw access tokens,
 or full directory entries.</p>
 <h2  id="map-roles-and-manage-lifecycle"><span id="map_roles_and_manage_lifecycle"></span>Map roles and manage lifecycle<a class="heading-anchor" href="#map-roles-and-manage-lifecycle" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Group-to-role mapping resolves directory groups to the local <code>viewer</code>, <code>analyst</code>, <code>reviewer</code>, or
-<code>admin</code> role. Review ambiguous and multi-group membership explicitly; do not depend on incidental
-directory ordering for privilege selection.</p>
+<code>admin</code> role. The current mapper checks matches in the order <code>admin</code>, <code>reviewer</code>, <code>analyst</code>, <code>viewer</code>;
+multiple matches select the most privileged role. No matching group returns <code>analyst</code>.
+Test unmatched and multi-group users before enabling LDAP.</p>
 <p>Test joiner, mover, and leaver cases:</p>
 <ul>
 <li>first login and local user creation;</li>
@@ -261,7 +262,9 @@ directory ordering for privilege selection.</p>
 <li>existing sessions and API keys after deprovisioning;</li>
 <li>emergency local administrator access under customer policy.</li>
 </ul>
-<p>See <a href="RBAC.html">RBAC</a> for the permission contract after authentication.</p>
+<p>See <a href="RBAC.html">RBAC</a> for the permission contract after authentication.
+After an external group change, check the new role and access with tokens already issued.
+Configure token lifetimes and verify the procedure for revoking existing sessions.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Distinguish provider unavailability, invalid state, code exchange failure, TLS or DNS failure,
 directory bind failure, user search failure, group lookup failure, missing dependency, and local

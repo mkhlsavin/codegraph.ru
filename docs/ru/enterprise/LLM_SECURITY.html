@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Какие данные CodeGraph могут попасть в запрос к LLM-провайдеру и как настроить DLP, маршрутизацию, аудит и профиль развёртывания.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Передача данных в LLM и меры защиты — Документация CodeGraph">
@@ -115,7 +115,7 @@
       </ul>
     </div>
     <div class="doc-sidebar-section" data-doc-expanded="false">
-      <button type="button" class="doc-sidebar-toggle" aria-expanded="false" aria-controls="doc-group-api">API Документация</button>
+      <button type="button" class="doc-sidebar-toggle" aria-expanded="false" aria-controls="doc-group-api">Справочник API</button>
       <ul id="doc-group-api" class="doc-sidebar-nav" hidden>
         <li><a href="/docs/ru/api/index.html">Обзор</a></li>
       </ul>
@@ -133,7 +133,7 @@
       </ul>
     </div>
     <div class="doc-sidebar-section" data-doc-expanded="true">
-      <button type="button" class="doc-sidebar-toggle" aria-expanded="true" aria-controls="doc-group-enterprise">Корпоративная версия</button>
+      <button type="button" class="doc-sidebar-toggle" aria-expanded="true" aria-controls="doc-group-enterprise">Корпоративная эксплуатация</button>
       <ul id="doc-group-enterprise" class="doc-sidebar-nav">
         <li><a href="/docs/ru/enterprise/index.html">Обзор</a></li>
         <li><a href="/docs/ru/enterprise/DEPLOYMENT_GUIDE.html">Развёртывание CodeGraph в инфраструктуре заказчика</a></li>
@@ -156,31 +156,48 @@
         <nav class="doc-breadcrumb">
         <a href="../index.html">Документация</a>
         <span>/</span>
-        <a href="index.html">Корпоративная версия</a>
+        <a href="index.html">Корпоративная эксплуатация</a>
         <span>/</span>
         <span>Передача данных в LLM и меры защиты</span>
         </nav>
         <h1>Передача данных в LLM и меры защиты</h1>
         <p class="doc-lead">Какие данные CodeGraph могут попасть в запрос к LLM-провайдеру и как настроить DLP, маршрутизацию, аудит и профиль развёртывания.</p>
 
-        <div class="doc-meta"><span>Корпоративная версия</span><time datetime="2026-08-24">Обновлено: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Корпоративная эксплуатация</span><time datetime="2026-10-04">Обновлено: 2026-10-04</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph отправляет выбранному провайдеру <code>system_prompt</code> и <code>user_prompt</code>. В зависимости от сценария в них могут находиться запрос пользователя, фрагменты кода, сформированные сводки или структурированные данные CPG. Перед вызовом провайдера runtime применяет настроенные governance- и DLP-проверки. Состав каждого provider payload определяется сценарием и действующей DLP-политикой.</p>
+        <p>CodeGraph отправляет выбранному провайдеру <code>system_prompt</code> и <code>user_prompt</code>. В зависимости от сценария в них могут находиться запрос пользователя, фрагменты кода, сформированные сводки или структурированные данные CPG. Перед вызовом провайдера runtime применяет настроенные проверки политики и DLP. Состав передаваемых данных определяется сценарием и действующей DLP-политикой.</p>
 <h2  id="fakticheskiy-put-zaprosa"><span id="fakticheskiy_put_zaprosa"></span>Фактический путь запроса<a class="heading-anchor" href="#fakticheskiy-put-zaprosa" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Текущая граница реализована в <code>src/security/llm/secure_provider.py</code>:</p>
 <ol>
 <li>Вызывающий сценарий передаёт <code>system_prompt</code>, <code>user_prompt</code>, контекст операции и настройки провайдера.</li>
-<li>Prompt governance определяет действующую политику и approval state.</li>
-<li>Pre-request DLP сканирует объединённые prompts.</li>
+<li>Проверка политики определяет действующие ограничения и наличие согласования.</li>
+<li>DLP до запроса сканирует объединённые тексты инструкций и запроса.</li>
 <li>Настроенное действие DLP — <code>BLOCK</code>, <code>MASK</code>, <code>WARN</code> или <code>LOG_ONLY</code>.</li>
-<li>AI FinOps routing выбирает целевого провайдера.</li>
-<li>Runtime вызывает <code>target_provider.generate(system_prompt, user_prompt, **kwargs)</code> с отфильтрованными значениями.</li>
-<li>Post-response DLP проверяет ответ перед возвратом пользователю.</li>
+<li>Маршрутизация AI FinOps выбирает целевого провайдера.</li>
+<li>Обёртка вызывает <code>target_provider.generate(system_prompt, user_prompt, **kwargs)</code> с отфильтрованными значениями.</li>
+<li>В обычном <code>generate</code> DLP проверяет ответ перед возвратом вызывающему коду.</li>
 </ol>
-<p>При выключенном pre-request DLP scanner передаёт данные запроса без удаления. Проверяйте реальный runtime profile.</p>
+<p><code>SecureLLMProvider</code> выполняет эту последовательность для сценариев, которые
+вызывают провайдера через обёртку. Сканер обрабатывает <code>system_prompt</code> и
+<code>user_prompt</code>. Дополнительные аргументы <code>**kwargs</code> передаются провайдеру
+отдельно. Для вложений и других данных в этих аргументах настройте проверку
+в вызывающем сценарии.</p>
+<p>В <code>generate</code> DLP проверяет готовый ответ и при действии <code>MASK</code> заменяет найденные
+значения перед возвратом вызывающему коду. В <code>generate_stream</code> фрагменты передаются сразу, а после
+завершения потока DLP проверяет собранный ответ и регистрирует находки.
+Уже переданные фрагменты сохраняют исходный текст. Для проверки ответа до
+выдачи используйте обычную генерацию с настроенным DLP или накопление и
+фильтрацию потока в клиентском сценарии.</p>
+<p>Сканирование запроса включают <code>dlp.enabled</code> и <code>dlp.pre_request.enabled</code>
+в конфигурации безопасности. При отключённом сканировании провайдер получает
+исходные тексты запроса.</p>
+<p>В <code>get_embeddings</code> провайдер также получает тексты. Обёртка объединяет их для проверки DLP,
+применяет фильтрацию при наличии сканера и передаёт подготовленные тексты в
+<code>target_provider.get_embeddings</code>. Модель и маршрут embeddings настраиваются
+отдельно от генерации. Зафиксируйте адреса обеих операций в профиле развёртывания.</p>
 <h2  id="chto-mozhet-peresech-granitsu-provaydera"><span id="chto_mozhet_peresech_granitsu_provaydera"></span>Что может пересечь границу провайдера<a class="heading-anchor" href="#chto-mozhet-peresech-granitsu-provaydera" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Что может пересечь границу провайдера"><table data-columns="3"><caption class="sr-only">Что может пересечь границу провайдера</caption>
 <thead>
@@ -198,28 +215,28 @@
 </tr>
 <tr>
 <td>Выбранные фрагменты кода или diff</td>
-<td>Да, если сценарий добавил их в prompt</td>
-<td>Классификация, минимальный scope, разрешённый профиль и DLP.</td>
+<td>Да, если сценарий включил их в запрос</td>
+<td>Классификация, минимальная область данных, разрешённый профиль и DLP.</td>
 </tr>
 <tr>
-<td>Символы, пути, findings и сводки из CPG</td>
+<td>Символы, пути, находки и сводки из CPG</td>
 <td>Да</td>
 <td>Считать чувствительными инженерными данными, сокращать объём и журналировать.</td>
 </tr>
 <tr>
 <td>Секреты, токены, учётные данные и регулируемые идентификаторы</td>
 <td>Не должны передаваться намеренно</td>
-<td><code>BLOCK</code> или <code>MASK</code>, secret management и процесс инцидента.</td>
+<td><code>BLOCK</code> или <code>MASK</code>, управление секретами и процесс инцидента.</td>
 </tr>
 <tr>
 <td>Полное содержимое репозитория или базы</td>
 <td>Не прикладывается автоматически отдельным объектом</td>
-<td>Убедиться, что вызывающий workflow не встроил его в <code>system_prompt</code> или <code>user_prompt</code>.</td>
+<td>Убедиться, что вызывающий сценарий не встроил его в <code>system_prompt</code> или <code>user_prompt</code>.</td>
 </tr>
 <tr>
 <td>Ответ провайдера</td>
 <td>Возвращается через CodeGraph</td>
-<td>Post-response DLP, audit metadata и ограниченное хранение.</td>
+<td>DLP после ответа, метаданные аудита и ограниченное хранение.</td>
 </tr>
 </tbody>
 </table></div>
@@ -235,49 +252,58 @@
 <tbody>
 <tr>
 <td>Локальная модель</td>
-<td>Запрос остаётся в настроенной локальной среде inference.</td>
-<td>Проверить хост, хранение модели, логи и локальный доступ.</td>
+<td>Запрос остаётся в настроенной локальной среде выполнения модели.</td>
+<td>Проверить хост, хранение модели, журналы и локальный доступ.</td>
 </tr>
 <tr>
 <td>Удалённый провайдер под управлением заказчика</td>
-<td>Prompts уходят на утверждённый endpoint заказчика.</td>
+<td>Тексты уходят на утверждённый адрес провайдера заказчика.</td>
 <td>Зафиксировать владельца, регион, хранение, обучение, шифрование и контакты для инцидента.</td>
 </tr>
 <tr>
 <td>Публичный SaaS-провайдер</td>
-<td>Prompts покидают инфраструктурную границу заказчика.</td>
-<td>Требовать явную классификацию и approval; передавать минимально необходимый контекст.</td>
+<td>Тексты покидают инфраструктурную границу заказчика.</td>
+<td>Требовать явную классификацию и согласование; передавать минимально необходимый контекст.</td>
 </tr>
 </tbody>
 </table></div>
-<p>Выбор провайдера меняет границу обработки данных. Утверждение о безопасности действительно только для профиля, который фактически запущен у заказчика.</p>
+<p>Профиль развёртывания связывает сценарий с адресом провайдера и правилами
+обработки данных. Используйте его при настройке маршрутизации и проверке
+запросов для пилота.</p>
 <h2  id="povedenie-dlp"><span id="povedenie_dlp"></span>Поведение DLP<a class="heading-anchor" href="#povedenie-dlp" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p><code>ContentScanner</code> использует эффективную конфигурацию из <code>src/security/config.py</code> и <code>src/security/dlp/scanner.py</code>.</p>
 <ul>
 <li><code>BLOCK</code> отклоняет запрос до вызова провайдера.</li>
-<li><code>MASK</code> заменяет найденные значения и передаёт изменённые prompts.</li>
+<li><code>MASK</code> заменяет найденные значения и передаёт изменённые тексты запросов.</li>
 <li><code>WARN</code> фиксирует обнаружение, но может разрешить запрос.</li>
 <li><code>LOG_ONLY</code> записывает событие и разрешает запрос.</li>
 </ul>
-<p><code>WARN</code> и <code>LOG_ONLY</code> не скрывают данные. <code>MASK</code> зависит от включённых шаблонов и категорий. Неизвестные чувствительные данные могут остаться незамеченными, поэтому scope репозитория и построение prompt остаются основными мерами.</p>
+<p>При обнаружении совпадений сканер выбирает наиболее строгое действие из
+настроек совпавших категорий и <code>pre_request.default_action</code>. Порядок приоритета:
+<code>BLOCK</code>, <code>MASK</code>, <code>WARN</code>, <code>LOG_ONLY</code>. Например, категория с <code>LOG_ONLY</code> и
+действие по умолчанию <code>WARN</code> дают итоговое <code>WARN</code>.</p>
+<p><code>WARN</code> и <code>LOG_ONLY</code> передают исходный текст и регистрируют обнаружение.
+<code>MASK</code> заменяет совпадения с включёнными шаблонами и категориями. Для каждой
+категории чувствительных данных настройте шаблоны и проверьте их на контрольном
+значении. В запрос включайте контекст, необходимый для выбранной задачи.</p>
 <h2  id="proverka-pered-pilotom"><span id="proverka_pered_pilotom"></span>Проверка перед пилотом<a class="heading-anchor" href="#proverka-pered-pilotom" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ol>
-<li>Определите workflows, которым разрешён провайдер, и поля prompt для каждого из них.</li>
-<li>Классифицируйте исходники, findings, пути, персональные данные, credentials и идентификаторы заказчика.</li>
-<li>Проверьте pre-request и post-response DLP в эффективной конфигурации runtime.</li>
+<li>Определите сценарии, которым разрешён провайдер, и поля запроса для каждого из них.</li>
+<li>Классифицируйте исходники, находки, пути, персональные данные, учётные данные и идентификаторы заказчика.</li>
+<li>Проверьте DLP до запроса и после ответа в действующей конфигурации.</li>
 <li>Для категорий высокого риска назначьте <code>BLOCK</code> или утверждённый <code>MASK</code>.</li>
-<li>Подтвердите endpoint, tenant, регион, сроки хранения, использование для обучения, шифрование и access logs.</li>
-<li>Проверьте блокировку или маскирование на синтетическом canary-секрете. Не используйте настоящие credentials.</li>
-<li>Убедитесь, что audit records содержат ограниченные metadata, а не чувствительные prompts.</li>
+<li>Подтвердите адрес провайдера, арендатора, регион, сроки хранения, использование для обучения, шифрование и журналы доступа.</li>
+<li>Проверьте блокировку или маскирование на синтетическом контрольном секрете. Не используйте настоящие учётные данные.</li>
+<li>Убедитесь, что записи аудита содержат ограниченные метаданные, а не чувствительные запросы.</li>
 <li>Добавьте утверждённый профиль и подтверждения в пакет готовности к пилоту или релизу.</li>
 </ol>
 <h2  id="esli-dannye-mogli-uyti-provayderu"><span id="esli_dannye_mogli_uyti_provayderu"></span>Если данные могли уйти провайдеру<a class="heading-anchor" href="#esli-dannye-mogli-uyti-provayderu" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ol>
-<li>Остановите или перенаправьте затронутый workflow.</li>
-<li>Сохраните request ID и DLP/audit metadata, не копируя секрет в отчёт.</li>
-<li>Замените скомпрометированные credentials и выполните процедуру удаления или инцидента у провайдера.</li>
-<li>Найдите prompt builder, добавивший данные, и сузьте scope или политику.</li>
-<li>До восстановления маршрута повторите проверку с синтетическим canary.</li>
+<li>Остановите или перенаправьте затронутый сценарий.</li>
+<li>Сохраните идентификатор запроса и метаданные DLP и аудита, не копируя секрет в отчёт.</li>
+<li>Замените скомпрометированные учётные данные и выполните процедуру удаления или инцидента у провайдера.</li>
+<li>Найдите код, добавивший данные в запрос, и ограничьте передаваемые данные или измените политику.</li>
+<li>До восстановления маршрута повторите проверку с синтетическим контрольным значением.</li>
 </ol>
 <h2 id="istochniki">Источники<a class="heading-anchor" href="#istochniki" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
@@ -327,7 +353,7 @@
      — .. — path to docs base (e.g., "docs/ru" or "../ru")
      — ИИ-платформа управления полным циклом разработки ПО., Продукт, Документация, Ресурсы, Контакты
      — Доказательства, Цифровая команда, Вопросы и&nbsp;ответы
-     — Начало работы, Руководства, API, Интеграции, Справочник, Корпоративная версия
+     — Начало работы, Руководства, API, Интеграции, Справочник, Корпоративная эксплуатация
      — Техническое описание, Безопасность, Инженерия ИИ, Индекс для ИИ, Блог
      — 2025–2026, Все права защищены.
 -->
@@ -361,7 +387,7 @@
             <li><a href="../api/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">API</a></li>
             <li><a href="../integrations/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Интеграции</a></li>
             <li><a href="../reference/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Справочник</a></li>
-            <li><a href="../enterprise/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Корпоративная версия</a></li>
+            <li><a href="../enterprise/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Корпоративная эксплуатация</a></li>
           </ul>
         </div>
         <div class="min-w-0">

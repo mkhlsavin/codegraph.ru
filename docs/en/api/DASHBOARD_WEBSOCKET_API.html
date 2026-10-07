@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Browser-compatible real-time dashboard refresh events, first-message authentication, heartbeat, and reconnect behavior.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Dashboard WebSocket API — Documentation">
@@ -159,27 +159,27 @@
         <h1>Dashboard WebSocket API</h1>
         <p class="doc-lead">Browser-compatible real-time dashboard refresh events, first-message authentication, heartbeat, and reconnect behavior.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>This socket tells an open dashboard that project data may have changed. It does not stream chat, job state, or durable audit results. After project_updated, the client fetches the relevant REST resource again.</p>
+        <p>Connect an open dashboard to receive project update events when an audit report is completed. The server sends <code>project_updated</code> with the project name and trigger. Your client reloads the relevant REST resources and updates the screen. This reference explains authentication, event fields, and connection recovery for frontend developers.</p>
 <h2 id="endpoint">Endpoint<a class="heading-anchor" href="#endpoint" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code>wss://codegraph.example/api/v1/traceability/ws
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>wss://codegraph.example/api/v1/traceability/ws
 </code></pre></div>
 
 <p>Use ws only for a trusted local HTTP environment. Production pages served over HTTPS must use wss.</p>
 <h2 id="authentication">Authentication<a class="heading-anchor" href="#authentication" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Do not put a token in the URL. A query token is rejected with code 1008 and reason “Query token transport is not allowed”.</p>
+<p>Send the token in the first message. A <code>token</code> query parameter causes the server to reject the HTTP handshake with status 403 before the WebSocket opens. The handler uses the rejection reason <code>Query token transport is not allowed</code>.</p>
 <p>The server accepts the socket first and then waits up to 5 seconds for the first client message. Send exactly a JWT token object:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;JWT&gt;&quot;</span><span class="p">}</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;JWT&gt;&quot;</span><span class="p">}</span>
 </code></pre></div>
 
 <p>The runtime also accepts a raw token string, but the JSON object is the documented contract. If authentication fails, the server sends an error event and closes with code 1008. If the first message does not arrive within 5 seconds, it closes with an authentication timeout.</p>
 <p>An unauthenticated connection is allowed only when the explicit local-development unauthenticated-surface setting is enabled and both client and requested host are loopback addresses.</p>
 <h2 id="events">Events<a class="heading-anchor" href="#events" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Dashboard messages use event, not the type/payload envelope of the application WebSockets.</p>
+<p>Each dashboard message is a JSON object. Its <code>event</code> field identifies the event; the remaining fields carry its data.</p>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Events"><table data-columns="3"><caption class="sr-only">Events</caption>
 <thead>
 <tr>
@@ -201,7 +201,7 @@
 </tr>
 <tr>
 <td>project_updated</td>
-<td>Audit, compliance, release, or another producer reports changed project data</td>
+<td>An audit report completes or another producer calls the broadcast function</td>
 <td>project_name, trigger, timestamp</td>
 </tr>
 <tr>
@@ -216,10 +216,12 @@
 </tr>
 </tbody>
 </table></div>
-<p>A project_updated event reports changed producer data. Request the authoritative result through
-the corresponding message or endpoint.</p>
+<p>Use <code>project_name</code> to select the dashboard resources to reload. The <code>trigger</code> field identifies the producer that requested the update, and <code>timestamp</code> records when the event was created as Unix time in seconds.</p>
 <h2  id="browser-example"><span id="browser_example"></span>Browser example<a class="heading-anchor" href="#browser-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="kd">function</span><span class="w"> </span><span class="nx">connectDashboardSocket</span><span class="p">(</span><span class="nx">accessToken</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<p>Add this function to an authenticated dashboard. Pass a current JWT and a
+<code>refreshDashboardResources(projectName)</code> callback that reloads the relevant project REST resources.
+The example uses <code>location.host</code>, so it assumes that the page and API share a host.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kd">function</span><span class="w"> </span><span class="nx">connectDashboardSocket</span><span class="p">(</span><span class="nx">accessToken</span><span class="p">,</span><span class="w"> </span><span class="nx">refreshDashboardResources</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">scheme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">location</span><span class="p">.</span><span class="nx">protocol</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;https:&quot;</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s2">&quot;wss:&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ws:&quot;</span><span class="p">;</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">socket</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span>
 <span class="w">    </span><span class="nx">scheme</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">&quot;//&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">location</span><span class="p">.</span><span class="nx">host</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">&quot;/api/v1/traceability/ws&quot;</span>
@@ -241,13 +243,14 @@ the corresponding message or endpoint.</p>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Never log accessToken or embed it in the URL. Keep it only as long as required by the authenticated browser session.</p>
+<p>Call <code>connectDashboardSocket</code> with the access token from your authenticated session and your existing resource-refresh function. It returns the <code>WebSocket</code> instance. After successful authentication, the server sends <code>connected</code> with a client identifier and the heartbeat interval. Each <code>project_updated</code> calls your refresh function with the project name. Call <code>socket.close()</code> when the dashboard is unmounted.</p>
+<p>Keep the access token in session memory and exclude it from URLs and logs.</p>
 <h2  id="heartbeat-and-reconnect"><span id="heartbeat_and_reconnect"></span>Heartbeat and reconnect<a class="heading-anchor" href="#heartbeat-and-reconnect" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The server sends heartbeat after the configured idle interval. A client may send the plain text ping and should receive a pong event.</p>
 <p>Reconnect with bounded exponential backoff and jitter. Obtain a fresh token before reconnecting if the authenticated session expired. Do not reconnect continuously after code 1008: first correct authentication, configuration, or rate-limit conditions.</p>
 <p>After reconnecting, reload dashboard resources through REST because events emitted while the socket was disconnected are not replayed.</p>
 <h2 id="configuration">Configuration<a class="heading-anchor" href="#configuration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">dashboard</span><span class="p">:</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">dashboard</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">websocket_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">  </span><span class="nt">websocket_heartbeat_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
 </code></pre></div>

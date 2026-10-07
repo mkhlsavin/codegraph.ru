@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="MCP operator guide — Documentation">
@@ -159,7 +159,7 @@
         <h1>MCP operator guide</h1>
         <p class="doc-lead">Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
@@ -167,18 +167,83 @@
         <p>Use this guide to start and diagnose the MCP server. The callable tool catalog depends on the active
 profile and changes with the runtime. Inspect
 the client-visible catalog after every profile change or server restart.</p>
+<p>Run the commands from the approved CodeGraph checkout with its Python environment and
+configured server dependencies. Do not start a second process on an occupied port. For a
+managed deployment, use the MCP connection supplied by its administrator instead of starting
+a local source server. Source commands below use Bash; the profile diagnostic uses PowerShell.</p>
+<p>The canonical stdio and <code>/mcp</code> endpoints use stateless <code>MCP 2026-07-28</code>: each request
+carries the protocol version and client metadata. Send <code>server/discover</code> to inspect server
+capabilities or <code>tools/list</code> to obtain the active tool catalog.</p>
+<p>For a standard MCP client, the HTTP adapter at <code>/agent-plugin/mcp</code> supports negotiation of
+<code>2025-11-25</code> and <code>2026-07-28</code> and translates requests to the canonical runtime. For managed
+remote login and client setup, follow <a href="../integrations/REMOTE_MCP_AUTH.html">OAuth and MCP</a>.</p>
 <section class="doc-summary" aria-labelledby="choose-a-transport"><h2  id="choose-a-transport"><span id="choose_a_transport"></span>Choose a transport<a class="heading-anchor" href="#choose-a-transport" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For a local client that starts CodeGraph as a subprocess, use stdio:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>stdio
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>stdio
 </code></pre></div>
 
 <p>For Streamable HTTP, bind explicitly and connect the client to
 <code>http://127.0.0.1:27495/mcp</code>:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span>
 </code></pre></div>
 
+<p>If port <code>27495</code> is occupied, choose a free local port. Replace the <code>--port</code> value and the
+port in the client URL with the same value.</p>
 <p>The supported transports are <code>stdio</code> and <code>http</code>. SSE and the retired SSE compatibility paths
 are not available.</p>
+<h2  id="verify-the-stdio-catalog"><span id="verify_the_stdio_catalog"></span>Verify the stdio catalog<a class="heading-anchor" href="#verify-the-stdio-catalog" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>With the stdio process running, send this JSON-RPC message through its stdin as one line.
+The indented form below shows the fields; the client serializes it as one line on the wire.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;jsonrpc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tools/list&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;_meta&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;io.modelcontextprotocol/protocolVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-07-28&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;io.modelcontextprotocol/clientInfo&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;docs-check&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;io.modelcontextprotocol/clientCapabilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The response has the same <code>id</code> and a <code>result.tools</code> array. Inspect each tool&rsquo;s <code>name</code> and
+<code>inputSchema</code> before calling it. The active profile determines the returned tools.</p>
+<h2  id="send-a-canonical-http-request"><span id="send_a_canonical_http_request"></span>Send a canonical HTTP request<a class="heading-anchor" href="#send-a-canonical-http-request" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>POST the same JSON-RPC request to <code>/mcp</code>. Along with the credentials described below,
+send these headers for the <code>tools/list</code> example:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Send a canonical HTTP request"><table data-columns="2"><caption class="sr-only">Send a canonical HTTP request</caption>
+<thead>
+<tr>
+<th scope="col">Header</th>
+<th scope="col">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Content-Type</code></td>
+<td><code>application/json</code></td>
+</tr>
+<tr>
+<td><code>Accept</code></td>
+<td><code>application/json, text/event-stream</code></td>
+</tr>
+<tr>
+<td><code>MCP-Protocol-Version</code></td>
+<td><code>2026-07-28</code></td>
+</tr>
+<tr>
+<td><code>MCP-Method</code></td>
+<td><code>tools/list</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Keep <code>MCP-Method</code> equal to the JSON-RPC body&rsquo;s <code>method</code>. The server returns
+<code>mcp-method header does not match the request body's method</code> when they differ.</p>
 <h2  id="authentication-and-project-scope"><span id="authentication_and_project_scope"></span>Authentication and project scope<a class="heading-anchor" href="#authentication-and-project-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Stdio is a trusted local transport. HTTP requires authentication by default and accepts either
 <code>Authorization: Bearer &lt;jwt&gt;</code> or <code>X-API-Key: &lt;api-key&gt;</code>. Send <code>X-Project-ID</code> when a network
@@ -187,18 +252,17 @@ and rejects a mismatched <code>project_key</code> or <code>namespace</code>.</p>
 <p><code>--no-auth</code> is a local-development mode. The command is rejected
 unless <code>security.mcp_allow_no_auth_network_transports</code> is enabled, and an unauthenticated server
 may bind only to a loopback host:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w"> </span>--no-auth
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w"> </span>--no-auth
 </code></pre></div>
 
-<p>Tool calls require the handler to verify the required role, exact carrier, and persisted approval.
+<p>Governed mutations require the handler to verify the required role, exact carrier, and persisted approval.
 A full or owner-scoped profile defines the catalog available to the operator.</p>
 <h2  id="select-and-verify-a-tool-profile"><span id="select_and_verify_a_tool_profile"></span>Select and verify a tool profile<a class="heading-anchor" href="#select-and-verify-a-tool-profile" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The command starts with the <code>codex</code> profile unless <code>CODEGRAPH_MCP_TOOL_PROFILE</code> is set. Owner
 profiles are the normal route to lane-specific tools. Derive the current tool catalog from the
 selected profile.</p>
 <p>For a source-checkout diagnostic, derive the current set instead of copying a count into docs:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">$env:CODEGRAPH_MCP_TOOL_PROFILE</span> <span class="p">=</span> <span class="s2">&quot;full&quot;</span>
-<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;from src.mcp.surface_catalog import profile_family_tool_names; print(len(profile_family_tool_names(&#39;full&#39;)))&quot;</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;from src.mcp.surface_catalog import profile_family_tool_names; print(len(profile_family_tool_names(&#39;full&#39;)))&quot;</span>
 </code></pre></div>
 
 <p>Use <code>profile_family_tool_names</code> only as a local source diagnostic. The catalog returned to the
@@ -294,6 +358,8 @@ connected MCP client is the runtime evidence that matters.</p>
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#choose-a-transport" class="level-2" aria-current="location">Choose a transport</a></li>
+<li><a href="#verify-the-stdio-catalog" class="level-2">Verify the stdio catalog</a></li>
+<li><a href="#send-a-canonical-http-request" class="level-2">Send a canonical HTTP request</a></li>
 <li><a href="#authentication-and-project-scope" class="level-2">Authentication and project scope</a></li>
 <li><a href="#select-and-verify-a-tool-profile" class="level-2">Select and verify a tool profile</a></li>
 <li><a href="#follow-the-canonical-wire-contract" class="level-2">Follow the canonical wire contract</a></li>

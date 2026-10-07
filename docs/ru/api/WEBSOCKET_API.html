@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Актуальные маршруты, граница аутентификации, формат сообщений и восстановление для WebSocket приложения CodeGraph.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="WebSocket API приложения — Документация CodeGraph">
@@ -115,7 +115,7 @@
       </ul>
     </div>
     <div class="doc-sidebar-section" data-doc-expanded="true">
-      <button type="button" class="doc-sidebar-toggle" aria-expanded="true" aria-controls="doc-group-api">API Документация</button>
+      <button type="button" class="doc-sidebar-toggle" aria-expanded="true" aria-controls="doc-group-api">Справочник API</button>
       <ul id="doc-group-api" class="doc-sidebar-nav">
         <li><a href="/docs/ru/api/index.html">Обзор</a></li>
         <li><a href="/docs/ru/api/REST_API.html">Индекс операций REST API</a></li>
@@ -139,7 +139,7 @@
       </ul>
     </div>
     <div class="doc-sidebar-section" data-doc-expanded="false">
-      <button type="button" class="doc-sidebar-toggle" aria-expanded="false" aria-controls="doc-group-enterprise">Корпоративная версия</button>
+      <button type="button" class="doc-sidebar-toggle" aria-expanded="false" aria-controls="doc-group-enterprise">Корпоративная эксплуатация</button>
       <ul id="doc-group-enterprise" class="doc-sidebar-nav" hidden>
         <li><a href="/docs/ru/enterprise/index.html">Обзор</a></li>
       </ul>
@@ -152,31 +152,40 @@
         <nav class="doc-breadcrumb">
         <a href="../index.html">Документация</a>
         <span>/</span>
-        <a href="index.html">API Документация</a>
+        <a href="index.html">Справочник API</a>
         <span>/</span>
         <span>WebSocket API приложения</span>
         </nav>
         <h1>WebSocket API приложения</h1>
         <p class="doc-lead">Актуальные маршруты, граница аутентификации, формат сообщений и восстановление для WebSocket приложения CodeGraph.</p>
 
-        <div class="doc-meta"><span>API Документация</span><time datetime="2026-08-24">Обновлено: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-10-03">Обновлено: 2026-10-03</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>Справочник описывает три WebSocket приложения: чат, статусы фоновых задач и уведомления. События обновления дашборда используют отдельную аутентификацию и формат; они описаны в <a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API дашборда</a>.</p>
 <h2  id="granitsa-autentifikatsii"><span id="granitsa_autentifikatsii"></span>Граница аутентификации<a class="heading-anchor" href="#granitsa-autentifikatsii" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>В production клиент передаёт заголовок HTTP handshake:</p>
-<div class="highlight"><pre><span></span><code>Authorization: Bearer &lt;access-token&gt;
+<p>Для чата и статусов задач клиент передаёт токен в заголовке HTTP handshake:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>Authorization: Bearer &lt;access-token&gt;
 </code></pre></div>
 
-<p>Токен в URL запрещён. Если в query string есть token, сервер закрывает соединение кодом 1008 и причиной “Query token transport is not allowed”.</p>
+<p>Передавайте токен предусмотренным для маршрута способом. Если в URL есть параметр <code>token</code>, сервер отклоняет HTTP handshake со статусом 403 до открытия WebSocket. Обработчик использует причину отказа <code>Query token transport is not allowed</code>.</p>
 <p>Для доступа в контексте проекта добавьте его постоянный идентификатор:</p>
-<div class="highlight"><pre><span></span><code>X-Project-Id: &lt;project-uuid&gt;
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>X-Project-Id: &lt;project-uuid&gt;
 </code></pre></div>
 
 <p>Сервер проверяет текущее состояние пользователя, отзыв токена, доступ к проекту, владение задачей там, где оно требуется, а также квоты соединений и сообщений. Клиент с loopback-адреса может работать без токена только при явно включённом локальном режиме и локальных адресах клиента и запрошенного хоста.</p>
-<p>Стандартный браузерный конструктор WebSocket не позволяет установить Authorization header. В браузерном приложении используйте аутентифицированный same-origin gateway либо отдельный контракт WebSocket дашборда. Не переносите bearer-токен в query string.</p>
+<p>Чат и статусы задач подключайте через клиент с поддержкой заголовков или аутентифицированный
+same-origin gateway. Маршрут уведомлений поддерживает браузерный WebSocket: после открытия
+соединения передайте токен первым сообщением в течение 5 секунд:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;access-token&gt;&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>После проверки токена и доступа сервер отправляет <code>connected</code>. Затем клиент может отправлять
+<code>ping</code> и получать уведомления. При превышении времени ожидания сервер закрывает соединение
+кодом 1008 с причиной <code>Auth timeout</code>.</p>
+<p>События дашборда описаны в <a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API дашборда</a>.</p>
 <h2 id="marshruty">Маршруты<a class="heading-anchor" href="#marshruty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Маршруты"><table data-columns="3"><caption class="sr-only">Маршруты</caption>
 <thead>
@@ -204,10 +213,10 @@
 </tr>
 </tbody>
 </table></div>
-<p>Если задача не существует, job-маршрут закрывается кодом 4004. Существующая задача за пределами области пользователя отклоняется кодом политики 1008.</p>
+<p>Маршрут задачи сначала проверяет право подписки. Неизвестная задача или задача вне области пользователя вызывает <code>Job subscription denied</code> и закрытие с кодом 1008. После разрешения подписки сервер читает состояние задачи; если это чтение не нашло задачу, он отправляет <code>Job not found</code> и закрывает соединение с кодом 4004.</p>
 <h2  id="format-soobscheniya"><span id="format_soobscheniya"></span>Формат сообщения<a class="heading-anchor" href="#format-soobscheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Каждое сообщение приложения — JSON следующей формы:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;chat.query&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
 <span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-08-24T00:00:00Z&quot;</span><span class="p">,</span>
@@ -215,7 +224,8 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Модель требует type и payload. Сервер подставляет timestamp, если он не передан. request_id необязателен; сохраняйте его для сопоставления сообщений одного потокового ответа.</p>
+<p>Модель требует <code>type</code>. Если <code>payload</code> не передан, он равен <code>{}</code>; <code>timestamp</code> получает текущее время.
+Для <code>chat.query</code> нужен <code>payload.query</code>. Поле <code>request_id</code> необязательно; сохраняйте его для сопоставления сообщений одного потокового ответа.</p>
 <h2  id="aktualnye-tipy-soobscheniy"><span id="aktualnye_tipy_soobscheniy"></span>Актуальные типы сообщений<a class="heading-anchor" href="#aktualnye-tipy-soobscheniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Актуальные типы сообщений"><table data-columns="3"><caption class="sr-only">Актуальные типы сообщений</caption>
 <thead>
@@ -326,7 +336,7 @@
 <p>Не каждый тип создаётся на каждом маршруте. Клиент должен игнорировать нерелевантные для текущего процесса известные сообщения и не считать неизвестное сообщение подтверждением успеха.</p>
 <h2  id="zapros-chata"><span id="zapros_chata"></span>Запрос чата<a class="heading-anchor" href="#zapros-chata" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Отправляйте chat.query только в маршрут чата:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;chat.query&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;payload&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Покажи вызывающие символы&quot;</span><span class="p">,</span>
@@ -338,20 +348,30 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Нормальный поток может содержать chat.scenario, несколько chat.chunk, затем chat.response и chat.done. Сообщение error отменяет успешную интерпретацию запроса, даже если соединение осталось открытым.</p>
+<p>Значения <code>optional-session</code> и <code>optional-scenario</code> обозначают ваши идентификаторы сессии и сценария. Оба поля необязательны; опустите их, если запрос не задаёт сессию или сценарий явно.</p>
+<p>Обработчик чата отправляет <code>chat.scenario</code> при выборе сценария, <code>chat.chunk</code> для фрагментов ответа и <code>chat.done</code> при завершении. Соберите ответ из фрагментов и сопоставьте их по <code>request_id</code>. При ошибке обработки сервер отправляет <code>error</code> с тем же идентификатором запроса.</p>
 <h2  id="status-zadachi"><span id="status_zadachi"></span>Статус задачи<a class="heading-anchor" href="#status-zadachi" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Подключайтесь к точному маршруту задачи, принадлежащей аутентифицированному пользователю. Сервер передаёт job.started с текущим состоянием, а для завершённой задачи — job.completed или job.failed. HTTP/REST-ответ остаётся постоянным источником; WebSocket — прерываемый канал уведомлений.</p>
 <h2 id="uvedomleniya">Уведомления<a class="heading-anchor" href="#uvedomleniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Маршрут уведомлений предназначен преимущественно для получения данных. Клиент отправляет только ping. Payload уведомления может включать title, message, level и action_url. Перед переходом проверяйте action_url по навигационной политике приложения.</p>
-<h2  id="primer-handshake"><span id="primer_handshake"></span>Пример handshake<a class="heading-anchor" href="#primer-handshake" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Сервисный клиент должен уметь передавать пользовательские HTTP-заголовки. Пример на Node.js использует пакет ws:</p>
-<div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;ws&quot;</span><span class="p">;</span>
+<p>Маршрут уведомлений предназначен преимущественно для получения данных. После аутентификации клиент отправляет <code>ping</code>. Payload уведомления может включать title, message, level и action_url. Перед переходом проверяйте action_url по навигационной политике приложения.</p>
+<h2  id="podklyuchenie-k-uvedomleniyam"><span id="podklyuchenie_k_uvedomleniyam"></span>Подключение к уведомлениям<a class="heading-anchor" href="#podklyuchenie-k-uvedomleniyam" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Сервисный клиент должен уметь передавать пользовательские HTTP-заголовки. Пример использует
+Node.js и пакет <code>ws</code>. В каталоге клиентского проекта установите зависимость <code>npm install ws</code>,
+сохраните код в <code>notifications.mjs</code> и запустите <code>node notifications.mjs</code>. Перед запуском
+задайте <code>CODEGRAPH_ACCESS_TOKEN</code>, <code>CODEGRAPH_PROJECT_ID</code> и <code>CODEGRAPH_WS_URL</code> через одобренный
+канал конфигурации. Последняя переменная содержит полный адрес маршрута уведомлений.
+Не передавайте секрет как аргумент командной строки. Клиент отправляет токен первым сообщением, ждёт <code>connected</code>, затем отправляет <code>ping</code>.
+В консоли появится <code>pong</code>. Для остановки клиента нажмите Ctrl+C.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;ws&quot;</span><span class="p">;</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;CODEGRAPH_ACCESS_TOKEN&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_PROJECT_ID&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CODEGRAPH_WS_URL&quot;</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">[</span><span class="nx">name</span><span class="p">])</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span><span class="s2">&quot;Missing &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">name</span><span class="p">);</span>
+<span class="p">}</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">socket</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span>
-<span class="w">  </span><span class="s2">&quot;wss://codegraph.example/api/v1/ws/notifications&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_WS_URL</span><span class="p">,</span>
 <span class="w">  </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">Authorization</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Bearer &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="p">,</span>
 <span class="w">      </span><span class="s2">&quot;X-Project-Id&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_PROJECT_ID</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">}</span>
@@ -361,16 +381,21 @@
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">raw</span><span class="p">.</span><span class="nx">toString</span><span class="p">());</span>
 <span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;notification&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">payload</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;connected&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;pong&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;pong&quot;</span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">});</span>
 
 <span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">type</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ping&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">payload</span><span class="o">:</span><span class="w"> </span><span class="p">{}</span><span class="w"> </span><span class="p">}));</span>
+<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">token</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="w"> </span><span class="p">}));</span>
 <span class="p">});</span>
 </code></pre></div>
 
 <p>Не записывайте токен и полный Authorization header в логи.</p>
 <h2  id="kody-zakrytiya-i-vosstanovlenie"><span id="kody_zakrytiya_i_vosstanovlenie"></span>Коды закрытия и восстановление<a class="heading-anchor" href="#kody-zakrytiya-i-vosstanovlenie" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Отказ до открытия WebSocket возвращает HTTP 403. Таблица описывает коды политики сервера; клиент получает WebSocket-код закрытия после успешного открытия соединения.</p>
 <div class="doc-table-scroll doc-table-scroll--standard" data-columns="3" tabindex="-1" role="region" aria-label="Коды закрытия и восстановление"><table data-columns="3"><caption class="sr-only">Коды закрытия и восстановление</caption>
 <thead>
 <tr>
@@ -392,7 +417,7 @@
 </tr>
 <tr>
 <td>4004</td>
-<td>Задача не найдена</td>
+<td>Состояние задачи не найдено после разрешения подписки</td>
 <td>Проверить идентификатор через REST API</td>
 </tr>
 </tbody>
@@ -400,7 +425,7 @@
 <p>Для временных разрывов используйте ограниченный exponential backoff с jitter. После 4001 обновите токен. Не повторяйте 1008 автоматически, пока причина отказа не устранена.</p>
 <h2  id="ishodnye-kontrakty"><span id="ishodnye_kontrakty"></span>Исходные контракты<a class="heading-anchor" href="#ishodnye-kontrakty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
-<li>src/api/websocket/routes.py — маршруты, bearer-аутентификация, проверки области и закрытие</li>
+<li>src/api/websocket/routes.py — маршруты, аутентификация заголовком или первым сообщением, проверки области и закрытие</li>
 <li>src/api/websocket/models.py — envelope, payload-модели и enum сообщений</li>
 <li>src/api/websocket/authorization.py — решения по пользователю, проекту, токену и задаче</li>
 <li>src/api/websocket/rate_limiter.py — квоты соединений и сообщений</li>
@@ -435,7 +460,7 @@
 <li><a href="#zapros-chata" class="level-2">Запрос чата</a></li>
 <li><a href="#status-zadachi" class="level-2">Статус задачи</a></li>
 <li><a href="#uvedomleniya" class="level-2">Уведомления</a></li>
-<li><a href="#primer-handshake" class="level-2">Пример handshake</a></li>
+<li><a href="#podklyuchenie-k-uvedomleniyam" class="level-2">Подключение к уведомлениям</a></li>
 <li><a href="#kody-zakrytiya-i-vosstanovlenie" class="level-2">Коды закрытия и восстановление</a></li>
 <li><a href="#ishodnye-kontrakty" class="level-2">Исходные контракты</a></li>
       </ul>
@@ -448,7 +473,7 @@
      — .. — path to docs base (e.g., "docs/ru" or "../ru")
      — ИИ-платформа управления полным циклом разработки ПО., Продукт, Документация, Ресурсы, Контакты
      — Доказательства, Цифровая команда, Вопросы и&nbsp;ответы
-     — Начало работы, Руководства, API, Интеграции, Справочник, Корпоративная версия
+     — Начало работы, Руководства, API, Интеграции, Справочник, Корпоративная эксплуатация
      — Техническое описание, Безопасность, Инженерия ИИ, Индекс для ИИ, Блог
      — 2025–2026, Все права защищены.
 -->
@@ -482,7 +507,7 @@
             <li><a href="../api/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">API</a></li>
             <li><a href="../integrations/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Интеграции</a></li>
             <li><a href="../reference/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Справочник</a></li>
-            <li><a href="../enterprise/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Корпоративная версия</a></li>
+            <li><a href="../enterprise/index.html" class="text-sm text-cg-muted transition-colors hover:text-cg-primary dark:text-cg-inverse-secondary dark:hover:text-cg-primary-light">Корпоративная эксплуатация</a></li>
           </ul>
         </div>
         <div class="min-w-0">

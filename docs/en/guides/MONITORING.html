@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="description" content="Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Production monitoring — Documentation">
-  <meta property="og:description" content="Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.">
+  <meta property="og:description" content="Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/MONITORING.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Production monitoring — Documentation">
-  <meta name="twitter:description" content="Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.">
+  <meta name="twitter:description" content="Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/MONITORING.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Production monitoring — Documentation","description":"Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.","url":"https://codegraph.ru/docs/en/guides/MONITORING.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Production monitoring — Documentation","description":"Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.","url":"https://codegraph.ru/docs/en/guides/MONITORING.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -198,17 +198,21 @@
         <span>Production monitoring</span>
         </nav>
         <h1>Production monitoring</h1>
-        <p class="doc-lead">Operator runbook for CodeGraph Prometheus metrics, dashboards, alerts, and receiver-safe deployment. See the examples and checks before applying it.</p>
+        <p class="doc-lead">Check CodeGraph metrics collection, alert rules, and notification delivery. Distinguish API availability from project data freshness.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>This guide connects CodeGraph to an external Prometheus and Alertmanager stack.
-It deliberately references maintained artifacts instead of copying the metric
-catalog or alert expressions into documentation.</p>
-<h2  id="two-metrics-surfaces"><span id="two_metrics_surfaces"></span>Two metrics surfaces<a class="heading-anchor" href="#two-metrics-surfaces" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+        <p>Monitoring helps operators detect API failures, rising project risks, and
+blocked releases. Prometheus collects CodeGraph metrics and evaluates alert
+rules. Alertmanager groups events and sends them to receivers. Dashboards show
+the state of the deployment and its projects.</p>
+<p>Connect collection, load the rules, configure a receiver, and verify delivery
+of a test alert. Use the files in “Shipped configuration artifacts” to configure
+the stack.</p>
+<section class="doc-summary" aria-labelledby="two-metrics-surfaces"><h2  id="two-metrics-surfaces"><span id="two_metrics_surfaces"></span>Two metrics surfaces<a class="heading-anchor" href="#two-metrics-surfaces" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>CodeGraph exposes two different Prometheus responses:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Two metrics surfaces"><table data-columns="3"><caption class="sr-only">Two metrics surfaces</caption>
 <thead>
@@ -234,21 +238,40 @@ catalog or alert expressions into documentation.</p>
 <p>Treat the first route as network-sensitive even though it does not use user
 authentication. Restrict it with the deployment network policy, ingress, or
 scraper allowlist. Do not publish it on an unrestricted internet ingress.</p>
-<p>The metric names and labels are defined in <code>src/monitoring/metrics.py</code>. Do not
-pin an expected metric count in an acceptance check: optional components and
-new collectors can change the exported set.</p>
+<p>Both routes export the process-wide Prometheus registry. The dashboard route
+first updates metrics for the selected scope. The registry also retains project
+labels populated by earlier requests. When configuring the receiver, check the
+labels and which data the destination is authorized to receive.</p>
+<p>Metric names and labels are defined in <code>src/monitoring/metrics.py</code>. Select the
+metrics required by your dashboards and alerts, then check their names and
+labels. Enabled components and collectors determine the exported set.</p>
 <h2  id="scrape-verification"><span id="scrape_verification"></span>Scrape verification<a class="heading-anchor" href="#scrape-verification" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>From the monitoring network:</p>
-<div class="highlight"><pre><span></span><code><span class="n">curl</span><span class="p">.</span><span class="n">exe</span> <span class="n">-fsS</span> <span class="n">http</span><span class="p">://&lt;</span><span class="n">api-host</span><span class="p">&gt;:</span><span class="n">8000</span><span class="p">/</span><span class="n">metrics</span>
+<p>Run this example in PowerShell from the monitoring network. The working directory does not matter; no files are created. <code>http://127.0.0.1:8000</code> applies only to an accessible local API. For another deployment, replace it with the approved API URL. Use HTTPS outside a protected local network.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$apiBaseUrl</span> <span class="p">=</span> <span class="s2">&quot;http://127.0.0.1:8000&quot;</span>
+<span class="nv">$response</span> <span class="p">=</span> <span class="nb">Invoke-WebRequest</span> <span class="n">-Uri</span> <span class="s2">&quot;$apiBaseUrl/metrics&quot;</span> <span class="n">-UseBasicParsing</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">StatusCode</span> <span class="o">-ne</span> <span class="n">200</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;Metrics HTTP status is not 200&quot;</span> <span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]</span> <span class="o">-notmatch</span> <span class="s1">&#39;^(text/plain|application/openmetrics-text)&#39;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">throw</span> <span class="s2">&quot;Unexpected metrics content type&quot;</span>
+<span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">Content</span> <span class="o">-notmatch</span> <span class="s1">&#39;(?m)^# TYPE &#39;</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;No metric type declarations&quot;</span> <span class="p">}</span>
+<span class="nv">$response</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="p">@{</span><span class="n">Name</span><span class="p">=</span><span class="s1">&#39;ContentType&#39;</span><span class="p">;</span><span class="n">Expression</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]}}</span>
 </code></pre></div>
 
-<p>For dashboard metrics, use an approved API credential and project context:</p>
-<div class="highlight"><pre><span></span><code><span class="n">curl</span><span class="p">.</span><span class="n">exe</span> <span class="n">-fsS</span> <span class="n">-H</span> <span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span> <span class="n">-H</span> <span class="s2">&quot;X-Project-Id: &lt;project-id&gt;&quot;</span> <span class="n">http</span><span class="p">://&lt;</span><span class="n">api-host</span><span class="p">&gt;:</span><span class="n">8000</span><span class="p">/</span><span class="n">api</span><span class="p">/</span><span class="n">v1</span><span class="p">/</span><span class="n">traceability</span><span class="p">/</span><span class="n">metrics</span>
+<p>Expect status <code>200</code>, a Prometheus content type, and no exceptions. Next, verify that Prometheus receives the series as described below.</p>
+<p>For dashboard metrics, use an approved API credential. In the same session, replace <code>&lt;project-uuid&gt;</code> with the UUID of a project accessible to that account. This is not the project&rsquo;s string key. Supply <code>CODEGRAPH_API_TOKEN</code> from an approved secret store; do not write its value in the example or logs.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$env:CODEGRAPH_API_TOKEN</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;API token is not configured&quot;</span> <span class="p">}</span>
+<span class="nv">$headers</span> <span class="p">=</span> <span class="p">@{</span>
+    <span class="n">Authorization</span> <span class="p">=</span> <span class="s2">&quot;Bearer $env:CODEGRAPH_API_TOKEN&quot;</span>
+    <span class="s1">&#39;X-Project-Id&#39;</span> <span class="p">=</span> <span class="s1">&#39;&lt;project-uuid&gt;&#39;</span>
+<span class="p">}</span>
+<span class="nv">$projectResponse</span> <span class="p">=</span> <span class="nb">Invoke-WebRequest</span> <span class="n">-Uri</span> <span class="s2">&quot;$apiBaseUrl/api/v1/traceability/metrics&quot;</span> <span class="n">-Headers</span> <span class="nv">$headers</span> <span class="n">-UseBasicParsing</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$projectResponse</span><span class="p">.</span><span class="n">StatusCode</span> <span class="o">-ne</span> <span class="n">200</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;Project metrics HTTP status is not 200&quot;</span> <span class="p">}</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$projectResponse</span><span class="p">.</span><span class="n">Content</span> <span class="o">-notmatch</span> <span class="s1">&#39;(?m)^# TYPE &#39;</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;No metric type declarations&quot;</span> <span class="p">}</span>
+<span class="nv">$projectResponse</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">StatusCode</span><span class="p">,</span> <span class="p">@{</span><span class="n">Name</span><span class="p">=</span><span class="s1">&#39;ContentType&#39;</span><span class="p">;</span><span class="n">Expression</span><span class="p">={</span><span class="nv">$_</span><span class="p">.</span><span class="n">Headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">]}}</span>
 </code></pre></div>
 
-<p>Verify the HTTP status, Prometheus content type, a current scrape timestamp in
-Prometheus, and the expected target labels. This set of checks confirms that
-Prometheus ingested the series.</p>
+<p>Also check the second response&rsquo;s content type and expected project metrics. HTTP 400 can indicate an invalid UUID. If authentication or authorization fails, check credentials and scope; keep route protection enabled.</p>
+<p>In Prometheus, check the <code>codegraph-api</code> target, <code>up{job="codegraph-api"}</code>, the last scrape time, and target labels. <code>up</code> is <code>1</code> for a successful scrape and <code>0</code> for a failed scrape. An absent series means no matching target or data.</p>
 <h2  id="shipped-configuration-artifacts"><span id="shipped_configuration_artifacts"></span>Shipped configuration artifacts<a class="heading-anchor" href="#shipped-configuration-artifacts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Shipped configuration artifacts"><table data-columns="2"><caption class="sr-only">Shipped configuration artifacts</caption>
 <thead>
@@ -290,7 +313,17 @@ resources. Configure scraping in the customer&rsquo;s monitoring platform or add
 approved deployment overlay outside the chart&rsquo;s documented baseline.</p>
 <h2  id="alert-evaluation"><span id="alert_evaluation"></span>Alert evaluation<a class="heading-anchor" href="#alert-evaluation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Load both rule files and validate them with the Prometheus version used by the
-customer. Dashboard defaults currently include:</p>
+customer. The Prometheus distribution includes <code>promtool</code>. Add its directory
+to <code>PATH</code> for the current session, then run this command in PowerShell from
+the CodeGraph repository root:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">promtool</span> <span class="n">check</span> <span class="n">rules</span> <span class="n">monitoring</span><span class="p">/</span><span class="n">rules</span><span class="p">/</span><span class="n">alerts</span><span class="p">.</span><span class="n">yml</span> <span class="n">monitoring</span><span class="p">/</span><span class="n">rules</span><span class="p">/</span><span class="n">dashboard_alerts</span><span class="p">.</span><span class="n">yml</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$LASTEXITCODE</span> <span class="o">-ne</span> <span class="n">0</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;Prometheus rule validation failed&quot;</span> <span class="p">}</span>
+</code></pre></div>
+
+<p>Expect <code>SUCCESS</code> and a rule count for each file. If validation fails, correct
+the reported line before loading the rules. After connecting the files, open
+the Rules page in Prometheus and check that rules from both files loaded.</p>
+<p>Dashboard defaults currently include:</p>
 <ul>
 <li><code>DashboardProjectRiskCritical</code>: health below 40 for 5 minutes;</li>
 <li><code>DashboardProjectRiskHigh</code>: health from 40 to below 55 for 10 minutes;</li>
@@ -314,6 +347,52 @@ external webhook, mail, or messenger receiver. Before adding one:</p>
 <p>The generic <code>monitoring/alertmanager.yml</code> can describe development or managed
 integrations and must not be copied into a customer environment without this
 review.</p>
+<h3  id="send-test-alerts"><span id="send_test_alerts"></span>Send test alerts<a class="heading-anchor" href="#send-test-alerts" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>After configuring the receiver, verify delivery through the Alertmanager API.
+For an HTTP receiver, enable <code>send_resolved: true</code> in its <code>webhook_configs</code> to
+check resolution delivery as well. The receiver must accept the Alertmanager
+webhook format and record delivery status.</p>
+<p>Run the example in PowerShell from the monitoring network. The working
+directory does not matter. Set <code>$alertmanagerBaseUrl</code> to your Alertmanager
+address; the loopback address shown applies to a local service. If the API
+requires authentication, add approved access headers to both requests.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$alertmanagerBaseUrl</span> <span class="p">=</span> <span class="s1">&#39;http://127.0.0.1:9093&#39;</span>
+<span class="nv">$startedAt</span> <span class="p">=</span> <span class="no">[DateTime]</span><span class="p">::</span><span class="n">UtcNow</span><span class="p">.</span><span class="n">AddMinutes</span><span class="p">(-</span><span class="n">1</span><span class="p">).</span><span class="n">ToString</span><span class="p">(</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+<span class="nv">$endsAt</span> <span class="p">=</span> <span class="no">[DateTime]</span><span class="p">::</span><span class="n">UtcNow</span><span class="p">.</span><span class="n">AddMinutes</span><span class="p">(</span><span class="n">10</span><span class="p">).</span><span class="n">ToString</span><span class="p">(</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+<span class="nv">$alerts</span> <span class="p">=</span> <span class="p">@(</span>
+    <span class="k">foreach</span> <span class="p">(</span><span class="nv">$severity</span> <span class="k">in</span> <span class="p">@(</span><span class="s1">&#39;warning&#39;</span><span class="p">,</span> <span class="s1">&#39;critical&#39;</span><span class="p">))</span> <span class="p">{</span>
+        <span class="nv">$alertName</span> <span class="p">=</span> <span class="k">if</span> <span class="p">(</span><span class="nv">$severity</span> <span class="o">-eq</span> <span class="s1">&#39;warning&#39;</span><span class="p">)</span> <span class="p">{</span> <span class="s1">&#39;DocumentationWarningDelivery&#39;</span> <span class="p">}</span> <span class="k">else</span> <span class="p">{</span> <span class="s1">&#39;DocumentationCriticalDelivery&#39;</span> <span class="p">}</span>
+        <span class="p">@{</span>
+            <span class="n">labels</span> <span class="p">=</span> <span class="p">@{</span> <span class="n">alertname</span> <span class="p">=</span> <span class="nv">$alertName</span><span class="p">;</span> <span class="n">severity</span> <span class="p">=</span> <span class="nv">$severity</span><span class="p">;</span> <span class="n">project</span> <span class="p">=</span> <span class="s1">&#39;documentation-synthetic&#39;</span> <span class="p">}</span>
+            <span class="n">annotations</span> <span class="p">=</span> <span class="p">@{</span> <span class="n">summary</span> <span class="p">=</span> <span class="s1">&#39;Documentation notification delivery test&#39;</span> <span class="p">}</span>
+            <span class="n">startsAt</span> <span class="p">=</span> <span class="nv">$startedAt</span>
+            <span class="n">endsAt</span> <span class="p">=</span> <span class="nv">$endsAt</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+<span class="nv">$body</span> <span class="p">=</span> <span class="nb">ConvertTo-Json</span> <span class="n">-InputObject</span> <span class="nv">$alerts</span> <span class="n">-Depth</span> <span class="n">5</span>
+<span class="nv">$deliveryResponse</span> <span class="p">=</span> <span class="nb">Invoke-WebRequest</span> <span class="n">-Method</span> <span class="n">Post</span> <span class="n">-Uri</span> <span class="s2">&quot;$alertmanagerBaseUrl/api/v2/alerts&quot;</span> <span class="n">-ContentType</span> <span class="s1">&#39;application/json&#39;</span> <span class="n">-Body</span> <span class="nv">$body</span> <span class="n">-UseBasicParsing</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$deliveryResponse</span><span class="p">.</span><span class="n">StatusCode</span> <span class="o">-ne</span> <span class="n">200</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s1">&#39;Alertmanager did not accept the test alerts&#39;</span> <span class="p">}</span>
+</code></pre></div>
+
+<p>Status <code>200</code> means Alertmanager accepted the two events. Wait for the configured
+<code>group_wait</code> interval. At the receiver, find both alert names, the <code>warning</code>
+and <code>critical</code> labels, and status <code>firing</code>. Different names let you check
+delivery of both severities separately from inhibition.</p>
+<p>Resolve the same events in this PowerShell session:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">foreach</span> <span class="p">(</span><span class="nv">$alert</span> <span class="k">in</span> <span class="nv">$alerts</span><span class="p">)</span> <span class="p">{</span> <span class="nv">$alert</span><span class="p">.</span><span class="n">endsAt</span> <span class="p">=</span> <span class="no">[DateTime]</span><span class="p">::</span><span class="n">UtcNow</span><span class="p">.</span><span class="n">ToString</span><span class="p">(</span><span class="s1">&#39;o&#39;</span><span class="p">)</span> <span class="p">}</span>
+<span class="nv">$body</span> <span class="p">=</span> <span class="nb">ConvertTo-Json</span> <span class="n">-InputObject</span> <span class="nv">$alerts</span> <span class="n">-Depth</span> <span class="n">5</span>
+<span class="nv">$resolveResponse</span> <span class="p">=</span> <span class="nb">Invoke-WebRequest</span> <span class="n">-Method</span> <span class="n">Post</span> <span class="n">-Uri</span> <span class="s2">&quot;$alertmanagerBaseUrl/api/v2/alerts&quot;</span> <span class="n">-ContentType</span> <span class="s1">&#39;application/json&#39;</span> <span class="n">-Body</span> <span class="nv">$body</span> <span class="n">-UseBasicParsing</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$resolveResponse</span><span class="p">.</span><span class="n">StatusCode</span> <span class="o">-ne</span> <span class="n">200</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s1">&#39;Alertmanager did not accept alert resolution&#39;</span> <span class="p">}</span>
+</code></pre></div>
+
+<p>After the <code>group_interval</code>, check that the receiver recorded <code>resolved</code> for both
+events. Retain delivery timestamps and identifiers. To check inhibition, send
+a <code>warning</code> and <code>critical</code> pair with the same <code>alertname</code>: the baseline rule
+inhibits the warning while the critical alert is active.</p>
+<p>This example checks routing and delivery. To check project rule evaluation,
+separately verify the required metric and alert state on the Prometheus Rules
+page.</p>
 <h2  id="dashboard-import-and-validation"><span id="dashboard_import_and_validation"></span>Dashboard import and validation<a class="heading-anchor" href="#dashboard-import-and-validation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Import <code>integrations/grafana/dashboard_ciso.json</code> into the customer&rsquo;s Grafana
 and bind its Prometheus data source. For Yandex Monitoring, import or adapt
@@ -329,7 +408,7 @@ and bind its Prometheus data source. For Yandex Monitoring, import or adapt
 </ol>
 <p>Record the deployed image or commit, Prometheus config revision, rule digest,
 dashboard revision, test-alert identifiers, and receiver delivery evidence.</p>
-<h2  id="troubleshooting-order"><span id="troubleshooting_order"></span>Troubleshooting order<a class="heading-anchor" href="#troubleshooting-order" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+</section><h2  id="troubleshooting-order"><span id="troubleshooting_order"></span>Troubleshooting order<a class="heading-anchor" href="#troubleshooting-order" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Query the CodeGraph endpoint from the scraper network.</li>
 <li>Inspect Prometheus target status and last error.</li>
@@ -377,6 +456,7 @@ target can still export stale project evidence; use
 <li><a href="#shipped-configuration-artifacts" class="level-2">Shipped configuration artifacts</a></li>
 <li><a href="#alert-evaluation" class="level-2">Alert evaluation</a></li>
 <li><a href="#receiver-safety" class="level-2">Receiver safety</a></li>
+<li data-doc-toc-level="3" data-doc-parent="receiver-safety" hidden><a href="#send-test-alerts" class="level-3">Send test alerts</a></li>
 <li><a href="#dashboard-import-and-validation" class="level-2">Dashboard import and validation</a></li>
 <li><a href="#troubleshooting-order" class="level-2">Troubleshooting order</a></li>
 <li><a href="#sources-of-truth" class="level-2">Sources of truth</a></li>

@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Operational checks and recovery actions for dashboard data, history, saved views, and notifications. See the examples and checks before applying it.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="description" content="Check dashboard evidence, compare history, and configure notifications. Account for saved-view ownership and writes made by notification bootstrap.">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Dashboard operations — Documentation">
-  <meta property="og:description" content="Operational checks and recovery actions for dashboard data, history, saved views, and notifications. See the examples and checks before applying it.">
+  <meta property="og:description" content="Check dashboard evidence, compare history, and configure notifications. Account for saved-view ownership and writes made by notification bootstrap.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/DASHBOARD_OPERATIONS.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Dashboard operations — Documentation">
-  <meta name="twitter:description" content="Operational checks and recovery actions for dashboard data, history, saved views, and notifications. See the examples and checks before applying it.">
+  <meta name="twitter:description" content="Check dashboard evidence, compare history, and configure notifications. Account for saved-view ownership and writes made by notification bootstrap.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/DASHBOARD_OPERATIONS.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Dashboard operations — Documentation","description":"Operational checks and recovery actions for dashboard data, history, saved views, and notifications. See the examples and checks before applying it.","url":"https://codegraph.ru/docs/en/guides/DASHBOARD_OPERATIONS.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Dashboard operations — Documentation","description":"Check dashboard evidence, compare history, and configure notifications. Account for saved-view ownership and writes made by notification bootstrap.","url":"https://codegraph.ru/docs/en/guides/DASHBOARD_OPERATIONS.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -198,50 +198,59 @@
         <span>Dashboard operations</span>
         </nav>
         <h1>Dashboard operations</h1>
-        <p class="doc-lead">Operational checks and recovery actions for dashboard data, history, saved views, and notifications. See the examples and checks before applying it.</p>
+        <p class="doc-lead">Check dashboard evidence, compare history, and configure notifications. Account for saved-view ownership and writes made by notification bootstrap.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>This runbook covers dashboard-specific operations: proving that a project
-surface is current, bootstrapping notifications, preserving reproducible saved
-views, and comparing history. Host and service telemetry belongs in
+        <p>Use this guide when checking project data before a release or investigating
+a discrepancy on the dashboard. Inspect the analysis basis, compare history,
+and retain the view parameters so a colleague can repeat the check. A separate
+step configures notifications about project changes. Host and service telemetry belongs in
 <a href="MONITORING.html">Monitoring</a>.</p>
-<p>Run commands from the CodeGraph repository with the same runtime configuration
-and project scope as the API instance.</p>
+<p>Install the CLI and dependencies using the <a href="CLI_GUIDE.html">command-line guide</a>.
+Run commands in PowerShell from the CodeGraph source repository root with its Python environment installed. Use the same runtime configuration and project scope as the API instance. Replace <code>PROJECT</code> with a registered project name and <code>USER_ID</code> with the intended owner identifier in the local store.</p>
 <h2  id="1-establish-the-project-basis"><span id="1_establish_the_project_basis"></span>1. Establish the project basis<a class="heading-anchor" href="#1-establish-the-project-basis" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">health</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">basis</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">health</span> <span class="s1">&#39;PROJECT&#39;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">basis</span> <span class="s1">&#39;PROJECT&#39;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
 <p>Check the project identity, evidence revision, analysis basis, score
 availability, and freshness together. A successful command with a <code>stale</code>,
 <code>missing</code>, <code>failed</code>, or <code>unknown</code> surface is a diagnostic result, not readiness
 evidence.</p>
-<p>When a surface supplies a recommended command, first verify that
+<p>When the response supplies a recommended refresh command, first verify that
 <code>refresh_supported</code> is true and <code>action_availability</code> is <code>available</code>. If the
 state is <code>updating</code>, observe the current job instead of starting duplicate work.
 For <code>failed</code>, retain the job and reason evidence before retrying.</p>
 <h2  id="2-bootstrap-a-project-notification"><span id="2_bootstrap_a_project_notification"></span>2. Bootstrap a project notification<a class="heading-anchor" href="#2-bootstrap-a-project-notification" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The project argument is required:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">notifications</span> <span class="n">bootstrap</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<p>The project argument is required. This command can create a subscription, saves a snapshot, and dispatches events through the notification pipeline. A configured channel can send real messages to recipients. Run it only when those actions are authorized:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">notifications</span> <span class="n">bootstrap</span> <span class="s1">&#39;PROJECT&#39;</span> <span class="p">-</span><span class="n">-user-id</span> <span class="s1">&#39;USER_ID&#39;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
 <p>Set <code>--channel</code>, <code>--delivery-mode</code>, <code>--events</code>, and <code>--minimum-severity</code> only
 when they match the approved receiver policy. Sensitive details are excluded
 unless <code>--include-sensitive-details</code> is both necessary and permitted.</p>
-<p>The bootstrap response proves configuration. Full operational evidence also
-needs a delivery-success event from the live notification pipeline; a test
-delivery alone is insufficient.</p>
+<p>By default, the command selects the local <code>inbox</code> channel and immediate delivery.
+This channel works without configuring an external recipient. To send through email,
+Slack, Telegram, or a webhook, configure that channel and select it with <code>--channel</code>.</p>
+<p>Inspect <code>subscription_id</code>, <code>snapshot_id</code>, <code>configured_channels</code>, <code>dispatched_count</code>,
+and <code>pending</code> in the response. When the project state is unchanged and there are no
+new events, the command saves a snapshot and returns <code>dispatched_count: 0</code>, an empty
+<code>emitted_event_types</code>, and an explanation in <code>note</code>.
+<code>--no-create-subscription</code> suppresses subscription creation while saving the snapshot
+and dispatching detected events to existing subscriptions. To verify delivery,
+find a successful delivery record in the selected channel.</p>
 <h2  id="3-preserve-and-inspect-saved-views"><span id="3_preserve_and_inspect_saved_views"></span>3. Preserve and inspect saved views<a class="heading-anchor" href="#3-preserve-and-inspect-saved-views" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">saved-views</span> <span class="n">list</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">saved-views</span> <span class="n">list</span> <span class="p">-</span><span class="n">-user-id</span> <span class="s1">&#39;USER_ID&#39;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
 <p>Before a recurring comparison or export, record the saved-view identifier,
 owner, scope, filters, and period. Saved views are user-scoped; do not assume
 that another authenticated user can read or reuse them.</p>
+<p>CLI selects the supplied <code>--user-id</code> without an API login; its default is <code>cli-user</code>. REST obtains the user from authentication. Local owner selection does not verify API authorization.</p>
 <p>The current REST reads are:</p>
 <ul>
 <li><code>GET /api/v1/traceability/saved-views</code>;</li>
@@ -250,13 +259,13 @@ that another authenticated user can read or reuse them.</p>
 <p>Both require API authentication and the applicable project/user scope.</p>
 <h2  id="4-compare-history"><span id="4_compare_history"></span>4. Compare history<a class="heading-anchor" href="#4-compare-history" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For one project:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="nb">compare-periods</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="nb">compare-periods</span> <span class="s1">&#39;PROJECT&#39;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
 <p>For portfolio automation, use
 <code>GET /api/v1/traceability/portfolio/compare-periods</code> with the same filters,
 baseline period, and comparison period as the saved view. The endpoint is a
-read operation. Retain those selectors with the result so the comparison can be
+read operation. CLI defaults to baseline <code>30d</code> and comparison <code>7d</code>; set <code>--baseline-period</code> and <code>--comparison-period</code> explicitly for other intervals. If history is insufficient, read the response explanation before drawing a trend conclusion. Retain those selectors with the result so the comparison can be
 reproduced.</p>
 <h2  id="5-incident-handoff"><span id="5_incident_handoff"></span>5. Incident handoff<a class="heading-anchor" href="#5-incident-handoff" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Capture:</p>
@@ -273,7 +282,9 @@ reproduced.</p>
 paths in the handoff.</p>
 <h2  id="sources-of-truth"><span id="sources_of_truth"></span>Sources of truth<a class="heading-anchor" href="#sources-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li><code>src/cli/dashboard_commands.py</code> — dashboard command parser and dispatch.</li>
+<li><code>src/cli/dashboard_suite/dashboard_command_registration.py</code> — command and argument registration.</li>
+<li><code>src/cli/dashboard_suite/dashboard_command_handlers.py</code> — dashboard command execution.</li>
+<li><code>src/cli/dashboard_suite/dashboard_notification_commands.py</code> — notification command execution.</li>
 <li><code>src/api/routers/dashboard_core/dashboard_v2_history.py</code> — project and
   portfolio period comparison.</li>
 <li><code>src/api/routers/dashboard_domains/dashboard_v2_notifications.py</code> — saved

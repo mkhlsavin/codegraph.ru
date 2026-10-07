@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Configure and verify the CodeGraph GigaChat provider without freezing vendor catalogs. See the examples and checks before applying it.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="description" content="Configure GigaChat credentials and model selection for CodeGraph. Inspect provider configuration, request handling, and error recovery.">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="GigaChat integration — Documentation">
-  <meta property="og:description" content="Configure and verify the CodeGraph GigaChat provider without freezing vendor catalogs. See the examples and checks before applying it.">
+  <meta property="og:description" content="Configure GigaChat credentials and model selection for CodeGraph. Inspect provider configuration, request handling, and error recovery.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/integrations/GIGACHAT.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="GigaChat integration — Documentation">
-  <meta name="twitter:description" content="Configure and verify the CodeGraph GigaChat provider without freezing vendor catalogs. See the examples and checks before applying it.">
+  <meta name="twitter:description" content="Configure GigaChat credentials and model selection for CodeGraph. Inspect provider configuration, request handling, and error recovery.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/integrations/GIGACHAT.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"GigaChat integration — Documentation","description":"Configure and verify the CodeGraph GigaChat provider without freezing vendor catalogs. See the examples and checks before applying it.","url":"https://codegraph.ru/docs/en/integrations/GIGACHAT.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"GigaChat integration — Documentation","description":"Configure GigaChat credentials and model selection for CodeGraph. Inspect provider configuration, request handling, and error recovery.","url":"https://codegraph.ru/docs/en/integrations/GIGACHAT.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -161,31 +161,32 @@
         <span>GigaChat integration</span>
         </nav>
         <h1>GigaChat integration</h1>
-        <p class="doc-lead">Configure and verify the CodeGraph GigaChat provider without freezing vendor catalogs. See the examples and checks before applying it.</p>
+        <p class="doc-lead">Configure GigaChat credentials and model selection for CodeGraph. Inspect provider configuration, request handling, and error recovery.</p>
 
-        <div class="doc-meta"><span>Integrations</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Integrations</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Use GigaChat as the configured CodeGraph LLM provider when the customer&rsquo;s data-handling policy
-allows prompts to leave the CodeGraph boundary for Sber infrastructure. This page covers stable
-CodeGraph behavior. Model names, quotas, prices, and regional availability change independently
-and must be checked in the provider portal before a pilot.</p>
+        <p>Connect GigaChat to run CodeGraph&rsquo;s text-generation and embedding requests through the provider API. Analysis workflows use a common interface: they pass a system instruction and a user question, and receive generated text with model and usage metadata.</p>
+<p><code>create_llm_provider()</code> reads <code>config.yaml</code>, resolves environment references, and creates the selected provider. <code>CODEGRAPH_LLM_PROVIDER</code> selects it for the current process; otherwise the factory uses <code>llm.provider</code>. Choose a model and quota available in your provider account, then verify the connection with the request below.</p>
 <h2  id="what-codegraph-sends"><span id="what_codegraph_sends"></span>What CodeGraph sends<a class="heading-anchor" href="#what-codegraph-sends" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><code>GigaChatProvider.generate()</code> and streaming calls send both <code>system_prompt</code> and <code>user_prompt</code>, plus
 generation parameters, to the configured provider endpoint. Embedding calls send the supplied
-text. Remote provider processing remains outside the local-processing boundary.</p>
+text. The provider processes the request in its infrastructure.</p>
 <p>Classify and redact data before it reaches this provider. The system-wide controls are described in
 <a href="../enterprise/LLM_SECURITY.html">LLM security</a>.</p>
 <h2  id="configure-credentials"><span id="configure_credentials"></span>Configure credentials<a class="heading-anchor" href="#configure-credentials" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Keep credentials outside the repository. The current CLI recognizes <code>GIGACHAT_AUTH_KEY</code>; the
-provider also accepts <code>GIGACHAT_CREDENTIALS</code> through configuration resolution.</p>
-<div class="highlight"><pre><span></span><code><span class="nv">$env:GIGACHAT_AUTH_KEY</span> <span class="p">=</span> <span class="s1">&#39;&lt;secret-from-approved-store&gt;&#39;</span>
+<p>Run commands in PowerShell from the CodeGraph source repository root with the project Python
+environment installed. Replace angle-bracket placeholders with approved values. Merge the YAML
+fragment into the existing <code>llm</code> section; do not create a duplicate section.</p>
+<p>Keep credentials outside the repository. The CLI configuration display recognizes <code>GIGACHAT_AUTH_KEY</code>. The YAML below resolves that value into <code>credentials</code>. To use <code>GIGACHAT_CREDENTIALS</code> instead, reference <code>${GIGACHAT_CREDENTIALS}</code> in the same field.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$env:CODEGRAPH_LLM_PROVIDER</span> <span class="p">=</span> <span class="s1">&#39;gigachat&#39;</span>
+<span class="nv">$env:GIGACHAT_AUTH_KEY</span> <span class="p">=</span> <span class="s1">&#39;&lt;secret-from-approved-store&gt;&#39;</span>
 </code></pre></div>
 
 <p>Reference the environment value from <code>config.yaml</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">llm</span><span class="p">:</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">llm</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gigachat</span>
 <span class="w">  </span><span class="nt">gigachat</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">credentials</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${GIGACHAT_AUTH_KEY}</span>
@@ -193,34 +194,42 @@ provider also accepts <code>GIGACHAT_CREDENTIALS</code> through configuration re
 <span class="w">    </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GIGACHAT_API_PERS</span>
 <span class="w">    </span><span class="nt">verify_ssl_certs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">    </span><span class="nt">ca_bundle_file</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;&#39;</span>
-<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
 </code></pre></div>
 
 <p><code>verify_ssl_certs</code> defaults to <code>true</code>. When a corporate TLS proxy requires a private CA, set
 <code>ca_bundle_file</code> to the approved bundle instead of disabling verification. Do not commit the
 resolved credential or a secret-bearing <code>.env</code> file.</p>
 <h2  id="select-a-model-and-scope"><span id="select_a_model_and_scope"></span>Select a model and scope<a class="heading-anchor" href="#select-a-model-and-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The runtime validates the configured model against the catalog embedded in
-<code>src/llm/gigachat_provider.py</code>. Treat that catalog as a compatibility check for the installed
-CodeGraph revision. Confirm the selected model, access,
-scope, context limits, quota, and cost with the current provider account.</p>
-<p>Avoid copying a model table into operational documentation: it becomes stale without changing
-CodeGraph. Change one model or scope at a time and keep a rollback value approved for the pilot.</p>
+<p>Set <code>model</code> to the name available in your GigaChat account. CodeGraph passes it to the SDK; its source catalog is used to log unfamiliar names. Choose <code>scope</code> for the account: <code>GIGACHAT_API_PERS</code> for individuals, <code>GIGACHAT_API_B2B</code> for prepaid business access, or <code>GIGACHAT_API_CORP</code> for business pay-as-you-go access. See the <a href="https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/gigachat-api">provider authorization reference</a>.</p>
+<p>Save the current provider and model values before changing them. Check model access and quota in the provider account, then change one setting at a time.</p>
 <h2  id="verify-the-integration"><span id="verify_the_integration"></span>Verify the integration<a class="heading-anchor" href="#verify-the-integration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">llm</span> <span class="n">providers</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">llm</span> <span class="n">test</span> <span class="p">-</span><span class="n">-provider</span> <span class="n">gigachat</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<p>First run <code>python -m src.cli llm providers</code> to inspect the configured provider and credential-variable presence. Then run this request from the repository root in the same PowerShell session. It loads the complete <code>llm</code> configuration and sends a short question to the selected provider:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$env:PYTHONUTF8</span> <span class="p">=</span> <span class="s1">&#39;1&#39;</span>
+<span class="sh">@&#39;</span>
+<span class="sh">import json</span>
+<span class="sh">from src.llm import create_llm_provider</span>
+
+<span class="sh">provider = create_llm_provider()</span>
+<span class="sh">response = provider.generate(</span>
+<span class="sh">    system_prompt=&quot;Explain software concepts in one short sentence.&quot;,</span>
+<span class="sh">    user_prompt=&quot;What is a call graph?&quot;,</span>
+<span class="sh">    max_tokens=128,</span>
+<span class="sh">)</span>
+<span class="sh">print(response.content)</span>
+<span class="sh">fields = (&quot;provider&quot;, &quot;model&quot;, &quot;latency_ms&quot;, &quot;prompt_tokens&quot;, &quot;completion_tokens&quot;)</span>
+<span class="sh">print(json.dumps({key: response.metadata.get(key) for key in fields}, ensure_ascii=False))</span>
+<span class="sh">&#39;@</span> <span class="p">|</span> <span class="n">python</span> <span class="p">-</span>
 </code></pre></div>
 
-<p>The <code>llm test</code> command currently proves configuration resolution and client construction. Complete a
-non-sensitive model-inference workflow, then verify the returned model metadata, latency, error
-handling, and provider-side audit record before accepting the integration.</p>
+<p>Expect one sentence explaining that a call graph connects functions through their calls, followed by a JSON metadata line. Wording varies by model. Check <code>provider</code>, <code>model</code>, and <code>latency_ms</code>; compare <code>prompt_tokens</code> and <code>completion_tokens</code> with the usage record in the provider account.</p>
+<p>The example requests at most 128 output tokens. For an authentication, model-access, TLS, or quota error, use the matching recovery action below and repeat the same question after correcting the setting.</p>
 <h2  id="failure-handling"><span id="failure_handling"></span>Failure handling<a class="heading-anchor" href="#failure-handling" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>Credential or scope errors: verify the approved account and rotate the secret; do not log it.</li>
 <li>TLS errors: validate the endpoint and CA chain; keep <code>verify_ssl_certs</code> enabled.</li>
-<li>Rate limits: reduce concurrency or request a quota; retries do not create additional authority.</li>
-<li>Unknown model: choose a model supported by both the installed source and the provider account.</li>
-<li>Timeout: check network policy and request size before increasing <code>timeout</code>.</li>
+<li>Rate limits: reduce concurrency or request a quota; repeat after the quota is available.</li>
+<li>Unknown model: check the configured name and model access in your provider account.</li>
+<li>Timeout: check the connection to GigaChat and the request size.</li>
 </ul>
 <p>On rollback, restore the previous provider/model configuration and rerun both the construction
 check and a bounded end-to-end workflow.</p>

@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="A reproducible CodeGraph workflow for scoping, implementing, and verifying a bounded refactoring. See the examples and checks before applying it.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="description" content="Bound a refactoring, inspect graph impact, and compare evidence before and after the edit while preserving product behavior.">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Scenario 05: Refactoring with impact evidence — Documentation">
-  <meta property="og:description" content="A reproducible CodeGraph workflow for scoping, implementing, and verifying a bounded refactoring. See the examples and checks before applying it.">
+  <meta property="og:description" content="Bound a refactoring, inspect graph impact, and compare evidence before and after the edit while preserving product behavior.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/scenarios/05-refactoring.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Scenario 05: Refactoring with impact evidence — Documentation">
-  <meta name="twitter:description" content="A reproducible CodeGraph workflow for scoping, implementing, and verifying a bounded refactoring. See the examples and checks before applying it.">
+  <meta name="twitter:description" content="Bound a refactoring, inspect graph impact, and compare evidence before and after the edit while preserving product behavior.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/scenarios/05-refactoring.html">
   <link rel="icon" type="image/svg+xml" href="../../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Scenario 05: Refactoring with impact evidence — Documentation","description":"A reproducible CodeGraph workflow for scoping, implementing, and verifying a bounded refactoring. See the examples and checks before applying it.","url":"https://codegraph.ru/docs/en/guides/scenarios/05-refactoring.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Scenario 05: Refactoring with impact evidence — Documentation","description":"Bound a refactoring, inspect graph impact, and compare evidence before and after the edit while preserving product behavior.","url":"https://codegraph.ru/docs/en/guides/scenarios/05-refactoring.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -198,9 +198,9 @@
         <span>Scenario 05: Refactoring with impact evidence</span>
         </nav>
         <h1>Scenario 05: Refactoring with impact evidence</h1>
-        <p class="doc-lead">A reproducible CodeGraph workflow for scoping, implementing, and verifying a bounded refactoring. See the examples and checks before applying it.</p>
+        <p class="doc-lead">Bound a refactoring, inspect graph impact, and compare evidence before and after the edit while preserving product behavior.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
       </header>
 
       <!-- Content -->
@@ -216,8 +216,9 @@
 <li>a refreshed CPG plus post-change review evidence;</li>
 <li>a clear decision to keep, revise, or roll back the change.</li>
 </ul>
-<p>A successful command exit confirms that the command ran. Tests, linting, and review results confirm unchanged product behavior.</p>
+<p>Check exit status together with the report. It does not establish unchanged behavior; tests, linting, and review are required.</p>
 <h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Prepare the local Python environment using the <a href="../CLI_GUIDE.html">CLI guide</a>. Run commands from the CodeGraph repository root in PowerShell. Impact analysis requires a reachable GoCPG gRPC service; a CPG file alone is insufficient. Replace the illustrative values with the selected project scope and an existing method name.</p>
 <ul>
 <li>The repository is already imported into CodeGraph.</li>
 <li>The working tree contains only changes you intend to evaluate.</li>
@@ -225,7 +226,7 @@
 <li>You can identify the DuckDB path shown by project information.</li>
 </ul>
 <p>The examples below use PowerShell variables so that paths with spaces are handled safely:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">$ProjectName</span> <span class="p">=</span> <span class="s2">&quot;my-project&quot;</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$ProjectName</span> <span class="p">=</span> <span class="s2">&quot;my-project&quot;</span>
 <span class="nv">$RepoPath</span> <span class="p">=</span> <span class="s2">&quot;D:\src\my-project&quot;</span>
 <span class="nv">$CpgDb</span> <span class="p">=</span> <span class="s2">&quot;D:\codegraph-data\my-project.duckdb&quot;</span>
 <span class="nv">$BaseRef</span> <span class="p">=</span> <span class="s2">&quot;origin/main&quot;</span>
@@ -237,33 +238,66 @@
 <p>Confirm that the reported source and DuckDB paths match the repository you are about to change. Stop if they do not.</p>
 <h2  id="1-record-the-baseline"><span id="1_record_the_baseline"></span>1. Record the baseline<a class="heading-anchor" href="#1-record-the-baseline" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Capture the Git revision and current changes using your normal version-control tooling. Then run a deterministic, read-only audit:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">audit</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-source-path</span> <span class="nv">$RepoPath</span> <span class="p">-</span><span class="n">-profile</span> <span class="n">ci_fast</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span> <span class="p">-</span><span class="n">-skip-llm-conclusion</span> <span class="p">-</span><span class="n">-skip-persistence</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">audit</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-source-path</span> <span class="nv">$RepoPath</span> <span class="p">-</span><span class="n">-profile</span> <span class="n">ci_fast</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span> <span class="p">-</span><span class="n">-skip-llm-conclusion</span> <span class="p">-</span><span class="n">-skip-persistence</span>
 </code></pre></div>
 
-<p>The &ndash;skip-persistence flag prevents this diagnostic run from updating audit projections. Save the output in your task evidence system if the refactoring is governed; the command does not write a report unless you pass an output option.</p>
+<p>The <code>--skip-persistence</code> flag prevents this diagnostic run from updating audit projections. Save the output in your task evidence system if the refactoring is governed; the command does not write a report unless you pass an output option.</p>
 <h2  id="2-bound-the-impact-zone"><span id="2_bound_the_impact_zone"></span>2. Bound the impact zone<a class="heading-anchor" href="#2-bound-the-impact-zone" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Analyze the symbol before editing it:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">impact</span> <span class="nv">$Symbol</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-max-depth</span> <span class="n">5</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">impact</span> <span class="nv">$Symbol</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-max-depth</span> <span class="n">5</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
-<p>Review direct_callers, transitive_callers, affected_methods, and impact_score. Treat an empty result as “not resolved”, not automatically “safe”. Check the symbol spelling, project database, language import, and CPG freshness before continuing.</p>
+<p>Read each report field by its relationship direction:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="2. Bound the impact zone"><table data-columns="3"><caption class="sr-only">2. Bound the impact zone</caption>
+<thead>
+<tr>
+<th scope="col">Field</th>
+<th scope="col">What it contains</th>
+<th scope="col">How to use it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>direct_callers</code></td>
+<td>Functions that call the selected method directly</td>
+<td>Check whether their calls remain compatible with the change</td>
+</tr>
+<tr>
+<td><code>transitive_callers</code></td>
+<td>Callers at subsequent graph levels, excluding direct callers</td>
+<td>Select regression scenarios and entry points</td>
+</tr>
+<tr>
+<td><code>affected_methods</code></td>
+<td>Functions called by the selected method, directly or through other functions</td>
+<td>Inspect dependencies of the code being changed</td>
+</tr>
+<tr>
+<td><code>impact_score</code></td>
+<td>A normalized connectivity score from 0 to 1</td>
+<td>Compare the original and refreshed graphs using the same traversal depth and import settings</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>impact_score</code> counts unique callers and callees. It divides that count by 10% of the project&rsquo;s total method count and caps the result at one. For a method with more than 100 direct callers, the calculation uses direct relationships instead of the full transitive traversal. Save the function lists and <code>--max-depth</code> with the score so that the comparison can be interpreted.</p>
+<p>If a list is empty, check the exact symbol name, project database, language import, and CPG freshness. Correct the context, repeat the command, and compare the returned relationships with the source.</p>
 <p>Stop and split the work if the result crosses an ownership boundary, public API, persistence schema, authorization path, or release-critical entry point that is outside the approved task.</p>
 <h2  id="3-make-one-bounded-change"><span id="3_make_one_bounded_change"></span>3. Make one bounded change<a class="heading-anchor" href="#3-make-one-bounded-change" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Edit the code in your normal editor. Keep behavior-preserving changes separate from feature work. Do not combine a rename, dependency upgrade, API change, and algorithm change in one refactoring slice.</p>
 <p>Run the project’s focused tests and lint immediately. If either fails, restore the known-good version through your normal version-control workflow or correct the smallest failing slice before continuing.</p>
 <h2  id="4-refresh-the-graph"><span id="4_refresh_the_graph"></span>4. Refresh the graph<a class="heading-anchor" href="#4-refresh-the-graph" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The impact report is based on the imported CPG. Refresh it after the source change:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">cpg</span> <span class="p">-</span><span class="n">-path</span> <span class="nv">$RepoPath</span> <span class="p">-</span><span class="n">-output</span> <span class="nv">$CpgDb</span>
+<p>The impact report is based on the imported CPG. Refresh it after the source change. The command below writes the database: coordinate with other process owners and stop conflicting operations before running it:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">cpg</span> <span class="p">-</span><span class="n">-path</span> <span class="nv">$RepoPath</span> <span class="p">-</span><span class="n">-output</span> <span class="nv">$CpgDb</span>
 </code></pre></div>
 
 <p>Use the exact database reported for this project. If your installation manages imports through another approved pipeline, run that pipeline instead and verify the resulting project information before reusing the reports.</p>
 <h2  id="5-review-the-changed-slice"><span id="5_review_the_changed_slice"></span>5. Review the changed slice<a class="heading-anchor" href="#5-review-the-changed-slice" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Run the unified review against the recorded base:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">review</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-base-ref</span> <span class="nv">$BaseRef</span> <span class="p">-</span><span class="n">-format</span> <span class="n">markdown</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">review</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-base-ref</span> <span class="nv">$BaseRef</span> <span class="p">-</span><span class="n">-format</span> <span class="n">markdown</span>
 </code></pre></div>
 
 <p>Then repeat the impact analysis:</p>
-<div class="highlight"><pre><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">impact</span> <span class="nv">$Symbol</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-max-depth</span> <span class="n">5</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">impact</span> <span class="nv">$Symbol</span> <span class="p">-</span><span class="n">-db</span> <span class="nv">$CpgDb</span> <span class="p">-</span><span class="n">-max-depth</span> <span class="n">5</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
 <p>The second result should explain the intended structural change without introducing unexpected callers, security findings, or unrelated files. Re-run the read-only audit when the refactoring can affect project-wide quality metrics.</p>
@@ -313,7 +347,7 @@
 <li>src/cli/analysis_commands/audit_commands.py</li>
 <li>src/cli/analysis_commands/review_command.py</li>
 <li>src/cli/analysis_commands/impact_commands.py</li>
-<li>src/cli/domain_suite/gocpg_commands.py</li>
+<li>src/cli/core_commands/import_commands_core.py</li>
 </ul>
 <p>See also <a href="../PROJECT_IMPORT.html">Project import</a>, <a href="../CODE_REVIEW.html">Code review</a>, and <a href="09-code-review.html">Scenario 09: Code review</a>.</p>
       </article>

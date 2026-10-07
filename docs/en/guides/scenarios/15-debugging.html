@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Find source locations and static call evidence relevant to a bounded debugging hypothesis. See the examples and checks before applying it.">
-  <meta name="cg:build-commit" content="556c9af2ae32eeab1ee222faf84453f478d4f7a6">
+  <meta name="description" content="Locate source and static call relationships for a debugging hypothesis. Check graph freshness and reproduce runtime behavior to confirm the cause.">
+  <meta name="cg:build-commit" content="ff92b37273801b2fa0fa762f43b62364a512bc05">
   <meta name="cg:css-build" content="ab0fe44d2d3a">
 
   <meta property="og:title" content="Scenario 15: Debugging investigation — Documentation">
-  <meta property="og:description" content="Find source locations and static call evidence relevant to a bounded debugging hypothesis. See the examples and checks before applying it.">
+  <meta property="og:description" content="Locate source and static call relationships for a debugging hypothesis. Check graph freshness and reproduce runtime behavior to confirm the cause.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/guides/scenarios/15-debugging.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Scenario 15: Debugging investigation — Documentation">
-  <meta name="twitter:description" content="Find source locations and static call evidence relevant to a bounded debugging hypothesis. See the examples and checks before applying it.">
+  <meta name="twitter:description" content="Locate source and static call relationships for a debugging hypothesis. Check graph freshness and reproduce runtime behavior to confirm the cause.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/guides/scenarios/15-debugging.html">
   <link rel="icon" type="image/svg+xml" href="../../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../../css/tailwind.min.css?v=ab0fe44d2d3a">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Scenario 15: Debugging investigation — Documentation","description":"Find source locations and static call evidence relevant to a bounded debugging hypothesis. See the examples and checks before applying it.","url":"https://codegraph.ru/docs/en/guides/scenarios/15-debugging.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Scenario 15: Debugging investigation — Documentation","description":"Locate source and static call relationships for a debugging hypothesis. Check graph freshness and reproduce runtime behavior to confirm the cause.","url":"https://codegraph.ru/docs/en/guides/scenarios/15-debugging.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -198,9 +198,9 @@
         <span>Scenario 15: Debugging investigation</span>
         </nav>
         <h1>Scenario 15: Debugging investigation</h1>
-        <p class="doc-lead">Find source locations and static call evidence relevant to a bounded debugging hypothesis. See the examples and checks before applying it.</p>
+        <p class="doc-lead">Locate source and static call relationships for a debugging hypothesis. Check graph freshness and reproduce runtime behavior to confirm the cause.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
       </header>
 
       <!-- Content -->
@@ -216,18 +216,20 @@
 </ul>
 <p>Attach the failing input, test, stack trace, or runtime observation as a source reference. Do not ask the scenario to infer a defect from the whole repository without a symptom.</p>
 <h2  id="prerequisites-and-scope"><span id="prerequisites_and_scope"></span>Prerequisites and scope<a class="heading-anchor" href="#prerequisites-and-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Prepare the Python environment and local configuration using the <a href="../CLI_GUIDE.html">CLI guide</a> and <a href="../PROGRAMMATIC_GUIDE.html">programmatic guide</a>. Confirm that the required graph services are accessible and configure the LLM for workflow branches that use it. Save the example as a Python file in that environment and replace all context placeholders with the accepted task scope and actual evidence references.</p>
 <p>Use an accepted implementation task and a CPG that matches the investigated revision. Limit <code>file_paths</code> to the suspected component. Remove secrets, credentials, and customer data from stack traces or logs before attaching them.</p>
 <p>The scenario searches code and graph relations. Use the application&rsquo;s debugger and observability
 tools to execute the program, attach to a process, inspect live variables, and reproduce timing
 and concurrency behavior.</p>
 <h2  id="run-the-typed-scenario"><span id="run_the_typed_scenario"></span>Run the typed scenario<a class="heading-anchor" href="#run-the-typed-scenario" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<p>Use one search objective per call. The example below asks for breakpoint locations; run logging discovery as a separate query.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">,</span>
     <span class="n">invoke_role_bound_scenario_request</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">request</span> <span class="o">=</span> <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">(</span>
-    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Find logging and breakpoint candidates around the failed import transition.&quot;</span><span class="p">,</span>
+    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;Find breakpoint candidates for investigating the failed import transition.&quot;</span><span class="p">,</span>
     <span class="n">employee_id</span><span class="o">=</span><span class="s2">&quot;codegraph_developer&quot;</span><span class="p">,</span>
     <span class="n">scenario_id</span><span class="o">=</span><span class="s2">&quot;scenario_15&quot;</span><span class="p">,</span>
     <span class="n">event_type</span><span class="o">=</span><span class="s2">&quot;implementation_start&quot;</span><span class="p">,</span>
@@ -240,12 +242,22 @@ and concurrency behavior.</p>
     <span class="p">},</span>
 <span class="p">)</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">invoke_role_bound_scenario_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">])</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scenario_id&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;answer&quot;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Scenario returned no scenario identity or answer&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;answer&quot;</span><span class="p">])</span>
 </code></pre></div>
 
 <p>There is no separate supported public Scenario 15 CLI command. Keep the role, event, task, and revision evidence carried by the typed request.</p>
+<h2  id="how-the-scenario-selects-inspection-locations"><span id="how_the_scenario_selects_inspection_locations"></span>How the scenario selects inspection locations<a class="heading-anchor" href="#how-the-scenario-selects-inspection-locations" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The scenario first tries a specialized handler with a prepared answer format. For a general analysis, it identifies the intent: logging, assertions, trace points, stack helpers, or breakpoint candidates. It then selects the corresponding CPG finder.</p>
+<p>For logging, the finder matches call names against patterns from the language or domain plugin. A specified error level also filters the call expression. Each row contains the called function, expression text, line, caller method, and file. Results are ordered by file and line and bounded by the analysis configuration.</p>
+<p>For example, when an import fails, locate the call that logs the exception and open its caller. Set a breakpoint before that call and repeat the original request with the same inputs. Compare the exception value and selected branch to test the suspected transition failure.</p>
+<p>On the general path, results populate <code>methods</code>, function names populate <code>retrieved_functions</code>, and the explanation appears in <code>answer</code>. The fields <code>metadata.debug_intent</code>, <code>metadata.error_level</code>, and <code>metadata.method_count</code> identify the search, level filter, and number of records. Use them to refine the next query.</p>
 <h2  id="read-the-result"><span id="read_the_result"></span>Read the result<a class="heading-anchor" href="#read-the-result" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use <code>methods</code>, <code>retrieved_functions</code>, <code>evidence</code>, and <code>answer</code> to plan the next experiment. Verify every important location in the bound revision and connect it to the observed symptom.</p>
-<p>The result is <strong>not a runtime trace</strong>. It is a static call-path view; confirm production execution with runtime traces, and inspect the deployed revision when a function is absent from the graph.</p>
+<p>The result identifies source constructs and their locations. Compare them with a runtime trace from the same revision to determine which branch executed.</p>
 <h2  id="from-hypothesis-to-fix"><span id="from_hypothesis_to_fix"></span>From hypothesis to fix<a class="heading-anchor" href="#from-hypothesis-to-fix" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Convert the leading hypothesis into a focused reproducer or RED test. Make the smallest bounded change, rerun the reproducer, and record the before/after evidence. Use <a href="09-code-review.html">Scenario 09</a> for revision review and <a href="07-test-coverage.html">Scenario 07</a> for coverage gaps.</p>
 <p>Keep operational command results separate from product acceptance and governed task closure.</p>
@@ -296,6 +308,7 @@ and concurrency behavior.</p>
         <li><a href="#when-to-use-it" class="level-2" aria-current="location">When to use it</a></li>
 <li><a href="#prerequisites-and-scope" class="level-2">Prerequisites and scope</a></li>
 <li><a href="#run-the-typed-scenario" class="level-2">Run the typed scenario</a></li>
+<li><a href="#how-the-scenario-selects-inspection-locations" class="level-2">How the scenario selects inspection locations</a></li>
 <li><a href="#read-the-result" class="level-2">Read the result</a></li>
 <li><a href="#from-hypothesis-to-fix" class="level-2">From hypothesis to fix</a></li>
 <li><a href="#failure-and-recovery" class="level-2">Failure and recovery</a></li>
