@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="События обновления дашборда через WebSocket: аутентификация первым сообщением, поддержание соединения и восстановление после разрыва.">
-  <meta name="cg:build-commit" content="48ff0f9ad4fef168ac0092bcc4072047d85a7743">
-  <meta name="cg:css-build" content="d9a8cc7009e7">
+  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="WebSocket API дашборда — Документация CodeGraph">
   <meta property="og:description" content="События обновления дашборда через WebSocket: аутентификация первым сообщением, поддержание соединения и восстановление после разрыва.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/ru/api/DASHBOARD_WEBSOCKET_API.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=d9a8cc7009e7">
+  <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8442b4f455ba">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"WebSocket API дашборда — Документация CodeGraph","description":"События обновления дашборда через WebSocket: аутентификация первым сообщением, поддержание соединения и восстановление после разрыва.","url":"https://codegraph.ru/docs/ru/api/DASHBOARD_WEBSOCKET_API.html","inLanguage":"ru"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -171,9 +171,9 @@
 
 <p>Используйте ws только в доверенной локальной HTTP-среде. Страница, открытая по HTTPS, должна подключаться через wss.</p>
 <h2 id="autentifikatsiya">Аутентификация<a class="heading-anchor" href="#autentifikatsiya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Передайте токен первым сообщением. Если в URL есть параметр <code>token</code>, сервер отклоняет HTTP handshake со статусом 403 до открытия WebSocket. Обработчик использует причину отказа <code>Query token transport is not allowed</code>.</p>
-<p>Сервер принимает WebSocket и в течение 5 секунд ждёт первое сообщение клиента. Передайте объект с JWT:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;JWT&gt;&quot;</span><span class="p">}</span>
+<p>Передайте токен первым сообщением. Если в URL есть параметр <code>token</code>, сервер отклоняет HTTP handshake со статусом 403 до открытия WebSocket. Обработчик использует причину отказа <code>Query token transport is not allowed</code>.</p>
+<p>Сервер принимает WebSocket и в течение 5 секунд ждёт первое сообщение клиента. Передайте объект с JWT:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;JWT&gt;"</span><span class="p">}</span>
 </code></pre></div>
 
 <p>Сервер также принимает строку с токеном, но документированный контракт — JSON-объект. При ошибке аутентификации сервер отправляет событие error и закрывает соединение кодом 1008. Если первое сообщение не пришло за 5 секунд, соединение закрывается по тайм-ауту аутентификации.</p>
@@ -220,21 +220,21 @@
 <h2  id="primer-dlya-brauzera"><span id="primer_dlya_brauzera"></span>Пример для браузера<a class="heading-anchor" href="#primer-dlya-brauzera" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Добавьте функцию в код аутентифицированного дашборда. Передайте действующий JWT и функцию
 <code>refreshDashboardResources(projectName)</code>, которая перечитывает нужные REST-ресурсы проекта.
-Адрес берётся из <code>location.host</code>: пример предполагает общий хост страницы и API.</p>
+Адрес берётся из <code>location.host</code>: пример предполагает общий хост страницы и API.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kd">function</span><span class="w"> </span><span class="nx">connectDashboardSocket</span><span class="p">(</span><span class="nx">accessToken</span><span class="p">,</span><span class="w"> </span><span class="nx">refreshDashboardResources</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">scheme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">location</span><span class="p">.</span><span class="nx">protocol</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;https:&quot;</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s2">&quot;wss:&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ws:&quot;</span><span class="p">;</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">scheme</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">location</span><span class="p">.</span><span class="nx">protocol</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">"https:"</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s2">"wss:"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s2">"ws:"</span><span class="p">;</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">socket</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">WebSocket</span><span class="p">(</span>
-<span class="w">    </span><span class="nx">scheme</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">&quot;//&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">location</span><span class="p">.</span><span class="nx">host</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">&quot;/api/v1/traceability/ws&quot;</span>
+<span class="w">    </span><span class="nx">scheme</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">"//"</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">location</span><span class="p">.</span><span class="nx">host</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">"/api/v1/traceability/ws"</span>
 <span class="w">  </span><span class="p">);</span>
 
-<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">"open"</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">token</span><span class="o">:</span><span class="w"> </span><span class="nx">accessToken</span><span class="w"> </span><span class="p">}));</span>
 <span class="w">  </span><span class="p">});</span>
 
-<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s2">"message"</span><span class="p">,</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
 
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">event</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;project_updated&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">event</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">"project_updated"</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="k">await</span><span class="w"> </span><span class="nx">refreshDashboardResources</span><span class="p">(</span><span class="nx">message</span><span class="p">.</span><span class="nx">project_name</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">});</span>
