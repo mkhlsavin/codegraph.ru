@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Назначьте роли и разрешения пользователям CodeGraph. Настройте корпоративную идентификацию и проверьте доступ через API, интерфейс и MCP.">
-  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
+  <meta name="cg:build-commit" content="1ff9b2d5bb96abd37e10c02375512a6fef915b1f">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="RBAC и авторизация — Документация CodeGraph">
@@ -163,7 +163,7 @@
         <h1>RBAC и авторизация</h1>
         <p class="doc-lead">Назначьте роли и разрешения пользователям CodeGraph. Настройте корпоративную идентификацию и проверьте доступ через API, интерфейс и MCP.</p>
 
-        <div class="doc-meta"><span>Корпоративная эксплуатация</span><time datetime="2026-10-04">Обновлено: 2026-10-04</time></div>
+        <div class="doc-meta"><span>Корпоративная эксплуатация</span><time datetime="2026-10-08">Обновлено: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -173,60 +173,17 @@
 и разрешения машинной учётной записи проверяются отдельными слоями авторизации.
 Здесь scope — строка разрешения,
 которую проверяет контракт доступа; её машинное значение сохраняется без перевода.</p>
-<h2  id="oblast-deystviya-i-istochnik-istiny"><span id="oblast_deystviya_i_istochnik_istiny"></span>Область действия и источник истины<a class="heading-anchor" href="#oblast-deystviya-i-istochnik-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Документ описывает реализацию, которая сейчас находится в <code>src/</code>.</p>
-<p>Основные источники реализации:</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Область действия и источник истины"><table data-columns="2"><caption class="sr-only">Область действия и источник истины</caption>
-<thead>
-<tr>
-<th scope="col">Область</th>
-<th scope="col">Источник</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Перечень разрешений и сопоставление ролей</td>
-<td><code>src/api/auth/tokens/permissions.py</code></td>
-</tr>
-<tr>
-<td>Контекст аутентификации запроса и зависимости FastAPI</td>
-<td><code>src/api/auth/providers/middleware.py</code></td>
-</tr>
-<tr>
-<td>Создание, проверка и список отозванных JWT</td>
-<td><code>src/api/auth/tokens/jwt_handler.py</code></td>
-</tr>
-<tr>
-<td>Вспомогательные функции API-ключей пользователей</td>
-<td><code>src/api/auth/tokens/api_keys.py</code></td>
-</tr>
-<tr>
-<td>Каталог машинных учётных данных и авторизация</td>
-<td><code>src/api/auth/machine/machine_access.py</code></td>
-</tr>
-<tr>
-<td>Аудит машинного доступа, область проекта и необязательная привязка mTLS</td>
-<td><code>src/api/auth/machine/machine_runtime.py</code></td>
-</tr>
-<tr>
-<td>Middleware API-ключей и сервисных учётных записей</td>
-<td><code>src/api/middleware/scope_enforcement.py</code></td>
-</tr>
-<tr>
-<td>Middleware проверки путей</td>
-<td><code>src/api/middleware/path_validation.py</code></td>
-</tr>
-<tr>
-<td>Маршруты локального входа, OAuth, LDAP, API-ключей и сервисных учётных записей</td>
-<td><code>src/api/routers/auth_suite/*</code></td>
-</tr>
-<tr>
-<td>Модели пользователей, API-ключей, групп, доступа к проектам и сервисных учётных записей</td>
-<td><code>src/api/database/models_*.py</code></td>
-</tr>
-</tbody>
-</table></div>
-<p>Совместимые пути импорта сохранены через <code>src/api/auth/__init__.py</code>: путь поиска модулей дополняется каталогами <code>machine</code>, <code>providers</code> и <code>tokens</code>. В новых ссылках лучше указывать физические пути из таблицы выше.</p>
+<h2  id="oblast-deystviya-i-istochnik-istiny"><span id="kak-proverit-dostup"></span><span id="kak_proverit_dostup"></span><span id="oblast_deystviya_i_istochnik_istiny"></span>Как проверить доступ<a class="heading-anchor" href="#oblast-deystviya-i-istochnik-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Настраивайте доступ по задаче пользователя или интеграции:</p>
+<ol>
+<li>Выберите роль пользователя: <code>viewer</code> для чтения, <code>analyst</code> для анализа, <code>reviewer</code> для ревью или <code>admin</code> для администрирования.</li>
+<li>Укажите группы и проекты, с которыми пользователь будет работать. Роль задаёт доступные операции, а назначения проектов — область работы.</li>
+<li>Для CI, ботов и MCP-клиентов создайте сервисную учётную запись. Задайте её scope, разрешённые интерфейсы и проекты.</li>
+<li>Выполните нужную операцию от имени этой учётной записи и проверьте результат в журнале аудита.</li>
+</ol>
+<p><a href="OAUTH_LDAP.html">Руководство OAuth2/OIDC и LDAP/AD</a> описывает подключение корпоративных учётных записей.
+<a href="../api/REST_API.html">Справочник REST API</a> поможет выполнить запрос с выбранными учётными данными.
+<a href="SIEM.html">Руководство SIEM</a> описывает передачу событий аудита в систему мониторинга.</p>
 <h2  id="model-avtorizatsii"><span id="model_avtorizatsii"></span>Модель авторизации<a class="heading-anchor" href="#model-avtorizatsii" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>CodeGraph использует три связанных слоя авторизации:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Модель авторизации"><table data-columns="3"><caption class="sr-only">Модель авторизации</caption>
@@ -1511,7 +1468,7 @@
     <aside class="doc-toc" id="doc-toc-panel" aria-label="На этой странице">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#oblast-deystviya-i-istochnik-istiny" class="level-2" aria-current="location">Область действия и источник истины</a></li>
+        <li><a href="#oblast-deystviya-i-istochnik-istiny" class="level-2" aria-current="location">Как проверить доступ</a></li>
 <li><a href="#model-avtorizatsii" class="level-2">Модель авторизации</a></li>
 <li><a href="#polzovatelskie-roli-i-razresheniya" class="level-2">Пользовательские роли и разрешения</a></li>
 <li data-doc-toc-level="3" data-doc-parent="polzovatelskie-roli-i-razresheniya" hidden><a href="#roli" class="level-3">Роли</a></li>
