@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Prepare a registered project and its CPG, choose an audit depth, and use the Q1-Q12 report to investigate recurring defects.">
-  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
+  <meta name="cg:build-commit" content="4caa265367916d934aa81091874158a727f20011">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Run a CPG-backed project audit — Documentation">
@@ -199,7 +199,7 @@
         <h1>Run a CPG-backed project audit</h1>
         <p class="doc-lead">Prepare a registered project and its CPG, choose an audit depth, and use the Q1-Q12 report to investigate recurring defects.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-06">Updated: 2026-10-06</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -367,6 +367,20 @@ an incomplete canonical result.</p>
 loads project invariants only from the explicitly selected policy and release
 control files; the analyzer does not infer CodeGraph-specific rules for another
 project.</p>
+<h2  id="automatic-audits-on-a-schedule"><span id="automatic_audits_on_a_schedule"></span>Automatic audits on a schedule<a class="heading-anchor" href="#automatic-audits-on-a-schedule" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>A project administrator configures a regular composite audit in the project catalog&rsquo;s Schedules section. CodeGraph stores the project action settings, and Temporal starts the action according to its cron expression. You need project access, an administrator or write permission, a connected Temporal service with a worker, and an approved service account for audits. Obtain that account&rsquo;s identifier from your installation administrator.</p>
+<ol>
+<li>Open the project catalog, select the project and its Schedules section. Switch to Planning and select Create schedule.</li>
+<li>Choose Composite audit (<code>audit_composite</code>). Enter the owner and service account identifier.</li>
+<li>Set the cadence and time zone. For example, <code>30 2 * * *</code> with <code>Asia/Yekaterinburg</code> runs daily at 02:30 in Yekaterinburg. Coordinate this time with other project audit windows: the server checks active windows for overlap.</li>
+<li>Choose the missed-run policy: Skip (<code>skip</code>), Run once (<code>run_once</code>) or Catch up (<code>catch_up</code>). Catch up uses bounded replay; the current limit is one missed run.</li>
+<li>Enable the schedule and select Create dashboard snapshot if you need a report in the dashboard. Click Create to confirm the settings and create the schedule.</li>
+<li>Check the orchestrator schedule ID, status and next run time. Select Run now to check the configured action without waiting for cron. This starts a real audit of the selected project.</li>
+<li>Open Run history. Wait for the job to finish, then open the audit artifact. If you enabled the dashboard snapshot, check that output too. Compare the project, code revision, analysis scope and findings with the job settings. If the run is blocked, read its reason in the run details.</li>
+</ol>
+<p>To change the cadence, select the existing schedule, edit its cron expression or time zone and save it. Pause stops subsequent scheduled runs; Resume enables them again. Check the updated state and next run time.</p>
+<p>The configuration value <code>analysis.full_scan_interval_days</code> sets the interval used to track whether a full analysis is due. Configure automatic execution separately in the project action schedule.</p>
+<p>For API automation, use the schedule routes in the <a href="../api/REST_API.html">REST API</a>: create and list <code>/api/v1/traceability/projects/{project_name}/scheduled-actions</code>; submit <code>run_now</code>, <code>pause</code> or <code>resume</code> to <code>/api/v1/traceability/projects/{project_name}/scheduled-actions/{schedule_id}/commands</code>.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -396,6 +410,7 @@ project.</p>
 <li><a href="#metric-diagnostics" class="level-2">Metric diagnostics</a></li>
 <li><a href="#intervention-queue" class="level-2">Intervention queue</a></li>
 <li><a href="#what-blocks-a-clean-interpretation" class="level-2">What blocks a clean interpretation</a></li>
+<li><a href="#automatic-audits-on-a-schedule" class="level-2">Automatic audits on a schedule</a></li>
       </ul>
     </aside>
   </div>

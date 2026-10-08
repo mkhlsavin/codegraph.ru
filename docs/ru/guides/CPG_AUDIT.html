@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Подготовьте зарегистрированный проект и его CPG, выберите глубину аудита и разберите типовые дефекты по оценке Q1-Q12.">
-  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
+  <meta name="cg:build-commit" content="4caa265367916d934aa81091874158a727f20011">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Аудит проекта на основе CPG — Документация CodeGraph">
@@ -199,7 +199,7 @@
         <h1>Аудит проекта на основе CPG</h1>
         <p class="doc-lead">Подготовьте зарегистрированный проект и его CPG, выберите глубину аудита и разберите типовые дефекты по оценке Q1-Q12.</p>
 
-        <div class="doc-meta"><span>Руководства</span><time datetime="2026-10-06">Обновлено: 2026-10-06</time></div>
+        <div class="doc-meta"><span>Руководства</span><time datetime="2026-10-08">Обновлено: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -370,6 +370,20 @@ CodeGraph сохраняет их как явно помеченные данн�
 <a href="ARCHITECTURE_CONTROL_ADOPTION.html">руководстве по контролю архитектуры</a>. GoCPG
 загружает инварианты только из явно выбранных файлов правил и контроля выпуска и
 не подставляет правила CodeGraph при анализе другого проекта.</p>
+<h2  id="avtomaticheskie-audity-po-raspisaniyu"><span id="avtomaticheskie_audity_po_raspisaniyu"></span>Автоматические аудиты по расписанию<a class="heading-anchor" href="#avtomaticheskie-audity-po-raspisaniyu" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Администратор проекта настраивает регулярный композитный аудит в разделе «Расписания» каталога проектов. CodeGraph хранит параметры действия проекта, а Temporal запускает его по cron. Для работы нужны доступ к проекту, права администратора или разрешение записи, подключённый Temporal с исполнителем и одобренный сервисный аккаунт для аудита. Получите идентификатор этого аккаунта у администратора установки.</p>
+<ol>
+<li>Откройте каталог проектов, выберите проект и раздел «Расписания». Перейдите в режим «Планирование» и нажмите «Создать расписание».</li>
+<li>Выберите тип действия «Композитный аудит» (<code>audit_composite</code>). Укажите ответственного и идентификатор сервисного аккаунта.</li>
+<li>Заполните «Выражение расписания» и «Часовой пояс». Например, <code>30 2 * * *</code> и <code>Asia/Yekaterinburg</code> означают ежедневный запуск в 02:30 по времени Екатеринбурга. Согласуйте время с окнами других аудитов проекта: сервер проверяет пересечение активных окон.</li>
+<li>Выберите поведение для пропущенного запуска: «Пропустить» (<code>skip</code>), «Запустить один раз» (<code>run_once</code>) или «Догнать» (<code>catch_up</code>). «Догнать» использует ограниченный повтор; текущий предел — один пропущенный запуск.</li>
+<li>Включите расписание и, если нужен отчёт в панели, флаг «Создавать снимок панели». Нажмите «Создать», чтобы подтвердить настройки и создать расписание.</li>
+<li>Проверьте идентификатор и статус расписания оркестратора, а также время следующего запуска. Нажмите «Запустить сейчас», чтобы проверить настроенное действие без ожидания cron. Это запускает настоящий аудит выбранного проекта.</li>
+<li>Откройте «Историю запусков». Дождитесь завершения задания и откройте артефакт аудита. Если вы включили создание снимка панели, проверьте и его. Сверьте проект, ревизию кода, область анализа и результаты с настройками задания. При блокировке прочитайте её причину в деталях запуска.</li>
+</ol>
+<p>Для изменения периодичности выберите существующее расписание, исправьте cron или часовой пояс и сохраните его. Кнопка «Поставить на паузу» останавливает следующие запуски по расписанию; «Возобновить расписание» включает их снова. Проверьте новое состояние и время следующего запуска.</p>
+<p>Значение <code>analysis.full_scan_interval_days</code> в конфигурации задаёт срок между полными анализами для контроля своевременности. Автоматический запуск настраивается отдельно в расписании действия проекта.</p>
+<p>Для автоматизации через API используйте маршруты расписаний в <a href="../api/REST_API.html">REST API</a>: создание и чтение <code>/api/v1/traceability/projects/{project_name}/scheduled-actions</code>, команды <code>run_now</code>, <code>pause</code>, <code>resume</code> по <code>/api/v1/traceability/projects/{project_name}/scheduled-actions/{schedule_id}/commands</code>.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -399,6 +413,7 @@ CodeGraph сохраняет их как явно помеченные данн�
 <li><a href="#diagnosticheskie-metriki" class="level-2">Диагностические метрики</a></li>
 <li><a href="#ochered-vmeshatelstv" class="level-2">Очередь вмешательств</a></li>
 <li><a href="#proverka-polnoty-i-sopostavimosti" class="level-2">Проверка полноты и сопоставимости</a></li>
+<li><a href="#avtomaticheskie-audity-po-raspisaniyu" class="level-2">Автоматические аудиты по расписанию</a></li>
       </ul>
     </aside>
   </div>
