@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Learn how GoCPG builds a CPG and recovers Python and JavaScript types. Compare GoCPG and Joern pipelines for structural analysis tasks.">
-  <meta name="cg:build-commit" content="e66b7e39b0962708a209ceb4c958c3010e00fa07">
+  <meta name="cg:build-commit" content="a75747e144c6a7d55aebfdac971f183d6b8d8a32">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="How GoCPG builds a CPG and how the approach differs from Joern — Documentation">
@@ -338,6 +338,43 @@ relationships.</p>
 call edge does not prove runtime reachability, and a missing edge in highly
 dynamic code does not prove the call is impossible. Security and architecture
 rules must consider confidence and completeness.</p>
+<h3  id="example-object-type-and-call-target"><span id="example_object_type_and_call_target"></span>Example: object type and call target<a class="heading-anchor" href="#example-object-type-and-call-target" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>This Python code creates the <code>greeter</code> variable without a type annotation:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Greeter</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"Hello"</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">say_hello</span><span class="p">():</span>
+    <span class="n">greeter</span> <span class="o">=</span> <span class="n">Greeter</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">greeter</span><span class="o">.</span><span class="n">greet</span><span class="p">()</span>
+</code></pre></div>
+
+<p>With the standard analysis profile, GoCPG uses the constructor call to identify
+the object type and the <code>-&gt; str</code> annotation to identify the method result type.</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Example: object type and call target"><table data-columns="3"><caption class="sr-only">Example: object type and call target</caption>
+<thead>
+<tr>
+<th scope="col">Expression</th>
+<th scope="col">Recovered type</th>
+<th scope="col">Graph relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Greeter()</code></td>
+<td><code>Greeter</code></td>
+<td>Creates an object of class <code>Greeter</code>.</td>
+</tr>
+<tr>
+<td><code>greeter.greet()</code></td>
+<td><code>str</code></td>
+<td>The call is linked to <code>Greeter.greet</code> in <code>example.py</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p>CodeGraph can follow this relationship to the target method and continue analysis
+across the call. When investigating the impact of a method change, the graph
+provides the code locations that call it.</p>
 <h2  id="4-control-and-data-flow"><span id="4_control_and_data_flow"></span>4. Control and data flow<a class="heading-anchor" href="#4-control-and-data-flow" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>GoCPG materializes several connected representations:</p>
 <ul>
@@ -540,6 +577,7 @@ verified architecture and workflow conclusions are defensible.</p>
 <li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#sources-of-type-facts" class="level-3">Sources of type facts</a></li>
 <li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#iteration-and-convergence" class="level-3">Iteration and convergence</a></li>
 <li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#how-recovered-types-improve-the-call-graph" class="level-3">How recovered types improve the call graph</a></li>
+<li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#example-object-type-and-call-target" class="level-3">Example: object type and call target</a></li>
 <li><a href="#4-control-and-data-flow" class="level-2">4. Control and data flow</a></li>
 <li><a href="#5-architecture-v1-structural-analysis" class="level-2">5. Architecture v1 structural analysis</a></li>
 <li data-doc-toc-level="3" data-doc-parent="5-architecture-v1-structural-analysis" hidden><a href="#model-and-rules" class="level-3">Model and rules</a></li>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Узнайте, как GoCPG строит CPG и восстанавливает типы Python и JavaScript. Сравните конвейеры GoCPG и Joern для задач структурного анализа.">
-  <meta name="cg:build-commit" content="e66b7e39b0962708a209ceb4c958c3010e00fa07">
+  <meta name="cg:build-commit" content="a75747e144c6a7d55aebfdac971f183d6b8d8a32">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Как GoCPG строит CPG и чем этот подход отличается от Joern — Документация CodeGraph">
@@ -340,6 +340,43 @@ Python и JavaScript один и тот же идентификатор мож�
 Наличие ребра вызова не доказывает достижимость во время выполнения, а его
 отсутствие при динамическом формировании вызовов не доказывает отсутствие вызова.
 Правила безопасности и архитектуры учитывают уверенность и полноту исходных фактов.</p>
+<h3  id="primer-tip-obekta-i-tsel-vyzova"><span id="primer_tip_obekta_i_tsel_vyzova"></span>Пример: тип объекта и цель вызова<a class="heading-anchor" href="#primer-tip-obekta-i-tsel-vyzova" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
+<p>В этом Python-коде переменная <code>greeter</code> создаётся без аннотации типа:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Greeter</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"Hello"</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">say_hello</span><span class="p">():</span>
+    <span class="n">greeter</span> <span class="o">=</span> <span class="n">Greeter</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">greeter</span><span class="o">.</span><span class="n">greet</span><span class="p">()</span>
+</code></pre></div>
+
+<p>При стандартном анализе GoCPG использует вызов конструктора, чтобы определить
+тип объекта, и аннотацию <code>-&gt; str</code>, чтобы определить тип результата метода.</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Пример: тип объекта и цель вызова"><table data-columns="3"><caption class="sr-only">Пример: тип объекта и цель вызова</caption>
+<thead>
+<tr>
+<th scope="col">Выражение</th>
+<th scope="col">Полученный тип</th>
+<th scope="col">Связь в графе</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Greeter()</code></td>
+<td><code>Greeter</code></td>
+<td>Создание объекта класса <code>Greeter</code>.</td>
+</tr>
+<tr>
+<td><code>greeter.greet()</code></td>
+<td><code>str</code></td>
+<td>Вызов связан с методом <code>Greeter.greet</code> в <code>example.py</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p>По этой связи CodeGraph может найти вызываемый метод и продолжить анализ
+через границу вызова. Для исследования влияния изменения метода доступны
+его вызывающие участки кода.</p>
 <h2  id="4-potoki-upravleniya-i-dannyh"><span id="4_potoki_upravleniya_i_dannyh"></span>4. Потоки управления и данных<a class="heading-anchor" href="#4-potoki-upravleniya-i-dannyh" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>GoCPG строит несколько связанных представлений:</p>
 <ul>
@@ -552,6 +589,7 @@ list, export, validate, describe и explain.</p>
 <li data-doc-toc-level="3" data-doc-parent="3-vosstanovlenie-tipov-v-python-i-javascript" hidden><a href="#istochniki-tipovyh-faktov" class="level-3">Источники типовых фактов</a></li>
 <li data-doc-toc-level="3" data-doc-parent="3-vosstanovlenie-tipov-v-python-i-javascript" hidden><a href="#iteratsii-i-shodimost" class="level-3">Итерации и сходимость</a></li>
 <li data-doc-toc-level="3" data-doc-parent="3-vosstanovlenie-tipov-v-python-i-javascript" hidden><a href="#kak-tipy-uluchshayut-graf-vyzovov" class="level-3">Как типы улучшают граф вызовов</a></li>
+<li data-doc-toc-level="3" data-doc-parent="3-vosstanovlenie-tipov-v-python-i-javascript" hidden><a href="#primer-tip-obekta-i-tsel-vyzova" class="level-3">Пример: тип объекта и цель вызова</a></li>
 <li><a href="#4-potoki-upravleniya-i-dannyh" class="level-2">4. Потоки управления и данных</a></li>
 <li><a href="#5-strukturnyy-analiz-architecture-v1" class="level-2">5. Структурный анализ Architecture v1</a></li>
 <li data-doc-toc-level="3" data-doc-parent="5-strukturnyy-analiz-architecture-v1" hidden><a href="#model-i-pravila" class="level-3">Модель и правила</a></li>
