@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Find dependencies and duplicated implementations across repositories. Collect results to assess change impact and plan consolidation.">
-  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
+  <meta name="cg:build-commit" content="7ffbe7d748d1fa4cfe6257c35c2fd1dea21ccdb7">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Scenario 10: Cross-repository impact — Documentation">
@@ -215,10 +215,8 @@
 <p>For structure inside one repository, use <a href="11-architecture.html">Scenario 11</a>. For a broad source migration, use <a href="13-mass-refactoring.html">Scenario 13</a>.</p>
 <h2  id="prerequisites-and-scope"><span id="prerequisites_and_scope"></span>Prerequisites and scope<a class="heading-anchor" href="#prerequisites-and-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Prepare the Python environment and local configuration using the <a href="../CLI_GUIDE.html">CLI guide</a> and the <a href="../PROGRAMMATIC_GUIDE.html">programmatic guide</a>. You need an accepted reviewer task, a current project CPG, the required graph services, and a configured LLM. Record the intended repositories and their revisions before comparing results.</p>
-<p>The underlying workflow reads <code>user_context.workspace_path</code> and otherwise falls back to <code>.</code>. The
-current role-bound adapter keeps that internal state field inside the workflow. Set the server
-working directory to a bounded workspace containing the intended repositories. Discovery checks immediate subdirectories with a <code>.git</code> entry.</p>
-<p>First <a href="../PROJECT_IMPORT.html">import the intended repositories</a>. The workflow then calls <code>index_repository_cpg</code> for each discovered repository and reads method and line counts from the existing graph. It selects records whose <code>filename</code> starts with the repository name. The <code>cpg_indexed</code> flag records completion of this statistics step. If the method count is zero, compare the graph paths with the discovered repository paths and check the import result.</p>
+<p>Start the server from the workspace directory containing the intended repositories. The scenario discovers Git repositories in its immediate subdirectories. Record that directory and compare the discovered list with the selected analysis scope.</p>
+<p>First <a href="../PROJECT_IMPORT.html">import the intended repositories</a>. The scenario collects method and line counts for each discovered repository from the existing graph. It matches the repository name against the start of each file path in the CPG. If the method count is zero, compare graph paths with repository paths and check the import result.</p>
 <h2  id="run-the-typed-scenario"><span id="run_the_typed_scenario"></span>Run the typed scenario<a class="heading-anchor" href="#run-the-typed-scenario" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Save the example as a Python file in the configured environment. Replace the context placeholders with your accepted task, project, namespace, evidence references and source paths. Adapt the query to the actual interface, then invoke the reviewer-owned scenario:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -259,10 +257,8 @@ role, event, and task evidence for the cross-repository analysis.</p>
 </ul>
 <p>Verify important claims in the named repository and revision. A similarity or dependency observation
 creates a review lead; compatibility follows from the comparison and the accountable decision.</p>
-<h2  id="safety-and-authority-boundaries"><span id="safety_and_authority_boundaries"></span>Safety and authority boundaries<a class="heading-anchor" href="#safety-and-authority-boundaries" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The scenario collects statistics from the existing graph, compares implementations, and prepares results for review. Before analysis, runtime checks the task context against its configured policies. Repository owners use the review to select changes and agree on a consolidation plan; implementation and release proceed through the corresponding tasks.</p>
-<p>Point the runtime at the approved workspace directory. Repository discovery follows that boundary,
-so the discovered repositories match the task scope.</p>
+<h2  id="plan-consolidation"><span id="plan_consolidation"></span>Plan consolidation<a class="heading-anchor" href="#plan-consolidation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Use the dependencies and similar implementations to select consolidation candidates. Compare their interfaces, behavior, and tests. Agree on changes with the owners of the affected repositories and retain the plan with the analysis result.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>No repositories found: the workflow falls back to metadata for <code>.</code>. Check the discovered list and start the server from a workspace containing the intended repositories.</li>
@@ -271,15 +267,6 @@ so the discovered repositories match the task scope.</p>
 <li>Handler or CPG failure: treat fallback or partial output as a hypothesis and record the unavailable evidence source.</li>
 <li>Unexpected repositories discovered: preserve the returned repository list, correct the workspace boundary, and repeat the analysis.</li>
 </ul>
-<h2  id="source-contract"><span id="source_contract"></span>Source contract<a class="heading-anchor" href="#source-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>This guide is bound to:</p>
-<ul>
-<li><code>src/workflow/scenarios/domain_checks/cross_repo.py</code> — repository discovery, graph statistics, analysis, and evidence;</li>
-<li><code>src/workflow/scenarios/cross_repo_handlers/workflow.py</code> — specialized handlers;</li>
-<li><code>src/digital_employees/runtime/scenarios/role_bound_scenario_invoker.py</code> — typed routing;</li>
-<li><code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code> — reviewer ownership and event policy.</li>
-</ul>
-<p>If those contracts change, validate this page before publication.</p>
 <h2  id="related-guides"><span id="related_guides"></span>Related guides<a class="heading-anchor" href="#related-guides" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><a href="../SCENARIOS.html">Scenario catalog</a></li>
@@ -313,9 +300,8 @@ so the discovered repositories match the task scope.</p>
 <li><a href="#prerequisites-and-scope" class="level-2">Prerequisites and scope</a></li>
 <li><a href="#run-the-typed-scenario" class="level-2">Run the typed scenario</a></li>
 <li><a href="#read-the-result" class="level-2">Read the result</a></li>
-<li><a href="#safety-and-authority-boundaries" class="level-2">Safety and authority boundaries</a></li>
+<li><a href="#plan-consolidation" class="level-2">Plan consolidation</a></li>
 <li><a href="#failure-and-recovery" class="level-2">Failure and recovery</a></li>
-<li><a href="#source-contract" class="level-2">Source contract</a></li>
 <li><a href="#related-guides" class="level-2">Related guides</a></li>
       </ul>
     </aside>
