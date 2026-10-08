@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Import coding rules, check selected source files, and save a violations report to review findings and prepare corrections.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Scenario 19: Standards check — Documentation">
@@ -151,7 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
         <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
@@ -200,26 +199,86 @@
         <h1>Scenario 19: Standards check</h1>
         <p class="doc-lead">Import coding rules, check selected source files, and save a violations report to review findings and prepare corrections.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>Scenario 19 checks a bounded source scope against explicit imported coding rules. It produces operational evidence for a reviewer. Rule matches and command exit status do not make a compliance decision.</p>
-<h2  id="prepare-and-inspect-the-rule-set"><span id="prepare_and_inspect_the_rule_set"></span>Prepare and inspect the rule set<a class="heading-anchor" href="#prepare-and-inspect-the-rule-set" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Prepare the environment using the <a href="../CLI_GUIDE.html">CLI guide</a>. Run in PowerShell from the CodeGraph repository root. Replace the quoted placeholder with the path to your reviewed standards YAML; this page does not provide a ready-to-import rule set. Import and activation change the local standards database:</p>
+<h2  id="check-a-complete-example"><span id="check_a_complete_example"></span>Check a complete example<a class="heading-anchor" href="#check-a-complete-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Prepare the project Python environment using the <a href="../CLI_GUIDE.html">CLI guide</a>. Work in PowerShell from the CodeGraph repository root. This example checks Python source against one explicit regular-expression rule in a single process.</p>
+<p>Save the following rule document as <code>standards.yaml</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Example logging rules</span>
+<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">"1.0"</span>
+<span class="w">  </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="nt">rules</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LOG-001</span>
+<span class="w">    </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Use the configured logger</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Find print calls for review.</span>
+<span class="w">    </span><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best_practice</span>
+<span class="w">    </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">    </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
+<span class="w">    </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">'\bprint\s*\('</span>
+</code></pre></div>
+
+<p>Save this source as <code>example.py</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Hello, </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Save the checker as <code>check_standards_example.py</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.standards</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardsParser</span><span class="p">,</span> <span class="n">RuleDatabase</span><span class="p">,</span> <span class="n">StandardsAnalyzer</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">StandardsParser</span><span class="p">()</span>
+<span class="n">document</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="s2">"standards.yaml"</span><span class="p">)</span>
+<span class="n">errors</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">validate_document</span><span class="p">(</span><span class="n">document</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">errors</span><span class="p">))</span>
+<span class="n">database</span> <span class="o">=</span> <span class="n">RuleDatabase</span><span class="p">()</span>
+<span class="n">database</span><span class="o">.</span><span class="n">add_document</span><span class="p">(</span><span class="n">document</span><span class="p">)</span>
+<span class="n">rules</span> <span class="o">=</span> <span class="n">database</span><span class="o">.</span><span class="n">list_rules</span><span class="p">(</span><span class="n">language</span><span class="o">=</span><span class="s2">"python"</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">rules</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"The document contains no Python rules"</span><span class="p">)</span>
+<span class="n">violations</span> <span class="o">=</span> <span class="n">StandardsAnalyzer</span><span class="p">()</span><span class="o">.</span><span class="n">analyze_file</span><span class="p">(</span><span class="s2">"example.py"</span><span class="p">,</span> <span class="n">rules</span><span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="p">[</span><span class="n">violation</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">violation</span> <span class="ow">in</span> <span class="n">violations</span><span class="p">]</span>
+<span class="n">Path</span><span class="p">(</span><span class="s2">"violations.json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+    <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">"rules"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">rules</span><span class="p">),</span> <span class="s2">"violations"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">report</span><span class="p">)}))</span>
+</code></pre></div>
+
+<p>Run the checker and inspect its report:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">check_standards_example</span><span class="p">.</span><span class="n">py</span>
+<span class="nb">Get-Content</span> <span class="n">violations</span><span class="p">.</span><span class="n">json</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span> <span class="p">|</span> <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span> <span class="nv">$_</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">rule_id</span><span class="p">,</span> <span class="n">severity</span><span class="p">,</span> <span class="n">line_number</span> <span class="p">}</span>
+</code></pre></div>
+
+<p>The checker prints <code>{"rules": 1, "violations": 1}</code>. The report contains <code>rule_id="LOG-001"</code>, <code>severity="warning"</code>, and <code>line_number=3</code>: the <code>print</code> call matches the rule. The analyzer reads the source; the script writes <code>violations.json</code>.</p>
+<p>Replace <code>example.py</code> with this version and run the same two commands again:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Hello, </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The second run prints <code>{"rules": 1, "violations": 0}</code> and writes <code>[]</code> to <code>violations.json</code>. This rule identifies calls for review; use your project’s logging configuration and requirements when accepting the correction.</p>
+<p><code>StandardsParser</code> reads the YAML, <code>RuleDatabase</code> holds the document and rules in the current process, and <code>StandardsAnalyzer</code> returns matches with source locations. This example uses a regex rule, so it requires the Python environment and source files. CPG-query rules additionally require a configured CPG service.</p>
+<h2  id="inspect-the-registered-cli-commands"><span id="inspect_the_registered_cli_commands"></span>Inspect the registered CLI commands<a class="heading-anchor" href="#inspect-the-registered-cli-commands" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The CLI exposes the following commands. In the current implementation, import, rule listing and check call retired <code>RuleDatabase</code> methods and fail with <code>AttributeError</code>. Use the complete programmatic example above to check a rule set in one process while this CLI defect is being repaired.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">standards</span> <span class="n">import</span> <span class="s2">"&lt;standards.yaml&gt;"</span> <span class="p">-</span><span class="n">-activate</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">standards</span> <span class="n">list-documents</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">standards</span> <span class="n">list-rules</span>
 </code></pre></div>
 
-<p>Import changes the local standards database. Record the source document digest, imported name/version, activation state, CodeGraph revision, and operator. Do not import untrusted YAML or overwrite an accepted rule set without change control.</p>
-<h2  id="run-a-bounded-cli-check"><span id="run_a_bounded_cli_check"></span>Run a bounded CLI check<a class="heading-anchor" href="#run-a-bounded-cli-check" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<h2  id="registered-cli-check"><span id="registered_cli_check"></span>Registered CLI check<a class="heading-anchor" href="#registered-cli-check" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The registered check accepts a source path and an output filename:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">standards</span> <span class="n">check</span> <span class="s2">"&lt;source-path&gt;"</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;violations.json&gt;"</span>
 </code></pre></div>
 
-<p>Use <code>--document</code>, <code>--category</code>, <code>--severity</code>, and <code>--fail-on</code> only after verifying their current help. The output file is written only when explicitly requested. A nonzero exit code means the selected threshold found violations or the command failed; preserve the detailed output.</p>
-<p>Create the output directory first and choose a new filename. If no rules remain after selection, the command prints <code>No rules to check against. Import a standards document first.</code>, returns <code>0</code>, and does not write the requested report. Check rule selection and the new artifact before interpreting success; an earlier file is not evidence for this run.</p>
+<p>The handler declares <code>--document</code>, <code>--category</code>, <code>--severity</code>, and <code>--fail-on</code>. Its current failure occurs before rule analysis and report creation. Use the programmatic report above for this example.</p>
 <h2  id="run-the-typed-reviewer-scenario"><span id="run_the_typed_reviewer_scenario"></span>Run the typed reviewer scenario<a class="heading-anchor" href="#run-the-typed-reviewer-scenario" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">,</span>
@@ -247,38 +306,61 @@
 <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"answer"</span><span class="p">])</span>
 </code></pre></div>
 
-<p>The typed scenario is review analysis. Import rule documents, edit code, approve deviations, and
-close compliance work through their corresponding governed workflows.</p>
+<p>The typed scenario performs review analysis. Use the corresponding governed workflows to import rule documents, edit code, approve deviations and close compliance work.</p>
 <h2  id="unsupported-report-and-rest-surfaces"><span id="unsupported_report_and_rest_surfaces"></span>Unsupported report and REST surfaces<a class="heading-anchor" href="#unsupported-report-and-rest-surfaces" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p><code>python -m src.cli standards report</code> is registered but exits 1 with <code>Report generation not yet implemented (requires stored violations)</code>. Build durable evidence from the explicit <code>standards check --output</code> artifact instead.</p>
+<p><code>python -m src.cli standards report</code> is registered but exits 1 with <code>Report generation not yet implemented (requires stored violations)</code>. Save the explicit JSON artifact from the programmatic checker above.</p>
 <p>There is <strong>no REST API</strong> for standards in the current router tree. Do not use or publish examples for the retired generic standards route.</p>
 <h2  id="interpret-evidence-correctly"><span id="interpret_evidence_correctly"></span>Interpret evidence correctly<a class="heading-anchor" href="#interpret-evidence-correctly" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>A check records which configured rules matched the analyzed files at the recorded revision. Assess
-rule completeness, runtime behavior, legal conformity, security, and product acceptance in their
-respective review lanes.</p>
+<p>A check records which configured rules matched the analyzed files at the recorded revision. Assess rule completeness, runtime behavior, legal conformity, security and product acceptance in their respective review lanes.</p>
 <p>An accountable reviewer must verify false positives, exclusions, rule provenance, remediation, and any accepted deviation. Keep operational evidence separate from the final compliance decision.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li>No rules found: inspect imported documents and activation state; do not report a pass.</li>
-<li>Invalid YAML: correct the reviewed source document and import under controlled identity.</li>
-<li>Unexpected zero violations: verify path, active rules, category/severity filters, and analyzer coverage.</li>
-<li>Report command fails: use the explicit check artifact; do not retry the stub as a release gate.</li>
+<li>
+<p>No rules found: inspect imported documents and activation state; do not report a pass.</p>
+</li>
+<li>
+<p>Invalid YAML: correct the reviewed source document and import under controlled identity.</p>
+</li>
+<li>
+<p>Unexpected zero violations: verify path, active rules, category/severity filters, and analyzer coverage.</p>
+</li>
+<li>
+<p>Report command fails: use the explicit check artifact; do not retry the stub as a release gate.</p>
+</li>
 </ul>
 <h2  id="source-contract"><span id="source_contract"></span>Source contract<a class="heading-anchor" href="#source-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>This guide is bound to:</p>
 <ul>
-<li><code>src/cli/security_suite/standards_commands.py</code> — import, list, check, delete, and report stub;</li>
-<li><code>src/workflow/scenarios/code_quality/standards_check.py</code> — Scenario 19 analysis;</li>
-<li><code>src/digital_employees/runtime/scenarios/role_bound_scenario_invoker.py</code> — typed routing;</li>
-<li><code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code> — reviewer ownership and required event;</li>
-<li><code>src/api/routers/security_suite/compliance_gost.py</code> — explicit retirement note for the generic standards REST surface.</li>
+<li>
+<p><code>src/cli/security_suite/standards_commands.py</code> — import, list, check, delete, and report stub;</p>
+</li>
+<li>
+<p><code>src/workflow/scenarios/code_quality/standards_check.py</code> — Scenario 19 analysis;</p>
+</li>
+<li>
+<p><code>src/digital_employees/runtime/scenarios/role_bound_scenario_invoker.py</code> — typed routing;</p>
+</li>
+<li>
+<p><code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code> — reviewer ownership and required event;</p>
+</li>
+<li>
+<p><code>src/api/routers/security_suite/compliance_gost.py</code> — explicit retirement note for the generic standards REST surface.</p>
+</li>
 </ul>
 <h2  id="related-guides"><span id="related_guides"></span>Related guides<a class="heading-anchor" href="#related-guides" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li><a href="../SCENARIOS.html">Scenario catalog</a></li>
-<li><a href="08-compliance.html">Scenario 08: Compliance evidence</a></li>
-<li><a href="../../enterprise/GOST_56939_COMPLIANCE.html">GOST R 56939 assessment</a></li>
-<li><a href="../CLI_GUIDE.html">Command-line guide</a></li>
+<li>
+<p><a href="../SCENARIOS.html">Scenario catalog</a></p>
+</li>
+<li>
+<p><a href="08-compliance.html">Scenario 08: Compliance evidence</a></p>
+</li>
+<li>
+<p><a href="../../enterprise/GOST_56939_COMPLIANCE.html">GOST R 56939 assessment</a></p>
+</li>
+<li>
+<p><a href="../CLI_GUIDE.html">Command-line guide</a></p>
+</li>
 </ul>
       </article>
 
@@ -302,8 +384,9 @@ respective review lanes.</p>
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#prepare-and-inspect-the-rule-set" class="level-2" aria-current="location">Prepare and inspect the rule set</a></li>
-<li><a href="#run-a-bounded-cli-check" class="level-2">Run a bounded CLI check</a></li>
+        <li><a href="#check-a-complete-example" class="level-2" aria-current="location">Check a complete example</a></li>
+<li><a href="#inspect-the-registered-cli-commands" class="level-2">Inspect the registered CLI commands</a></li>
+<li><a href="#registered-cli-check" class="level-2">Registered CLI check</a></li>
 <li><a href="#run-the-typed-reviewer-scenario" class="level-2">Run the typed reviewer scenario</a></li>
 <li><a href="#unsupported-report-and-rest-surfaces" class="level-2">Unsupported report and REST surfaces</a></li>
 <li><a href="#interpret-evidence-correctly" class="level-2">Interpret evidence correctly</a></li>

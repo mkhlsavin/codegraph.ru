@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Find dependencies and duplicated implementations across repositories. Collect results to assess change impact and plan consolidation.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Scenario 10: Cross-repository impact — Documentation">
@@ -151,7 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
         <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
@@ -200,12 +199,12 @@
         <h1>Scenario 10: Cross-repository impact</h1>
         <p class="doc-lead">Find dependencies and duplicated implementations across repositories. Collect results to assess change impact and plan consolidation.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Use this scenario when a proposed change in one repository may affect code, dependencies, or duplicated implementations in other repositories. It produces a shared evidence set for review; deployment and architecture owners record their decisions separately.</p>
+        <p>Use this scenario when a proposed change in one repository may affect code, dependencies, or duplicated implementations in other repositories. It produces a list of affected repositories, dependencies, and similar implementations with evidence for review.</p>
 <h2  id="when-to-use-it"><span id="when_to_use_it"></span>When to use it<a class="heading-anchor" href="#when-to-use-it" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use Scenario 10 for a bounded workspace that contains several repositories and one explicit question, such as:</p>
 <ul>
@@ -218,8 +217,8 @@
 <p>Prepare the Python environment and local configuration using the <a href="../CLI_GUIDE.html">CLI guide</a> and the <a href="../PROGRAMMATIC_GUIDE.html">programmatic guide</a>. You need an accepted reviewer task, a current project CPG, the required graph services, and a configured LLM. Record the intended repositories and their revisions before comparing results.</p>
 <p>The underlying workflow reads <code>user_context.workspace_path</code> and otherwise falls back to <code>.</code>. The
 current role-bound adapter keeps that internal state field inside the workflow. Set the server
-working directory to a bounded workspace containing the intended repositories.</p>
-<p>The workflow calls <code>index_repository_cpg</code> for each discovered repository. Despite its name, the current method reads method and line counts from the existing graph; it does not import source or refresh the CPG. Import the intended repositories separately before relying on the analysis. Its filename-prefix filtering can also miss graph paths that use another layout. A zero count or <code>cpg_indexed</code> flag does not prove complete coverage.</p>
+working directory to a bounded workspace containing the intended repositories. Discovery checks immediate subdirectories with a <code>.git</code> entry.</p>
+<p>First <a href="../PROJECT_IMPORT.html">import the intended repositories</a>. The workflow then calls <code>index_repository_cpg</code> for each discovered repository and reads method and line counts from the existing graph. It selects records whose <code>filename</code> starts with the repository name. The <code>cpg_indexed</code> flag records completion of this statistics step. If the method count is zero, compare the graph paths with the discovered repository paths and check the import result.</p>
 <h2  id="run-the-typed-scenario"><span id="run_the_typed_scenario"></span>Run the typed scenario<a class="heading-anchor" href="#run-the-typed-scenario" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Save the example as a Python file in the configured environment. Replace the context placeholders with your accepted task, project, namespace, evidence references and source paths. Adapt the query to the actual interface, then invoke the reviewer-owned scenario:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -261,16 +260,16 @@ role, event, and task evidence for the cross-repository analysis.</p>
 <p>Verify important claims in the named repository and revision. A similarity or dependency observation
 creates a review lead; compatibility follows from the comparison and the accountable decision.</p>
 <h2  id="safety-and-authority-boundaries"><span id="safety_and_authority_boundaries"></span>Safety and authority boundaries<a class="heading-anchor" href="#safety-and-authority-boundaries" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The repository-statistics step does not import or edit source. The complete invocation still depends on runtime preflight and its configured policies. Repository edits, consolidation, merges, and release require separate authorization and checks of ownership, compatibility, licensing, security, tests, and rollback.</p>
+<p>The scenario collects statistics from the existing graph, compares implementations, and prepares results for review. Before analysis, runtime checks the task context against its configured policies. Repository owners use the review to select changes and agree on a consolidation plan; implementation and release proceed through the corresponding tasks.</p>
 <p>Point the runtime at the approved workspace directory. Repository discovery follows that boundary,
 so the discovered repositories match the task scope.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li>No repositories found: the workflow falls back to metadata for <code>.</code>. Verify the actual discovered repository list; a non-empty answer does not prove that several repositories were analyzed.</li>
+<li>No repositories found: the workflow falls back to metadata for <code>.</code>. Check the discovered list and start the server from a workspace containing the intended repositories.</li>
 <li>Stale or mixed results: refresh the intended repositories, rerun against the same revisions, and
   replace the old evidence with the new revision-bound package.</li>
 <li>Handler or CPG failure: treat fallback or partial output as a hypothesis and record the unavailable evidence source.</li>
-<li>Unexpected repositories discovered: stop, preserve the returned repository list, correct the workspace boundary, and repeat the analysis. This statistics step does not import those repositories into the CPG.</li>
+<li>Unexpected repositories discovered: preserve the returned repository list, correct the workspace boundary, and repeat the analysis.</li>
 </ul>
 <h2  id="source-contract"><span id="source_contract"></span>Source contract<a class="heading-anchor" href="#source-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>This guide is bound to:</p>

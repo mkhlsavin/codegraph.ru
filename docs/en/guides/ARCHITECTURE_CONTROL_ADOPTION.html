@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Describe component boundaries, evaluate architecture rules against a CPG, review violations and introduce release checks with explicit limits.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Architecture control in CodeGraph — Documentation">
@@ -151,7 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
         <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
@@ -200,7 +199,7 @@
         <h1>Architecture control in CodeGraph</h1>
         <p class="doc-lead">Describe component boundaries, evaluate architecture rules against a CPG, review violations and introduce release checks with explicit limits.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -337,18 +336,19 @@ loaded before investigating a graph finding.</p>
 <p><code>describe</code> returns the component definition, its parent, and direct children.
 It does not report actual file classification because it does not read sources.</p>
 <h2  id="from-a-rule-to-a-project-check"><span id="from_a_rule_to_a_project_check"></span>From a rule to a project check<a class="heading-anchor" href="#from-a-rule-to-a-project-check" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The next step requires a built CPG and an architecture evaluator run.
-The <code>architecture</code> group currently registers <code>validate</code>, <code>describe</code>, and
-<code>explain</code>; it has no general command to execute an arbitrary rule.
-The <code>scan</code> command serves the separate pattern-rule pipeline.
-YAML applicability alone does not demonstrate that a full evaluation of this
-rule is available through the CLI.</p>
-<p>With a configured CodeGraph integration, the result must identify the source
-revision, run, executed rules, and analysis completeness. To inspect a finding,
-take <code>run_id</code> from that result and <code>fingerprint</code> from the finding itself.
-Without a persisted run, <code>explain</code> cannot retrieve an explanation. The sections
-below describe release gate adoption conditions; enabling enforcement requires
-a verified analysis execution path in your integration.</p>
+<p>Run architecture analysis through <code>ci-update</code>. Supply the policy, project key,
+release control, and artifact path. The policy defines components, classification,
+and rules; release control selects the release-check profile.</p>
+<p>Follow the <a href="../reference/architecture-v1/execution-and-governance.html#teaching-run-with-complete-inputs">teaching run with complete inputs</a>:
+it provides Python sources, both configuration files, Git preparation, and CPG
+commands. Then follow the <a href="../reference/architecture-v1/execution-and-governance.html#create-and-explain-a-finding">finding and explanation example</a>.
+The direct import creates a persisted finding, and <code>explain</code> shows its rule,
+components, and source line. Together, these examples cover configuration through
+the analysis result.</p>
+<p>For an integration, take <code>run_id</code> from the result and <code>fingerprint</code> from the
+finding. The persisted result also identifies the source revision, executed rules,
+and analysis completeness. Use <code>validate</code> and <code>describe</code> to check the model before
+running analysis, then <code>explain</code> to inspect the result.</p>
 <h2  id="adopt-it-without-false-green-results"><span id="adopt_it_without_false_green_results"></span>Adopt it without false green results<a class="heading-anchor" href="#adopt-it-without-false-green-results" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Define components and classification, then inspect unclassified entities and
@@ -497,9 +497,8 @@ and checks JSON and negative cases; an internal Go test alone does not prove
 that a user can follow the procedure.</p>
 <p>The current v1 catalog contains three generic templates and eleven language
 presets: 1C, C, C++, C#, Go, Java, JavaScript, Kotlin, PHP, Python, and
-TypeScript. A
-neighbouring language does not imply support: capabilities and fixture
-qualification are evaluated independently.</p>
+TypeScript. Each language has independent capability checks and source-backed
+fixture qualification.</p>
 <h2  id="compatibility-and-recovery"><span id="compatibility_and_recovery"></span>Compatibility and recovery<a class="heading-anchor" href="#compatibility-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Canonical results are stored in <code>gocpg_architecture_results</code> and headed by
 <code>cpg_architecture_result_heads</code>. The <code>architecture_adoption_ledger.v1</code>
@@ -579,12 +578,14 @@ that the finding is revision-bound and represented in the release artifact. This
 is a production-integration check; it does not replace the user-facing commands
 above with an internal test.</p>
 <h3  id="what-counts-as-a-fix"><span id="what_counts_as_a_fix"></span>What counts as a fix<a class="heading-anchor" href="#what-counts-as-a-fix" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>In the example, an import from <code>src/ui</code> to <code>src/storage</code> creates a
-<code>FAIL_VIOLATIONS</code> finding. Moving the access through an allowed application
-component removes the finding after a new CPG run. If an import cannot be
-resolved or classification is incomplete, the result does not become green
-automatically: it remains <code>BLOCKED_INCOMPLETE</code>, and remediation restores graph
-facts, capabilities, or governance.</p>
+<p>Verify a fix by running analysis for the changed revision. Compare findings,
+executed rules, completeness, and the final status.</p>
+<p>In the <a href="../reference/architecture-v1/execution-and-governance.html#fix-the-source-and-repeat-the-check">tested continuation</a>,
+formatting moves into <code>greet</code> and the direct import disappears. Rebuilding the
+graph changes <code>finding_count</code> from 1 to 0 while preserving the function result.
+This minimal project loses its only relationship, so the coverage check returns
+<code>BLOCKED_INCOMPLETE</code> with reason <code>canonical_coverage_incomplete</code>. The result
+reports finding removal and coverage separately.</p>
 <h2  id="choosing-the-next-section"><span id="choosing_the_next_section"></span>Choosing the next section<a class="heading-anchor" href="#choosing-the-next-section" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>If files have no owner, start with the <a href="#architecture-model">model</a> and
 <a href="#architecture-rule-dsl">DSL</a>. If the rule already reports a finding, read the
