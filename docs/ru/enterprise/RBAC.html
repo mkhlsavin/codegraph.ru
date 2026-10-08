@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Назначьте роли и разрешения пользователям CodeGraph. Настройте корпоративную идентификацию и проверьте доступ через API, интерфейс и MCP.">
-  <meta name="cg:build-commit" content="1ff9b2d5bb96abd37e10c02375512a6fef915b1f">
+  <meta name="cg:build-commit" content="afb042f70b9bd6d25b184952a54e0672349e04e2">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="RBAC и авторизация — Документация CodeGraph">
@@ -191,54 +191,32 @@
 <tr>
 <th scope="col">Слой</th>
 <th scope="col">Что контролирует</th>
-<th scope="col">Основная реализация</th>
+<th scope="col">Что настраивает администратор</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Роли пользователей</td>
-<td>Разрешения пользователей для зависимостей маршрутов и логики приложения</td>
-<td><code>Permission</code>, <code>Role</code>, <code>ROLE_PERMISSIONS</code>, <code>has_permission()</code></td>
+<td>Роль пользователя</td>
+<td>Операции, доступные пользователю</td>
+<td><code>viewer</code>, <code>analyst</code>, <code>reviewer</code> или <code>admin</code></td>
 </tr>
 <tr>
-<td>Разрешения машинных учётных записей</td>
-<td>Доступ API-ключей и сервисных учётных записей к маршрутам API/MCP</td>
-<td><code>MachinePrincipal</code>, <code>API_ROUTE_SCOPE_MAP</code>, <code>MCP_ROUTE_SCOPE_MAP</code>, <code>authorize_machine_request()</code></td>
+<td>Разрешения машинной учётной записи</td>
+<td>Операции через API и MCP</td>
+<td>Scope и разрешённые интерфейсы ключа или сервисной учётной записи</td>
 </tr>
 <tr>
-<td>Область группы и проекта</td>
-<td>Членство в группах и доступ к выбранным проектам в установках с несколькими группами</td>
-<td><code>GroupRole</code>, <code>ProjectScopeMode</code>, <code>UserGroupAccess</code>, <code>UserProjectAccess</code>, репозитории проектов</td>
+<td>Доступ к группам и проектам</td>
+<td>Проекты, с которыми работает учётная запись</td>
+<td>Членство в группах и доступ ко всем или выбранным проектам</td>
 </tr>
 </tbody>
 </table></div>
 <p>Аутентификация определяет пользователя или машинного субъекта доступа. Авторизация проверяет разрешения роли, строки scope, разрешённые интерфейсы, ограничения группы и проекта. Middleware выполняет дополнительные проверки безопасности.</p>
 <h2  id="polzovatelskie-roli-i-razresheniya"><span id="polzovatelskie_roli_i_razresheniya"></span>Пользовательские роли и разрешения<a class="heading-anchor" href="#polzovatelskie-roli-i-razresheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <h3 id="roli">Роли<a class="heading-anchor" href="#roli" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Роли пользователя определены в двух enum для разных границ:</p>
+<p>Выберите роль по доступным операциям:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Роли"><table data-columns="3"><caption class="sr-only">Роли</caption>
-<thead>
-<tr>
-<th scope="col">Enum</th>
-<th scope="col">Источник</th>
-<th scope="col">Назначение</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Role</code></td>
-<td><code>src/api/auth/tokens/permissions.py</code></td>
-<td>Проверки разрешений в зависимостях аутентификации</td>
-</tr>
-<tr>
-<td><code>UserRole</code></td>
-<td><code>src/api/database/models_base.py</code></td>
-<td>Роль пользователя, сохранённая в базе приложения</td>
-</tr>
-</tbody>
-</table></div>
-<p>Оба enum сейчас используют одинаковые значения:</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Роли, таблица 2"><table data-columns="3"><caption class="sr-only">Роли, таблица 2</caption>
 <thead>
 <tr>
 <th scope="col">Роль</th>
@@ -269,16 +247,14 @@
 </tr>
 </tbody>
 </table></div>
-<p><code>src/api/dependencies.py::require_role()</code> трактует роли как иерархию: <code>viewer &lt; analyst &lt; reviewer &lt; admin</code>.</p>
+<p>Проверка минимальной роли использует иерархию: <code>viewer &lt; analyst &lt; reviewer &lt; admin</code>.</p>
 <h3  id="proverka-razresheniy"><span id="proverka_razresheniy"></span>Проверка разрешений<a class="heading-anchor" href="#proverka-razresheniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p><code>Permission</code> сейчас содержит 31 значение, включая <code>admin:all</code>.</p>
-<p>Особенности реализации:</p>
+<p>Правила предоставления разрешений:</p>
 <ul>
-<li><code>ROLE_PERMISSIONS[Role.ADMIN]</code> хранит только <code>{Permission.ADMIN_ALL}</code>.</li>
-<li><code>get_role_permissions(Role.ADMIN)</code> возвращает этот набор без разворачивания во все разрешения.</li>
-<li><code>has_permission(Role.ADMIN, ...)</code> возвращает <code>True</code> для любого запрошенного разрешения.</li>
-<li>Явные scope также дают доступ, если строка совпадает с <code>Permission.value</code>.</li>
-<li>Scope <code>admin:all</code> проходит все проверки разрешений в <code>has_permission()</code> и обходит проверку машинного scope.</li>
+<li>Роль <code>admin</code> разрешает любые операции из каталога.</li>
+<li>Явный scope предоставляет разрешение, если его строка совпадает со значением в каталоге.</li>
+<li>Scope <code>admin:all</code> разрешает все операции при проверке ролевых и машинных разрешений.</li>
 </ul>
 <h3  id="proverka-rolevogo-razresheniya"><span id="proverka_rolevogo_razresheniya"></span>Проверка ролевого разрешения<a class="heading-anchor" href="#proverka-rolevogo-razresheniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
 <p>Из корня исходного репозитория CodeGraph с установленными Python-зависимостями
@@ -694,7 +670,6 @@
 </table></div>
 <p>Администратор создаёт локальную учётную запись через <code>POST /api/v1/admin/identity/users</code> и задаёт её роль; значение по умолчанию — <code>analyst</code>. Ответ содержит одноразово раскрываемый пароль. Локальные пароли хешируются через <code>bcrypt</code>. Для выхода вызовите <code>DELETE /api/v1/me/logout</code> с текущим Bearer-токеном: маршрут добавит токен в список отозванных.</p>
 <h3  id="jwt-bearer-tokeny"><span id="jwt_bearer_tokeny"></span>JWT Bearer-токены<a class="heading-anchor" href="#jwt-bearer-tokeny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Реализация JWT находится в <code>src/api/auth/tokens/jwt_handler.py</code>.</p>
 <p>Поля <code>TokenPayload</code>:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="JWT Bearer-токены"><table data-columns="2"><caption class="sr-only">JWT Bearer-токены</caption>
 <thead>
@@ -906,7 +881,6 @@
 </tbody>
 </table></div>
 <h3 id="oauth2oidc">OAuth2/OIDC<a class="heading-anchor" href="#oauth2oidc" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Реализация OAuth находится в <code>src/api/auth/providers/oauth.py</code>; маршруты находятся в <code>auth_external_routes.py</code>.</p>
 <p>Поддерживаемые провайдеры:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="OAuth2/OIDC"><table data-columns="2"><caption class="sr-only">OAuth2/OIDC</caption>
 <thead>
@@ -967,7 +941,6 @@
 </table></div>
 <p>Пользователи OAuth получают JWT с ролью, сохранённой в базе данных.</p>
 <h3  id="ldapactive-directory"><span id="ldapactive_directory"></span>LDAP/Active Directory<a class="heading-anchor" href="#ldapactive-directory" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h3>
-<p>Реализация LDAP находится в <code>src/api/auth/providers/ldap_auth.py</code>; подключение маршрутов находится в <code>auth_external_routes.py</code>.</p>
 <p>Маршруты:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="LDAP/Active Directory"><table data-columns="2"><caption class="sr-only">LDAP/Active Directory</caption>
 <thead>
@@ -1303,7 +1276,6 @@
 </table></div>
 <p><code>sourcecraft</code>, <code>gitverse</code> и <code>github</code> проверяют подпись HMAC. <code>gitlab</code> сравнивает токен за постоянное время. Проверка возраста использует <code>security.webhook_max_age_seconds</code>, только если запрос содержит непустой заголовок времени поддерживаемой платформы. Отсутствующий заголовок не отклоняется этой проверкой. Она не ведёт список уже принятых событий и сама по себе не предотвращает повторную отправку в допустимом окне. GitLab не имеет такой проверки времени.</p>
 <h2  id="audit-i-sobytiya-dlya-siem"><span id="audit_i_sobytiya_dlya_siem"></span>Аудит и события для SIEM<a class="heading-anchor" href="#audit-i-sobytiya-dlya-siem" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Действия аудита определены в <code>src/api/logging/audit_logger.py</code>.</p>
 <p>Действия, связанные с авторизацией:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Аудит и события для SIEM"><table data-columns="2"><caption class="sr-only">Аудит и события для SIEM</caption>
 <thead>
