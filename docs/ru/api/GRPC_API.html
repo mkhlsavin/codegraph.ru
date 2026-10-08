@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Практический справочник по текущему асинхронному gRPC-клиенту GoCPG, protobuf-сервисам, защите соединения, путям, дедлайнам и восстановлению.">
-  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
+  <meta name="cg:build-commit" content="c8d0271bc54991b939bae9f5e1a1a386b49b78cb">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="gRPC API — Документация CodeGraph">
@@ -205,9 +205,8 @@
 </tr>
 </tbody>
 </table></div>
-<p>Сгенерированные Python-классы для удалённых вызовов находятся в <code>src/services/gocpg/proto/gocpg/v1/</code>. Поддерживаемый
-клиент реализован в <code>src/services/gocpg/runtime/grpc_transport.py</code> и соседних файлах с группами методов
-<code>grpc_transport_*.py</code>.</p>
+<p>Сгенерированные Python-классы для удалённых вызовов находятся в <code>src/services/gocpg/proto/gocpg/v1/</code>.
+Для примера ниже импортируйте готовый клиент <code>GrpcTransport</code> из <code>src.services.gocpg</code>.</p>
 <h2  id="nastroyka-soedineniya"><span id="nastroyka_soedineniya"></span>Настройка соединения<a class="heading-anchor" href="#nastroyka-soedineniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Настройка соединения"><table data-columns="3"><caption class="sr-only">Настройка соединения</caption>
 <thead>
@@ -246,17 +245,27 @@
 <h2  id="poluchenie-statistiki-grafa"><span id="poluchenie_statistiki_grafa"></span>Получение статистики графа<a class="heading-anchor" href="#poluchenie-statistiki-grafa" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Подготовьте Python-окружение по <a href="../getting-started/INSTALLATION.html">руководству установки</a>.
 Выполните пример из корня репозитория CodeGraph с активированным окружением. Нужен gRPC-сервер
-GoCPG по адресу <code>localhost:50051</code>, которому доступен выбранный CPG. Пример использует настройки
-локального соединения по умолчанию из таблицы выше.</p>
+GoCPG, которому доступен выбранный CPG. По умолчанию пример подключается к <code>localhost:50051</code>.
+Для другого адреса задайте <code>CODEGRAPH_GRPC_HOST</code> и <code>CODEGRAPH_GRPC_PORT</code> в терминале.
+Для защищённого соединения укажите путь к корневому CA в <code>CODEGRAPH_GRPC_TLS_CERT</code>
+и настроенный ключ API в <code>CODEGRAPH_GRPC_API_KEY</code>. Эти переменные читает код примера
+и передаёт значения клиенту; он не загружает настройки из <code>config.yaml</code>.</p>
 <p>Сохраните следующий код в <code>grpc_example.py</code>:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleNamespace</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.services.gocpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrpcTransport</span>
 
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">transport</span> <span class="o">=</span> <span class="n">GrpcTransport</span><span class="p">()</span>
+    <span class="n">connection</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">(</span>
+        <span class="n">grpc_host</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_HOST"</span><span class="p">,</span> <span class="s2">"localhost"</span><span class="p">),</span>
+        <span class="n">grpc_port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_PORT"</span><span class="p">,</span> <span class="s2">"50051"</span><span class="p">)),</span>
+        <span class="n">grpc_api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_API_KEY"</span><span class="p">),</span>
+        <span class="n">grpc_tls_cert</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_TLS_CERT"</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">transport</span> <span class="o">=</span> <span class="n">GrpcTransport</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">connection</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">transport</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"CODEGRAPH_CPG_PATH"</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_nodes</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">total_edges</span><span class="p">)</span>
@@ -328,16 +337,10 @@ python<span class="w"> </span>grpc_example.py
 внутри защищённой локальной сети.</p>
 <p>Python gRPC-клиент получает путь к базе через <code>db_path</code>. В MCP-вызовах агента хранилище
 определяется из контекста проекта и среды выполнения.</p>
-<h2  id="istochniki-istiny"><span id="istochniki_istiny"></span>Источники истины<a class="heading-anchor" href="#istochniki-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<ul>
-<li><code>src/services/gocpg/runtime/grpc_transport.py</code> — канал и основные CPG-операции.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_query.py</code> — query- и metadata-методы.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_pattern.py</code> — pattern-методы.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_navigation.py</code> — navigation-методы.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_lifecycle.py</code> — lifecycle- и refresh-методы.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_errors.py</code> — стабильное преобразование ошибок.</li>
-<li><code>gocpg/api/proto/gocpg/v1/</code> — авторитетные protobuf-контракты сервисов и сообщений.</li>
-</ul>
+<h2  id="istochniki-istiny"><span id="istochniki_istiny"></span><span id="spravka-i-diagnostika"></span><span id="spravka_i_diagnostika"></span>Справка и диагностика<a class="heading-anchor" href="#istochniki-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p><a href="../getting-started/INSTALLATION.html">Руководство установки</a> описывает подготовку окружения CodeGraph и GoCPG.
+<a href="../guides/TROUBLESHOOTING.html">Руководство по диагностике</a> поможет проверить конфигурацию и восстановить подключение.
+Контракты сообщений и удалённых вызовов указаны в таблице сервисов выше.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -367,7 +370,7 @@ python<span class="w"> </span>grpc_example.py
 <li><a href="#puti-i-dedlayny" class="level-2">Пути и дедлайны</a></li>
 <li><a href="#obrabotka-sboev" class="level-2">Обработка сбоев</a></li>
 <li><a href="#granitsa-bezopasnosti" class="level-2">Граница безопасности</a></li>
-<li><a href="#istochniki-istiny" class="level-2">Источники истины</a></li>
+<li><a href="#istochniki-istiny" class="level-2">Справка и диагностика</a></li>
       </ul>
     </aside>
   </div>

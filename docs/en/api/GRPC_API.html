@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Practical reference for the current GoCPG async gRPC client, protobuf services, connection security, paths, deadlines, and recovery.">
-  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
+  <meta name="cg:build-commit" content="c8d0271bc54991b939bae9f5e1a1a386b49b78cb">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="gRPC API — Documentation">
@@ -165,9 +165,7 @@
       <!-- Content -->
       <article class="doc-content">
         <p><code>GrpcTransport</code> is CodeGraph&rsquo;s async Python client for a running GoCPG gRPC server. It returns
-the same Pydantic result models used by the subprocess transport. This page explains the client
-boundary and routes readers to the canonical protobuf files instead of copying every request
-field into a second, manually maintained schema.</p>
+the same Pydantic result models used by the subprocess transport. This page explains client setup, calls, and results. Protobuf files define message fields and RPC signatures.</p>
 <h2  id="canonical-services"><span id="canonical_services"></span>Canonical services<a class="heading-anchor" href="#canonical-services" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Canonical services"><table data-columns="3"><caption class="sr-only">Canonical services</caption>
 <thead>
@@ -205,9 +203,8 @@ field into a second, manually maintained schema.</p>
 </tr>
 </tbody>
 </table></div>
-<p>The generated Python stubs live under <code>src/services/gocpg/proto/gocpg/v1/</code>. The maintained
-client implementation is split across <code>src/services/gocpg/runtime/grpc_transport.py</code> and the
-neighboring <code>grpc_transport_*.py</code> mixins.</p>
+<p>The generated Python stubs are in <code>src/services/gocpg/proto/gocpg/v1/</code>.
+For the example below, import the ready-to-use <code>GrpcTransport</code> client from <code>src.services.gocpg</code>.</p>
 <h2  id="connection-configuration"><span id="connection_configuration"></span>Connection configuration<a class="heading-anchor" href="#connection-configuration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Connection configuration"><table data-columns="3"><caption class="sr-only">Connection configuration</caption>
 <thead>
@@ -247,17 +244,27 @@ authentication.</p>
 <h2  id="read-graph-statistics"><span id="read_graph_statistics"></span>Read graph statistics<a class="heading-anchor" href="#read-graph-statistics" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Prepare the Python environment using the <a href="../getting-started/INSTALLATION.html">installation guide</a>.
 Run the example from the CodeGraph repository root with that environment activated. A GoCPG gRPC
-server must be available at <code>localhost:50051</code>, and the server must have access to the selected CPG.
-This example uses the default local connection settings shown above.</p>
+server must have access to the selected CPG. The example connects to <code>localhost:50051</code> by default.
+For another address, set <code>CODEGRAPH_GRPC_HOST</code> and <code>CODEGRAPH_GRPC_PORT</code> in the terminal.
+For a secure connection, set <code>CODEGRAPH_GRPC_TLS_CERT</code> to your root CA path
+and <code>CODEGRAPH_GRPC_API_KEY</code> to the configured API key. The example reads these variables
+and passes their values to the client; it does not load settings from <code>config.yaml</code>.</p>
 <p>Save the following code as <code>grpc_example.py</code>:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleNamespace</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">src.services.gocpg</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrpcTransport</span>
 
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">transport</span> <span class="o">=</span> <span class="n">GrpcTransport</span><span class="p">()</span>
+    <span class="n">connection</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">(</span>
+        <span class="n">grpc_host</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_HOST"</span><span class="p">,</span> <span class="s2">"localhost"</span><span class="p">),</span>
+        <span class="n">grpc_port</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_PORT"</span><span class="p">,</span> <span class="s2">"50051"</span><span class="p">)),</span>
+        <span class="n">grpc_api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_API_KEY"</span><span class="p">),</span>
+        <span class="n">grpc_tls_cert</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"CODEGRAPH_GRPC_TLS_CERT"</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">transport</span> <span class="o">=</span> <span class="n">GrpcTransport</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">connection</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">transport</span><span class="o">.</span><span class="n">stats</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"CODEGRAPH_CPG_PATH"</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_nodes</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">total_edges</span><span class="p">)</span>
@@ -326,16 +333,10 @@ limit the server&rsquo;s filesystem access to the required paths. Use plaintext 
 inside a protected local network boundary.</p>
 <p>Raw <code>db_path</code> belongs to the Python gRPC client. Agent-facing MCP calls resolve storage through
 project/runtime context.</p>
-<h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/services/gocpg/runtime/grpc_transport.py</code> — channel management and core CPG operations.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_query.py</code> — query and metadata methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_pattern.py</code> — pattern methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_navigation.py</code> — navigation methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_lifecycle.py</code> — lifecycle and refresh methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_errors.py</code> — stable error mapping.</li>
-<li><code>gocpg/api/proto/gocpg/v1/</code> — authoritative protobuf service and message contracts.</li>
-</ul>
+<h2  id="source-of-truth"><span id="help-and-troubleshooting"></span><span id="help_and_troubleshooting"></span><span id="source_of_truth"></span>Help and troubleshooting<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>See the <a href="../getting-started/INSTALLATION.html">installation guide</a> to prepare the CodeGraph and GoCPG environment,
+and the <a href="../guides/TROUBLESHOOTING.html">troubleshooting guide</a> for configuration and connection checks.
+The service table above identifies the message and RPC contracts.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -365,7 +366,7 @@ project/runtime context.</p>
 <li><a href="#paths-and-deadlines" class="level-2">Paths and deadlines</a></li>
 <li><a href="#failure-handling" class="level-2">Failure handling</a></li>
 <li><a href="#security-boundary" class="level-2">Security boundary</a></li>
-<li><a href="#source-of-truth" class="level-2">Source of truth</a></li>
+<li><a href="#source-of-truth" class="level-2">Help and troubleshooting</a></li>
       </ul>
     </aside>
   </div>
