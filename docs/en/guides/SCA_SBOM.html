@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Generate a project SBOM and audit dependencies against selected vulnerability sources. Inspect the findings and export a SARIF report.">
-  <meta name="cg:build-commit" content="21e8a8c753489cb6907551a8a7eb20f62c7bae3d">
+  <meta name="cg:build-commit" content="9fc77705391a40891c757780f803468f06dcc10c">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Generate an SBOM and audit dependencies — Documentation">
@@ -151,7 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html" class="active" aria-current="page">Generate an SBOM and audit dependencies</a></li>
@@ -199,7 +198,7 @@
         <h1>Generate an SBOM and audit dependencies</h1>
         <p class="doc-lead">Generate a project SBOM and audit dependencies against selected vulnerability sources. Inspect the findings and export a SARIF report.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-09">Updated: 2026-10-09</time></div>
       </header>
 
       <!-- Content -->
@@ -237,15 +236,15 @@ repository root. Use a new <code>sbom-demo</code> directory; the commands create
 The file <code>sbom-demo/sbom.json</code> contains <code>bomFormat: CycloneDX</code>, <code>specVersion: 1.5</code>,
 and a <code>requests</code> component. You do not need to install the package: the command
 reads its dependency declaration. <code>security.local_cli_enabled</code> enables the CLI
-for local development. Without it, the CLI reports that it is disabled; exit code 0
-does not prove that an SBOM was created. Check both the file and its contents.</p>
+for local development. Without it, the CLI reports that it is disabled and exits with code 0.
+After generation, check both the file and its contents.</p>
 <p>In the current implementation, this example produces an empty <code>version</code> and
 <code>bom-ref: pkg:requests@</code>. The exporter uses the resolved version, which scanning
-this <code>requirements.txt</code> did not establish. Declaring <code>==2.31.0</code> does not guarantee
-an exact version in the SBOM. This output cannot serve as a complete version
-inventory for a security assessment.</p>
+this <code>requirements.txt</code> did not establish. A security assessment needs an inventory
+with exact component versions. Compare the export with the project&rsquo;s resolved
+dependency versions and supply the missing information.</p>
 <h2  id="generate-the-inventory"><span id="generate_the_inventory"></span>Generate the inventory<a class="heading-anchor" href="#generate-the-inventory" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">generate</span> <span class="p">-</span><span class="n">-project</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">cyclonedx</span> <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sbom</span><span class="p">.</span><span class="n">json</span><span class="p">&gt;</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">generate</span> <span class="p">-</span><span class="n">-project</span> <span class="s2">"&lt;project&gt;"</span> <span class="p">-</span><span class="n">-format</span> <span class="n">cyclonedx</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;sbom.json&gt;"</span>
 </code></pre></div>
 
 <p>Replace <code>&lt;project&gt;</code> with a registered project name and <code>&lt;sbom.json&gt;</code> with the
@@ -255,15 +254,14 @@ directory. Check which source files it contains before running the command.</p>
 <p>Format choices are <code>--format {cyclonedx,spdx}</code>; the default is <code>cyclonedx</code>.
 Retain the source revision, command, output file, and SHA-256 digest.
 <code>No dependencies found.</code> returns 0 without creating an SBOM. Check the directory
-and supported dependency files; this result does not prove that the project has
-no third-party components.</p>
+and supported dependency files, then rerun generation for the intended sources.</p>
 <h2  id="audit-vulnerabilities"><span id="audit_vulnerabilities"></span>Audit vulnerabilities<a class="heading-anchor" href="#audit-vulnerabilities" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><code>sbom audit</code> scans the selected project manifests again and checks the resulting dependency graph through the chosen sources. Generate the SBOM and run the audit against the same revision to match components to findings.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">audit</span> <span class="p">`</span>
-  <span class="p">-</span><span class="n">-project</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-project</span> <span class="s2">"&lt;project&gt;"</span> <span class="p">`</span>
   <span class="p">-</span><span class="n">-format</span> <span class="n">sarif</span> <span class="p">`</span>
   <span class="p">-</span><span class="n">-fail-on</span> <span class="n">high</span> <span class="p">`</span>
-  <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sca</span><span class="p">.</span><span class="n">sarif</span><span class="p">&gt;</span>
+  <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;sca.sarif&gt;"</span>
 </code></pre></div>
 
 <p>Audit the directory from the complete example and inspect the findings:</p>
