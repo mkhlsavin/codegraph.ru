@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Assign roles and permissions to CodeGraph users. Configure corporate identity mapping and check access through the API, user interface, and MCP.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="afb042f70b9bd6d25b184952a54e0672349e04e2">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="RBAC and Authorization — Documentation">
@@ -163,7 +163,7 @@
         <h1>RBAC and Authorization</h1>
         <p class="doc-lead">Assign roles and permissions to CodeGraph users. Configure corporate identity mapping and check access through the API, user interface, and MCP.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -172,60 +172,17 @@
 machine-account access. User roles, project scope and machine-account permissions are
 separate authorization layers. Start with the role permissions, then check the
 project assignments and machine-account scopes for the request.</p>
-<h2  id="scope-and-source-of-truth"><span id="scope_and_source_of_truth"></span>Scope and Source of Truth<a class="heading-anchor" href="#scope-and-source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>This document describes the implementation currently present under <code>src/</code>.</p>
-<p>Canonical code surfaces:</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Scope and Source of Truth"><table data-columns="2"><caption class="sr-only">Scope and Source of Truth</caption>
-<thead>
-<tr>
-<th scope="col">Area</th>
-<th scope="col">Source</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Permission enum and role mapping</td>
-<td><code>src/api/auth/tokens/permissions.py</code></td>
-</tr>
-<tr>
-<td>Request auth context and FastAPI auth dependencies</td>
-<td><code>src/api/auth/providers/middleware.py</code></td>
-</tr>
-<tr>
-<td>JWT creation, validation, and blacklist</td>
-<td><code>src/api/auth/tokens/jwt_handler.py</code></td>
-</tr>
-<tr>
-<td>User API-key helpers</td>
-<td><code>src/api/auth/tokens/api_keys.py</code></td>
-</tr>
-<tr>
-<td>Machine credential catalog and authorization</td>
-<td><code>src/api/auth/machine/machine_access.py</code></td>
-</tr>
-<tr>
-<td>Machine audit, project scope, and optional mTLS binding</td>
-<td><code>src/api/auth/machine/machine_runtime.py</code></td>
-</tr>
-<tr>
-<td>API-key/service-account middleware</td>
-<td><code>src/api/middleware/scope_enforcement.py</code></td>
-</tr>
-<tr>
-<td>Path validation middleware</td>
-<td><code>src/api/middleware/path_validation.py</code></td>
-</tr>
-<tr>
-<td>Local, OAuth, LDAP, API-key, service-account routes</td>
-<td><code>src/api/routers/auth_suite/*</code></td>
-</tr>
-<tr>
-<td>User, API-key, tenant, project-access, and service-account models</td>
-<td><code>src/api/database/models_*.py</code></td>
-</tr>
-</tbody>
-</table></div>
-<p>Compatibility imports are intentionally preserved by <code>src/api/auth/__init__.py</code>, which extends the package path with <code>machine</code>, <code>providers</code>, and <code>tokens</code>. New references should prefer the physical module paths above.</p>
+<h2  id="scope-and-source-of-truth"><span id="check-access"></span><span id="check_access"></span><span id="scope_and_source_of_truth"></span>Check access<a class="heading-anchor" href="#scope-and-source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Configure access for the user&rsquo;s or integration&rsquo;s task:</p>
+<ol>
+<li>Choose a user role: <code>viewer</code> for reading, <code>analyst</code> for analysis, <code>reviewer</code> for reviews, or <code>admin</code> for administration.</li>
+<li>Assign the groups and projects the user will work with. The role determines available operations; project assignments determine where the user can work.</li>
+<li>Create a service account for CI, bots, and MCP clients. Set its scopes, allowed interfaces, and projects.</li>
+<li>Run the required operation with that account and check the result in the audit log.</li>
+</ol>
+<p>See the <a href="OAUTH_LDAP.html">OAuth2/OIDC and LDAP/AD guide</a> to connect corporate identities.
+Use the <a href="../api/REST_API.html">REST API reference</a> to send requests with the selected credentials.
+See the <a href="SIEM.html">SIEM guide</a> to send audit events to your monitoring system.</p>
 <h2  id="runtime-model"><span id="runtime_model"></span>Runtime Model<a class="heading-anchor" href="#runtime-model" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>CodeGraph uses three related authorization layers:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Runtime Model"><table data-columns="3"><caption class="sr-only">Runtime Model</caption>
@@ -233,54 +190,32 @@ project assignments and machine-account scopes for the request.</p>
 <tr>
 <th scope="col">Layer</th>
 <th scope="col">What it controls</th>
-<th scope="col">Main implementation</th>
+<th scope="col">Administrator settings</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>User RBAC</td>
-<td>Human user role permissions for route dependencies and application logic</td>
-<td><code>Permission</code>, <code>Role</code>, <code>ROLE_PERMISSIONS</code>, <code>has_permission()</code></td>
+<td>User role</td>
+<td>Operations available to a user</td>
+<td><code>viewer</code>, <code>analyst</code>, <code>reviewer</code>, or <code>admin</code></td>
 </tr>
 <tr>
-<td>Machine scopes</td>
-<td>API-key and service-account access to API/MCP routes</td>
-<td><code>MachinePrincipal</code>, <code>API_ROUTE_SCOPE_MAP</code>, <code>MCP_ROUTE_SCOPE_MAP</code>, <code>authorize_machine_request()</code></td>
+<td>Machine-account permissions</td>
+<td>Operations through API and MCP</td>
+<td>Scopes and allowed interfaces for the key or service account</td>
 </tr>
 <tr>
-<td>Tenant/project scope</td>
-<td>Group membership and selected project access in multi-tenant installations</td>
-<td><code>GroupRole</code>, <code>ProjectScopeMode</code>, <code>UserGroupAccess</code>, <code>UserProjectAccess</code>, project repositories</td>
+<td>Group and project access</td>
+<td>Projects available to the account</td>
+<td>Group membership and access to all or selected projects</td>
 </tr>
 </tbody>
 </table></div>
 <p>Authentication methods produce either a user identity or a machine principal. Authorization then checks role permissions, raw scopes, interface allowlists, tenant/project restrictions, and middleware-specific security controls.</p>
 <h2  id="user-roles-and-permissions"><span id="user_roles_and_permissions"></span>User Roles and Permissions<a class="heading-anchor" href="#user-roles-and-permissions" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <h3 id="roles">Roles<a class="heading-anchor" href="#roles" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>User roles are defined twice for separate boundaries:</p>
+<p>Choose a role by the operations it allows:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Roles"><table data-columns="3"><caption class="sr-only">Roles</caption>
-<thead>
-<tr>
-<th scope="col">Enum</th>
-<th scope="col">Source</th>
-<th scope="col">Use</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Role</code></td>
-<td><code>src/api/auth/tokens/permissions.py</code></td>
-<td>Auth dependency permission checks</td>
-</tr>
-<tr>
-<td><code>UserRole</code></td>
-<td><code>src/api/database/models_base.py</code></td>
-<td>Persisted user role in the application database</td>
-</tr>
-</tbody>
-</table></div>
-<p>Both currently use the same values:</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Roles, table 2"><table data-columns="3"><caption class="sr-only">Roles, table 2</caption>
 <thead>
 <tr>
 <th scope="col">Role</th>
@@ -311,16 +246,14 @@ project assignments and machine-account scopes for the request.</p>
 </tr>
 </tbody>
 </table></div>
-<p><code>src/api/dependencies.py::require_role()</code> treats this as an ordered hierarchy: <code>viewer &lt; analyst &lt; reviewer &lt; admin</code>.</p>
+<p>Minimum-role checks use this hierarchy: <code>viewer &lt; analyst &lt; reviewer &lt; admin</code>.</p>
 <h3  id="permission-behavior"><span id="permission_behavior"></span>Permission Behavior<a class="heading-anchor" href="#permission-behavior" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p><code>Permission</code> currently contains 31 values, including <code>admin:all</code>.</p>
-<p>Important runtime details:</p>
+<p>Permission grants follow these rules:</p>
 <ul>
-<li><code>ROLE_PERMISSIONS[Role.ADMIN]</code> stores only <code>{Permission.ADMIN_ALL}</code>.</li>
-<li><code>get_role_permissions(Role.ADMIN)</code> returns that raw set; it does not expand to every permission.</li>
-<li><code>has_permission(Role.ADMIN, ...)</code> returns <code>True</code> for every requested permission.</li>
-<li>Explicit scopes also grant permissions when the scope string matches the required <code>Permission.value</code>.</li>
-<li>The <code>admin:all</code> scope grants all permission checks in <code>has_permission()</code> and bypasses machine scope checks.</li>
+<li>The <code>admin</code> role allows every operation in the catalog.</li>
+<li>An explicit scope grants a permission when its string matches the catalog value.</li>
+<li>The <code>admin:all</code> scope allows every operation in role and machine-scope checks.</li>
 </ul>
 <h3  id="check-a-role-permission"><span id="check_a_role_permission"></span>Check a role permission<a class="heading-anchor" href="#check-a-role-permission" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>From the CodeGraph source root with its Python dependencies installed, save this example
@@ -736,7 +669,6 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 </table></div>
 <p>An administrator creates a local account through <code>POST /api/v1/admin/identity/users</code> and assigns its role; the default is <code>analyst</code>. The response discloses the password once. Local passwords are hashed with <code>bcrypt</code>. To log out, call <code>DELETE /api/v1/me/logout</code> with the current bearer token; the route adds that token to the blacklist.</p>
 <h3  id="jwt-bearer-tokens"><span id="jwt_bearer_tokens"></span>JWT Bearer Tokens<a class="heading-anchor" href="#jwt-bearer-tokens" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>JWT code lives in <code>src/api/auth/tokens/jwt_handler.py</code>.</p>
 <p><code>TokenPayload</code> fields:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="JWT Bearer Tokens"><table data-columns="2"><caption class="sr-only">JWT Bearer Tokens</caption>
 <thead>
@@ -948,7 +880,6 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 </tbody>
 </table></div>
 <h3 id="oauth2oidc">OAuth2/OIDC<a class="heading-anchor" href="#oauth2oidc" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>OAuth code lives in <code>src/api/auth/providers/oauth.py</code>; routes live in <code>auth_external_routes.py</code>.</p>
 <p>Supported provider implementations:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="OAuth2/OIDC"><table data-columns="2"><caption class="sr-only">OAuth2/OIDC</caption>
 <thead>
@@ -1009,7 +940,6 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 </table></div>
 <p>Configured OAuth users receive JWTs using their persisted database role.</p>
 <h3  id="ldapactive-directory"><span id="ldapactive_directory"></span>LDAP/Active Directory<a class="heading-anchor" href="#ldapactive-directory" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>LDAP code lives in <code>src/api/auth/providers/ldap_auth.py</code>; route integration exists in <code>auth_external_routes.py</code>.</p>
 <p>Routes:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="LDAP/Active Directory"><table data-columns="2"><caption class="sr-only">LDAP/Active Directory</caption>
 <thead>
@@ -1163,10 +1093,10 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 </tr>
 </tbody>
 </table></div>
-<p>An absent scope requirement does not establish anonymous route access. Authentication,
-webhook signatures and handler dependencies are separate checks.
-<code>authorize_machine_request()</code> still checks allowed interfaces and service-account
-project or group restrictions when no required scope is found for the path.</p>
+<p>Each route applies its authentication, webhook-signature and handler-dependency checks.
+<code>authorize_machine_request()</code> checks allowed interfaces and service-account project
+or group restrictions for every path. The scope map adds the required permission
+for the prefixes listed above.</p>
 <p>MCP route scope map:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Machine Scope Enforcement, table 2"><table data-columns="2"><caption class="sr-only">Machine Scope Enforcement, table 2</caption>
 <thead>
@@ -1184,10 +1114,10 @@ project or group restrictions when no required scope is found for the path.</p>
 </table></div>
 <p>For MCP only, <code>mcp:access</code> can be satisfied by aliases including <code>query:execute</code>, <code>scenarios:read</code>, <code>scenarios:execute</code>, <code>review:execute</code>, <code>stats:read</code>, <code>history:read</code>, and <code>admin:all</code>.</p>
 <p>Explicit endpoint scope checks can use:</p>
-<p>The following is a fragment for an existing FastAPI application, not a standalone script.
-It assumes <code>Depends</code> imported from <code>fastapi</code> and an existing <code>APIRouter</code> named <code>router</code>.
-Mount the handler and test allowed and denied requests with configured authentication;
-importing the helper alone does not verify route access.</p>
+<p>In your FastAPI application, import <code>Depends</code> from <code>fastapi</code> and create an
+<code>APIRouter</code> named <code>router</code>. Add the handler below and mount the router in the
+application. With authentication configured, send requests from accounts with
+and without the required scope to check both access outcomes.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.tokens.scope_enforcement</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_scope</span>
 
 <span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/example"</span><span class="p">)</span>
@@ -1345,7 +1275,6 @@ The main verification function is <code>verify_webhook_signature()</code>.</p>
 </table></div>
 <p><code>sourcecraft</code>, <code>gitverse</code>, and <code>github</code> use HMAC signature validation. <code>gitlab</code> uses constant-time token comparison. Timestamp age validation uses <code>security.webhook_max_age_seconds</code> only when the request supplies a nonempty supported timestamp header. This check does not reject a missing header or track previously accepted events, so it does not itself prevent repeats within the allowed window. GitLab has no timestamp check.</p>
 <h2  id="audit-and-siem-relevant-events"><span id="audit_and_siem_relevant_events"></span>Audit and SIEM-Relevant Events<a class="heading-anchor" href="#audit-and-siem-relevant-events" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Audit actions are defined in <code>src/api/logging/audit_logger.py</code>.</p>
 <p>Relevant authorization actions include:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Audit and SIEM-Relevant Events"><table data-columns="2"><caption class="sr-only">Audit and SIEM-Relevant Events</caption>
 <thead>
@@ -1510,7 +1439,7 @@ The main verification function is <code>verify_webhook_signature()</code>.</p>
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#scope-and-source-of-truth" class="level-2" aria-current="location">Scope and Source of Truth</a></li>
+        <li><a href="#scope-and-source-of-truth" class="level-2" aria-current="location">Check access</a></li>
 <li><a href="#runtime-model" class="level-2">Runtime Model</a></li>
 <li><a href="#user-roles-and-permissions" class="level-2">User Roles and Permissions</a></li>
 <li data-doc-toc-level="3" data-doc-parent="user-roles-and-permissions" hidden><a href="#roles" class="level-3">Roles</a></li>

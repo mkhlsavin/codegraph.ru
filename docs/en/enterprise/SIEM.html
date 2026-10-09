@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Configure Syslog, CEF or LEEF event handlers. Verify dispatch, in-memory buffering, failure recovery and receipt at the downstream SIEM.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Integrate CodeGraph security events with SIEM — Documentation">
@@ -308,8 +308,8 @@ For UDP, the receiver record confirms receipt. For TCP/TLS, it also shows indexi
 after the network send.</p>
 <h2  id="how-buffering-works"><span id="how_buffering_works"></span>How buffering works<a class="heading-anchor" href="#how-buffering-works" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><code>dispatch(event)</code> enqueues the event in process memory. A background thread sends
-pending events at <code>flush_interval_seconds</code> intervals. Failed sends are retried
-according to <code>retry_attempts</code> and <code>retry_backoff_seconds</code>.</p>
+pending events at <code>flush_interval_seconds</code> intervals. Failed sends return to the
+queue for the next flush, up to the total number of attempts set by <code>retry_attempts</code>.</p>
 <p>The queue holds <code>max_size</code> events. When full, a new event replaces the oldest one
 and increments <code>dropped</code>. A process restart creates a new queue. Use these properties
 to choose queue capacity and plan updates.</p>
@@ -337,12 +337,12 @@ handler sends the event. <code>dispatch_sync_detailed(event)</code> returns each
 </tr>
 <tr>
 <td><code>failed</code></td>
-<td>Failed send attempts.</td>
+<td>Events whose send attempts are exhausted.</td>
 <td>Check the address, transport and receiver.</td>
 </tr>
 <tr>
 <td><code>retried</code></td>
-<td>Retry attempts.</td>
+<td>Events scheduled for another send attempt.</td>
 <td>Identify the cause of unstable delivery.</td>
 </tr>
 <tr>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Inventory project dependencies and inspect vulnerability and license data. Generate an SBOM and choose the CLI or REST workflow for your project.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="c84373b2cd7617429be3e95b40f113998a07400a">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Scenario 20: Dependency analysis — Documentation">
@@ -151,8 +151,7 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
+
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +199,7 @@
         <h1>Scenario 20: Dependency analysis</h1>
         <p class="doc-lead">Inventory project dependencies and inspect vulnerability and license data. Generate an SBOM and choose the CLI or REST workflow for your project.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -233,7 +232,45 @@
 </tr>
 </tbody>
 </table></div>
+<h2  id="follow-a-concrete-inventory-example"><span id="follow_a_concrete_inventory_example"></span>Follow a concrete inventory example<a class="heading-anchor" href="#follow-a-concrete-inventory-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Prepare the project Python environment using the <a href="../CLI_GUIDE.html">CLI guide</a>. From the CodeGraph repository root, create a <code>dependency_example</code> directory and save this manifest as <code>dependency_example/package.json</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dependency-example"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.0.0"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"dependencies"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"express"</span><span class="p">:</span><span class="w"> </span><span class="s2">"4.18.2"</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"devDependencies"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"typescript"</span><span class="p">:</span><span class="w"> </span><span class="s2">"5.4.5"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Save the following program as <code>dependency_inventory.py</code> in the repository root:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.dependencies</span><span class="w"> </span><span class="kn">import</span> <span class="n">DependencyGraphBuilder</span>
+
+<span class="n">builder</span> <span class="o">=</span> <span class="n">DependencyGraphBuilder</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">include_dev</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">scan_project</span><span class="p">(</span><span class="s2">"dependency_example"</span><span class="p">,</span> <span class="n">include_dev</span><span class="o">=</span><span class="n">include_dev</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">packages</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="p">({</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">dep</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">"version_spec"</span><span class="p">:</span> <span class="n">dep</span><span class="o">.</span><span class="n">version_spec</span><span class="p">,</span>
+          <span class="s2">"is_dev"</span><span class="p">:</span> <span class="n">dep</span><span class="o">.</span><span class="n">is_dev</span><span class="p">,</span> <span class="s2">"is_direct"</span><span class="p">:</span> <span class="n">dep</span><span class="o">.</span><span class="n">is_direct</span><span class="p">}</span>
+         <span class="k">for</span> <span class="n">dep</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">dep</span><span class="p">:</span> <span class="n">dep</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">"include_dev"</span><span class="p">:</span> <span class="n">include_dev</span><span class="p">,</span> <span class="s2">"files"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">files</span><span class="p">),</span>
+                      <span class="s2">"packages"</span><span class="p">:</span> <span class="n">packages</span><span class="p">}))</span>
+</code></pre></div>
+
+<p>Run it in PowerShell:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">dependency_inventory</span><span class="p">.</span><span class="n">py</span>
+</code></pre></div>
+
+<p>The program prints two JSON objects. Both report one manifest in <code>files</code>. With <code>include_dev=true</code>, <code>packages</code> contains <code>express</code> with version specification <code>4.18.2</code> and <code>typescript</code> with <code>5.4.5</code>. With <code>include_dev=false</code>, it contains only <code>express</code>. Both packages are direct dependencies; <code>typescript</code> has <code>is_dev=true</code>.</p>
+<p><code>scan_project</code> discovers supported manifest files, selects their parsers and adds the parsed dependencies to the inventory. It applies the development filter while adding packages. This call reads the manifest and returns the graph in memory. Vulnerability-feed lookups and license assessment are separate steps. The two versions above are fixed example inputs for parsing, rather than version recommendations.</p>
 <h2  id="analyze-manifests-through-the-cli"><span id="analyze_manifests_through_the_cli"></span>Analyze manifests through the CLI<a class="heading-anchor" href="#analyze-manifests-through-the-cli" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The current <code>scan</code>, <code>list</code>, <code>graph</code>, <code>health</code> and <code>update</code> handlers call a retired graph-builder interface and fail with <code>AttributeError</code>. The registered commands below describe their intended invocation; use the complete inventory example above while this CLI defect is being repaired.</p>
 <p>Prepare the environment using the <a href="../CLI_GUIDE.html">CLI guide</a>. These examples use PowerShell from the CodeGraph repository root. Replace the quoted source-path placeholder with the checkout containing the manifests you intend to inspect. Create the output directory and use a new report filename:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">deps</span> <span class="n">scan</span> <span class="s2">"&lt;source-path&gt;"</span> <span class="p">-</span><span class="n">-include-dev</span> <span class="p">-</span><span class="n">-max-depth</span> <span class="n">10</span>
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">deps</span> <span class="n">check-vulns</span> <span class="p">-</span><span class="n">-path</span> <span class="s2">"&lt;source-path&gt;"</span> <span class="p">-</span><span class="n">-severity</span> <span class="n">medium</span> <span class="p">-</span><span class="n">-fail-on</span> <span class="n">high</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;vulnerabilities.json&gt;"</span>
@@ -291,16 +328,7 @@
 <p>Scenario 20 is conditional AppSec analysis. Its findings require triage, false-positive disposition,
 remediation evidence, and an accountable security decision. Product acceptance and release
 authorization use their own evidence.</p>
-</section><h2  id="source-contract"><span id="source_contract"></span>Source contract<a class="heading-anchor" href="#source-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/cli/docs_suite/deps_commands.py</code> — registered CLI and output behavior;</li>
-<li><code>src/api/routers/analysis_suite/dependencies.py</code> and <code>src/api/app_routers.py</code> — registered project-scoped REST routes;</li>
-<li><code>src/dependencies/vulnerability.py</code> — source, network, credential and cache behavior;</li>
-<li><code>src/config/domain_sections/unified_config_security_sections.py</code> — SCA defaults;</li>
-<li><code>src/workflow/scenarios/domain_checks/dependencies_analysis.py</code> — Scenario 20 analysis;</li>
-<li><code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code> — conditional AppSec ownership.</li>
-</ul>
-<h2  id="related-guides"><span id="related_guides"></span>Related guides<a class="heading-anchor" href="#related-guides" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+</section><h2  id="related-guides"><span id="related_guides"></span>Related guides<a class="heading-anchor" href="#related-guides" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><a href="../SCA_SBOM.html">SCA and SBOM</a></li>
 <li><a href="../SUPPLY_CHAIN.html">Supply-chain analysis</a></li>
@@ -329,11 +357,11 @@ authorization use their own evidence.</p>
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#choose-a-surface" class="level-2" aria-current="location">Choose a surface</a></li>
+<li><a href="#follow-a-concrete-inventory-example" class="level-2">Follow a concrete inventory example</a></li>
 <li><a href="#analyze-manifests-through-the-cli" class="level-2">Analyze manifests through the CLI</a></li>
 <li><a href="#account-for-network-cache-and-freshness" class="level-2">Account for network, cache, and freshness</a></li>
 <li><a href="#use-the-registered-project-rest-api" class="level-2">Use the registered-project REST API</a></li>
 <li><a href="#run-the-typed-appsec-scenario" class="level-2">Run the typed AppSec scenario</a></li>
-<li><a href="#source-contract" class="level-2">Source contract</a></li>
 <li><a href="#related-guides" class="level-2">Related guides</a></li>
       </ul>
     </aside>

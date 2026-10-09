@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Connect enterprise identity providers, map roles, validate login and recovery, and keep local authorization distinct from authentication.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Configure OAuth and LDAP identity — Documentation">
@@ -265,6 +265,35 @@ Test unmatched and multi-group users before enabling LDAP.</p>
 <p>See <a href="RBAC.html">RBAC</a> for the permission contract after authentication.
 After an external group change, check the new role and access with tokens already issued.
 Configure token lifetimes and verify the procedure for revoking existing sessions.</p>
+<h2  id="check-role-mapping-locally"><span id="check_role_mapping_locally"></span>Check role mapping locally<a class="heading-anchor" href="#check-role-mapping-locally" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Run this example from the CodeGraph source directory with the project&rsquo;s Python environment.
+It uses synthetic group names and calls the same mapper as LDAP login. The check runs locally
+without a directory connection or user credentials.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LDAPConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.providers.ldap_auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">LDAPAuthenticator</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">LDAPConfig</span><span class="p">(</span><span class="n">role_mapping</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">"codegraph-admins"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+    <span class="s2">"codegraph-reviewers"</span><span class="p">:</span> <span class="s2">"reviewer"</span><span class="p">,</span>
+    <span class="s2">"codegraph-viewers"</span><span class="p">:</span> <span class="s2">"viewer"</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="n">authenticator</span> <span class="o">=</span> <span class="n">LDAPAuthenticator</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="n">cases</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">([],</span> <span class="s2">"analyst"</span><span class="p">),</span>
+    <span class="p">([</span><span class="s2">"codegraph-viewers"</span><span class="p">],</span> <span class="s2">"viewer"</span><span class="p">),</span>
+    <span class="p">([</span><span class="s2">"codegraph-viewers"</span><span class="p">,</span> <span class="s2">"codegraph-reviewers"</span><span class="p">],</span> <span class="s2">"reviewer"</span><span class="p">),</span>
+    <span class="p">([</span><span class="s2">"codegraph-reviewers"</span><span class="p">,</span> <span class="s2">"codegraph-admins"</span><span class="p">],</span> <span class="s2">"admin"</span><span class="p">),</span>
+<span class="p">]</span>
+<span class="k">for</span> <span class="n">groups</span><span class="p">,</span> <span class="n">expected</span> <span class="ow">in</span> <span class="n">cases</span><span class="p">:</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">authenticator</span><span class="o">.</span><span class="n">map_groups_to_role</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"LDAP role mapping: 4 cases passed"</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Expected output: <code>LDAP role mapping: 4 cases passed</code>. The four cases cover an unmatched user,
+a viewer, overlapping reviewer/viewer groups, and overlapping administrator/reviewer groups.
+Use the same <code>role_mapping</code> shape for your directory groups, then verify login against the configured directory.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Distinguish provider unavailability, invalid state, code exchange failure, TLS or DNS failure,
 directory bind failure, user search failure, group lookup failure, missing dependency, and local
@@ -300,6 +329,7 @@ checks after route, provider, dependency, role, or session-policy changes.</p>
 <li><a href="#validate-oauth" class="level-2">Validate OAuth</a></li>
 <li><a href="#configure-ldap" class="level-2">Configure LDAP</a></li>
 <li><a href="#map-roles-and-manage-lifecycle" class="level-2">Map roles and manage lifecycle</a></li>
+<li><a href="#check-role-mapping-locally" class="level-2">Check role mapping locally</a></li>
 <li><a href="#failure-and-recovery" class="level-2">Failure and recovery</a></li>
 <li><a href="#acceptance-evidence" class="level-2">Acceptance evidence</a></li>
       </ul>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Check dashboard evidence, compare history, and configure notifications. Account for saved-view ownership and writes made by notification bootstrap.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Dashboard operations — Documentation">
@@ -151,8 +151,7 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html" class="active" aria-current="page">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
+
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +199,7 @@
         <h1>Dashboard operations</h1>
         <p class="doc-lead">Check dashboard evidence, compare history, and configure notifications. Account for saved-view ownership and writes made by notification bootstrap.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -217,14 +216,55 @@ Run commands in PowerShell from the CodeGraph source repository root with its Py
 <span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">basis</span> <span class="s1">'PROJECT'</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
-<p>Check the project identity, evidence revision, analysis basis, score
-availability, and freshness together. A successful command with a <code>stale</code>,
-<code>missing</code>, <code>failed</code>, or <code>unknown</code> surface is a diagnostic result, not readiness
-evidence.</p>
+<p>The response links project identity and evidence revision to the analysis basis, score availability and data freshness. States <code>stale</code>, <code>missing</code>, <code>failed</code> and <code>unknown</code> help you choose the next action: refresh data, locate the missing source or investigate the failure. Save the state and explanation with the check result.</p>
 <p>When the response supplies a recommended refresh command, first verify that
 <code>refresh_supported</code> is true and <code>action_availability</code> is <code>available</code>. If the
 state is <code>updating</code>, observe the current job instead of starting duplicate work.
 For <code>failed</code>, retain the job and reason evidence before retrying.</p>
+<h3  id="example-read-the-analysis-basis"><span id="example_read_the_analysis_basis"></span>Example: read the analysis basis<a class="heading-anchor" href="#example-read-the-analysis-basis" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>A project with live data and no linked audit snapshot can return this combination:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Example: read the analysis basis"><table data-columns="3"><caption class="sr-only">Example: read the analysis basis</caption>
+<thead>
+<tr>
+<th scope="col">Field</th>
+<th scope="col">Example value</th>
+<th scope="col">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>basis_kind</code></td>
+<td><code>live</code></td>
+<td>The view uses current data</td>
+</tr>
+<tr>
+<td><code>coherence_status</code></td>
+<td><code>live_only</code></td>
+<td>A linked audit snapshot is still needed for a coherent basis</td>
+</tr>
+<tr>
+<td><code>requested_mode</code></td>
+<td><code>best_effort</code></td>
+<td>The command shows available data and its state</td>
+</tr>
+<tr>
+<td><code>verdict</code></td>
+<td><code>warn</code></td>
+<td>Read the reason and recommended action</td>
+</tr>
+<tr>
+<td><code>cpg_fresh</code></td>
+<td><code>false</code></td>
+<td>Inspect <code>freshness_reason</code></td>
+</tr>
+<tr>
+<td><code>freshness_reason</code></td>
+<td><code>missing_cpg_commit</code></td>
+<td>The basis has no graph commit</td>
+</tr>
+</tbody>
+</table></div>
+<p>Here, <code>recommended_action</code> asks for a fresh audit report and linked snapshots. Retain this response, then check the basis again after the audit finishes. Values depend on the project data.</p>
 <h2  id="2-bootstrap-a-project-notification"><span id="2_bootstrap_a_project_notification"></span>2. Bootstrap a project notification<a class="heading-anchor" href="#2-bootstrap-a-project-notification" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The project argument is required. This command can create a subscription, saves a snapshot, and dispatches events through the notification pipeline. A configured channel can send real messages to recipients. Run it only when those actions are authorized:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">notifications</span> <span class="n">bootstrap</span> <span class="s1">'PROJECT'</span> <span class="p">-</span><span class="n">-user-id</span> <span class="s1">'USER_ID'</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
@@ -247,10 +287,8 @@ find a successful delivery record in the selected channel.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">dashboard</span> <span class="n">saved-views</span> <span class="n">list</span> <span class="p">-</span><span class="n">-user-id</span> <span class="s1">'USER_ID'</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
-<p>Before a recurring comparison or export, record the saved-view identifier,
-owner, scope, filters, and period. Saved views are user-scoped; do not assume
-that another authenticated user can read or reuse them.</p>
-<p>CLI selects the supplied <code>--user-id</code> without an API login; its default is <code>cli-user</code>. REST obtains the user from authentication. Local owner selection does not verify API authorization.</p>
+<p>Before a recurring comparison or export, record the saved-view identifier, owner, scope, filters and period. The service stores views within a user scope; use the intended owner&rsquo;s view to repeat the check.</p>
+<p>The local CLI selects the owner through <code>--user-id</code>, which defaults to <code>cli-user</code>. REST obtains the owner from the authenticated user and checks access through the API.</p>
 <p>The current REST reads are:</p>
 <ul>
 <li><code>GET /api/v1/traceability/saved-views</code>;</li>
@@ -267,6 +305,7 @@ that another authenticated user can read or reuse them.</p>
 baseline period, and comparison period as the saved view. The endpoint is a
 read operation. CLI defaults to baseline <code>30d</code> and comparison <code>7d</code>; set <code>--baseline-period</code> and <code>--comparison-period</code> explicitly for other intervals. If history is insufficient, read the response explanation before drawing a trend conclusion. Retain those selectors with the result so the comparison can be
 reproduced.</p>
+<p>With insufficient history, <code>note</code> contains <code>Not enough snapshot history to compare the selected periods.</code> and <code>diff.metrics</code> is empty. Such a response can have <code>trend_direction: stable</code>, the default for an empty comparison. Assess a trend using populated metrics, snapshot identifiers and timestamps.</p>
 <h2  id="5-incident-handoff"><span id="5_incident_handoff"></span>5. Incident handoff<a class="heading-anchor" href="#5-incident-handoff" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Capture:</p>
 <ul>
@@ -317,6 +356,7 @@ paths in the handoff.</p>
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#1-establish-the-project-basis" class="level-2" aria-current="location">1. Establish the project basis</a></li>
+<li data-doc-toc-level="3" data-doc-parent="1-establish-the-project-basis" hidden><a href="#example-read-the-analysis-basis" class="level-3">Example: read the analysis basis</a></li>
 <li><a href="#2-bootstrap-a-project-notification" class="level-2">2. Bootstrap a project notification</a></li>
 <li><a href="#3-preserve-and-inspect-saved-views" class="level-2">3. Preserve and inspect saved views</a></li>
 <li><a href="#4-compare-history" class="level-2">4. Compare history</a></li>

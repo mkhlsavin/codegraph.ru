@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Run a scoped CodeGraph security audit, inspect findings and analysis coverage, and collect revision-bound evidence for remediation decisions.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="ce0dc68d18b56ecf615d0cf2a514d3bea9cb731a">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Scenario 02: Run a bounded security audit — Documentation">
@@ -151,8 +151,7 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
+
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,12 +199,12 @@
         <h1>Scenario 02: Run a bounded security audit</h1>
         <p class="doc-lead">Run a scoped CodeGraph security audit, inspect findings and analysis coverage, and collect revision-bound evidence for remediation decisions.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Use this scenario to inspect a defined workspace or change set for structural and security-relevant findings. The output is an evidence package for triage; AppSec, QA, and release owners record their decisions separately.</p>
+        <p>Inspect a workspace or selected changes for security risks. CodeGraph collects findings with source locations and structural check results. Use the report to decide what to investigate and fix first.</p>
 <h2  id="choose-the-right-entry-point"><span id="choose_the_right_entry_point"></span>Choose the right entry point<a class="heading-anchor" href="#choose-the-right-entry-point" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <h3  id="opencode-audit-of-the-current-workspace"><span id="opencode_audit_of_the_current_workspace"></span>OpenCode audit of the current workspace<a class="heading-anchor" href="#opencode-audit-of-the-current-workspace" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>This path requires OpenCode, a connected CodeGraph MCP server, and the project command <code>.opencode/commands/audit.md</code>. The client workspace must match the project selected by the MCP server. Run the command:</p>
@@ -227,16 +226,14 @@ a stale graph stops the audit with <code>audit_cpg_refresh_required</code>. Refr
 through its authorized workflow, then retry. Without this flag, the freshness check can update
 the configured CPG before analysis. Do not combine read-only mode with <code>--autofix</code>.</p>
 <p>Useful optional controls are <code>--source-path</code>, <code>--profile</code>, <code>--scopes</code>, <code>--language</code>, <code>--timeout</code>, and <code>--output</code>. Check <code>python -m src.cli audit --help</code> in the installed release before scripting them.</p>
-<h2  id="what-the-opencode-flow-uses"><span id="what_the_opencode_flow_uses"></span>What the OpenCode flow uses<a class="heading-anchor" href="#what-the-opencode-flow-uses" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The maintained <code>/audit</code> command is bounded by these surfaces:</p>
+<h2  id="how-the-opencode-audit-works"><span id="how_the_opencode_audit_works"></span>How the OpenCode audit works<a class="heading-anchor" href="#how-the-opencode-audit-works" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
-<li><code>codegraph_project_context_status</code> establishes context and CPG readiness.</li>
-<li><code>codegraph_context_retrieval_diff_preview</code> establishes a revision-bound change scope when a diff is available.</li>
-<li><code>codegraph_quality_structural_test_run</code> executes structured checks against accepted native inputs.</li>
-<li><code>codegraph_digital_employee_code_quality_review_report</code> provides a code-quality review package when that lane is in scope.</li>
-<li><code>codegraph_digital_employee_architecture_impact_review_report</code> provides an architecture-impact package when that lane is in scope.</li>
+<li>CodeGraph checks project readiness and CPG freshness.</li>
+<li>When changes are available, the command identifies their scope and revision.</li>
+<li>Structural checks collect findings within the selected scope.</li>
+<li>Code-quality and architecture-impact reviews add results when included in the audit.</li>
+<li>The command reads the relevant source to explain each finding.</li>
 </ol>
-<p>Only the smallest relevant source slices should be read to explain each finding.</p>
 <h2  id="review-the-evidence-and-finding-count"><span id="review_the_evidence_and_finding_count"></span>Review the evidence and finding count<a class="heading-anchor" href="#review-the-evidence-and-finding-count" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For every finding, retain:</p>
 <ul>
@@ -248,21 +245,20 @@ the configured CPG before analysis. Do not combine read-only mode with <code>--a
 <li>disposition: confirmed, rejected, needs review, or deferred.</li>
 </ul>
 <p>An empty finding list records the result for the configured scope. Confirm that the intended languages, paths, generated code, dependencies, and runtime boundaries were in scope before recording the security decision.</p>
-<h2  id="authority-boundary"><span id="authority_boundary"></span>Authority boundary<a class="heading-anchor" href="#authority-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Automated analysis can identify and prioritize risks. Only the accountable AppSec lane can issue an AppSec verdict. Architecture, QA, release, and financial closure remain separate evidence lanes. Never turn a command exit code or a Markdown/JSON report into a missing lane decision.</p>
-<p>For generated patch suggestions, continue with <a href="02-security-audit-autofix.html">Security Audit Autofix</a>. Those suggestions are previews and require review and tests.</p>
+<h2  id="from-a-finding-to-a-fix"><span id="from_a_finding_to_a_fix"></span>From a finding to a fix<a class="heading-anchor" href="#from-a-finding-to-a-fix" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<ol>
+<li>Open the referenced source and trace the inputs that cause the problem.</li>
+<li>Reproduce the problem and add a test for the expected behavior.</li>
+<li>Prepare the fix, review it, and run the tests.</li>
+<li>Repeat the audit on the updated revision and retain the result with the original finding.</li>
+</ol>
+<p><a href="02-security-audit-autofix.html">Security Audit Autofix</a> helps prepare a patch for review. The guide explains how to obtain a suggestion, check it, and apply the change.</p>
 <h2  id="common-failures"><span id="common_failures"></span>Common failures<a class="heading-anchor" href="#common-failures" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><code>audit commands require explicit --db</code>: pass the configured database path.</li>
 <li>Project/source context cannot be resolved: register or repair the project binding before retrying.</li>
 <li>Graph remains stale after refresh: report the freshness reason and rerun after the graph is current.</li>
 <li>Readiness is locked or sync-pending: keep the bounded deferral and the server-provided next action.</li>
-</ul>
-<h2  id="maintained-source-contracts"><span id="maintained_source_contracts"></span>Maintained source contracts<a class="heading-anchor" href="#maintained-source-contracts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li>OpenCode workflow: <code>.opencode/commands/audit.md</code></li>
-<li>CLI registration and behavior: <code>src/cli/analysis_commands/audit_commands.py</code></li>
-<li>AppSec role policy: <code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code></li>
 </ul>
       </article>
 
@@ -289,11 +285,10 @@ the configured CPG before analysis. Do not combine read-only mode with <code>--a
         <li><a href="#choose-the-right-entry-point" class="level-2" aria-current="location">Choose the right entry point</a></li>
 <li data-doc-toc-level="3" data-doc-parent="choose-the-right-entry-point" hidden><a href="#opencode-audit-of-the-current-workspace" class="level-3">OpenCode audit of the current workspace</a></li>
 <li data-doc-toc-level="3" data-doc-parent="choose-the-right-entry-point" hidden><a href="#deterministic-cli-report" class="level-3">Deterministic CLI report</a></li>
-<li><a href="#what-the-opencode-flow-uses" class="level-2">What the OpenCode flow uses</a></li>
+<li><a href="#how-the-opencode-audit-works" class="level-2">How the OpenCode audit works</a></li>
 <li><a href="#review-the-evidence-and-finding-count" class="level-2">Review the evidence and finding count</a></li>
-<li><a href="#authority-boundary" class="level-2">Authority boundary</a></li>
+<li><a href="#from-a-finding-to-a-fix" class="level-2">From a finding to a fix</a></li>
 <li><a href="#common-failures" class="level-2">Common failures</a></li>
-<li><a href="#maintained-source-contracts" class="level-2">Maintained source contracts</a></li>
       </ul>
     </aside>
   </div>

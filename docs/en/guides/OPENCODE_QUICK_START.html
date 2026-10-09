@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Connect OpenCode to CodeGraph, select the project and run supported analysis commands. Check authentication, graph readiness and output limits.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="01689c35a95b4b04635d1da6148b291d6c3a6ea3">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="OpenCode quick start with CodeGraph — Documentation">
@@ -151,8 +151,7 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
+
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +199,7 @@
         <h1>OpenCode quick start with CodeGraph</h1>
         <p class="doc-lead">Connect OpenCode to CodeGraph, select the project and run supported analysis commands. Check authentication, graph readiness and output limits.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-08">Updated: 2026-10-08</time></div>
       </header>
 
       <!-- Content -->
@@ -215,8 +214,7 @@ with the registered project name, the <code>--db</code> path with its CPG path, 
 available model, <code>SYMBOL</code> with a project symbol, and <code>SESSION_ID</code> with the intended OpenCode session.</p>
 <p>Without <code>--db</code>, the launcher uses <code>data/projects/codegraph.duckdb</code>; <code>--project</code> alone does not
 replace that path. A missing file can trigger a rebuild for the resolved registered project.
-The launcher writes <code>opencode.json</code>, installs the package and may start the API. For a headless
-request it restores the original configuration on exit. Inspect arguments without starting services:</p>
+The launcher writes <code>opencode.json</code>, installs the package and may start the API. After the headless OpenCode run finishes, the launcher restores the original configuration in its cleanup block. Inspect arguments without starting services:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_opencode_codegraph</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-help</span>
 </code></pre></div>
 
@@ -225,10 +223,15 @@ request it restores the original configuration on exit. Inspect arguments withou
 </code></pre></div>
 
 <p>The current launcher default is <code>openai/gpt-5.4</code>. To use another model available in your
-OpenCode environment, pass its identifier with <code>--model</code>:</p>
+OpenCode environment, pass its identifier with <code>--model</code>.
+<code>CODEGRAPH_OPENCODE_MODEL</code> sets the default model; <code>--model</code> selects it for an individual run:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_opencode_codegraph</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-project</span> <span class="s1">'PROJECT'</span> <span class="p">-</span><span class="n">-db</span> <span class="s1">'data/projects/PROJECT.duckdb'</span> <span class="p">-</span><span class="n">-model</span> <span class="s1">'PROVIDER/MODEL'</span>
 </code></pre></div>
 
+<p>Select a model for the configured account and send the first request in OpenCode.
+Check that the client received a model response. If the provider returns <code>model is not supported</code>,
+select an identifier supported by your account and restart with <code>--model</code>.
+Check the request result even when the command exits with code 0.</p>
 <p>The source package version is <code>opencode-codegraph 0.1.38</code>. The launcher derives the dependency version from the package manifest. Installation requires that version to be available in the configured npm registry.</p>
 <h2  id="supported-codegraph-commands"><span id="supported_codegraph_commands"></span>Supported CodeGraph commands<a class="heading-anchor" href="#supported-codegraph-commands" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The current <code>.opencode/commands</code> directory contains:</p>
@@ -264,14 +267,8 @@ registration in headless mode. To verify hooks, open an interactive session and 
 </ol>
 <p>Open the source locations cited in the answer and compare them with the reviewed project revision. Save the reviewer&rsquo;s conclusion with the analysis result.</p>
 <p>To connect an editor separately, configure <code>opencode.json</code> using the <a href="LSP_SERVER.html">LSP guide</a>. It explains the CPG path, transport, and diagnostic checks.</p>
-<h2  id="contract-sources"><span id="contract_sources"></span>Contract sources<a class="heading-anchor" href="#contract-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>scripts/run_opencode_codegraph.py</code> — model default, project/session flags, and integration setup;</li>
-<li><code>integrations/opencode/opencode-codegraph/package.json</code> — plugin version;</li>
-<li><code>.opencode/commands</code> — supported repository command files;</li>
-<li><code>.opencode/agents/codegraph.md</code> — CodeGraph agent profile.</li>
-</ul>
-<p>See also: <a href="CLI_GUIDE.html">CLI guide</a> · <a href="TROUBLESHOOTING.html">Troubleshooting</a></p>
+<h2  id="reference-material"><span id="reference_material"></span>Reference material<a class="heading-anchor" href="#reference-material" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>See the <a href="CLI_GUIDE.html">CLI guide</a> for command parameters and <a href="TROUBLESHOOTING.html">troubleshooting</a> for connection checks.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -299,7 +296,7 @@ registration in headless mode. To verify hooks, open an interactive session and 
 <li><a href="#supported-codegraph-commands" class="level-2">Supported CodeGraph commands</a></li>
 <li><a href="#headless-use" class="level-2">Headless use</a></li>
 <li><a href="#verification-and-recovery" class="level-2">Verification and recovery</a></li>
-<li><a href="#contract-sources" class="level-2">Contract sources</a></li>
+<li><a href="#reference-material" class="level-2">Reference material</a></li>
       </ul>
     </aside>
   </div>

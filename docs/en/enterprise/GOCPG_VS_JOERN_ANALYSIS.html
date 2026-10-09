@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Learn how GoCPG builds a CPG and recovers Python and JavaScript types. Compare GoCPG and Joern pipelines for structural analysis tasks.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="b2f2e5efc4562561cf8611e5d2d445953f93da8b">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="How GoCPG builds a CPG and how the approach differs from Joern — Documentation">
@@ -163,7 +163,7 @@
         <h1>How GoCPG builds a CPG and how the approach differs from Joern</h1>
         <p class="doc-lead">Learn how GoCPG builds a CPG and recovers Python and JavaScript types. Compare GoCPG and Joern pipelines for structural analysis tasks.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-09">Updated: 2026-10-09</time></div>
       </header>
 
       <!-- Content -->
@@ -191,10 +191,9 @@ version-control history (VCS enrichment), and profile-specific analyses can
 extend the standard passes.</p>
 <h2  id="1-from-source-code-to-a-base-graph"><span id="1_from_source_code_to_a_base_graph"></span>1. From source code to a base graph<a class="heading-anchor" href="#1-from-source-code-to-a-base-graph" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <h3  id="frontend-selection"><span id="frontend_selection"></span>Frontend selection<a class="heading-anchor" href="#frontend-selection" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>GoCPG registers frontends for C, C++, Go, Python, JavaScript, TypeScript, Java,
-Kotlin, C#, PHP, and 1C. Most use tree-sitter. Go uses <code>go/parser</code> and
-<code>go/ast</code>; 1C uses a custom lexer/parser. Some languages provide a reduced
-fallback path when full parser support is unavailable.</p>
+<p>GoCPG builds code graphs for C, C++, Go, Python, JavaScript, TypeScript, Java,
+Kotlin, C#, PHP, and 1C. A dedicated frontend for each language extracts the
+program structure and the relationships between its elements.</p>
 <p>A frontend extracts facts that are directly visible in source:</p>
 <ul>
 <li>files, namespaces/modules, types, methods, parameters, and locals;</li>
@@ -207,16 +206,11 @@ resolution then refine its target method.</p>
 <h3 id="materialization">Materialization<a class="heading-anchor" href="#materialization" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>A full build follows this path:</p>
 <ol>
-<li>GoCPG discovers files and applies include/exclude rules plus the selected
-   frontend&rsquo;s extensions.</li>
-<li>The frontend parses files in parallel and produces a <code>DiffGraph</code>.
-   Per-file failures remain visible.</li>
-<li>Frontend IDs are synchronized with the global generator so pass-created
-   nodes cannot collide with parsed nodes.</li>
-<li>The base diff is written to DuckDB and becomes an in-memory <code>CPGGraph</code> for
-   downstream passes.</li>
-<li>Semantic passes read established layers, add nodes and edges, and persist
-   their mutations.</li>
+<li>GoCPG selects files using the language and include/exclude rules.</li>
+<li>The frontend parses source code and extracts declarations, calls, and
+   control structures.</li>
+<li>Subsequent stages add types, call targets, and data-flow relationships.</li>
+<li>GoCPG saves the graph in DuckDB for queries and further analysis.</li>
 </ol>
 <p>GoCPG records parse failures with their file paths. The team uses these details
 to identify source files that need another import.</p>
@@ -335,10 +329,47 @@ fact from an approximation.</p>
 resolution then links the call node to the best available method node, and the
 dynamic linker adds virtual-dispatch and constructor-to-<code>__init__</code>
 relationships.</p>
-<p>If evidence is insufficient, the call remains unresolved or approximate. A
-call edge does not prove runtime reachability, and a missing edge in highly
-dynamic code does not prove the call is impossible. Security and architecture
-rules must consider confidence and completeness.</p>
+<p>GoCPG records resolved call targets with the available type information. For
+dynamically constructed calls, the result retains the recovered static facts
+and unresolved targets. Security and architecture rules use these facts,
+confidence, and analysis completeness when evaluating dependencies.</p>
+<h3  id="example-object-type-and-call-target"><span id="example_object_type_and_call_target"></span>Example: object type and call target<a class="heading-anchor" href="#example-object-type-and-call-target" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>This Python code creates the <code>greeter</code> variable without a type annotation:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Greeter</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"Hello"</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">say_hello</span><span class="p">():</span>
+    <span class="n">greeter</span> <span class="o">=</span> <span class="n">Greeter</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">greeter</span><span class="o">.</span><span class="n">greet</span><span class="p">()</span>
+</code></pre></div>
+
+<p>With the standard analysis profile, GoCPG uses the constructor call to identify
+the object type and the <code>-&gt; str</code> annotation to identify the method result type.</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Example: object type and call target"><table data-columns="3"><caption class="sr-only">Example: object type and call target</caption>
+<thead>
+<tr>
+<th scope="col">Expression</th>
+<th scope="col">Recovered type</th>
+<th scope="col">Graph relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Greeter()</code></td>
+<td><code>Greeter</code></td>
+<td>Creates an object of class <code>Greeter</code>.</td>
+</tr>
+<tr>
+<td><code>greeter.greet()</code></td>
+<td><code>str</code></td>
+<td>The call is linked to <code>Greeter.greet</code> in <code>example.py</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p>CodeGraph can follow this relationship to the target method and continue analysis
+across the call. When investigating the impact of a method change, the graph
+provides the code locations that call it.</p>
 <h2  id="4-control-and-data-flow"><span id="4_control_and_data_flow"></span>4. Control and data flow<a class="heading-anchor" href="#4-control-and-data-flow" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>GoCPG materializes several connected representations:</p>
 <ul>
@@ -354,9 +385,9 @@ rules must consider confidence and completeness.</p>
 <p>Taint, resource-leak, null-dereference, and related analyzers operate on these
 layers. A finding should therefore retain a message, source location, related
 node, and an evidence path where applicable.</p>
-<p>Different CPG implementations can materialize different helper nodes and
-edges. Raw node, CALL-edge, or CDG-edge counts are not accuracy metrics without
-labeled expected facts.</p>
+<p>CPG implementations can materialize different helper nodes and edges. Compare
+accuracy against labeled expected facts. Node, CALL-edge, and CDG-edge counts
+describe the size of the resulting graph.</p>
 <h2  id="5-architecture-v1-structural-analysis"><span id="5_architecture_v1_structural_analysis"></span>5. Architecture v1 structural analysis<a class="heading-anchor" href="#5-architecture-v1-structural-analysis" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The current structural analyzer goes beyond import search. It classifies CPG
 entities into components and evaluates which relationships are allowed between
@@ -502,20 +533,13 @@ use with the protocol below.</p>
 <p>Run each tool in a clean workspace suited to that tool. Failed imports, partial
 graphs, and manual tuning remain part of the result. Without a manifest, only
 verified architecture and workflow conclusions are defensible.</p>
-<h2  id="gocpg-sources-of-truth"><span id="gocpg_sources_of_truth"></span>GoCPG sources of truth<a class="heading-anchor" href="#gocpg-sources-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<h2  id="apply-gocpg-to-your-project"><span id="apply_gocpg_to_your_project"></span>Apply GoCPG to your project<a class="heading-anchor" href="#apply-gocpg-to-your-project" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Start with <a href="../guides/ARCHITECTURE_CONTROL_ADOPTION.html">architecture control setup</a>, which takes you from project preparation to dependency checks.</p>
 <ul>
-<li><code>gocpg/pkg/frontend</code> and <code>gocpg/docs/frontend-guide.md</code> — frontends and
-  extracted facts.</li>
-<li><code>gocpg/pkg/cpg/schema</code> — nodes, edges, and properties.</li>
-<li><code>gocpg/pkg/passes/pipeline.go</code> — current semantic pass ordering.</li>
-<li><code>gocpg/pkg/passes/types/type_recovery*.go</code> and <code>gocpg/pkg/typestubs</code> —
-  type recovery and the Type Knowledge Base.</li>
-<li><code>gocpg/pkg/passes/controlflow</code>, <code>dataflow</code>, and <code>callgraph</code> — CFG/CDG,
-  data flow, and call graph construction.</li>
-<li><code>gocpg/pkg/architecture</code> and <code>gocpg/docs/architecture/v1/</code> — structural
-  analysis, governance, and result formats.</li>
-<li><code>gocpg/pkg/storage/duckdb</code> and <code>gocpg/api/proto/gocpg/v1</code> — persistence
-  and typed integration.</li>
+<li><a href="../reference/architecture-v1/model-and-rules.html">Model and rules</a> — define components and the relationships allowed between them.</li>
+<li><a href="../reference/architecture-v1/execution-and-governance.html">Execution and governance</a> — choose a profile and run the complete teaching example.</li>
+<li><a href="../reference/architecture-v1/interfaces-and-results.html">Results and interfaces</a> — explain a dependency finding and export the results.</li>
+<li><a href="../guides/DASHBOARD_METHODOLOGY.html">Dashboard methodology</a> — follow how findings and metrics contribute to the project assessment.</li>
 </ul>
       </article>
 
@@ -548,6 +572,7 @@ verified architecture and workflow conclusions are defensible.</p>
 <li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#sources-of-type-facts" class="level-3">Sources of type facts</a></li>
 <li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#iteration-and-convergence" class="level-3">Iteration and convergence</a></li>
 <li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#how-recovered-types-improve-the-call-graph" class="level-3">How recovered types improve the call graph</a></li>
+<li data-doc-toc-level="3" data-doc-parent="3-type-recovery-for-python-and-javascript" hidden><a href="#example-object-type-and-call-target" class="level-3">Example: object type and call target</a></li>
 <li><a href="#4-control-and-data-flow" class="level-2">4. Control and data flow</a></li>
 <li><a href="#5-architecture-v1-structural-analysis" class="level-2">5. Architecture v1 structural analysis</a></li>
 <li data-doc-toc-level="3" data-doc-parent="5-architecture-v1-structural-analysis" hidden><a href="#model-and-rules" class="level-3">Model and rules</a></li>
@@ -556,7 +581,7 @@ verified architecture and workflow conclusions are defensible.</p>
 <li><a href="#6-gocpg-and-joern-architecture-comparison" class="level-2">6. GoCPG and Joern: architecture comparison</a></li>
 <li><a href="#7-choosing-pilot-criteria" class="level-2">7. Choosing pilot criteria</a></li>
 <li><a href="#8-reproducible-benchmark-protocol" class="level-2">8. Reproducible benchmark protocol</a></li>
-<li><a href="#gocpg-sources-of-truth" class="level-2">GoCPG sources of truth</a></li>
+<li><a href="#apply-gocpg-to-your-project" class="level-2">Apply GoCPG to your project</a></li>
       </ul>
     </aside>
   </div>
