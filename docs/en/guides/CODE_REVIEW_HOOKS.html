@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Connect CodeGraph hooks to Codex or Claude Code, verify registered events and client loading, and check how each hook handles failures.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Code review hooks for Codex and Claude Code — Documentation">
@@ -151,8 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +198,7 @@
         <h1>Code review hooks for Codex and Claude Code</h1>
         <p class="doc-lead">Connect CodeGraph hooks to Codex or Claude Code, verify registered events and client loading, and check how each hook handles failures.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-06">Updated: 2026-10-06</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
@@ -232,7 +230,7 @@
 </tr>
 </tbody>
 </table></div>
-<p>Use the distributed plugin registration for Codex and <code>.claude/settings.json</code> for Claude Code. Edit the adapter source. After an update, install the new plugin version and start a fresh client session.</p>
+<p>For Codex, use the hooks supplied by the installed CodeGraph plugin. Start a fresh client session after updating the plugin. For Claude Code, check the registration in <code>.claude/settings.json</code> and the handler paths in your checkout.</p>
 <h2  id="prepare-verification"><span id="prepare_verification"></span>Prepare verification<a class="heading-anchor" href="#prepare-verification" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Open PowerShell at the CodeGraph source repository root. You need Python and the project dependencies.
 Actual hook execution also requires the corresponding client, a loaded adapter, and an available
@@ -277,8 +275,8 @@ another checkout; adapt the registration instead of copying those paths unchange
 </tr>
 <tr>
 <td><code>PostToolUse</code></td>
-<td>Capture Bash outcomes and bounded telemetry after execution.</td>
-<td>Reporting is normally fail-open; it cannot retroactively authorize a command.</td>
+<td>Record command results and acknowledge execution in the current task.</td>
+<td>A failed acknowledgment reports unresolved command tracking; executed changes remain in place.</td>
 </tr>
 <tr>
 <td><code>SubagentStart</code> / <code>SubagentStop</code></td>
@@ -302,9 +300,11 @@ associated product task is evaluated by the review and acceptance evidence.</p>
 <h2  id="claude-code-lifecycle"><span id="claude_code_lifecycle"></span>Claude Code lifecycle<a class="heading-anchor" href="#claude-code-lifecycle" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The repository-local <code>.claude/settings.json</code> registers <code>SessionStart</code>, <code>UserPromptSubmit</code>, <code>PreToolUse</code>, <code>PostToolUse</code>, and <code>Stop</code> handlers from <code>.claude/hooks/</code>.</p>
 <p>Shared hook utilities read <code>review_pipeline.fail_open</code> directly from <code>config.yaml</code>.
-An absent setting or configuration-read failure yields <code>false</code>. The current repository configuration
-and <code>ReviewPipelineConfig</code> model specify <code>true</code>, so hook errors are not universally blocking by default.
-Check the value in the actual checkout and the handler for the relevant event. This setting controls
+With <code>true</code>, the error handler returns an empty response. With <code>false</code>, it returns
+<code>Hook Error: BLOCK</code> with an error code and a recommended action. An absent setting or a
+configuration-read failure yields <code>false</code>. The current repository configuration and
+<code>ReviewPipelineConfig</code> model specify <code>true</code>. Check the value in your checkout and the handler
+for the relevant event. This setting controls
 error handling. The tool-use policy checks authorization; the review report and its artifacts establish the review result.</p>
 <h2  id="failure-model"><span id="failure_model"></span>Failure model<a class="heading-anchor" href="#failure-model" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>

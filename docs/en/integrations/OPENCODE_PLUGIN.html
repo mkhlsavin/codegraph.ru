@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Install and configure the opencode-codegraph adapter. Check plugin startup, authentication and supported commands before analyzing a project.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="unknown">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="OpenCode plugin — Documentation">
@@ -163,7 +163,7 @@
         <h1>OpenCode plugin</h1>
         <p class="doc-lead">Install and configure the opencode-codegraph adapter. Check plugin startup, authentication and supported commands before analyzing a project.</p>
 
-        <div class="doc-meta"><span>Integrations</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Integrations</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
@@ -173,26 +173,25 @@ context, guided CodeGraph commands, explicit context-session tools, review tools
 workflow guidance. The <a href="../guides/OPENCODE_QUICK_START.html">OpenCode quick start</a> is the
 operator procedure; this page explains what the adapter does and where its boundary ends.</p>
 <h2  id="install-and-register"><span id="install_and_register"></span>Install and register<a class="heading-anchor" href="#install-and-register" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The current package manifest specifies version <code>0.1.38</code>. Installation requires Node.js and npm:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>npm install opencode-codegraph@0.1.38
-</code></pre></div>
-
-<p>Add <code>opencode-codegraph</code> to the <code>plugin</code> array in <code>opencode.json</code> at the working
-project root. Keep the other plugins and configuration settings:</p>
+<p>For a direct setup, add <code>opencode-codegraph</code> to the <code>plugin</code> array in <code>opencode.json</code>
+at the project root. OpenCode loads npm plugins listed there when it starts. See the
+<a href="https://opencode.ai/docs/plugins/">OpenCode plugin guide</a>. Keep the other plugins and
+configuration settings:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">"plugin"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"opencode-codegraph"</span><span class="p">]</span>
+<span class="w">  </span><span class="nt">&quot;plugin&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;opencode-codegraph&quot;</span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Run the repository launcher from the CodeGraph source root with its Python dependencies,
-an installed OpenCode client, and a registered project with a CPG. Replace <code>PROJECT</code> with
-your project name. The launcher prepares MCP, LSP, plugin and API configuration:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_opencode_codegraph</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-project</span> <span class="s1">'PROJECT'</span>
+<p>To prepare a CodeGraph source checkout, run the repository launcher from its source root.
+This path requires the CodeGraph Python dependencies, Node.js/npm, an installed OpenCode
+client, and a registered project with a CPG. Replace <code>PROJECT</code> with your project name.
+The launcher prepares MCP, LSP, plugin and API configuration:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_opencode_codegraph</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-project</span> <span class="s1">&#39;PROJECT&#39;</span>
 </code></pre></div>
 
-<p>The launcher&rsquo;s current default model is <code>openai/gpt-5.4</code>; override it only through the documented
-launcher option or <code>CODEGRAPH_OPENCODE_MODEL</code>. The MCP catalog depends on the server profile. Discover available
-tools through the configured connection instead of treating a count as a fixed plugin contract.
+<p>The launcher&rsquo;s default model is <code>openai/gpt-5.4</code>. Choose a model available to your
+OpenCode account and set it through <code>--model</code> or <code>CODEGRAPH_OPENCODE_MODEL</code>.
+The MCP catalog depends on the server profile. Discover available tools through the configured connection.
 Follow the <a href="../api/MCP_OPERATOR_GUIDE.html">MCP operator guide</a> to initialize the connection,
 inspect <code>tools/list</code>, and check the invocation policy for the selected profile.</p>
 <p>If the launcher cannot find the project, check its registration and the <code>--project</code> value.
@@ -217,9 +216,8 @@ Follow the project checks in the <a href="../guides/OPENCODE_QUICK_START.html">q
 </tr>
 </tbody>
 </table></div>
-<p>The API, MCP server, and CPG lifecycle remain CodeGraph runtime responsibilities. Installing the npm
-package adds the client integration; the CodeGraph runtime starts the services, authorizes the client,
-and reports project-graph freshness.</p>
+<p>The adapter connects to the CodeGraph API and configured MCP server. Its context and follow-up
+guidance reflect the graph and workflow evidence available for the selected project.</p>
 <h2  id="opencode-hook-contract"><span id="opencode_hook_contract"></span>OpenCode hook contract<a class="heading-anchor" href="#opencode-hook-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The maintained source registers these OpenCode hooks:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="OpenCode hook contract"><table data-columns="2"><caption class="sr-only">OpenCode hook contract</caption>
@@ -249,15 +247,58 @@ and reports project-graph freshness.</p>
 </tbody>
 </table></div>
 <p>The plugin consumes OpenCode lifecycle events and saves child-session context.
-Hooks add data to the prompt and suggest the next step. CodeGraph records test,
-review, and release results in their corresponding workflows.</p>
+Hooks add project context to prompts and provide follow-up guidance. After a recognized
+Git commit, the plugin requests an incremental CPG update and reports its asynchronous status.</p>
 <h2  id="guided-commands-and-tools"><span id="guided_commands_and_tools"></span>Guided commands and tools<a class="heading-anchor" href="#guided-commands-and-tools" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The supported command files are the current contents of <code>.opencode/commands</code>: <code>/audit</code>,
 <code>/continue</code>, <code>/explain</code>, <code>/next</code>, <code>/onboard</code>, <code>/review</code>, <code>/status</code>, and <code>/update</code>.
 Each file defines the instructions for its command.</p>
-<p>The adapter exposes a small set of direct graph/review tools and explicit CodeGraph context-session
-tools. The full MCP catalog is discovered from the configured server and changes independently;
-use <code>tools/list</code> to inspect the selected server profile. Pass MCP arrays and objects as native values.</p>
+<p>The adapter provides direct graph and review tools, plus explicit CodeGraph context-session tools.
+The full MCP catalog comes from the configured server. Use <code>tools/list</code> to inspect the selected
+server profile. Pass MCP arrays and objects as native values.</p>
+<p>The guided commands give common CodeGraph tasks a consistent entry point:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Guided commands and tools"><table data-columns="2"><caption class="sr-only">Guided commands and tools</caption>
+<thead>
+<tr>
+<th scope="col">Command</th>
+<th scope="col">Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/audit</code></td>
+<td>A bounded audit with readiness, findings, evidence and next action</td>
+</tr>
+<tr>
+<td><code>/continue</code></td>
+<td>The next authorized step for the current explicit task and session</td>
+</tr>
+<tr>
+<td><code>/explain</code></td>
+<td>A source-backed explanation of code behavior and dependencies</td>
+</tr>
+<tr>
+<td><code>/next</code></td>
+<td>The best next governed action, without executing it</td>
+</tr>
+<tr>
+<td><code>/onboard</code></td>
+<td>Workspace boundaries, languages, architecture signals and readiness</td>
+</tr>
+<tr>
+<td><code>/review</code></td>
+<td>Findings for a bounded change, linked to the evidence used</td>
+</tr>
+<tr>
+<td><code>/status</code></td>
+<td>Project, context-session and CPG readiness</td>
+</tr>
+<tr>
+<td><code>/update</code></td>
+<td>A readiness recheck and any supported refresh action</td>
+</tr>
+</tbody>
+</table></div>
 <h2  id="context-and-continuity"><span id="context_and_continuity"></span>Context and continuity<a class="heading-anchor" href="#context-and-continuity" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The plugin reports its context mode: full, sync-pending, or graph-only.
 This status shows which data is available for the prompt. Use CodeGraph context-session
@@ -271,25 +312,26 @@ the authenticated CodeGraph runtime route and then show pending or completed wor
 Request acceptance is asynchronous: use the CPG, context-sync, and review evidence statuses to follow
 the request to completion.</p>
 <h2  id="verification-and-rollback"><span id="verification_and_rollback"></span>Verification and rollback<a class="heading-anchor" href="#verification-and-rollback" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>For remote MCP, OpenCode uses its own configuration and OAuth adapter rather than loading the
-portable Agent Plugins package. Follow <a href="REMOTE_MCP_AUTH.html">Remote MCP authentication</a> for
+<p>For remote MCP, OpenCode uses its own configuration and OAuth adapter.
+Follow <a href="REMOTE_MCP_AUTH.html">Remote MCP authentication</a> for
 <code>opencode mcp auth codegraph</code>, logout, project binding, and recovery.</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_opencode_codegraph</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-project</span> <span class="s1">'PROJECT'</span> <span class="p">-</span><span class="n">-run</span> <span class="s2">"/status"</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">scripts</span><span class="p">/</span><span class="n">run_opencode_codegraph</span><span class="p">.</span><span class="n">py</span> <span class="p">-</span><span class="n">-project</span> <span class="s1">&#39;PROJECT&#39;</span> <span class="p">-</span><span class="n">-run</span> <span class="s2">&quot;/status&quot;</span>
 </code></pre></div>
 
 <p>For OpenCode <code>1.2.27</code>, or when its version cannot be determined, the launcher uses
 headless-safe mode without plugin or LSP registration. Check the <code>/status</code> response
 in this mode; check plugin hooks in an interactive session.</p>
-<p>Verify the intended project, API endpoint, plugin version, context mode, and CPG freshness. Then run one
-bounded <code>/explain</code> or <code>/review</code> and confirm its source references. To roll back, reinstall the
-previous approved package and remove <code>opencode-codegraph</code> from the <code>plugin</code> array
-in the tested <code>opencode.json</code> file.</p>
-<h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Check the project, context mode and CPG freshness in the <code>/status</code> response. Then run
+<code>/explain</code> for one file or function and check its source references against the code.</p>
+<p>To disable the plugin, remove only <code>opencode-codegraph</code> from the <code>plugin</code> array in your
+working <code>opencode.json</code> and reopen OpenCode. Keep the other array entries.
+To return to a previous approved version, install that version and keep the plugin registered.</p>
+<p><span id="source-of-truth"></span></p>
+<h2  id="related-guides"><span id="related_guides"></span>Related guides<a class="heading-anchor" href="#related-guides" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li>Package and version: <code>integrations/opencode/opencode-codegraph/package.json</code></li>
-<li>Adapter: <code>integrations/opencode/opencode-codegraph/src/index.ts</code></li>
-<li>API client: <code>integrations/opencode/opencode-codegraph/src/api.ts</code></li>
-<li>Launcher: <code>scripts/run_opencode_codegraph.py</code></li>
+<li><a href="../guides/OPENCODE_QUICK_START.html">OpenCode quick start</a> — prepare the project and run your first query.</li>
+<li><a href="../api/MCP_OPERATOR_GUIDE.html">MCP operator guide</a> — connect and inspect the tool catalog.</li>
+<li><a href="REMOTE_MCP_AUTH.html">Remote MCP authentication</a> — sign in, choose a project and recover the connection.</li>
 </ul>
       </article>
 
@@ -320,7 +362,7 @@ in the tested <code>opencode.json</code> file.</p>
 <li><a href="#context-and-continuity" class="level-2">Context and continuity</a></li>
 <li><a href="#post-commit-behavior" class="level-2">Post-commit behavior</a></li>
 <li><a href="#verification-and-rollback" class="level-2">Verification and rollback</a></li>
-<li><a href="#source-of-truth" class="level-2">Source of truth</a></li>
+<li><a href="#related-guides" class="level-2">Related guides</a></li>
       </ul>
     </aside>
   </div>

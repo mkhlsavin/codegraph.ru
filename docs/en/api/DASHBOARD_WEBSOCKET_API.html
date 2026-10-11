@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Browser-compatible real-time dashboard refresh events, first-message authentication, heartbeat, and reconnect behavior.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Dashboard WebSocket API — Documentation">
@@ -159,24 +159,31 @@
         <h1>Dashboard WebSocket API</h1>
         <p class="doc-lead">Browser-compatible real-time dashboard refresh events, first-message authentication, heartbeat, and reconnect behavior.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>Connect an open dashboard to receive project update events when an audit report is completed. The server sends <code>project_updated</code> with the project name and trigger. Your client reloads the relevant REST resources and updates the screen. This reference explains authentication, event fields, and connection recovery for frontend developers.</p>
+<h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Configure the server and sign in to obtain the JWT for your current session.
+Enable <code>dashboard.websocket_enabled</code>; this channel is disabled by default.
+The dashboard needs API access and a function that reloads project data through
+the <a href="REST_API.html">REST API</a>.</p>
 <h2 id="endpoint">Endpoint<a class="heading-anchor" href="#endpoint" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>wss://codegraph.example/api/v1/traceability/ws
 </code></pre></div>
 
 <p>Use ws only for a trusted local HTTP environment. Production pages served over HTTPS must use wss.</p>
 <h2 id="authentication">Authentication<a class="heading-anchor" href="#authentication" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Send the token in the first message. A <code>token</code> query parameter causes the server to reject the HTTP handshake with status 403 before the WebSocket opens. The handler uses the rejection reason <code>Query token transport is not allowed</code>.</p>
-<p>The server accepts the socket first and then waits up to 5 seconds for the first client message. Send exactly a JWT token object:</p>
+<p>Send the token in the first message. A non-empty <code>token</code> query parameter causes the server to reject the HTTP handshake with status 403 before the WebSocket opens. The handler uses the rejection reason <code>Query token transport is not allowed</code>.</p>
+<p>The server accepts the socket first and then waits up to 5 seconds for the first client message. Send a JSON object containing your JWT:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;JWT&gt;"</span><span class="p">}</span>
 </code></pre></div>
 
 <p>The runtime also accepts a raw token string, but the JSON object is the documented contract. If authentication fails, the server sends an error event and closes with code 1008. If the first message does not arrive within 5 seconds, it closes with an authentication timeout.</p>
+<p>If the connection rate limit is exceeded, the server closes with code 1008
+and reason <code>WebSocket rate limit exceeded</code>, without a <code>connected</code> event.</p>
 <p>An unauthenticated connection is allowed only when the explicit local-development unauthenticated-surface setting is enabled and both client and requested host are loopback addresses.</p>
 <h2 id="events">Events<a class="heading-anchor" href="#events" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Each dashboard message is a JSON object. Its <code>event</code> field identifies the event; the remaining fields carry its data.</p>
@@ -211,7 +218,7 @@
 </tr>
 <tr>
 <td>error</td>
-<td>Authentication or message rate limit failed after accept</td>
+<td>Authentication failed or the message rate limit was exceeded after the socket opened</td>
 <td>message</td>
 </tr>
 </tbody>
@@ -256,12 +263,6 @@ The example uses <code>location.host</code>, so it assumes that the page and API
 </code></pre></div>
 
 <p>The effective heartbeat is capped by the runtime WebSocket ping timeout. Configuration changes require the normal deployment/restart process for the installation.</p>
-<h2  id="source-contract"><span id="source_contract"></span>Source contract<a class="heading-anchor" href="#source-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li>src/api/routers/dashboard_core/dashboard_ws.py — route, first-message authentication, events, heartbeat, and quota checks</li>
-<li>src/config/runtime_sections/unified_config_dashboard.py — dashboard WebSocket settings</li>
-<li>src/api/app_routers.py — /api/v1/traceability mount</li>
-</ul>
 <p>For chat, job progress, and user notifications, use <a href="WEBSOCKET_API.html">Application WebSocket API</a>.</p>
       </article>
 
@@ -285,13 +286,13 @@ The example uses <code>location.host</code>, so it assumes that the page and API
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#endpoint" class="level-2" aria-current="location">Endpoint</a></li>
+        <li><a href="#prerequisites" class="level-2" aria-current="location">Prerequisites</a></li>
+<li><a href="#endpoint" class="level-2">Endpoint</a></li>
 <li><a href="#authentication" class="level-2">Authentication</a></li>
 <li><a href="#events" class="level-2">Events</a></li>
 <li><a href="#browser-example" class="level-2">Browser example</a></li>
 <li><a href="#heartbeat-and-reconnect" class="level-2">Heartbeat and reconnect</a></li>
 <li><a href="#configuration" class="level-2">Configuration</a></li>
-<li><a href="#source-contract" class="level-2">Source contract</a></li>
       </ul>
     </aside>
   </div>

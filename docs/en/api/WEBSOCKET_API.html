@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Current routes, authentication boundary, message envelope, and recovery behavior for CodeGraph application WebSockets.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Application WebSocket API — Documentation">
@@ -159,18 +159,27 @@
         <h1>Application WebSocket API</h1>
         <p class="doc-lead">Current routes, authentication boundary, message envelope, and recovery behavior for CodeGraph application WebSockets.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>This reference covers the three application WebSockets used for chat, job status, and notifications. Dashboard refresh events use a distinct authentication and message contract described in <a href="DASHBOARD_WEBSOCKET_API.html">Dashboard WebSocket API</a>.</p>
+        <p>Connect a client to WebSocket to stream chat answers, follow a background job,
+or display notifications without repeatedly polling the API. This reference
+helps integration developers choose among the three channels and implement
+authentication and message handling. Dashboard refresh events use a distinct authentication and message contract described in <a href="DASHBOARD_WEBSOCKET_API.html">Dashboard WebSocket API</a>.</p>
+<h2 id="prerequisites">Prerequisites<a class="heading-anchor" href="#prerequisites" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Sign in and obtain a valid access token. For project-bound access, prepare the
+project UUID and an explicit access grant for that user and project. The WebSocket
+checks this grant when the client sends <code>X-Project-Id</code>. Job subscriptions
+also need a <code>job_id</code>. Use your installation&rsquo;s API address: <code>wss</code> for HTTPS and
+<code>ws</code> for a trusted local HTTP environment.</p>
 <h2  id="authentication-boundary"><span id="authentication_boundary"></span>Authentication boundary<a class="heading-anchor" href="#authentication-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For chat and job status, send the token in the HTTP handshake header:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>Authorization: Bearer &lt;access-token&gt;
 </code></pre></div>
 
-<p>Send the token through the authentication method for the route. A <code>token</code> query parameter causes the server to reject the HTTP handshake with status 403 before the WebSocket opens. The handler uses the rejection reason <code>Query token transport is not allowed</code>.</p>
+<p>Send the token through the authentication method for the route. A non-empty <code>token</code> query parameter causes the server to reject the HTTP handshake with status 403 before the WebSocket opens. The handler uses the rejection reason <code>Query token transport is not allowed</code>.</p>
 <p>For project-bound access, also send the durable project identifier in the handshake:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>X-Project-Id: &lt;project-uuid&gt;
 </code></pre></div>
@@ -335,7 +344,7 @@ A <code>chat.query</code> needs <code>payload.query</code>. <code>request_id</co
 </table></div>
 <p>Not every message type is produced by every route. Consumers must ignore recognized messages that are irrelevant to their current workflow and must not treat an unknown message as success.</p>
 <h2  id="chat-request"><span id="chat_request"></span>Chat request<a class="heading-anchor" href="#chat-request" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Send chat.query only to the chat route:</p>
+<p>Send <code>chat.query</code> to the chat route:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"chat.query"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -351,17 +360,20 @@ A <code>chat.query</code> needs <code>payload.query</code>. <code>request_id</co
 <p>The values <code>optional-session</code> and <code>optional-scenario</code> stand for your session and scenario identifiers. Both fields are optional; omit them for a request without an explicit session or scenario.</p>
 <p>The chat handler sends <code>chat.scenario</code> for scenario selection, <code>chat.chunk</code> for answer fragments, and <code>chat.done</code> when the response ends. Assemble the answer from the chunks and correlate them through <code>request_id</code>. A processing failure produces <code>error</code> with the same request identifier.</p>
 <h2  id="job-status"><span id="job_status"></span>Job status<a class="heading-anchor" href="#job-status" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Connect to the exact job route with a job identifier owned by the authenticated user. The server sends job.started with the current status. For terminal states it follows with job.completed or job.failed. Keep the HTTP/REST job response as the durable source; WebSocket delivery is a notification channel and can be interrupted.</p>
+<p>Connect to the job route with a job identifier owned by the authenticated user. The server sends <code>job.started</code> with the current status. For terminal states it follows with <code>job.completed</code> or <code>job.failed</code>. Retrieve the stored state through HTTP/REST and receive live notifications through WebSocket.</p>
 <h2 id="notifications">Notifications<a class="heading-anchor" href="#notifications" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The notifications route is receive-oriented. After authentication, send <code>ping</code> messages. Notification payloads may contain title, message, level, and action_url. Validate an action URL against the application’s navigation policy before opening it.</p>
+<p>The notifications route is receive-oriented. After authentication, send <code>ping</code> messages. The notification&rsquo;s <code>payload</code> may contain <code>title</code>, <code>message</code>, <code>level</code>, and <code>action_url</code>. Validate <code>action_url</code> against the application&rsquo;s navigation policy before opening it.</p>
 <h2  id="connect-to-notifications"><span id="connect_to_notifications"></span>Connect to notifications<a class="heading-anchor" href="#connect-to-notifications" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>A service client must support custom handshake headers. This example uses Node.js and <code>ws</code>.
+<p>In this example, the service client sends <code>X-Project-Id</code> in the handshake
+to subscribe in a project context. This example uses Node.js and <code>ws</code>.
 In your client project directory, install the dependency with <code>npm install ws</code>, save the code as
 <code>notifications.mjs</code>, and run <code>node notifications.mjs</code>. Set <code>CODEGRAPH_ACCESS_TOKEN</code>,
 <code>CODEGRAPH_PROJECT_ID</code>, and <code>CODEGRAPH_WS_URL</code> through your approved configuration channel.
 The URL variable contains the full notifications route. Do not pass credentials as command-line
 arguments. The client sends the token first, waits for <code>connected</code>, then sends <code>ping</code>.
-The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
+The console prints <code>pong</code>. If the connection closes, it prints the close code and
+reason; <code>1008 project_access_denied</code> means that the project access grant needs to
+be checked. Press Ctrl+C to stop the client.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">"ws"</span><span class="p">;</span>
 
 <span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="p">[</span><span class="s2">"CODEGRAPH_ACCESS_TOKEN"</span><span class="p">,</span><span class="w"> </span><span class="s2">"CODEGRAPH_PROJECT_ID"</span><span class="p">,</span><span class="w"> </span><span class="s2">"CODEGRAPH_WS_URL"</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
@@ -390,6 +402,14 @@ The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
 
 <span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">"open"</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">token</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="w"> </span><span class="p">}));</span>
+<span class="p">});</span>
+
+<span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">"close"</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">code</span><span class="p">,</span><span class="w"> </span><span class="nx">reason</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"WebSocket closed:"</span><span class="p">,</span><span class="w"> </span><span class="nx">code</span><span class="p">,</span><span class="w"> </span><span class="nx">reason</span><span class="p">.</span><span class="nx">toString</span><span class="p">());</span>
+<span class="p">});</span>
+
+<span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">"error"</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"WebSocket connection failed; check the API address and server availability."</span><span class="p">);</span>
 <span class="p">});</span>
 </code></pre></div>
 
@@ -423,13 +443,6 @@ The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
 </tbody>
 </table></div>
 <p>Use bounded exponential backoff with jitter for transient disconnects. Refresh credentials before reconnecting after 4001. Do not automatically retry 1008 until the rejected condition has changed.</p>
-<h2  id="source-contracts"><span id="source_contracts"></span>Source contracts<a class="heading-anchor" href="#source-contracts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li>src/api/websocket/routes.py — routes, header or first-message authentication, scope checks, and close behavior</li>
-<li>src/api/websocket/models.py — envelope, payload models, and message enum</li>
-<li>src/api/websocket/authorization.py — user, project, token, and job decisions</li>
-<li>src/api/websocket/rate_limiter.py — connection and message quotas</li>
-</ul>
 <p>WebSocket routes are not part of the REST OpenAPI operation set.</p>
       </article>
 
@@ -453,7 +466,8 @@ The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#authentication-boundary" class="level-2" aria-current="location">Authentication boundary</a></li>
+        <li><a href="#prerequisites" class="level-2" aria-current="location">Prerequisites</a></li>
+<li><a href="#authentication-boundary" class="level-2">Authentication boundary</a></li>
 <li><a href="#routes" class="level-2">Routes</a></li>
 <li><a href="#message-envelope" class="level-2">Message envelope</a></li>
 <li><a href="#current-message-types" class="level-2">Current message types</a></li>
@@ -462,7 +476,6 @@ The console prints <code>pong</code>. Press Ctrl+C to stop the client.</p>
 <li><a href="#notifications" class="level-2">Notifications</a></li>
 <li><a href="#connect-to-notifications" class="level-2">Connect to notifications</a></li>
 <li><a href="#close-codes-and-recovery" class="level-2">Close codes and recovery</a></li>
-<li><a href="#source-contracts" class="level-2">Source contracts</a></li>
       </ul>
     </aside>
   </div>

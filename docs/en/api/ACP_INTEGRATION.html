@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="ACP integration — Documentation">
@@ -159,12 +159,14 @@
         <h1>ACP integration</h1>
         <p class="doc-lead">Operator guide for CodeGraph ACP v1, the experimental ACP v2 profile, transports, MCP servers, authorization, and runtime limits.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-09-07">Updated: 2026-09-07</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph exposes Agent Client Protocol (ACP) over JSON-RPC for editor integrations. ACP v1 is
+        <p>Use Agent Client Protocol (ACP) to connect an editor to CodeGraph, send prompts, receive streamed
+updates, and handle requests for files, terminal commands, and permissions. This reference helps
+integration developers choose a transport and implement the JSON-RPC connection. ACP v1 is
 the default and production-compatible profile. An experimental ACP v2 alpha profile is available
 behind <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>. The profile is selected by <code>initialize</code> and remains
 fixed for the lifetime of that connection.</p>
@@ -243,10 +245,8 @@ a created terminal. This metadata is a CodeGraph extension, not a new standard A
   <code>_codegraph/hover/request</code>;</li>
 <li><code>_codegraph/item/fileChange/respondApproval</code>.</li>
 </ul>
-<p>Pre-Story-1257 unprefixed names remain available through an explicit compatibility adapter. Such
-responses carry <code>_meta.codegraph.legacyMethod</code>; new clients should use the namespaced methods.
-The internal <code>ClientCapabilitiesV2</code> class names the extended CodeGraph capability model and does
-not mean ACP protocol v2.</p>
+<p>Legacy unprefixed names remain available through an explicit compatibility adapter. Such
+responses carry <code>_meta.codegraph.legacyMethod</code>; new clients should use the namespaced methods.</p>
 <h2  id="experimental-acp-v2-profile"><span id="experimental_acp_v2_profile"></span>Experimental ACP v2 profile<a class="heading-anchor" href="#experimental-acp-v2-profile" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>With <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>, a connection may initialize with
 <code>protocolVersion: 2</code>, <code>info.name</code>, and <code>info.version</code>. The profile supports <code>session/new</code>,
@@ -265,16 +265,14 @@ shell. Environment and header entries must use name/value objects; names are val
 cannot contain NUL, carriage-return, or newline characters.</p>
 <p>HTTP MCP descriptors accept public HTTPS endpoints only. Credentials in the URL, query strings,
 fragments, loopback addresses, private networks, link-local addresses, and plaintext HTTP are
-rejected by the default URL policy. An explicitly configured platform administrator allowlist
-can change the policy outcome. The initial URL is validated, but the current HTTP client uses
-<code>follow_redirects=True</code> without an explicit per-redirect URL-policy check in this connection path.
-Do not treat initial validation as proof that every redirect target is checked; enforce the
-deployment&rsquo;s outbound network restrictions.</p>
+rejected by the default URL policy. A platform administrator can allow additional addresses
+through an explicit allowlist. The address is validated before connection. For a server that
+redirects requests, configure outbound network restrictions that also cover redirect destinations.</p>
 <p>Every declared MCP server must connect during session creation. If any connection fails, the
 server closes connections already opened for that request and removes the incomplete ACP session.
 Before invoking an MCP tool, CodeGraph sends <code>session/request_permission</code>; a denial or timeout
-prevents the call. One lifecycle-owner task performs each MCP SDK context entry, operation, and
-exit so session close and transport shutdown can release subprocesses and network clients.</p>
+prevents the call. Closing the session or transport releases the MCP subprocesses and network
+connections.</p>
 <h2  id="workspace-and-terminal-containment"><span id="workspace_and_terminal_containment"></span>Workspace and terminal containment<a class="heading-anchor" href="#workspace-and-terminal-containment" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>File calls require an absolute <code>workspaceRoot</code> and target <code>path</code>. A path that resolves outside
 the root fails with <code>outside workspace root</code>. Writes also reject sensitive path fragments such as
@@ -288,14 +286,14 @@ commands. Interpreters and shells such as <code>python</code>, <code>powershell<
 characters.</p>
 <p>Network routes use transport authentication and project scope. The workspace and terminal
 checks apply within that scope.</p>
-<h2  id="file-change-approval-limitation"><span id="file_change_approval_limitation"></span>File-change approval limitation<a class="heading-anchor" href="#file-change-approval-limitation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<h2  id="file-change-approval"><span id="file_change_approval"></span>File-change approval<a class="heading-anchor" href="#file-change-approval" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The server advertises an approval flow and sends the established
 <code>item/fileChange/requestApproval</code> notification. Clients answer with the canonical
 <code>_codegraph/item/fileChange/respondApproval</code> method; the unprefixed response name is accepted by
 the compatibility adapter. An unanswered request is declined after the configured timeout.</p>
-<p>The current <code>fs/write_text_file</code> handler does not automatically invoke that bridge. It performs a
-workspace-contained write after its own path checks. A client or outer workflow that requires
-human approval must enforce and record it before exposing the write operation.</p>
+<p>The <code>fs/write_text_file</code> method writes a file after checking its path within the workspace.
+For writes that require human approval, the client obtains and records approval first,
+then exposes the write operation. This is a separate step in the client&rsquo;s workflow.</p>
 <h2  id="runtime-limits"><span id="runtime_limits"></span>Runtime limits<a class="heading-anchor" href="#runtime-limits" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Defaults in <code>ACPRuntimeConfig</code> bound the service to 100 concurrent sessions with a 60-minute
 session timeout, 128 pending agent-to-client requests per connection, 256 queued stdio
@@ -313,18 +311,6 @@ retained.</p>
    same root.</li>
 <li>Treat a blocked executable, rejected MCP endpoint, or missing permission as a policy outcome.</li>
 </ol>
-<h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/api/routers/collaboration_suite/acp.py</code>: HTTP/WebSocket routes and authentication.</li>
-<li><code>src/acp/server/core/agent.py</code>: v1 dispatch, profile selection, client requests, and shared MCP
-  execution.</li>
-<li><code>src/acp/server/core/v2_profile.py</code>: experimental v2 session lifecycle and asynchronous turns.</li>
-<li><code>src/acp/server/core/session_manager.py</code>: session ownership, MCP setup, cancellation, and cleanup.</li>
-<li><code>src/acp/server/routing/handlers.py</code>: workspace containment and bounded terminal policy.</li>
-<li><code>src/acp/integration/mcp_bridge.py</code>: MCP descriptor validation and connection lifecycle.</li>
-<li><code>src/acp/transport/</code>: stdio, HTTP, and WebSocket behavior.</li>
-<li><code>src/config/runtime_sections/unified_config_runtime_models.py</code>: ACP runtime defaults.</li>
-</ul>
       </article>
 
       <div class="doc-maintenance">
@@ -353,10 +339,9 @@ retained.</p>
 <li><a href="#experimental-acp-v2-profile" class="level-2">Experimental ACP v2 profile</a></li>
 <li><a href="#mcp-servers-and-permission-flow" class="level-2">MCP servers and permission flow</a></li>
 <li><a href="#workspace-and-terminal-containment" class="level-2">Workspace and terminal containment</a></li>
-<li><a href="#file-change-approval-limitation" class="level-2">File-change approval limitation</a></li>
+<li><a href="#file-change-approval" class="level-2">File-change approval</a></li>
 <li><a href="#runtime-limits" class="level-2">Runtime limits</a></li>
 <li><a href="#recovery-checklist" class="level-2">Recovery checklist</a></li>
-<li><a href="#source-of-truth" class="level-2">Source of truth</a></li>
       </ul>
     </aside>
   </div>

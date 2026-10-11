@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Generate security patch previews with CodeGraph. Review finding scope and patch limitations before applying changes and checking the result.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Security audit autofix previews — Documentation">
@@ -151,8 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,19 +198,20 @@
         <h1>Security audit autofix previews</h1>
         <p class="doc-lead">Generate security patch previews with CodeGraph. Review finding scope and patch limitations before applying changes and checking the result.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Use autofix for a security finding in a specific method. Optionally filter by a CWE identifier (a weakness type). CodeGraph returns a proposed unified diff (a patch with context) and validation metadata. CLI, REST, and MCP do not apply these suggestions to source files. The CLI audit can write graph and report data, as described below.</p>
+        <p>Use autofix to prepare a patch suggestion for a security finding in one method; filter by CWE when needed. CodeGraph returns a unified diff and validation metadata. The preview is read-only and never applies the diff to source files. The CLI audit can update the configured CPG and save audit data, as described below.</p>
 <h2  id="cli-suggestions-from-an-audit-report"><span id="cli_suggestions_from_an_audit_report"></span>CLI: suggestions from an audit report<a class="heading-anchor" href="#cli-suggestions-from-an-audit-report" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Run the command in PowerShell from the CodeGraph source repository root with its Python environment installed. Replace <code>PATH</code> with the registered CPG (code property graph) database path. The database must be bound to the intended project and an existing source directory.</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">audit</span> <span class="p">-</span><span class="n">-db</span> <span class="s1">'PATH'</span> <span class="p">-</span><span class="n">-autofix</span> <span class="p">-</span><span class="n">-skip-llm-conclusion</span>
+<p>Run the command in PowerShell from the CodeGraph source repository root with its Python environment installed. Replace <code>PATH</code> with the registered CPG (code property graph) database path; quote the path if it contains spaces. The database must be bound to the intended project and an existing source directory.
+For environment setup, see the <a href="../CLI_GUIDE.html">CLI guide</a>. For the project database, see <a href="../PROJECT_IMPORT.html">Project import</a>.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">audit</span> <span class="p">-</span><span class="n">-db</span> <span class="n">PATH</span> <span class="p">-</span><span class="n">-autofix</span> <span class="p">-</span><span class="n">-skip-llm-conclusion</span>
 </code></pre></div>
 
-<p>The audit collects security findings and passes available taint-path evidence to the dry-run autofix engine. If the report contains no usable taint paths, the command reports that no suggestions can be generated. Do not combine <code>--autofix</code> with <code>--skip-persistence</code>: the CLI rejects that combination before the audit. The command shown can refresh the configured CPG and persist audit projections and snapshots. Run it only in an authorized project workflow; source-file preview does not mean that the whole command is read-only.</p>
-<p>The command prints suggestions and leaves files unchanged. Capture the output in a caller-owned location when it becomes review evidence.</p>
+<p>The audit collects security findings and passes available taint-path evidence to the dry-run autofix engine. If the report contains no usable taint paths, the command reports that it cannot generate suggestions. The <code>--autofix</code> and <code>--skip-persistence</code> flags cannot be used together; the CLI returns exit code <code>1</code> before starting the audit. With <code>--autofix</code>, the audit can refresh the configured CPG and save audit projections and snapshots, while leaving repository source files unchanged. Run it in the authorized workflow for that project.</p>
+<p>Save standard output to a caller-owned file when you need a review artifact.</p>
 <h2  id="rest-preview-one-method"><span id="rest_preview_one_method"></span>REST: preview one method<a class="heading-anchor" href="#rest-preview-one-method" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The current route is <code>POST /api/v1/security/autofix</code>. It uses the project context selected by the API runtime.</p>
 <p>Run the example in Bash with curl 7.76 or later and a running local API whose project context
@@ -220,22 +219,21 @@ points to the intended CPG. Configure the deployment-required authentication bef
 the example does not supply credentials. Replace <code>process_query</code> with a method from that project.
 For a remote API, use its approved HTTPS address. Check the HTTP status and response body.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>curl<span class="w"> </span>--fail-with-body<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/security/autofix<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
-<span class="s1">    "method_name": "process_query",</span>
-<span class="s1">    "cwe": "CWE-89"</span>
-<span class="s1">  }'</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;method_name&quot;: &quot;process_query&quot;,</span>
+<span class="s1">    &quot;cwe&quot;: &quot;CWE-89&quot;</span>
+<span class="s1">  }&#39;</span>
 </code></pre></div>
 
-<p><code>method_name</code> selects findings for one method. <code>cwe</code> is an optional filter. A request with no matching findings succeeds with an empty <code>results</code> list and <code>count: 0</code>.</p>
-<p>Do not pass an arbitrary <code>source_path</code>. When a source path is supplied, the route checks it against the registered project source directory and rejects paths outside that boundary.</p>
+<p><code>method_name</code> selects findings for one method. <code>cwe</code> is an optional filter. A request with no matching findings succeeds with an empty <code>results</code> list and <code>count: 0</code>. This example leaves <code>source_path</code> unset, so the API uses the source root from the selected project context.</p>
 <h2  id="mcp-preview-for-an-assistant"><span id="mcp_preview_for_an_assistant"></span>MCP: preview for an assistant<a class="heading-anchor" href="#mcp-preview-for-an-assistant" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Call the role-scoped tool with native string arguments:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>codegraph_security_autofix_preview(method_name="process_query", cwe="CWE-89")
+<p>The CodeGraph AppSec read role exposes this tool. In Codex, select the profile <code>codex:role:codegraph_appsec:read</code>. Call the tool with native string arguments:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>codegraph_security_autofix_preview(method_name=&quot;process_query&quot;, cwe=&quot;CWE-89&quot;)
 </code></pre></div>
 
 <p>The tool resolves the runtime database internally. Agent-facing callers must not provide a raw database path.</p>
-<p>MCP returns suggestions in <code>fixes</code>; REST uses <code>results</code>. MCP builds its input paths from scanner findings with placeholder <code>unknown</code> source and sink values. These values do not establish a complete dataflow path. Verify that path separately before applying a patch.</p>
+<p>MCP returns suggestions in <code>fixes</code>; REST uses <code>results</code>. Both interfaces select scanner findings by method and CWE filter and use their locations to prepare suggestions. Before applying a patch, trace data from the input to the dangerous operation using the source and <a href="../DATAFLOW_ANALYSIS_GUIDE.html">dataflow analysis</a> results.</p>
 <h2  id="read-the-response"><span id="read_the_response"></span>Read the response<a class="heading-anchor" href="#read-the-response" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>A generated item can include:</p>
 <ul>
@@ -246,8 +244,8 @@ For a remote API, use its approved HTTPS address. Check the HTTP status and resp
 <li><code>explanation</code> — why the change is proposed;</li>
 <li><code>diff_patch</code> — the unified diff to review.</li>
 </ul>
-<p><code>validated: true</code> records the preliminary validation result for the patch. Product correctness
-requires compilation, focused tests, regression tests, architecture review, and AppSec approval.</p>
+<p><code>validated: true</code> records the preliminary validation result for the patch. Before applying it,
+complete human review, compilation, focused and regression tests, architecture review, and AppSec approval.</p>
 <h2  id="safe-application-workflow"><span id="safe_application_workflow"></span>Safe application workflow<a class="heading-anchor" href="#safe-application-workflow" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Preserve the original finding, revision, and source evidence.</li>
@@ -262,17 +260,11 @@ requires compilation, focused tests, regression tests, architecture review, and 
 <ul>
 <li>Empty results mean no preview was generated for the selected method/filter; continue the
   vulnerability review with the configured scope and runtime evidence.</li>
-<li>A path-boundary error means the requested source root is outside the registered project.</li>
-<li>Tool absence can be a profile or role-policy restriction. Use the active catalog and policy.</li>
-<li>Autofix never commits, pushes, approves, or releases a change.</li>
+<li>If source resolution fails, check that the API selected the intended project context.</li>
+<li>If the tool is missing, check its availability and invocation rules in the active profile catalog.</li>
+<li>Autofix returns a diff for review. Applying and releasing a change happen in a separate workflow.</li>
 </ul>
-<h2  id="maintained-source-contracts"><span id="maintained_source_contracts"></span>Maintained source contracts<a class="heading-anchor" href="#maintained-source-contracts" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li>CLI dry-run integration: <code>src/cli/analysis_commands/audit_commands.py</code></li>
-<li>REST request, path boundary, and response: <code>src/api/routers/security_suite/security.py</code></li>
-<li>MCP preview contract: <code>src/mcp/tools/security_suite/security.py</code></li>
-<li>Autofix engine: <code>src/analysis/autofix/engine.py</code></li>
-</ul>
+<h2  id="related-guides"><span id="related_guides"></span>Related guides<a class="heading-anchor" href="#related-guides" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>For the finding workflow and evidence boundary, see <a href="02-security-audit.html">Security Audit</a>.</p>
       </article>
 
@@ -302,7 +294,7 @@ requires compilation, focused tests, regression tests, architecture review, and 
 <li><a href="#read-the-response" class="level-2">Read the response</a></li>
 <li><a href="#safe-application-workflow" class="level-2">Safe application workflow</a></li>
 <li><a href="#failure-and-permission-boundaries" class="level-2">Failure and permission boundaries</a></li>
-<li><a href="#maintained-source-contracts" class="level-2">Maintained source contracts</a></li>
+<li><a href="#related-guides" class="level-2">Related guides</a></li>
       </ul>
     </aside>
   </div>

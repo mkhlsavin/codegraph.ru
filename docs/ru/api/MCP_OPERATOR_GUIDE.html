@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Настройте MCP-сервер CodeGraph, выберите профиль и проверьте формат сообщений, авторизацию, ограничения вызовов и восстановление после ошибок.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Руководство оператора MCP — Документация CodeGraph">
@@ -159,15 +159,15 @@
         <h1>Руководство оператора MCP</h1>
         <p class="doc-lead">Настройте MCP-сервер CodeGraph, выберите профиль и проверьте формат сообщений, авторизацию, ограничения вызовов и восстановление после ошибок.</p>
 
-        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-10-03">Обновлено: 2026-10-03</time></div>
+        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-10-11">Обновлено: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>Этот документ нужен для запуска и диагностики MCP-сервера. Полный каталог инструментов здесь
-не дублируется: доступный набор зависит от активного профиля и меняется вместе с runtime.
+не дублируется: доступный набор зависит от активного профиля и меняется вместе с сервером.
 После смены профиля или перезапуска проверяйте каталог, который видит подключённый клиент.</p>
-<p>Выполняйте команды из одобренного checkout CodeGraph с его Python-окружением и настроенными
+<p>Выполняйте команды из одобренной локальной копии исходников CodeGraph с его Python-окружением и настроенными
 серверными зависимостями. Не запускайте второй процесс на занятом порту. Для управляемого
 развёртывания используйте MCP-подключение администратора вместо локального сервера из исходников.
 Команды запуска ниже предназначены для Bash, диагностика профиля — для PowerShell.</p>
@@ -175,8 +175,8 @@
 содержит версию протокола и метаданные клиента. Запрос <code>server/discover</code> возвращает возможности
 сервера, а <code>tools/list</code> — каталог инструментов активного профиля.</p>
 <p>Для стандартного MCP-клиента HTTP-адаптер <code>/agent-plugin/mcp</code> согласует версию <code>2025-11-25</code>
-или <code>2026-07-28</code> и преобразует запросы для канонического runtime. Вход и настройка клиента
-для управляемого сервиса описаны в <a href="../integrations/REMOTE_MCP_AUTH.html">OAuth и MCP</a>.</p>
+или <code>2026-07-28</code> и преобразует запросы для основного MCP-сервера. Вход и настройка клиента
+для управляемого сервиса описаны в <a href="../integrations/REMOTE_MCP_AUTH.html">OAuth и MCP</a>.</p>
 <h2  id="vybor-transporta"><span id="vybor_transporta"></span>Выбор транспорта<a class="heading-anchor" href="#vybor-transporta" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Если локальный клиент запускает CodeGraph как дочерний процесс, используйте stdio:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>stdio
@@ -188,7 +188,7 @@
 </code></pre></div>
 
 <p>Если порт <code>27495</code> занят, выберите свободный локальный порт. Замените значение <code>--port</code>
-и порт в URL клиента одним и тем же значением.</p>
+и порт в URL клиента одним и тем же значением.</p>
 <p>Поддерживаются только <code>stdio</code> и <code>http</code>. SSE и прежние совместимые SSE-маршруты удалены.</p>
 <h2  id="proverka-kataloga-cherez-stdio"><span id="proverka_kataloga_cherez_stdio"></span>Проверка каталога через stdio<a class="heading-anchor" href="#proverka-kataloga-cherez-stdio" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Отправьте запущенному stdio-процессу это JSON-RPC-сообщение через stdin одной строкой.
@@ -241,8 +241,13 @@
 </tr>
 </tbody>
 </table></div>
-<p>Значение <code>MCP-Method</code> должно совпадать с <code>method</code> в JSON-RPC-сообщении. При несовпадении
+<p>Значение <code>MCP-Method</code> должно совпадать с <code>method</code> в JSON-RPC-сообщении. При несовпадении
 сервер возвращает <code>mcp-method header does not match the request body's method</code>.</p>
+<p>Для вызова инструмента задайте <code>MCP-Method: tools/call</code> и заголовок <code>MCP-Name</code>,
+равный <code>params.name</code> в теле запроса. Например, для <code>codegraph_project_context_status</code>
+передайте <code>MCP-Name: codegraph_project_context_status</code>. После ответа проверьте результат
+инструмента: состояние <code>denied</code> с причиной <code>mcp_authentication_required</code> требует
+авторизации, даже если HTTP-запрос завершился кодом <code>200</code>.</p>
 <h2  id="autentifikatsiya-i-oblast-proekta"><span id="autentifikatsiya_i_oblast_proekta"></span>Аутентификация и область проекта<a class="heading-anchor" href="#autentifikatsiya-i-oblast-proekta" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Stdio считается доверенным локальным транспортом. HTTP по умолчанию требует
 аутентификацию через <code>Authorization: Bearer &lt;jwt&gt;</code> или <code>X-API-Key: &lt;api-key&gt;</code>. Для сетевых
@@ -250,17 +255,30 @@
 аутентифицированной учётной записью и отклоняет несовпадающие <code>project_key</code> и <code>namespace</code>.</p>
 <p>Флаг <code>--no-auth</code> предназначен только для локальной разработки. Команда завершится ошибкой,
 если не включён параметр <code>security.mcp_allow_no_auth_network_transports</code>; сервер без
-аутентификации разрешено привязать только к loopback-адресу:</p>
+аутентификации разрешено привязать только к loopback-адресу:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">27495</span><span class="w"> </span>--no-auth
 </code></pre></div>
 
-<p>Управляемое изменение разрешается после проверки роли, точного носителя и сохранённого approval
-внутри обработчика. Full- и ролевой профиль задают доступный каталог инструментов.</p>
+<p>Управляемое изменение разрешается после проверки роли, точной области задачи и сохранённого одобрения
+внутри обработчика. Полный и ролевой профили задают доступный каталог инструментов.</p>
 <h2  id="vybor-i-proverka-profilya"><span id="vybor_i_proverka_profilya"></span>Выбор и проверка профиля<a class="heading-anchor" href="#vybor-i-proverka-profilya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Без переменной <code>CODEGRAPH_MCP_TOOL_PROFILE</code> команда запускает профиль <code>codex</code>. Для
-инструментов конкретной линии штатно используются owner-профили. Актуальный каталог
+инструментов конкретной роли используйте её профиль подключения. Актуальный каталог
 инструментов определяйте по выбранному профилю.</p>
-<p>В исходном checkout вычисляйте текущий размер профиля, а не переносите число в документацию:</p>
+<p>Задайте профиль в окружении процесса, который запускает сервер. Например,
+следующие команды явно выбирают <code>codex</code>. Для ролевого подключения замените <code>codex</code>
+именем профиля из настроек этого подключения.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">CODEGRAPH_MCP_TOOL_PROFILE</span><span class="o">=</span>codex<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>stdio
+</code></pre></div>
+
+<p>В PowerShell задайте переменную перед запуском:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$env:CODEGRAPH_MCP_TOOL_PROFILE</span> <span class="p">=</span> <span class="s1">'codex'</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="n">mcp</span> <span class="p">-</span><span class="n">-transport</span> <span class="n">stdio</span>
+</code></pre></div>
+
+<p>При запуске из IDE укажите эту переменную в настройках окружения MCP-подключения.
+Переподключите клиент и выполните <code>tools/list</code>: ответ покажет выбранный каталог.</p>
+<p>В локальной копии исходников вычисляйте текущий размер профиля, а не переносите число в документацию:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-c</span> <span class="s2">"from src.mcp.surface_catalog import profile_family_tool_names; print(len(profile_family_tool_names('full')))"</span>
 </code></pre></div>
 
@@ -269,15 +287,15 @@
 <h2  id="kanonicheskiy-wire-kontrakt"><span id="kanonicheskiy_wire_kontrakt"></span>Канонический wire-контракт<a class="heading-anchor" href="#kanonicheskiy-wire-kontrakt" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>
 <li>Совместимый вход для структурированных полей — нативные массивы и объекты. Удалённые алиасы
-  <code>*_json</code> и контейнеры в виде JSON-строк завершаются fail-closed.</li>
+  <code>*_json</code> и контейнеры в виде JSON-строк отклоняются сервером.</li>
 <li>Передавайте <code>story_id</code> строкой и используйте компактные канонические идентификаторы, например
   <code>handoff_v1</code>.</li>
-<li>Не передавайте <code>db_path</code> или другой путь к хранилищу в agent-facing инструменты. Runtime
+<li>Не передавайте <code>db_path</code> или другой путь к хранилищу в инструменты, вызываемые агентом. Сервер
   определяет хранилище из аутентифицированного контекста проекта.</li>
-<li>Для PRD execution передавайте traceability assertions и test executions нативными типизированными
-  массивами. Приёмку подтверждают требования, результаты тестов и решения ответственных линий;
+<li>Для выполнения задач PRD передавайте утверждения трассируемости и результаты выполнения тестов
+  как типизированные массивы. Приёмку подтверждают требования, результаты тестов и решения ответственных ролей;
   код завершения команды, путь и историческая метка статуса дают операционный контекст.</li>
-<li>Не конструируйте approval-, finance- и authority-пакеты вручную. Используйте только значения,
+<li>Не составляйте вручную пакеты одобрения, финансовых данных и подтверждения полномочий. Используйте только значения,
   выпущенные или сохранённые авторитетным серверным процессом.</li>
 </ul>
 <h2  id="podderzhivaemye-predstavleniya-prd-statusa"><span id="podderzhivaemye_predstavleniya_prd_statusa"></span>Поддерживаемые представления PRD-статуса<a class="heading-anchor" href="#podderzhivaemye-predstavleniya-prd-statusa" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
@@ -300,19 +318,19 @@
 </tr>
 <tr>
 <td><code>only_pending</code></td>
-<td>Компактная проекция ожидающих handoff.</td>
+<td>Компактная проекция ожидающих передач задачи.</td>
 </tr>
 <tr>
 <td><code>closure_summary</code></td>
-<td>Блокеры, ожидающие handoff и агрегаты по линиям.</td>
+<td>Блокеры, ожидающие передачи задачи и сводные данные по ролям.</td>
 </tr>
 <tr>
 <td><code>latest_chain</code></td>
-<td>Эффективные элементы текущей цепочки handoff.</td>
+<td>Эффективные элементы текущей цепочки передач задачи.</td>
 </tr>
 <tr>
 <td><code>projection_gaps</code></td>
-<td>Разрывы story-проекций и блокеры.</td>
+<td>Пробелы в отображении пользовательских историй и блокеры.</td>
 </tr>
 </tbody>
 </table></div>
@@ -320,12 +338,12 @@
 <h2  id="diagnostika-neuspeshnogo-vyzova"><span id="diagnostika_neuspeshnogo_vyzova"></span>Диагностика неуспешного вызова<a class="heading-anchor" href="#diagnostika-neuspeshnogo-vyzova" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ol>
 <li>Выполните <code>python -m src.mcp --help</code> и проверьте транспорт и параметры привязки.</li>
-<li>После перезапуска сервера переподключите клиент и обновите кеш discovery, чтобы получить
-   текущую runtime-регистрацию.</li>
-<li>Проверьте активный профиль и требуемый owner-профиль в тексте ошибки.</li>
+<li>После перезапуска сервера переподключите клиент и обновите каталог инструментов, чтобы получить
+   текущую регистрацию сервера.</li>
+<li>Проверьте активный профиль и требуемый ролевой профиль в тексте ошибки.</li>
 <li>Для HTTP сначала проверьте аутентификацию и <code>X-Project-ID</code>, а затем меняйте аргументы.</li>
-<li>Удалённые алиасы, scalar/container coercion и самостоятельно составленные authority-пакеты —
-   ошибки контракта. Не повторяйте вызов с fallback-формой.</li>
+<li>Удалённые алиасы, замена массива строкой или числа контейнером и самостоятельно составленные
+   подтверждения полномочий нарушают формат запроса. Исправьте аргументы по схеме инструмента.</li>
 </ol>
 <h2  id="istochniki-istiny"><span id="istochniki_istiny"></span>Источники истины<a class="heading-anchor" href="#istochniki-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <ul>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Connect enterprise identity providers, map roles, validate login and recovery, and keep local authorization distinct from authentication.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Configure OAuth and LDAP identity — Documentation">
@@ -163,21 +163,21 @@
         <h1>Configure OAuth and LDAP identity</h1>
         <p class="doc-lead">Connect enterprise identity providers, map roles, validate login and recovery, and keep local authorization distinct from authentication.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>Login through an OAuth provider or LDAP links an external identity to a local user.
 CodeGraph manages the local role, permissions, project access, sessions, and audit events.
-Check the rights actually granted after login; an external group alone does not determine project access.</p>
+An administrator assigns local roles and project access using <a href="RBAC.html">RBAC</a>.</p>
 <h2  id="choose-the-integration"><span id="choose_the_integration"></span>Choose the integration<a class="heading-anchor" href="#choose-the-integration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use OAuth/OIDC when the provider supports a browser authorization-code flow and centrally managed
 client registration. Use LDAP or Active Directory when directory bind and group lookup are the
 approved customer pattern. A deployment can configure both, but each route must have an owner,
 tested failure mode, and recovery path.</p>
-<p>Typed configuration lives in <code>src/api/config.py</code>. Provider and directory implementations live in
-<code>src/api/auth/providers/oauth.py</code> and <code>src/api/auth/providers/ldap_auth.py</code>.</p>
+<p>You need access to the API process environment, an application registered with the provider
+or a directory search account. Prepare the public CodeGraph HTTPS origin and a separate test account.</p>
 <h2  id="current-routes"><span id="current_routes"></span>Current routes<a class="heading-anchor" href="#current-routes" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The application exposes these login operations under <code>/api/v1/auth</code>:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Current routes"><table data-columns="2"><caption class="sr-only">Current routes</caption>
@@ -210,27 +210,65 @@ tested failure mode, and recovery path.</p>
 </tr>
 </tbody>
 </table></div>
-<p>The route implementation is <code>src/api/routers/auth_suite/auth_external_routes.py</code>. Use deployed
-OpenAPI for exact payloads and response models.</p>
+<p>Use the deployed API OpenAPI at <code>/api/docs</code> for exact request and response fields.</p>
 <h2  id="configure-oauth"><span id="configure_oauth"></span>Configure OAuth<a class="heading-anchor" href="#configure-oauth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The current typed provider set includes GitHub, Google, GitLab, Keycloak, SourceCraft, and GitVerse.
-A provider is usable only when enabled and supplied with the required client details. Configure:</p>
-<ul>
-<li>client ID and secret through customer-approved secret references;</li>
-<li>exact redirect URI generated for the deployed public origin;</li>
-<li>authorize, token, and user-info endpoints when the provider needs overrides;</li>
-<li>least-privilege scopes required for identity only;</li>
-<li>TLS trust, proxy, timeout, and outbound allowlist;</li>
-<li>account-linking and deprovisioning ownership.</li>
-</ul>
-<p>Register the callback URI exactly. Do not use wildcard redirects, publish client secrets, or allow
-arbitrary caller-provided callback destinations.</p>
+<p>The standard API environment configuration supports GitHub, Google, SourceCraft
+and GitVerse. Set the variables for your provider:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Configure OAuth"><table data-columns="3"><caption class="sr-only">Configure OAuth</caption>
+<thead>
+<tr>
+<th scope="col">Provider</th>
+<th scope="col">Required environment variables</th>
+<th scope="col">Provider address</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitHub</td>
+<td><code>OAUTH_GITHUB_CLIENT_ID</code>, <code>OAUTH_GITHUB_CLIENT_SECRET</code></td>
+<td>GitHub.com.</td>
+</tr>
+<tr>
+<td>Google</td>
+<td><code>OAUTH_GOOGLE_CLIENT_ID</code>, <code>OAUTH_GOOGLE_CLIENT_SECRET</code></td>
+<td>Google Accounts.</td>
+</tr>
+<tr>
+<td>SourceCraft</td>
+<td><code>OAUTH_SOURCECRAFT_CLIENT_ID</code>, <code>OAUTH_SOURCECRAFT_CLIENT_SECRET</code></td>
+<td>Yandex ID; <code>OAUTH_SOURCECRAFT_SERVER_URL</code> defaults to <code>https://oauth.yandex.ru</code>.</td>
+</tr>
+<tr>
+<td>GitVerse</td>
+<td><code>OAUTH_GITVERSE_CLIENT_ID</code>, <code>OAUTH_GITVERSE_CLIENT_SECRET</code></td>
+<td><code>OAUTH_GITVERSE_SERVER_URL</code> defaults to <code>https://gitverse.ru</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<ol>
+<li>Register an application with the provider. Use the public API HTTPS origin
+   and <code>/api/v1/auth/oauth/{provider}/callback</code> for the redirect URI.
+   Replace <code>{provider}</code> with <code>github</code>, <code>google</code>, <code>sourcecraft</code> or <code>gitverse</code>.
+   For an API at <code>https://codegraph.example.org</code>, the GitHub redirect is
+   <code>https://codegraph.example.org/api/v1/auth/oauth/github/callback</code>.</li>
+<li>Supply the client ID and secret to the API process environment through
+   your organization&rsquo;s secret store. Source installations also read <code>.env</code>
+   from the working directory; protect that file and exclude it from Git.</li>
+<li>Apply the environment by restarting the API using the
+   <a href="DEPLOYMENT_GUIDE.html">deployment guide</a>.</li>
+<li>Request <code>GET /api/v1/auth/oauth/providers</code>. Find the selected provider
+   with <code>enabled: true</code> and a nonempty <code>authorize_url</code>. Open that URL
+   to test login.</li>
+</ol>
+<p>The list also includes disabled entries. GitLab and Keycloak appear in the
+provider catalog, but their standard API environment configuration is incomplete
+in this version. Their connection workflows are excluded from this guide.</p>
 <h2  id="validate-oauth"><span id="validate_oauth"></span>Validate OAuth<a class="heading-anchor" href="#validate-oauth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The start flow creates a one-time <code>state</code> value. The callback consumes it, verifies the provider
 binding, and uses the stored redirect URI when exchanging the authorization code.</p>
 <p>For each enabled provider:</p>
 <ol>
-<li>confirm it appears in <code>/api/v1/auth/oauth/providers</code>;</li>
+<li>confirm <code>enabled: true</code> and <code>authorize_url</code> in <code>/api/v1/auth/oauth/providers</code>;</li>
 <li>start login from the deployed origin;</li>
 <li>inspect the provider consent request and scopes;</li>
 <li>complete the callback once and confirm state replay is rejected;</li>
@@ -240,19 +278,61 @@ binding, and uses the stored redirect URI when exchanging the authorization code
 </ol>
 <p>After login, verify the operations and projects available to the local CodeGraph user.</p>
 <h2  id="configure-ldap"><span id="configure_ldap"></span>Configure LDAP<a class="heading-anchor" href="#configure-ldap" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>LDAP settings include enabled state, server, port, TLS choice, base DN, user and group search bases,
-bind identity, bind secret, object classes, identity attributes, membership attribute, and role
-mapping. Prefer <code>ldaps://</code> or another customer-approved protected transport across trust boundaries.</p>
-<p>The optional <code>ldap3</code> package must be installed for the authenticator to be available. When LDAP is
-configured but <code>ldap3</code> is missing, <code>/api/v1/auth/ldap/status</code> reports degraded availability.
-Install the package and repeat the availability check before testing login.</p>
-<p>Use a least-privilege bind identity. Never log submitted passwords, bind secrets, raw access tokens,
-or full directory entries.</p>
+<p>Set these variables in the API process environment:</p>
+<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Configure LDAP"><table data-columns="2"><caption class="sr-only">Configure LDAP</caption>
+<thead>
+<tr>
+<th scope="col">Variable</th>
+<th scope="col">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LDAP_SERVER</code></td>
+<td>Directory address, such as <code>ldaps://directory.example.org:636</code>. A nonempty address enables LDAP.</td>
+</tr>
+<tr>
+<td><code>LDAP_BASE_DN</code></td>
+<td>Directory root, such as <code>DC=example,DC=org</code>.</td>
+</tr>
+<tr>
+<td><code>LDAP_BIND_USER</code></td>
+<td>DN of an account permitted to search users and groups.</td>
+</tr>
+<tr>
+<td><code>LDAP_BIND_PASSWORD</code></td>
+<td>That account&rsquo;s password from your secret store.</td>
+</tr>
+<tr>
+<td><code>LDAP_USER_SEARCH_BASE</code></td>
+<td>User search base.</td>
+</tr>
+<tr>
+<td><code>LDAP_GROUP_SEARCH_BASE</code></td>
+<td>Group search base.</td>
+</tr>
+</tbody>
+</table></div>
+<p>In <code>LDAP_SERVER</code>, <code>ldaps://</code> selects TLS and default port <code>636</code>; <code>ldap://</code>
+selects port <code>389</code>. An explicit port after the colon overrides the default.
+Agree on the protected connection with the directory owner.</p>
+<p>Restart the API after applying the environment and request
+<code>GET /api/v1/auth/ldap/status</code>. Expect <code>enabled: true</code>, <code>available: true</code>
+and <code>connected: true</code>. Then test <code>POST /api/v1/auth/ldap</code> with
+<code>username</code> and <code>password</code> fields.</p>
+<p>The Python project dependencies include <code>ldap3</code>. If the status reports
+<code>available: false</code> and a missing-library message, install the dependencies
+for the same CodeGraph version in the API environment and repeat the check.
+Give the search account least-privilege access; transfer passwords through
+protected channels and keep them in your secret store.</p>
 <h2  id="map-roles-and-manage-lifecycle"><span id="map_roles_and_manage_lifecycle"></span>Map roles and manage lifecycle<a class="heading-anchor" href="#map-roles-and-manage-lifecycle" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Group-to-role mapping resolves directory groups to the local <code>viewer</code>, <code>analyst</code>, <code>reviewer</code>, or
+<p>When provisioning a user, the group mapper selects the local <code>viewer</code>, <code>analyst</code>, <code>reviewer</code>, or
 <code>admin</code> role. The current mapper checks matches in the order <code>admin</code>, <code>reviewer</code>, <code>analyst</code>, <code>viewer</code>;
 multiple matches select the most privileged role. No matching group returns <code>analyst</code>.
-Test unmatched and multi-group users before enabling LDAP.</p>
+The standard API environment loads an empty group mapping in this version,
+so a new LDAP user receives <code>analyst</code>. Assign working roles and projects
+in the user management interface described in <a href="RBAC.html">RBAC</a>.
+Startup configuration of group <code>role_mapping</code> is excluded from this guide.</p>
 <p>Test joiner, mover, and leaver cases:</p>
 <ul>
 <li>first login and local user creation;</li>
@@ -263,8 +343,41 @@ Test unmatched and multi-group users before enabling LDAP.</p>
 <li>emergency local administrator access under customer policy.</li>
 </ul>
 <p>See <a href="RBAC.html">RBAC</a> for the permission contract after authentication.
-After an external group change, check the new role and access with tokens already issued.
+An existing user retains the local role on subsequent login. After an external
+group change, an administrator updates that role in CodeGraph and checks
+access with newly issued and existing tokens.
 Configure token lifetimes and verify the procedure for revoking existing sessions.</p>
+<h2  id="check-role-mapping-locally"><span id="check_role_mapping_locally"></span>Check role mapping locally<a class="heading-anchor" href="#check-role-mapping-locally" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>From the CodeGraph source root with the project&rsquo;s Python environment, save this
+example as <code>check_ldap_roles.py</code> and run <code>python check_ldap_roles.py</code>.
+It uses synthetic group names and calls the same mapper as LDAP login. The check runs locally
+without a directory connection or user credentials.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LDAPConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.providers.ldap_auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">LDAPAuthenticator</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">LDAPConfig</span><span class="p">(</span><span class="n">role_mapping</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">"codegraph-admins"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+    <span class="s2">"codegraph-reviewers"</span><span class="p">:</span> <span class="s2">"reviewer"</span><span class="p">,</span>
+    <span class="s2">"codegraph-viewers"</span><span class="p">:</span> <span class="s2">"viewer"</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="n">authenticator</span> <span class="o">=</span> <span class="n">LDAPAuthenticator</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="n">cases</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">([],</span> <span class="s2">"analyst"</span><span class="p">),</span>
+    <span class="p">([</span><span class="s2">"codegraph-viewers"</span><span class="p">],</span> <span class="s2">"viewer"</span><span class="p">),</span>
+    <span class="p">([</span><span class="s2">"codegraph-viewers"</span><span class="p">,</span> <span class="s2">"codegraph-reviewers"</span><span class="p">],</span> <span class="s2">"reviewer"</span><span class="p">),</span>
+    <span class="p">([</span><span class="s2">"codegraph-reviewers"</span><span class="p">,</span> <span class="s2">"codegraph-admins"</span><span class="p">],</span> <span class="s2">"admin"</span><span class="p">),</span>
+<span class="p">]</span>
+<span class="k">for</span> <span class="n">groups</span><span class="p">,</span> <span class="n">expected</span> <span class="ow">in</span> <span class="n">cases</span><span class="p">:</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">authenticator</span><span class="o">.</span><span class="n">map_groups_to_role</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="p">(</span><span class="n">groups</span><span class="p">,</span> <span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"LDAP role mapping: 4 cases passed"</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Expected output: <code>LDAP role mapping: 4 cases passed</code>. The four cases cover an unmatched user,
+a viewer, overlapping reviewer/viewer groups, and overlapping administrator/reviewer groups.
+The example demonstrates the algorithm on a local <code>LDAPConfig</code> object;
+it does not change the running API configuration.</p>
 <h2  id="failure-and-recovery"><span id="failure_and_recovery"></span>Failure and recovery<a class="heading-anchor" href="#failure-and-recovery" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Distinguish provider unavailability, invalid state, code exchange failure, TLS or DNS failure,
 directory bind failure, user search failure, group lookup failure, missing dependency, and local
@@ -300,6 +413,7 @@ checks after route, provider, dependency, role, or session-policy changes.</p>
 <li><a href="#validate-oauth" class="level-2">Validate OAuth</a></li>
 <li><a href="#configure-ldap" class="level-2">Configure LDAP</a></li>
 <li><a href="#map-roles-and-manage-lifecycle" class="level-2">Map roles and manage lifecycle</a></li>
+<li><a href="#check-role-mapping-locally" class="level-2">Check role mapping locally</a></li>
 <li><a href="#failure-and-recovery" class="level-2">Failure and recovery</a></li>
 <li><a href="#acceptance-evidence" class="level-2">Acceptance evidence</a></li>
       </ul>

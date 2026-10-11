@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Practical reference for the current GoCPG async gRPC client, protobuf services, connection security, paths, deadlines, and recovery.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="gRPC API — Documentation">
@@ -156,18 +156,16 @@
         <span>/</span>
         <span>gRPC API</span>
         </nav>
-        <h1>GRPC API</h1>
+        <h1>gRPC API</h1>
         <p class="doc-lead">Practical reference for the current GoCPG async gRPC client, protobuf services, connection security, paths, deadlines, and recovery.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p><code>GrpcTransport</code> is CodeGraph&rsquo;s async Python client for a running GoCPG gRPC server. It returns
-the same Pydantic result models used by the subprocess transport. This page explains the client
-boundary and routes readers to the canonical protobuf files instead of copying every request
-field into a second, manually maintained schema.</p>
+        <p>Use gRPC to connect to a running GoCPG server: read graph statistics, execute SQL queries, find symbols, and update the CPG. <code>GrpcTransport</code> is CodeGraph&rsquo;s async Python client for these operations. It returns typed Pydantic result models.</p>
+<p>This reference is for integration developers. It covers connection settings, a graph statistics example, operation groups, and error handling. Protobuf files define message formats and remote method signatures.</p>
 <h2  id="canonical-services"><span id="canonical_services"></span>Canonical services<a class="heading-anchor" href="#canonical-services" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Canonical services"><table data-columns="3"><caption class="sr-only">Canonical services</caption>
 <thead>
@@ -205,9 +203,6 @@ field into a second, manually maintained schema.</p>
 </tr>
 </tbody>
 </table></div>
-<p>The generated Python stubs live under <code>src/services/gocpg/proto/gocpg/v1/</code>. The maintained
-client implementation is split across <code>src/services/gocpg/runtime/grpc_transport.py</code> and the
-neighboring <code>grpc_transport_*.py</code> mixins.</p>
 <h2  id="connection-configuration"><span id="connection_configuration"></span>Connection configuration<a class="heading-anchor" href="#connection-configuration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Connection configuration"><table data-columns="3"><caption class="sr-only">Connection configuration</caption>
 <thead>
@@ -240,6 +235,7 @@ neighboring <code>grpc_transport_*.py</code> mixins.</p>
 </tr>
 </tbody>
 </table></div>
+<p>Pass a settings object to <code>GrpcTransport(config=connection_config)</code>. The client reads its <code>grpc_host</code>, <code>grpc_port</code>, <code>grpc_api_key</code>, and <code>grpc_tls_cert</code> attributes; missing attributes use the defaults in the table. For example, <code>SimpleNamespace</code> from Python&rsquo;s <code>types</code> module can hold these attributes without a separate configuration class. The <code>grpc_tls_cert</code> path points to a root certificate PEM file on the client filesystem. For a local connection with default settings, use <code>GrpcTransport()</code>, as in the example below.</p>
 <p>Send and receive messages are capped at 64 MiB. If <code>grpc_tls_cert</code> is absent, the client uses
 <code>grpc.aio.insecure_channel</code>; this is suitable only inside an already trusted boundary. Supplying
 a certificate creates a server-authenticated TLS channel. It does not configure client-certificate
@@ -306,10 +302,12 @@ a client-local path is not automatically mounted into a remote server.</p>
 </ul>
 <p>Set the method&rsquo;s <code>timeout</code>, or the typed request&rsquo;s <code>timeout</code> field, to change its deadline.</p>
 <h2  id="failure-handling"><span id="failure_handling"></span>Failure handling<a class="heading-anchor" href="#failure-handling" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p><code>DEADLINE_EXCEEDED</code> is mapped to <code>GoCPGTimeoutError</code>. Other gRPC statuses are mapped to
+<p><code>DEADLINE_EXCEEDED</code> is mapped to <code>GoCPGTimeoutError</code>. For <code>parse</code>, <code>FAILED_PRECONDITION</code>
+with <code>empty_scope</code> details is mapped to <code>EmptyAuditScopeError</code>: the selected scope contains
+no source files to parse. Other gRPC statuses are mapped to
 <code>GoCPGProcessError</code> with the status name and server details. A parse or update stream that ends
 without a final result can return a result model assembled from the requested output path.
-Check the graph content and provenance to determine the operation&rsquo;s result. In parse operations with an explicit
+In parse operations with an explicit
 audit-scope policy, a missing terminal result instead raises
 <code>ValueError: audit_scope_invalid_provenance: terminal parse result missing</code>. Verify the expected
 graph content and provenance separately. A status request shows server availability;
@@ -324,16 +322,6 @@ limit the server&rsquo;s filesystem access to the required paths. Use plaintext 
 inside a protected local network boundary.</p>
 <p>Raw <code>db_path</code> belongs to the Python gRPC client. Agent-facing MCP calls resolve storage through
 project/runtime context.</p>
-<h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/services/gocpg/runtime/grpc_transport.py</code> — channel management and core CPG operations.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_query.py</code> — query and metadata methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_pattern.py</code> — pattern methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_navigation.py</code> — navigation methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_lifecycle.py</code> — lifecycle and refresh methods.</li>
-<li><code>src/services/gocpg/runtime/grpc_transport_errors.py</code> — stable error mapping.</li>
-<li><code>gocpg/api/proto/gocpg/v1/</code> — authoritative protobuf service and message contracts.</li>
-</ul>
       </article>
 
       <div class="doc-maintenance">
@@ -363,7 +351,6 @@ project/runtime context.</p>
 <li><a href="#paths-and-deadlines" class="level-2">Paths and deadlines</a></li>
 <li><a href="#failure-handling" class="level-2">Failure handling</a></li>
 <li><a href="#security-boundary" class="level-2">Security boundary</a></li>
-<li><a href="#source-of-truth" class="level-2">Source of truth</a></li>
       </ul>
     </aside>
   </div>

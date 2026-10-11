@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Generate a project SBOM and audit dependencies against selected vulnerability sources. Inspect the findings and export a SARIF report.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Generate an SBOM and audit dependencies — Documentation">
@@ -151,8 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html" class="active" aria-current="page">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +198,7 @@
         <h1>Generate an SBOM and audit dependencies</h1>
         <p class="doc-lead">Generate a project SBOM and audit dependencies against selected vulnerability sources. Inspect the findings and export a SARIF report.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-02">Updated: 2026-10-02</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
@@ -211,9 +209,9 @@ dependencies to vulnerability reports. CodeGraph exports CycloneDX or SPDX
 inventories and produces audit reports in JSON, SARIF, Markdown or GOST format.</p>
 <p>Start with the inventory: generate the file, inspect component names and versions,
 and retain it with the source revision. Then run the audit and triage its findings
-before updating dependencies. Report completeness
-depends on supported dependency files, exact versions, and source availability.
-A security reviewer must assess whether findings apply to the release configuration.</p>
+before updating dependencies. The command reads project dependency files and
+matches package versions against the selected sources. A security reviewer triages
+the findings for the release configuration.</p>
 <h2  id="prerequisites-and-complete-example"><span id="prerequisites_and_complete_example"></span>Prerequisites and complete example<a class="heading-anchor" href="#prerequisites-and-complete-example" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Install Python 3.11 or later and CodeGraph dependencies using the prerequisites in
 the <a href="CLI_GUIDE.html">CLI guide</a>. This example uses
@@ -221,7 +219,17 @@ PowerShell and a source checkout for local development. Start in the CodeGraph
 repository root. Use a new <code>sbom-demo</code> directory; the commands create example files.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$env:PYTHONPATH</span> <span class="p">=</span> <span class="p">(</span><span class="nb">Get-Location</span><span class="p">).</span><span class="n">Path</span>
 <span class="nb">New-Item</span> <span class="n">-ItemType</span> <span class="n">Directory</span> <span class="n">-Path</span> <span class="n">sbom-demo</span>
-<span class="nb">Set-Content</span> <span class="n">sbom-demo</span><span class="p">/</span><span class="n">requirements</span><span class="p">.</span><span class="n">txt</span> <span class="s1">'requests==2.31.0'</span> <span class="n">-Encoding</span> <span class="n">utf8</span>
+<span class="sh">@'</span>
+<span class="sh">{</span>
+<span class="sh">  "name": "sbom-demo",</span>
+<span class="sh">  "version": "1.0.0",</span>
+<span class="sh">  "lockfileVersion": 3,</span>
+<span class="sh">  "packages": {</span>
+<span class="sh">    "": {"name": "sbom-demo", "version": "1.0.0"},</span>
+<span class="sh">    "node_modules/lodash": {"version": "4.17.20"}</span>
+<span class="sh">  }</span>
+<span class="sh">}</span>
+<span class="sh">'@</span> <span class="p">|</span> <span class="nb">Set-Content</span> <span class="n">sbom-demo</span><span class="p">/</span><span class="n">package-lock</span><span class="p">.</span><span class="n">json</span> <span class="n">-Encoding</span> <span class="n">utf8</span>
 <span class="nb">Set-Content</span> <span class="n">sbom-demo</span><span class="p">/</span><span class="n">config</span><span class="p">.</span><span class="n">yaml</span> <span class="s2">"security:</span><span class="se">`n</span><span class="s2">  local_cli_enabled: true"</span> <span class="n">-Encoding</span> <span class="n">utf8</span>
 <span class="nb">Push-Location</span> <span class="n">sbom-demo</span>
 <span class="k">try</span> <span class="p">{</span>
@@ -236,35 +244,32 @@ repository root. Use a new <code>sbom-demo</code> directory; the commands create
 
 <p>Expected output: <code>SBOM written to sbom.json (cyclonedx, 1 components)</code>.
 The file <code>sbom-demo/sbom.json</code> contains <code>bomFormat: CycloneDX</code>, <code>specVersion: 1.5</code>,
-and a <code>requests</code> component. You do not need to install the package: the command
+and a <code>lodash</code> component with version <code>4.17.20</code> and <code>bom-ref: pkg:lodash@4.17.20</code>.
+This is a teaching lockfile with a fixed version; use the lockfile from the
+revision being checked for your own project. You do not need to install the package: the command
 reads its dependency declaration. <code>security.local_cli_enabled</code> enables the CLI
-for local development. Without it, the CLI reports that it is disabled; exit code 0
-does not prove that an SBOM was created. Check both the file and its contents.</p>
-<p>In the current implementation, this example produces an empty <code>version</code> and
-<code>bom-ref: pkg:requests@</code>. The exporter uses the resolved version, which scanning
-this <code>requirements.txt</code> did not establish. Declaring <code>==2.31.0</code> does not guarantee
-an exact version in the SBOM. This output cannot serve as a complete version
-inventory for a security assessment.</p>
+for local development. Without it, the CLI reports that it is disabled and stops
+before generation. After the command, check the created file and its contents.</p>
 <h2  id="generate-the-inventory"><span id="generate_the_inventory"></span>Generate the inventory<a class="heading-anchor" href="#generate-the-inventory" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">generate</span> <span class="p">-</span><span class="n">-project</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">-</span><span class="n">-format</span> <span class="n">cyclonedx</span> <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sbom</span><span class="p">.</span><span class="n">json</span><span class="p">&gt;</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">generate</span> <span class="p">-</span><span class="n">-project</span> <span class="s2">"&lt;project&gt;"</span> <span class="p">-</span><span class="n">-format</span> <span class="n">cyclonedx</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;sbom.json&gt;"</span>
 </code></pre></div>
 
 <p>Replace <code>&lt;project&gt;</code> with a registered project name and <code>&lt;sbom.json&gt;</code> with the
-output path. Without <code>--project</code>, the command scans the current directory.
+output path. Keep quotes around values containing spaces. Without <code>--project</code>, the command scans the current directory.
 If the project name cannot be resolved, the implementation also uses the current
 directory. Check which source files it contains before running the command.</p>
 <p>Format choices are <code>--format {cyclonedx,spdx}</code>; the default is <code>cyclonedx</code>.
 Retain the source revision, command, output file, and SHA-256 digest.
 <code>No dependencies found.</code> returns 0 without creating an SBOM. Check the directory
-and supported dependency files; this result does not prove that the project has
-no third-party components.</p>
+and dependency file formats: the command includes components from the files it
+recognizes.</p>
 <h2  id="audit-vulnerabilities"><span id="audit_vulnerabilities"></span>Audit vulnerabilities<a class="heading-anchor" href="#audit-vulnerabilities" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><code>sbom audit</code> scans the selected project manifests again and checks the resulting dependency graph through the chosen sources. Generate the SBOM and run the audit against the same revision to match components to findings.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">sbom</span> <span class="n">audit</span> <span class="p">`</span>
-  <span class="p">-</span><span class="n">-project</span> <span class="p">&lt;</span><span class="n">project</span><span class="p">&gt;</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-project</span> <span class="s2">"&lt;project&gt;"</span> <span class="p">`</span>
   <span class="p">-</span><span class="n">-format</span> <span class="n">sarif</span> <span class="p">`</span>
   <span class="p">-</span><span class="n">-fail-on</span> <span class="n">high</span> <span class="p">`</span>
-  <span class="p">-</span><span class="n">-output</span> <span class="p">&lt;</span><span class="n">sca</span><span class="p">.</span><span class="n">sarif</span><span class="p">&gt;</span>
+  <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;sca.sarif&gt;"</span>
 </code></pre></div>
 
 <p>Audit the directory from the complete example and inspect the findings:</p>
@@ -286,10 +291,11 @@ the selected severity. No severity threshold applies when this option is omitted
 Findings with <code>unknown</code> severity stay in the report and are excluded from the <code>--fail-on</code> threshold comparison. In SARIF, inspect <code>tool.driver.rules[].properties.severity</code> and match each rule to <code>results[].ruleId</code>. Review those findings against the source advisory to assign severity and choose a fix. Exit code 2 indicates an error handled by the command. Check the report file,
 its contents, and source error messages before using the result in CI.</p>
 <p><code>python -m src.cli sbom sync --sources osv,nvd,bdu_fstec</code> records a synchronization marker for the listed sources and prints local cache statistics. Vulnerability lookups run through <code>sbom audit</code>. Retain the report, source messages and check time with the project revision; if a source fails, restore access and repeat the audit.</p>
-<h2  id="rest-and-dashboard"><span id="rest_and_dashboard"></span>REST and dashboard<a class="heading-anchor" href="#rest-and-dashboard" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p><a id="rest-and-dashboard"></a></p>
+<h2  id="retrieve-results-through-the-rest-api"><span id="retrieve_results_through_the_rest_api"></span>Retrieve results through the REST API<a class="heading-anchor" href="#retrieve-results-through-the-rest-api" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Project-scoped SCA operations are under <code>/api/v1/security/sca</code>. Check the REST
 reference of your deployed CodeGraph instance for exact operations and request
-schemas. See the <a href="scenarios/20-dependencies.html#use-the-registered-project-rest-api">dependency analysis scenario</a> for registered-project preparation and the principal routes.</p>
+schemas. See the <a href="scenarios/20-dependencies.html#retrieve-results-through-the-rest-api">dependency analysis scenario</a> for registered-project preparation and the principal routes.</p>
 <h2 id="triage">Triage<a class="heading-anchor" href="#triage" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Confirm package name, version, ecosystem, and dependency path.</li>
@@ -298,14 +304,6 @@ schemas. See the <a href="scenarios/20-dependencies.html#use-the-registered-proj
 <li>Prefer an upgrade or removal; document compensating controls and expiry for exceptions.</li>
 <li>Regenerate both SBOM and audit evidence after remediation.</li>
 </ol>
-<h2  id="contract-sources"><span id="contract_sources"></span>Contract sources<a class="heading-anchor" href="#contract-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/cli/security_suite/sbom_commands.py</code> — CLI parser;</li>
-<li><code>src/dependencies/</code> — dependency scanning and SBOM export;</li>
-<li><code>src/dependencies/vulnerability.py</code> and <code>src/dependencies/vuln_cache.py</code> — source queries and local cache;</li>
-<li><code>src/api/routers/analysis_suite/dependencies.py</code> — registered-project SCA routes;</li>
-<li><code>scripts/validate_sca_docs.py</code> — documentation/source contract validator.</li>
-</ul>
       </article>
 
       <div class="doc-maintenance">
@@ -331,9 +329,8 @@ schemas. See the <a href="scenarios/20-dependencies.html#use-the-registered-proj
         <li><a href="#prerequisites-and-complete-example" class="level-2" aria-current="location">Prerequisites and complete example</a></li>
 <li><a href="#generate-the-inventory" class="level-2">Generate the inventory</a></li>
 <li><a href="#audit-vulnerabilities" class="level-2">Audit vulnerabilities</a></li>
-<li><a href="#rest-and-dashboard" class="level-2">REST and dashboard</a></li>
+<li><a href="#retrieve-results-through-the-rest-api" class="level-2">Retrieve results through the REST API</a></li>
 <li><a href="#triage" class="level-2">Triage</a></li>
-<li><a href="#contract-sources" class="level-2">Contract sources</a></li>
       </ul>
     </aside>
   </div>

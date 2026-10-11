@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Trace input data to sensitive operations. Audit a project or analyze a method through MCP, then inspect calls and sanitization.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Analyze security data flows — Documentation">
@@ -151,8 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +198,7 @@
         <h1>Analyze security data flows</h1>
         <p class="doc-lead">Trace input data to sensitive operations. Audit a project or analyze a method through MCP, then inspect calls and sanitization.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
@@ -262,19 +260,24 @@ results and execution details in the report.</p>
 project’s database using the <a href="PROJECT_IMPORT.html">import guide</a>. For a stale graph,
 refresh the CPG through the project workflow and repeat the audit.</p>
 <h2  id="targeted-taint-path"><span id="targeted_taint_path"></span>Targeted taint path<a class="heading-anchor" href="#targeted-taint-path" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>For a project using the <code>python_generic</code> domain, the current MCP analysis returns
+an empty path list: the analyzer does not load this domain&rsquo;s source and sink
+definitions. For that project, use the SQLite example below and review the source
+code. The following section describes the call contract for domains with loaded definitions.</p>
 <p>Verify availability and invocation policy for <code>codegraph_security_taint_analysis_run</code> in the active
 profile. It requires <code>method_name</code>; defaults are <code>source_category="user_input"</code> and <code>sink_category="sql"</code>. The
 supported source categories are <code>user_input</code>, <code>file_read</code>, <code>network</code>, and <code>env</code>. Supported sink
 categories are <code>sql</code>, <code>command</code>, <code>file_write</code>, <code>xss</code>, and <code>buffer</code>.</p>
-<p>The current handler chooses the analysis category from nonempty <code>sink_category</code>, otherwise from
-<code>source_category</code>. Sources come from the domain plugin catalog; <code>source_category</code> is echoed as a
-supplied argument. The handler then filters
-returned paths by exact method name among crossed functions or the source/sink function.
-Configured path-count and time limits apply before this method filter. To continue
-the search, check the exact method name, limit diagnostics, and selected sink category.</p>
-<p>Agent-facing calls use the current project context. Do not pass a raw storage path. If the tool is
-not available in the active profile, request the correct role/profile instead of substituting a
-retired name.</p>
+<p>Choose <code>sink_category</code> for the operation you are investigating: for example,
+<code>sql</code> for SQL queries or <code>command</code> for command execution. This category selects
+the search; an empty <code>sink_category</code> uses <code>source_category</code> instead. Sources come
+from the domain plugin catalog. The response retains <code>source_category</code> as a call argument.</p>
+<p>The result includes paths where the exact method name matches the source, sink,
+or an intermediate function. Path-count and time limits apply to the overall
+search before filtering by method. To continue the investigation, check the
+method name, selected sink category, and limit diagnostics.</p>
+<p>MCP calls use the current project context. Select a profile that permits the tool
+and pass the method and categories shown below. The project context supplies the CPG location.</p>
 <p>The tool uses GoCPG gRPC. See the <a href="../api/MCP_OPERATOR_GUIDE.html">MCP operator guide</a> for setup.
 After selecting the correct project, call <code>codegraph_security_taint_analysis_run</code> with these arguments:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
@@ -322,6 +325,49 @@ message and repeat the call.</p>
 </tbody>
 </table></div>
 </section><h2  id="validate-a-finding"><span id="validate_a_finding"></span>Validate a finding<a class="heading-anchor" href="#validate-a-finding" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>For example, when reviewing a SQL path, follow an HTTP request parameter to the
+argument used to execute a database query. Open the intermediate functions:
+where is the value assigned, validated, and passed onward? Then inspect the sink
+call: how is the SQL constructed, and how is the parameter value supplied? If the
+path includes a sanitization function, check what it does to this data. This is
+an illustrative review example, rather than analyzer output for your project.</p>
+<h3  id="example-sql-text-and-a-query-parameter"><span id="example_sql_text_and_a_query_parameter"></span>Example: SQL text and a query parameter<a class="heading-anchor" href="#example-sql-text-and-a-query-parameter" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>Save this code as <code>dataflow-example.py</code> and run <code>python dataflow-example.py</code>
+in a terminal with Python 3. The <code>sqlite3</code> module is part of Python&rsquo;s standard
+library. The example creates an in-memory database and leaves project files
+and the deployment database unchanged.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">sqlite3</span>
+
+<span class="n">connection</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">":memory:"</span><span class="p">)</span>
+<span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE TABLE accounts (name TEXT)"</span><span class="p">)</span>
+<span class="n">connection</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s2">"INSERT INTO accounts VALUES (?)"</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"alice"</span><span class="p">,),</span> <span class="p">(</span><span class="s2">"bob"</span><span class="p">,)])</span>
+<span class="n">user_input</span> <span class="o">=</span> <span class="s2">"alice' OR '1'='1"</span>
+
+<span class="n">unsafe_sql</span> <span class="o">=</span> <span class="s2">"SELECT name FROM accounts WHERE name = '"</span> <span class="o">+</span> <span class="n">user_input</span> <span class="o">+</span> <span class="s2">"'"</span>
+<span class="n">unsafe_rows</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">unsafe_sql</span><span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+<span class="n">safe_rows</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+    <span class="s2">"SELECT name FROM accounts WHERE name = ?"</span><span class="p">,</span> <span class="p">(</span><span class="n">user_input</span><span class="p">,)</span>
+<span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"concatenation:"</span><span class="p">,</span> <span class="n">unsafe_rows</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"parameters:"</span><span class="p">,</span> <span class="n">safe_rows</span><span class="p">)</span>
+<span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Expected output:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>concatenation: [('alice',), ('bob',)]
+parameters: []
+</code></pre></div>
+
+<p>The first query makes the input part of the SQL text. Its <code>OR '1'='1'</code>
+condition selects both records. The second query passes the same input as
+an argument for the <code>?</code> parameter. SQLite searches for the literal name
+<code>alice' OR '1'='1</code> and finds no record.</p>
+<p>When reviewing a path, identify the source (<code>user_input</code>), the transformation
+(the construction of <code>unsafe_sql</code>), and the sink (<code>connection.execute</code>).
+Then check whether the application passes input as a separate parameter or
+inserts it into the SQL text. The parameterized version preserves the query&rsquo;s
+meaning for this input. This is an educational SQLite example; inspect a path
+reported by CodeGraph against your application&rsquo;s source.</p>
 <ol>
 <li>Confirm the source is actually attacker-controlled in this execution context.</li>
 <li>Follow each call and assignment in the reported path.</li>
@@ -331,13 +377,8 @@ message and repeat the call.</p>
 </ol>
 <p>After reviewing the reported paths, continue with the application’s remaining
 sources, sinks, and runtime boundaries.</p>
-<h2  id="contract-sources"><span id="contract_sources"></span>Contract sources<a class="heading-anchor" href="#contract-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/mcp/tools/security_suite/security.py</code> — targeted MCP tool and category contract;</li>
-<li><code>src/analysis/dataflow/taint/propagator.py</code> — taint propagation;</li>
-<li><code>src/analysis/dataflow/taint/models.py</code> — path model;</li>
-<li><code>src/cli/analysis_commands/audit_commands.py</code> — broad audit integration.</li>
-</ul>
+<h2  id="reference-material"><span id="reference_material"></span>Reference material<a class="heading-anchor" href="#reference-material" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The <a href="CLI_GUIDE.html">CLI guide</a> describes how to run a broader audit.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -365,7 +406,8 @@ sources, sinks, and runtime boundaries.</p>
 <li><a href="#targeted-taint-path" class="level-2">Targeted taint path</a></li>
 <li data-doc-toc-level="3" data-doc-parent="targeted-taint-path" hidden><a href="#read-a-path" class="level-3">Read a path</a></li>
 <li><a href="#validate-a-finding" class="level-2">Validate a finding</a></li>
-<li><a href="#contract-sources" class="level-2">Contract sources</a></li>
+<li data-doc-toc-level="3" data-doc-parent="validate-a-finding" hidden><a href="#example-sql-text-and-a-query-parameter" class="level-3">Example: SQL text and a query parameter</a></li>
+<li><a href="#reference-material" class="level-2">Reference material</a></li>
       </ul>
     </aside>
   </div>

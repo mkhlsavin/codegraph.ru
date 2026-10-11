@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Prepare a registered project and its CPG, choose an audit depth, and use the Q1-Q12 report to investigate recurring defects.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Run a CPG-backed project audit — Documentation">
@@ -151,8 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +198,7 @@
         <h1>Run a CPG-backed project audit</h1>
         <p class="doc-lead">Prepare a registered project and its CPG, choose an audit depth, and use the Q1-Q12 report to investigate recurring defects.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-06">Updated: 2026-10-06</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
@@ -210,9 +208,9 @@ CodeGraph uses these relationships to audit the project.</p>
 <p>CodeGraph uses one audit pipeline for command-line, dashboard, scheduled,
 scenario, export, and history consumers. The selected profile changes the depth
 of analysis. It does not switch to a second audit engine.</p>
-<p>Use this guide when you need to assess a project, inspect recurring defect
-patterns, or compare two compatible audit results. The report helps direct a
-review. It does not replace security or architecture release gates.</p>
+<p>Use this guide to assess a project, inspect recurring defects, and compare
+audit results. Use the report to select code for review, then check that code
+against the project’s security and architecture rules.</p>
 <h2  id="prepare-the-project"><span id="prepare_the_project"></span>Prepare the project<a class="heading-anchor" href="#prepare-the-project" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use the installed CodeGraph Python environment and a running GoCPG service. First
 <a href="PROJECT_IMPORT.html">import the project</a> and verify that its CPG matches the source
@@ -268,15 +266,19 @@ run also needs a real delta basis. Without one, CodeGraph reports the missing
 scope instead of assigning a project-wide score.</p>
 <p>Run a standard audit in PowerShell from the CodeGraph installation directory:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">audit</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;CPG_DB_PATH&gt;"</span> <span class="p">-</span><span class="n">-source-path</span> <span class="s2">"&lt;PROJECT_ROOT&gt;"</span> <span class="p">-</span><span class="n">-profile</span> <span class="n">standard</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;AUDIT_OUTPUT_PATH&gt;"</span> <span class="p">-</span><span class="n">-skip-llm-conclusion</span> <span class="p">-</span><span class="n">-skip-persistence</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$LASTEXITCODE</span> <span class="o">-ne</span> <span class="n">0</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s1">'Audit failed'</span> <span class="p">}</span>
 </code></pre></div>
 
 <p>Use the installed CodeGraph Python environment, and replace the three quoted placeholders
 with the configured project&rsquo;s CPG path, source root, and report path. The output directory
 must exist and be writable. <code>--skip-persistence</code> disables audit-projection writes. The initial freshness check
 requires a fresh CPG; the command writes the requested report file when the audit succeeds.
+Open the specified JSON file after the command succeeds. If the command fails,
+stop before reading the report: the same path may still contain a file from an
+earlier run.
 A stale graph produces
-<code>audit_cpg_refresh_required</code>. Refresh the project through the approved import process and
-retry; do not remove the flag merely to bypass the refusal.</p>
+<code>audit_cpg_refresh_required</code>. Refresh the project through
+<a href="PROJECT_IMPORT.html">project import</a> and repeat the same audit command.</p>
 <h2  id="read-the-canonical-result"><span id="read_the_canonical_result"></span>Read the canonical result<a class="heading-anchor" href="#read-the-canonical-result" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Inspect <code>quality_assessment</code> before any compatibility fields:</p>
 <ul>
@@ -327,8 +329,8 @@ factor definitions and scoring contract.</p>
 <p>A scanner candidate is not automatically an application defect. Each result is
 classified as a confirmed finding, a supported non-finding, an unsupported
 case, or an analysis gap. A false positive belongs in the detector backlog; a
-missing witness belongs in analysis coverage. Neither should be hidden by
-changing an application suppression file.</p>
+missing witness belongs in analysis coverage. Track application defects,
+detector errors, and analysis gaps separately so each has a clear next action.</p>
 <p>When you fix a confirmed issue, record one of the bounded dispositions:
 <code>application_fix</code>, <code>detector_fix</code>, <code>approved_defer</code>, or <code>evidence_gap</code>. Repeat
 the applicable audit mode against the same comparison basis and keep the old
@@ -347,10 +349,10 @@ orders and not estimates of hours or cost.</p>
 <p>The report may include <code>intervention_prioritization.v1</code>. It groups compatible
 signals by stable entity and structural cause, then keeps priority, urgency,
 readiness, and confidence separate. The queue is bounded and can be empty.</p>
-<p>Human review remains mandatory. The queue cannot modify source code, open an
-accepted release gate, or claim a causal benefit. A trial with too little
-evidence is labelled <code>inconclusive</code>; CodeGraph retains the existing baseline
-until a frozen evaluation meets its declared guardrails.</p>
+<p>Review the queue and select changes to evaluate. Agree on the fix and release
+criteria with the project owner, then test the benefit of the change. A trial
+with too little evidence is labelled <code>inconclusive</code>; CodeGraph retains the
+existing baseline until a fixed evaluation meets its declared criteria.</p>
 <h2  id="what-blocks-a-clean-interpretation"><span id="what_blocks_a_clean_interpretation"></span>What blocks a clean interpretation<a class="heading-anchor" href="#what-blocks-a-clean-interpretation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Stop before using the score when any of these conditions is present:</p>
 <ul>
@@ -368,6 +370,20 @@ an incomplete canonical result.</p>
 loads project invariants only from the explicitly selected policy and release
 control files; the analyzer does not infer CodeGraph-specific rules for another
 project.</p>
+<h2  id="automatic-audits-on-a-schedule"><span id="automatic_audits_on_a_schedule"></span>Automatic audits on a schedule<a class="heading-anchor" href="#automatic-audits-on-a-schedule" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>A project administrator configures a regular composite audit in the project catalog&rsquo;s Schedules section. CodeGraph stores the project action settings, and Temporal starts the action according to its cron expression. You need project access, an administrator or write permission, a connected Temporal service with a worker, and an approved service account for audits. Obtain that account&rsquo;s identifier from your installation administrator.</p>
+<ol>
+<li>Open the project catalog, select the project and its Schedules section. Switch to Planning and select Create schedule.</li>
+<li>Choose Composite audit (<code>audit_composite</code>). Enter the owner and service account identifier.</li>
+<li>Set the cadence and time zone. For example, <code>30 2 * * *</code> with <code>Asia/Yekaterinburg</code> runs daily at 02:30 in Yekaterinburg. Coordinate this time with other project audit windows: the server checks active windows for overlap.</li>
+<li>Choose the missed-run policy: Skip (<code>skip</code>), Run once (<code>run_once</code>) or Catch up (<code>catch_up</code>). Catch up uses bounded replay; the current limit is one missed run.</li>
+<li>Enable the schedule and select Create dashboard snapshot if you need a report in the dashboard. Click Create to confirm the settings and create the schedule.</li>
+<li>Check the orchestrator schedule ID, status and next run time. Select Run now to check the configured action without waiting for cron. This starts a real audit of the selected project.</li>
+<li>Open Run history. Wait for the job to finish, then open the audit artifact. If you enabled the dashboard snapshot, check that output too. Compare the project, code revision, analysis scope and findings with the job settings. If the run is blocked, read its reason in the run details.</li>
+</ol>
+<p>To change the cadence, select the existing schedule, edit its cron expression or time zone and save it. Pause stops subsequent scheduled runs; Resume enables them again. Check the updated state and next run time.</p>
+<p>The configuration value <code>analysis.full_scan_interval_days</code> sets the interval used to track whether a full analysis is due. Configure automatic execution separately in the project action schedule.</p>
+<p>For API automation, use the schedule routes in the <a href="../api/REST_API.html">REST API</a>: create and list <code>/api/v1/traceability/projects/{project_name}/scheduled-actions</code>; submit <code>run_now</code>, <code>pause</code> or <code>resume</code> to <code>/api/v1/traceability/projects/{project_name}/scheduled-actions/{schedule_id}/commands</code>.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -397,6 +413,7 @@ project.</p>
 <li><a href="#metric-diagnostics" class="level-2">Metric diagnostics</a></li>
 <li><a href="#intervention-queue" class="level-2">Intervention queue</a></li>
 <li><a href="#what-blocks-a-clean-interpretation" class="level-2">What blocks a clean interpretation</a></li>
+<li><a href="#automatic-audits-on-a-schedule" class="level-2">Automatic audits on a schedule</a></li>
       </ul>
     </aside>
   </div>

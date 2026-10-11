@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Руководство по интеграции ACP v1 и экспериментального профиля ACP v2: транспорты, MCP-серверы, авторизация и ограничения среды выполнения CodeGraph.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Интеграция ACP — Документация CodeGraph">
@@ -159,12 +159,14 @@
         <h1>Интеграция ACP</h1>
         <p class="doc-lead">Руководство по интеграции ACP v1 и экспериментального профиля ACP v2: транспорты, MCP-серверы, авторизация и ограничения среды выполнения CodeGraph.</p>
 
-        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-09-07">Обновлено: 2026-09-07</time></div>
+        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-10-10">Обновлено: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph поддерживает Agent Client Protocol (ACP) поверх JSON-RPC для интеграции с редакторами.
+        <p>Подключите редактор к CodeGraph через Agent Client Protocol (ACP), чтобы отправлять промпты,
+получать потоковые обновления и обрабатывать запросы на чтение файлов, команды терминала и разрешения.
+Справочник помогает разработчикам интеграций выбрать транспорт и реализовать соединение JSON-RPC.
 ACP v1 — основной профиль, совместимый с промышленным контуром. Экспериментальный профиль ACP
 v2 alpha включается через <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>. Метод <code>initialize</code> выбирает
 профиль на весь срок соединения; сменить его без нового соединения нельзя.</p>
@@ -201,8 +203,8 @@ v2 alpha включается через <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=tru
 <code>DELETE /api/v1/admin/runtime/acp/sessions/{session_id}</code>. Состояние протокола и сессии HTTP
 изолированы по аутентифицированному субъекту и проекту. Для WebSocket область проекта берётся из
 токена, машинной учётной записи или явно включённого локального контура разработки.</p>
-<p>HTTP собирает уведомления обработки промпта в ACP v1 и возвращает их в
-<code>result._meta.codegraph.sessionUpdates</code>. В ACP v2 метод <code>session/prompt</code> работает асинхронно и
+<p>HTTP собирает уведомления обработки промпта в ACP v1 и возвращает их в
+<code>result._meta.codegraph.sessionUpdates</code>. В ACP v2 метод <code>session/prompt</code> работает асинхронно и
 требует потоковый транспорт. HTTP отклоняет такой запрос кодом JSON-RPC <code>-32004</code> до выполнения
 хода агента.</p>
 <h2  id="granitsa-autentifikatsii"><span id="granitsa_autentifikatsii"></span>Граница аутентификации<a class="heading-anchor" href="#granitsa-autentifikatsii" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
@@ -243,10 +245,9 @@ mTLS. Аутентификация транспорта завершается �
   <code>_codegraph/hover/request</code>;</li>
 <li><code>_codegraph/item/fileChange/respondApproval</code>.</li>
 </ul>
-<p>Имена без префикса, существовавшие до Story 1257, доступны через явный адаптер совместимости.
+<p>Прежние имена без префикса доступны через явный адаптер совместимости.
 Такой ответ содержит <code>_meta.codegraph.legacyMethod</code>; новые клиенты должны использовать методы с
-пространством имён. Внутренний класс <code>ClientCapabilitiesV2</code> описывает расширенные возможности
-CodeGraph и не относится к версии протокола ACP v2.</p>
+пространством имён.</p>
 <h2  id="eksperimentalnyy-profil-acp-v2"><span id="eksperimentalnyy_profil_acp_v2"></span>Экспериментальный профиль ACP v2<a class="heading-anchor" href="#eksperimentalnyy-profil-acp-v2" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Если задано <code>CODEGRAPH_ACP_EXPERIMENTAL_V2=true</code>, соединение можно инициализировать с
 <code>protocolVersion: 2</code>, <code>info.name</code> и <code>info.version</code>. Профиль поддерживает <code>session/new</code>,
@@ -264,16 +265,14 @@ ACP v1 от флага v2 не зависит.</p>
 запускается как список аргументов без оболочки. Переменные окружения и заголовки передаются объектами
 с полями <code>name</code> и <code>value</code>. Сервер проверяет имена и запрещает NUL, возврат каретки и перевод строки в значениях.</p>
 <p>Для MCP через HTTP разрешены только публичные адреса HTTPS. Сервер отклоняет учётные данные в
-URL, query string, fragment, loopback, приватные и link-local адреса, а также обычный HTTP.
-Явный список разрешённых адресов администратора платформы может изменить результат проверки.
-Проверяется начальный URL, но текущий HTTP-клиент использует <code>follow_redirects=True</code> без явной
-повторной проверки каждого адреса перенаправления в этой ветке подключения. Проверка начального
-адреса не подтверждает проверку всех переходов; применяйте ограничения исходящей сети установки.</p>
+URL, query string, fragment, loopback, приватные и link-local адреса, а также обычный HTTP.
+Администратор платформы может разрешить дополнительные адреса через явный список.
+Проверка адреса выполняется перед подключением. Для сервера с перенаправлениями настройте
+ограничения исходящей сети, которые охватывают и конечные адреса переходов.</p>
 <p>При создании сессии должны подключиться все объявленные MCP-серверы. Если хотя бы один сервер
 недоступен, CodeGraph закрывает уже открытые соединения и удаляет незавершённую ACP-сессию. Перед
 вызовом MCP-инструмента агент отправляет <code>session/request_permission</code>; отказ или тайм-аут отменяет
-вызов. Одна задача, владеющая жизненным циклом подключения, выполняет вход в контекст MCP SDK, операции и выход из контекста,
-поэтому закрытие сессии или транспорта освобождает дочерние процессы и сетевые клиенты.</p>
+вызов. Закрытие сессии или транспорта освобождает дочерние процессы MCP и сетевые соединения.</p>
 <h2  id="ogranicheniya-rabochego-kataloga-i-terminala"><span id="ogranicheniya_rabochego_kataloga_i_terminala"></span>Ограничения рабочего каталога и терминала<a class="heading-anchor" href="#ogranicheniya-rabochego-kataloga-i-terminala" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Файловые методы требуют абсолютные <code>workspaceRoot</code> и <code>path</code>. Если целевой путь после нормализации
 находится вне корня, сервер возвращает <code>outside workspace root</code>. При записи также запрещены
@@ -287,14 +286,14 @@ URL, query string, fragment, loopback, приватные и link-local адр�
 возврата каретки.</p>
 <p>Сетевые маршруты используют аутентификацию транспорта и область проекта. Проверки рабочего
 каталога и терминала действуют внутри этой области.</p>
-<h2  id="ogranichenie-soglasovaniya-faylovyh-izmeneniy"><span id="ogranichenie_soglasovaniya_faylovyh_izmeneniy"></span>Ограничение согласования файловых изменений<a class="heading-anchor" href="#ogranichenie-soglasovaniya-faylovyh-izmeneniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<h2  id="soglasovanie-faylovyh-izmeneniy"><span id="soglasovanie_faylovyh_izmeneniy"></span>Согласование файловых изменений<a class="heading-anchor" href="#soglasovanie-faylovyh-izmeneniy" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Сервер объявляет процесс согласования и отправляет уведомление
 <code>item/fileChange/requestApproval</code>. Клиент отвечает каноническим методом
 <code>_codegraph/item/fileChange/respondApproval</code>; ответ без префикса принимает адаптер совместимости.
 Если ответ не поступил до тайм-аута, запрос отклоняется.</p>
-<p>Текущий обработчик <code>fs/write_text_file</code> не вызывает автоматически этот мост. После проверки пути
-он записывает файл внутри рабочего каталога. Если рабочий процесс требует решения человека, клиент или
-внешний процесс должен получить и сохранить согласование до предоставления операции записи.</p>
+<p>Метод <code>fs/write_text_file</code> записывает файл после проверки пути внутри рабочего каталога.
+Для записи с подтверждением человека клиент сначала получает и сохраняет согласование,
+затем предоставляет операцию записи. Это отдельный шаг клиентского рабочего процесса.</p>
 <h2  id="ogranicheniya-sredy-vypolneniya"><span id="ogranicheniya_sredy_vypolneniya"></span>Ограничения среды выполнения<a class="heading-anchor" href="#ogranicheniya-sredy-vypolneniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
 <p>Значения <code>ACPRuntimeConfig</code> по умолчанию ограничивают сервис 100 одновременными сессиями с
 тайм-аутом 60 минут, 128 ожидающими запросами агента к клиенту на соединение, очередью из 256
@@ -313,18 +312,6 @@ stdio-уведомлений и тайм-аутом согласования 30
 <li>Запрет исполняемого файла, отклонение адреса MCP или отсутствие разрешения означает отказ
    политики; обходить его через shell нельзя.</li>
 </ol>
-<h2  id="istochniki-istiny"><span id="istochniki_istiny"></span>Источники истины<a class="heading-anchor" href="#istochniki-istiny" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<ul>
-<li><code>src/api/routers/collaboration_suite/acp.py</code>: HTTP/WebSocket-маршруты и аутентификация.</li>
-<li><code>src/acp/server/core/agent.py</code>: диспетчер v1, выбор профиля, запросы клиента и общий вызов MCP.</li>
-<li><code>src/acp/server/core/v2_profile.py</code>: жизненный цикл сессии и асинхронные turn в профиле v2.</li>
-<li><code>src/acp/server/core/session_manager.py</code>: владение сессиями, настройка MCP, отмена и очистка.</li>
-<li><code>src/acp/server/routing/handlers.py</code>: изоляция workspace и ограниченная терминальная политика.</li>
-<li><code>src/acp/integration/mcp_bridge.py</code>: проверка MCP-дескрипторов и жизненный цикл соединений.</li>
-<li><code>src/acp/transport/</code>: поведение stdio, HTTP и WebSocket.</li>
-<li><code>src/config/runtime_sections/unified_config_runtime_models.py</code>: значения ACP runtime по
-  умолчанию.</li>
-</ul>
       </article>
 
       <div class="doc-maintenance">
@@ -353,10 +340,9 @@ stdio-уведомлений и тайм-аутом согласования 30
 <li><a href="#eksperimentalnyy-profil-acp-v2" class="level-2">Экспериментальный профиль ACP v2</a></li>
 <li><a href="#mcp-servery-i-zapros-razresheniya" class="level-2">MCP-серверы и запрос разрешения</a></li>
 <li><a href="#ogranicheniya-rabochego-kataloga-i-terminala" class="level-2">Ограничения рабочего каталога и терминала</a></li>
-<li><a href="#ogranichenie-soglasovaniya-faylovyh-izmeneniy" class="level-2">Ограничение согласования файловых изменений</a></li>
+<li><a href="#soglasovanie-faylovyh-izmeneniy" class="level-2">Согласование файловых изменений</a></li>
 <li><a href="#ogranicheniya-sredy-vypolneniya" class="level-2">Ограничения среды выполнения</a></li>
 <li><a href="#vosstanovlenie" class="level-2">Восстановление</a></li>
-<li><a href="#istochniki-istiny" class="level-2">Источники истины</a></li>
       </ul>
     </aside>
   </div>

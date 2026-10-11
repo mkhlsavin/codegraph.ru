@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Configure a CodeGraph deployment — Documentation">
@@ -157,7 +157,7 @@
         <h1>Configure a CodeGraph deployment</h1>
         <p class="doc-lead">Configure secrets, network settings, model providers, and OpenViking in an installed CodeGraph instance, then verify service readiness.</p>
 
-        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
@@ -197,8 +197,7 @@
 </table></div>
 <p>The <a href="ENVIRONMENT_VARIABLES.html">environment variable reference</a> lists all shipped server
 variables, sample values, and Docker Compose fallbacks.</p>
-<p>Do not modify Python source files to configure a deployment. Do not add credentials to
-<code>config.yaml</code>, Git, command-line arguments, service-unit text, or captured logs.</p>
+<p>Configure the deployment through <code>.env</code> and <code>config.yaml</code>. Store credentials in the protected <code>.env</code> or the customer secret store; keep them out of Git, command-line arguments, service files, and logs.</p>
 <h2  id="required-production-values"><span id="required_production_values"></span>Required production values<a class="heading-anchor" href="#required-production-values" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Start from the <code>.env.example</code> shipped with the exact installed release. At minimum, set:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>POSTGRES_PASSWORD=&lt;secret-from-approved-store&gt;
@@ -211,9 +210,17 @@ ENVIRONMENT=production
 <p>Also configure every required Eva integrity key and at least one approved model-provider
 credential listed by that release. Replace placeholders with environment-specific values and keep
 sample values in the documentation only.</p>
-<p><code>API_JWT_SECRET</code> must be random and at least 64 characters. Rotating it invalidates existing
+<p>Use a random value of at least 64 characters for <code>API_JWT_SECRET</code>.
+This is the recommended configuration size; the application rejects an empty
+secret and the shipped default value. Rotating it invalidates existing
 tokens, so coordinate the restart and user reauthentication. Treat the initial admin credential
 as a bootstrap secret and rotate it under the customer&rsquo;s identity procedure.</p>
+<p>In the standard Ubuntu installation, <code>docker-compose.yml</code> forwards
+<code>API_PROVIDER_SECRET_KEY</code> and <code>CODEGRAPH_OUTBOUND_GIT_ORIGIN_ALLOWLIST</code>
+to <code>api</code> and <code>temporal-worker</code>. The following connection-encryption and
+private-Git-origin steps apply to that profile. The standalone
+<code>docker-compose.prod.yml</code> does not forward these variables in this version.
+Use the standard profile to configure these two values.</p>
 <p><code>API_PROVIDER_SECRET_KEY</code> encrypts Git-provider tokens and webhook secrets stored through
 the UI or REST API. It is empty by default; production cannot store an inline connection
 token without it. Generate a separate random value, for example with
@@ -232,9 +239,8 @@ API_ALLOWED_HOSTS=codegraph.customer.example,api,codegraph-api
 </code></pre></div>
 
 <p>Do not use a wildcard origin with credentialed browser access. Terminate TLS according to the
-customer deployment design and expose only approved endpoints. Provider, repository, telemetry,
-and notification connections remain disabled or blocked until their credentials and network
-destinations are approved.</p>
+customer deployment design and expose only approved endpoints. For model, repository, telemetry and notification integrations,
+supply credentials and the approved network destinations for the selected service.</p>
 <p>If an internal Git server resolves to a private address, the administrator can approve its
 <strong>exact HTTPS origin</strong> in the protected <code>.env</code>:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>CODEGRAPH_OUTBOUND_GIT_ORIGIN_ALLOWLIST=https://git.internal.example
@@ -244,15 +250,15 @@ destinations are approved.</p>
 commas. List only trusted servers; IP ranges and wildcards are unsupported. Recreate <code>api</code>
 and <code>temporal-worker</code> after changing the value, then test connection creation in the UI or
 through <code>POST /api/v1/integrations/repositories/provider-connections</code>. The request schema
-is available at <code>&lt;API_BASE_URL&gt;/api/docs</code>. URL approval does not replace a Git access token.</p>
+is available at <code>&lt;API_BASE_URL&gt;/api/docs</code>. Provide a Git access token when creating the connection.</p>
 <h2  id="non-secret-application-settings"><span id="non_secret_application_settings"></span>Non-secret application settings<a class="heading-anchor" href="#non-secret-application-settings" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Use <code>config.yaml</code> to select runtime capabilities, limits, providers, and <code>${VARIABLE}</code> references. Check parameter names and types against the <code>config.yaml</code> shipped with the installed version. Preserve the other settings when changing a section.</p>
-<p>For project-specific configuration, use supported project or dashboard surfaces. Raw storage
-paths are runtime-owned and must not be passed through user- or agent-facing calls.</p>
+<p>Change individual project settings through the dashboard project page or API. The next section gives a complete API example for configuring the audit scope.</p>
 <h3  id="project-audit-scope"><span id="project_audit_scope"></span>Project audit scope<a class="heading-anchor" href="#project-audit-scope" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>In versions supporting <code>metadata.audit.scope</code>, configure each project separately.
 You need administrator permissions or the group&rsquo;s <code>editor</code> role with access to the
-project. Do not change server-wide settings to select one repository&rsquo;s directories.</p>
+project. See <a href="../enterprise/RBAC.html">RBAC</a> for role and project assignment.
+This setting selects directories within that repository.</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Project audit scope"><table data-columns="3"><caption class="sr-only">Project audit scope</caption>
 <thead>
 <tr>
@@ -352,10 +358,13 @@ name returned by the API; UUIDs are used only for <code>/api/v1/projects/{id}</c
 <p>Poll <code>GET /api/v1/traceability/audit-report-jobs/{id}</code> using the job <code>id</code> returned
 by the start request. A scope change requires a new CPG freshness check even without
 a new Git commit. Check <code>source_revision</code> and <code>scope_digest</code> in the downloaded report
-and its manifest. A report with <code>report_quality_status: "incomplete"</code> is diagnostic;
-a populated <code>download_url</code> does not prove completeness. When <code>score_eligible: false</code>,
-the overall score is unavailable. <code>unsupported</code>, <code>not_measured</code>, and <code>timeout</code> do
-not mean zero violations.</p>
+and its manifest. Download the report using <code>download_url</code> and check analysis completeness.
+For <code>report_quality_status: "incomplete"</code>, use the report to diagnose the run:
+find sections marked <code>unsupported</code>, <code>not_measured</code> or <code>timeout</code> and their reasons.
+These identify an unsupported check, an absent measurement or an expired execution
+deadline. Use the reasons to prepare the next run. When <code>score_eligible: false</code>,
+the overall score is unavailable.</p>
+<p>A job with <code>status: "failed"</code> and <code>report_quality_status: "incomplete"</code> can provide a diagnostic report. If the response contains a nonempty <code>download_url</code>, download it with the same Bearer token. If the link is empty, use <code>error</code>, <code>report_quality_reason</code> and <code>stage_history</code> to identify the cause and prepare the next run.</p>
 <h3  id="audit-report-directory"><span id="audit_report_directory"></span>Audit report directory<a class="heading-anchor" href="#audit-report-directory" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>Markdown reports and their integrity manifests are stored in
 <code>dashboard.audit_report_output_dir</code>. The default is <code>data/dashboard-audit-reports</code>,
@@ -373,7 +382,7 @@ and writable by its user. Wait for active audits to finish, then restart the API
 using the same Compose files as the installed deployment. Run an audit through the
 UI or REST, download the available report, and repeat the download after recreating
 the container. Keep each report and its <code>.manifest.json</code> together. The server
-administrator configures this path; no REST or MCP path argument is needed.</p>
+administrator configures this path in <code>config.yaml</code>.</p>
 <h2  id="optional-openviking-memory"><span id="optional_openviking_memory"></span>Optional OpenViking memory<a class="heading-anchor" href="#optional-openviking-memory" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>OpenViking supports document search and long-term memory. <strong>Embedding</strong> maps text to vectors for
 search, <strong>rerank</strong> reorders retrieved results, and <strong>VLM</strong> generates text summaries and handles
@@ -403,6 +412,17 @@ sudo<span class="w"> </span>docker<span class="w"> </span>compose<span class="w"
 
 <p>After <code>/health</code> confirms service availability, import project documentation.
 Check the import result with <code>codegraph_project_context_sync_status</code> and <code>{}</code>.</p>
+<h2  id="configure-automatic-project-checks"><span id="configure_automatic_project_checks"></span>Configure automatic project checks<a class="heading-anchor" href="#configure-automatic-project-checks" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>After importing the repository, connect its events. A <code>push</code> webhook supplies new commits for CPG updates; pull request or merge request events start review preparation. Follow the guide for your Git server:</p>
+<ul>
+<li><a href="../integrations/GITHUB.html#configure-the-webhook">GitHub</a>: repository connection, webhooks and pull request review.</li>
+<li><a href="../integrations/GITLAB.html#configure-the-webhook">GitLab</a>: repository connection, webhooks and merge request review.</li>
+<li><a href="../integrations/GITVERSE.html#configure-the-webhook">GitVerse</a>: webhooks, synchronization and pull request review publication.</li>
+<li><a href="../integrations/SOURCECRAFT.html#configure-the-webhook">SourceCraft</a>: repository coordinates, webhooks and merge request review.</li>
+</ul>
+<p>Choose events for the branches you use and verify a test push: wait for the synchronization job, then compare the CPG commit with the repository commit. For a PR/MR, inspect the review result and its publication in the target request.</p>
+<p><a href="../guides/ARCHITECTURE_CONTROL_ADOPTION.html">Architecture control</a> explains how to describe components and allowed dependencies in YAML, validate rules and apply them when checking changes.</p>
+<p>To run checks regularly, configure <a href="../guides/CPG_AUDIT.html#automatic-audits-on-a-schedule">automatic project audits</a>: choose the cadence, time zone, service account and missed-run policy. Verify the first run and its saved report.</p>
 <h2  id="apply-and-verify-a-change"><span id="apply_and_verify_a_change"></span>Apply and verify a change<a class="heading-anchor" href="#apply-and-verify-a-change" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ol>
 <li>Back up the current <code>.env</code>, <code>config.yaml</code>, and project declaration.</li>
@@ -413,7 +433,7 @@ Check the import result with <code>codegraph_project_context_sync_status</code> 
 </ol>
 <p>For production acceptance, record container health, dependency readiness, access control,
 source provenance, and connectivity to the customer&rsquo;s systems after the change.</p>
-<h2  id="troubleshooting-boundaries"><span id="troubleshooting_boundaries"></span>Troubleshooting boundaries<a class="heading-anchor" href="#troubleshooting-boundaries" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<h2 id="troubleshooting">Troubleshooting<a class="heading-anchor" href="#troubleshooting" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>Startup rejects the JWT secret: generate a new 64+ character value and update the protected
   <code>.env</code> file.</li>
@@ -454,8 +474,9 @@ source provenance, and connectivity to the customer&rsquo;s systems after the ch
 <li data-doc-toc-level="3" data-doc-parent="non-secret-application-settings" hidden><a href="#project-audit-scope" class="level-3">Project audit scope</a></li>
 <li data-doc-toc-level="3" data-doc-parent="non-secret-application-settings" hidden><a href="#audit-report-directory" class="level-3">Audit report directory</a></li>
 <li><a href="#optional-openviking-memory" class="level-2">Optional OpenViking memory</a></li>
+<li><a href="#configure-automatic-project-checks" class="level-2">Configure automatic project checks</a></li>
 <li><a href="#apply-and-verify-a-change" class="level-2">Apply and verify a change</a></li>
-<li><a href="#troubleshooting-boundaries" class="level-2">Troubleshooting boundaries</a></li>
+<li><a href="#troubleshooting" class="level-2">Troubleshooting</a></li>
       </ul>
     </aside>
   </div>

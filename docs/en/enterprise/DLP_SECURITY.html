@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Configure DLP checks for model requests and responses. Verify blocking, content masking, and alert delivery against the selected rules.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Operate CodeGraph data-loss prevention — Documentation">
@@ -163,25 +163,19 @@
         <h1>Operate CodeGraph data-loss prevention</h1>
         <p class="doc-lead">Configure DLP checks for model requests and responses. Verify blocking, content masking, and alert delivery against the selected rules.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
         <p>CodeGraph DLP inspects selected content before it is sent to a model provider and after a provider
-response is received. It can block, mask, warn, or record a match. Secure sensitive workflows with
-DLP together with repository access control, provider contracts, network policy, secret management,
-and human review.</p>
+response is received. It can block, mask, warn, or record a match. Administrators
+select categories and actions, check the result with synthetic data, and configure
+alerts for the security team.</p>
 <h2  id="control-boundary"><span id="control_boundary"></span>Control boundary<a class="heading-anchor" href="#control-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The maintained implementation is split across:</p>
-<ul>
-<li><code>src/security/config.py</code> — typed DLP policy and action configuration;</li>
-<li><code>src/security/dlp/scanner.py</code> — request and response scanning;</li>
-<li><code>src/security/dlp/actions.py</code> — action handling;</li>
-<li><code>src/security/dlp/webhook.py</code> — optional alert delivery;</li>
-<li><code>src/security/llm/secure_provider.py</code> — the protected model-provider boundary;</li>
-<li><code>config.yaml</code> under <code>security.dlp</code> — deployment defaults and environment references.</li>
-</ul>
+<p>Configure DLP under <code>security.dlp</code> in <code>config.yaml</code>. These settings control
+request and response checks, sensitive-data categories, actions on a match,
+and alert delivery.</p>
 <p>The API exposes authenticated DLP configuration, policy, and activity operations under the live
 <code>/api/v1/security/dlp</code> surface. Consult the deployed OpenAPI schema for request and
 response fields. Reading configuration requires an active user;
@@ -213,9 +207,10 @@ changing configuration requires administrator access.</p>
 </tr>
 </tbody>
 </table></div>
-<p>The highest applicable action wins when several patterns match. A configured <code>WARN</code> or
-<code>LOG_ONLY</code> policy records the match and allows the configured flow to continue; use the deployment&rsquo;s
-access, network, provider, and review controls to manage egress.</p>
+<p>On a match, CodeGraph selects the highest-priority action from the matching
+categories and <code>pre_request.default_action</code>: <code>BLOCK</code>, <code>MASK</code>, <code>WARN</code>, <code>LOG_ONLY</code>.
+When the selected action is <code>WARN</code> or <code>LOG_ONLY</code>, the system records the match
+and continues processing the original content.</p>
 <p>The table describes request actions. On a response match, <code>ContentScanner.scan_response()</code>
 always produces masked text and returns <code>blocked=False</code>, even when its <code>action</code> field
 contains <code>BLOCK</code>, <code>WARN</code> or <code>LOG_ONLY</code>. Check the actual result and modified text,
@@ -223,8 +218,31 @@ not just the action label.</p>
 <h2  id="configure-policy"><span id="configure_policy"></span>Configure policy<a class="heading-anchor" href="#configure-policy" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>The checked-in configuration has separate <code>pre_request</code> and <code>post_response</code> controls plus category,
 keyword, and webhook settings. The default categories include credentials, PII, and source-code
-signals; the exact pattern set comes from the installed <code>src/security/config.py</code>, not from a frozen
-count in this guide.</p>
+signals. Check the active categories and patterns in your installation settings.</p>
+<h3  id="save-settings-in-the-interface"><span id="save_settings_in_the_interface"></span>Save settings in the interface<a class="heading-anchor" href="#save-settings-in-the-interface" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<ol>
+<li>Sign in as an administrator and open Security → DLP.</li>
+<li>In the DLP section selector, choose Settings. Enable DLP,
+   pre-request checks, and post-response checks.</li>
+<li>Select the default action for each direction. For example, <code>BLOCK</code>
+   before a request stops transmission on a match; response masking follows
+   the behavior described above.</li>
+<li>Select Category. Enable the required categories and select their actions.
+   Account for the shared priority: a category set to <code>WARN</code> still blocks
+   a matching request when the default action is <code>BLOCK</code>.</li>
+<li>Select Save DLP. Return to Settings and check the values after reloading
+   the page. In Status, check whether DLP is enabled at runtime;
+   in Activity, find the configuration-change record.</li>
+<li>Follow the deployment validation steps below: a clean request should pass,
+   and a synthetic match should produce the selected result.</li>
+</ol>
+<p>The interface saves settings through <code>PUT /api/v1/security/dlp/config</code>.
+For automation, supply <code>enabled</code>, <code>pre_request</code>, <code>post_response</code>,
+and <code>categories</code>. Each direction has <code>enabled</code> and <code>default_action</code>;
+each category has <code>enabled</code> and <code>action</code>. Obtain category keys from
+<code>GET /api/v1/security/dlp/config</code>. Repeat that GET after saving and
+compare the stored values. The service writes the <code>security.dlp</code> section,
+reloads the security configuration, and returns the updated state.</p>
 <p>For each deployment, document:</p>
 <ul>
 <li>whether global security and DLP are enabled;</li>
@@ -234,8 +252,8 @@ count in this guide.</p>
 <li>webhook endpoint ownership, secret reference, timeout, retry, and notification actions;</li>
 <li>exception, expiry, review, and rollback process.</li>
 </ul>
-<p>Do not weaken a policy only to make a test prompt succeed. Use a synthetic marker to validate the
-configured branch and remove it after the test.</p>
+<p>Use a synthetic marker to verify the selected action. Record the result and
+remove the marker after the check.</p>
 <h2  id="request-and-response-flow"><span id="request_and_response_flow"></span>Request and response flow<a class="heading-anchor" href="#request-and-response-flow" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Before a protected model call, CodeGraph scans the system and user prompt through the configured
 pre-request policy. <code>BLOCK</code> stops the call; <code>MASK</code> forwards modified content; <code>WARN</code> and <code>LOG_ONLY</code>
@@ -254,10 +272,11 @@ or re-enter the customer boundary. See <a href="LLM_SECURITY.html">LLM security<
 <li>a configured handler reported delivery;</li>
 <li>the downstream webhook or SIEM actually received and indexed it.</li>
 </ol>
-<p>Confirm downstream receipt and indexing with receiver-side evidence when delivery is an
-acceptance criterion. Handler status, retry and buffer state help diagnose delivery; they do not
-alone establish indexing. The local <code>alert_sent</code> flag and HTTP intake status record
-local processing state.</p>
+<p>Find the event in the receiving system and retain the record with its identifier.
+Use handler status, retry counts, and buffer state to diagnose delivery.
+Compare these details with the received record.
+See the <a href="SIEM.html">SIEM integration guide</a> to configure destinations and
+check event export.</p>
 <h2  id="check-the-scanner-locally"><span id="check_the_scanner_locally"></span>Check the scanner locally<a class="heading-anchor" href="#check-the-scanner-locally" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>From the CodeGraph source root with its Python dependencies installed, save this example
 as <code>check_dlp.py</code> and run <code>python check_dlp.py</code>. The policy exists only in memory and
@@ -308,8 +327,8 @@ the API, streaming client or alert delivery.</p>
 pattern, or security-profile changes.</p>
 <h2  id="limits-and-incident-handling"><span id="limits_and_incident_handling"></span>Limits and incident handling<a class="heading-anchor" href="#limits-and-incident-handling" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Pattern matching can miss transformed, fragmented, encoded, domain-specific, or previously unseen
-sensitive data and can also produce false positives. Keep source access, least privilege, provider
-egress restrictions, secret scanning, and human approval as independent controls.</p>
+sensitive data and can also produce false positives. Check matching and clean-content
+examples for each category. Use the results to refine the patterns and repeat the check.</p>
 <p>On a suspected leak, stop the affected workflow, preserve secret-free audit evidence, rotate the
 exposed credential if applicable, identify provider and receiver scope, and follow the customer
 incident process. Policy changes made during recovery must have an owner, reason, review, and expiry.</p>
@@ -338,6 +357,7 @@ incident process. Policy changes made during recovery must have an owner, reason
         <li><a href="#control-boundary" class="level-2" aria-current="location">Control boundary</a></li>
 <li><a href="#actions-and-meaning" class="level-2">Actions and meaning</a></li>
 <li><a href="#configure-policy" class="level-2">Configure policy</a></li>
+<li data-doc-toc-level="3" data-doc-parent="configure-policy" hidden><a href="#save-settings-in-the-interface" class="level-3">Save settings in the interface</a></li>
 <li><a href="#request-and-response-flow" class="level-2">Request and response flow</a></li>
 <li><a href="#alerts-and-siem" class="level-2">Alerts and SIEM</a></li>
 <li><a href="#check-the-scanner-locally" class="level-2">Check the scanner locally</a></li>

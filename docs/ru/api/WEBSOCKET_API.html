@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Актуальные маршруты, граница аутентификации, формат сообщений и восстановление для WebSocket приложения CodeGraph.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="WebSocket API приложения — Документация CodeGraph">
@@ -159,25 +159,34 @@
         <h1>WebSocket API приложения</h1>
         <p class="doc-lead">Актуальные маршруты, граница аутентификации, формат сообщений и восстановление для WebSocket приложения CodeGraph.</p>
 
-        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-10-03">Обновлено: 2026-10-03</time></div>
+        <div class="doc-meta"><span>Справочник API</span><time datetime="2026-10-10">Обновлено: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>Справочник описывает три WebSocket приложения: чат, статусы фоновых задач и уведомления. События обновления дашборда используют отдельную аутентификацию и формат; они описаны в <a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API дашборда</a>.</p>
+        <p>Подключите клиент к WebSocket, чтобы получать фрагменты ответа чата, следить за
+фоновой задачей или показывать уведомления без постоянного опроса API.
+Справочник предназначен для разработчиков интеграций и описывает адреса,
+аутентификацию и форматы сообщений трёх каналов. События обновления дашборда используют отдельную аутентификацию и формат; они описаны в <a href="DASHBOARD_WEBSOCKET_API.html">WebSocket API дашборда</a>.</p>
+<h2 id="podgotovka">Подготовка<a class="heading-anchor" href="#podgotovka" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
+<p>Войдите в приложение и получите действующий токен доступа. Для работы в контексте
+проекта подготовьте его UUID и явное разрешение доступа для этого пользователя
+к проекту. WebSocket проверяет разрешение при передаче <code>X-Project-Id</code>.
+Для подписки на задачу нужен её <code>job_id</code>. Используйте адрес API вашей установки:
+<code>wss</code> для HTTPS и <code>ws</code> для доверенной локальной HTTP-среды.</p>
 <h2  id="granitsa-autentifikatsii"><span id="granitsa_autentifikatsii"></span>Граница аутентификации<a class="heading-anchor" href="#granitsa-autentifikatsii" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Для чата и статусов задач клиент передаёт токен в заголовке HTTP handshake:</p>
+<p>Для чата и статусов задач клиент передаёт токен в HTTP-заголовке при открытии соединения:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>Authorization: Bearer &lt;access-token&gt;
 </code></pre></div>
 
-<p>Передавайте токен предусмотренным для маршрута способом. Если в URL есть параметр <code>token</code>, сервер отклоняет HTTP handshake со статусом 403 до открытия WebSocket. Обработчик использует причину отказа <code>Query token transport is not allowed</code>.</p>
+<p>Передавайте токен предусмотренным для маршрута способом. Если в URL есть непустой параметр <code>token</code>, сервер отклоняет запрос со статусом 403 до открытия WebSocket. Причина отказа — <code>Query token transport is not allowed</code>.</p>
 <p>Для доступа в контексте проекта добавьте его постоянный идентификатор:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code>X-Project-Id: &lt;project-uuid&gt;
 </code></pre></div>
 
-<p>Сервер проверяет текущее состояние пользователя, отзыв токена, доступ к проекту, владение задачей там, где оно требуется, а также квоты соединений и сообщений. Клиент с loopback-адреса может работать без токена только при явно включённом локальном режиме и локальных адресах клиента и запрошенного хоста.</p>
+<p>Сервер проверяет текущее состояние пользователя, отзыв токена, доступ к проекту, владение задачей там, где оно требуется, а также квоты соединений и сообщений. Клиент с loopback-адреса может работать без токена только при явно включённом локальном режиме и локальных адресах клиента и запрошенного хоста.</p>
 <p>Чат и статусы задач подключайте через клиент с поддержкой заголовков или аутентифицированный
-same-origin gateway. Маршрут уведомлений поддерживает браузерный WebSocket: после открытия
+шлюз того же источника (same-origin gateway). Маршрут уведомлений поддерживает браузерный WebSocket: после открытия
 соединения передайте токен первым сообщением в течение 5 секунд:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span><span class="nt">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;access-token&gt;"</span><span class="p">}</span>
 </code></pre></div>
@@ -335,7 +344,7 @@ same-origin gateway. Маршрут уведомлений поддержива�
 </table></div>
 <p>Не каждый тип создаётся на каждом маршруте. Клиент должен игнорировать нерелевантные для текущего процесса известные сообщения и не считать неизвестное сообщение подтверждением успеха.</p>
 <h2  id="zapros-chata"><span id="zapros_chata"></span>Запрос чата<a class="heading-anchor" href="#zapros-chata" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Отправляйте chat.query только в маршрут чата:</p>
+<p>Отправляйте <code>chat.query</code> в маршрут чата:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"chat.query"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -351,17 +360,20 @@ same-origin gateway. Маршрут уведомлений поддержива�
 <p>Значения <code>optional-session</code> и <code>optional-scenario</code> обозначают ваши идентификаторы сессии и сценария. Оба поля необязательны; опустите их, если запрос не задаёт сессию или сценарий явно.</p>
 <p>Обработчик чата отправляет <code>chat.scenario</code> при выборе сценария, <code>chat.chunk</code> для фрагментов ответа и <code>chat.done</code> при завершении. Соберите ответ из фрагментов и сопоставьте их по <code>request_id</code>. При ошибке обработки сервер отправляет <code>error</code> с тем же идентификатором запроса.</p>
 <h2  id="status-zadachi"><span id="status_zadachi"></span>Статус задачи<a class="heading-anchor" href="#status-zadachi" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Подключайтесь к точному маршруту задачи, принадлежащей аутентифицированному пользователю. Сервер передаёт job.started с текущим состоянием, а для завершённой задачи — job.completed или job.failed. HTTP/REST-ответ остаётся постоянным источником; WebSocket — прерываемый канал уведомлений.</p>
+<p>Подключайтесь к маршруту задачи, принадлежащей аутентифицированному пользователю. Сервер передаёт <code>job.started</code> с текущим состоянием, а для завершённой задачи — <code>job.completed</code> или <code>job.failed</code>. Получайте сохранённое состояние через HTTP/REST, а оперативные уведомления — через WebSocket.</p>
 <h2 id="uvedomleniya">Уведомления<a class="heading-anchor" href="#uvedomleniya" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Маршрут уведомлений предназначен преимущественно для получения данных. После аутентификации клиент отправляет <code>ping</code>. Payload уведомления может включать title, message, level и action_url. Перед переходом проверяйте action_url по навигационной политике приложения.</p>
+<p>Маршрут уведомлений предназначен преимущественно для получения данных. После аутентификации клиент отправляет <code>ping</code>. Поле <code>payload</code> уведомления может включать <code>title</code>, <code>message</code>, <code>level</code> и <code>action_url</code>. Перед переходом проверяйте <code>action_url</code> по навигационной политике приложения.</p>
 <h2  id="podklyuchenie-k-uvedomleniyam"><span id="podklyuchenie_k_uvedomleniyam"></span>Подключение к уведомлениям<a class="heading-anchor" href="#podklyuchenie-k-uvedomleniyam" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<p>Сервисный клиент должен уметь передавать пользовательские HTTP-заголовки. Пример использует
+<p>В этом примере сервисный клиент передаёт заголовок <code>X-Project-Id</code>,
+чтобы подписаться в контексте проекта. Пример использует
 Node.js и пакет <code>ws</code>. В каталоге клиентского проекта установите зависимость <code>npm install ws</code>,
 сохраните код в <code>notifications.mjs</code> и запустите <code>node notifications.mjs</code>. Перед запуском
 задайте <code>CODEGRAPH_ACCESS_TOKEN</code>, <code>CODEGRAPH_PROJECT_ID</code> и <code>CODEGRAPH_WS_URL</code> через одобренный
 канал конфигурации. Последняя переменная содержит полный адрес маршрута уведомлений.
 Не передавайте секрет как аргумент командной строки. Клиент отправляет токен первым сообщением, ждёт <code>connected</code>, затем отправляет <code>ping</code>.
-В консоли появится <code>pong</code>. Для остановки клиента нажмите Ctrl+C.</p>
+В консоли появится <code>pong</code>. При закрытии соединения клиент выведет код и причину:
+<code>1008 project_access_denied</code> означает, что нужно проверить разрешение доступа
+к проекту. Для остановки клиента нажмите Ctrl+C.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="k">import</span><span class="w"> </span><span class="nx">WebSocket</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">"ws"</span><span class="p">;</span>
 
 <span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="p">[</span><span class="s2">"CODEGRAPH_ACCESS_TOKEN"</span><span class="p">,</span><span class="w"> </span><span class="s2">"CODEGRAPH_PROJECT_ID"</span><span class="p">,</span><span class="w"> </span><span class="s2">"CODEGRAPH_WS_URL"</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
@@ -391,6 +403,14 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
 <span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">"open"</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nx">socket</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="w"> </span><span class="nx">token</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">CODEGRAPH_ACCESS_TOKEN</span><span class="w"> </span><span class="p">}));</span>
 <span class="p">});</span>
+
+<span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">"close"</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">code</span><span class="p">,</span><span class="w"> </span><span class="nx">reason</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"WebSocket closed:"</span><span class="p">,</span><span class="w"> </span><span class="nx">code</span><span class="p">,</span><span class="w"> </span><span class="nx">reason</span><span class="p">.</span><span class="nx">toString</span><span class="p">());</span>
+<span class="p">});</span>
+
+<span class="nx">socket</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s2">"error"</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s2">"WebSocket connection failed; check the API address and server availability."</span><span class="p">);</span>
+<span class="p">});</span>
 </code></pre></div>
 
 <p>Не записывайте токен и полный Authorization header в логи.</p>
@@ -413,7 +433,7 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
 <tr>
 <td>4001</td>
 <td>Токен отсутствует, недействителен, истёк или отозван</td>
-<td>Получить новый access token и подключиться заново</td>
+<td>Получить новый токен доступа и подключиться заново</td>
 </tr>
 <tr>
 <td>4004</td>
@@ -422,14 +442,8 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
 </tr>
 </tbody>
 </table></div>
-<p>Для временных разрывов используйте ограниченный exponential backoff с jitter. После 4001 обновите токен. Не повторяйте 1008 автоматически, пока причина отказа не устранена.</p>
-<h2  id="ishodnye-kontrakty"><span id="ishodnye_kontrakty"></span>Исходные контракты<a class="heading-anchor" href="#ishodnye-kontrakty" aria-label="Скопировать ссылку на раздел" title="Скопировать ссылку на раздел"></a></h2>
-<ul>
-<li>src/api/websocket/routes.py — маршруты, аутентификация заголовком или первым сообщением, проверки области и закрытие</li>
-<li>src/api/websocket/models.py — envelope, payload-модели и enum сообщений</li>
-<li>src/api/websocket/authorization.py — решения по пользователю, проекту, токену и задаче</li>
-<li>src/api/websocket/rate_limiter.py — квоты соединений и сообщений</li>
-</ul>
+<p>После временного разрыва увеличивайте задержку между повторными подключениями
+до заданного предела и добавляйте случайный разброс. После 4001 обновите токен. Не повторяйте 1008 автоматически, пока причина отказа не устранена.</p>
 <p>WebSocket-маршруты не входят в набор REST-операций OpenAPI.</p>
       </article>
 
@@ -453,7 +467,8 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
     <aside class="doc-toc" id="doc-toc-panel" aria-label="На этой странице">
       <div class="doc-toc-title">На этой странице</div>
       <ul class="doc-toc-list">
-        <li><a href="#granitsa-autentifikatsii" class="level-2" aria-current="location">Граница аутентификации</a></li>
+        <li><a href="#podgotovka" class="level-2" aria-current="location">Подготовка</a></li>
+<li><a href="#granitsa-autentifikatsii" class="level-2">Граница аутентификации</a></li>
 <li><a href="#marshruty" class="level-2">Маршруты</a></li>
 <li><a href="#format-soobscheniya" class="level-2">Формат сообщения</a></li>
 <li><a href="#aktualnye-tipy-soobscheniy" class="level-2">Актуальные типы сообщений</a></li>
@@ -462,7 +477,6 @@ Node.js и пакет <code>ws</code>. В каталоге клиентско�
 <li><a href="#uvedomleniya" class="level-2">Уведомления</a></li>
 <li><a href="#podklyuchenie-k-uvedomleniyam" class="level-2">Подключение к уведомлениям</a></li>
 <li><a href="#kody-zakrytiya-i-vosstanovlenie" class="level-2">Коды закрытия и восстановление</a></li>
-<li><a href="#ishodnye-kontrakty" class="level-2">Исходные контракты</a></li>
       </ul>
     </aside>
   </div>

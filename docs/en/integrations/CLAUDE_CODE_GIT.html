@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
-  <meta name="description" content="Configure repository-local Claude Code and Git hooks. Inspect registered events, handler behavior, project context, and diagnostic output.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="description" content="Set up a Claude Code session hook, see project and CPG context at startup, and review staged or branch changes with the CodeGraph CLI.">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Claude Code and Git hooks — Documentation">
-  <meta property="og:description" content="Configure repository-local Claude Code and Git hooks. Inspect registered events, handler behavior, project context, and diagnostic output.">
+  <meta property="og:description" content="Set up a Claude Code session hook, see project and CPG context at startup, and review staged or branch changes with the CodeGraph CLI.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://codegraph.ru/docs/en/integrations/CLAUDE_CODE_GIT.html">
   <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
@@ -18,7 +18,7 @@
   <meta property="og:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Claude Code and Git hooks — Documentation">
-  <meta name="twitter:description" content="Configure repository-local Claude Code and Git hooks. Inspect registered events, handler behavior, project context, and diagnostic output.">
+  <meta name="twitter:description" content="Set up a Claude Code session hook, see project and CPG context at startup, and review staged or branch changes with the CodeGraph CLI.">
   <meta name="twitter:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
   <meta name="twitter:image:alt" content="CodeGraph — ИИ-платформа управления полным циклом разработки ПО.">
 
@@ -27,7 +27,7 @@
   <link rel="canonical" href="https://codegraph.ru/docs/en/integrations/CLAUDE_CODE_GIT.html">
   <link rel="icon" type="image/svg+xml" href="../../../assets/favicon.svg">
   <link rel="stylesheet" href="../../../css/tailwind.min.css?v=8442b4f455ba">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Claude Code and Git hooks — Documentation","description":"Configure repository-local Claude Code and Git hooks. Inspect registered events, handler behavior, project context, and diagnostic output.","url":"https://codegraph.ru/docs/en/integrations/CLAUDE_CODE_GIT.html","inLanguage":"en"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Claude Code and Git hooks — Documentation","description":"Set up a Claude Code session hook, see project and CPG context at startup, and review staged or branch changes with the CodeGraph CLI.","url":"https://codegraph.ru/docs/en/integrations/CLAUDE_CODE_GIT.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
   <div class="sr-only" aria-live="polite" data-doc-live></div>
@@ -161,128 +161,62 @@
         <span>Claude Code and Git hooks</span>
         </nav>
         <h1>Claude Code and Git hooks</h1>
-        <p class="doc-lead">Configure repository-local Claude Code and Git hooks. Inspect registered events, handler behavior, project context, and diagnostic output.</p>
+        <p class="doc-lead">Set up a Claude Code session hook, see project and CPG context at startup, and review staged or branch changes with the CodeGraph CLI.</p>
 
-        <div class="doc-meta"><span>Integrations</span><time datetime="2026-10-07">Updated: 2026-10-07</time></div>
+        <div class="doc-meta"><span>Integrations</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>This page documents the <code>.claude/hooks</code> pack in the CodeGraph source checkout. It enriches Claude
-Code sessions with CPG context around prompts, edits, commands, commits, and the final response.
-It is a maintainer integration, not the portable customer plugin.</p>
-<p>CodeGraph also contains <code>.codex/hooks</code> for Codex. The two directories have different event
-contracts and are not interchangeable. Customer-facing Codex installation uses the packaged
-plugin; OpenCode uses <code>opencode-codegraph</code>.</p>
-<h2  id="current-registered-hooks"><span id="current_registered_hooks"></span>Current registered hooks<a class="heading-anchor" href="#current-registered-hooks" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p><code>.claude/settings.json</code> is the registration source:</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Current registered hooks"><table data-columns="3"><caption class="sr-only">Current registered hooks</caption>
-<thead>
-<tr>
-<th scope="col">Claude event</th>
-<th scope="col">Script</th>
-<th scope="col">Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>SessionStart</code></td>
-<td><code>session_context.py</code></td>
-<td>Detect the active project and report CPG scope/status</td>
-</tr>
-<tr>
-<td><code>UserPromptSubmit</code></td>
-<td><code>enrich_prompt.py</code></td>
-<td>Add matching symbols and basic graph facts</td>
-</tr>
-<tr>
-<td><code>PreToolUse</code></td>
-<td><code>pre_tool_use.py</code></td>
-<td>Warn before supported Edit/Write operations</td>
-</tr>
-<tr>
-<td><code>PostToolUse</code> on Bash</td>
-<td><code>cli_error_monitor.py</code></td>
-<td>Explain recognized CLI failures</td>
-</tr>
-<tr>
-<td><code>PostToolUse</code> on Bash</td>
-<td><code>commit_analysis.py</code></td>
-<td>Analyze a completed Git commit and CPG freshness</td>
-</tr>
-<tr>
-<td><code>Stop</code></td>
-<td><code>post_analysis.py</code></td>
-<td>Add final quality warnings for mentioned files</td>
-</tr>
-</tbody>
-</table></div>
-<p>The hooks return context and warnings. Git protection, CI, review, and release gates provide the
-corresponding controls; an advisory warning records a condition for that workflow.</p>
-<h2  id="installation-boundary"><span id="installation_boundary"></span>Installation boundary<a class="heading-anchor" href="#installation-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The checked-in settings currently contain an absolute maintainer path. Do not copy it unchanged to
-another workstation. Resolve the checkout path and register each command with the local Python
-runtime, for example:</p>
+        <p>Use this guide to configure a Claude Code <code>SessionStart</code> hook and review staged or branch changes with the CodeGraph CLI. When the hook recognizes the current repository, it shows the project and code property graph (CPG) status at startup.</p>
+<p>This setup is for the CodeGraph source repository. The packaged CodeGraph plugin for Codex and the OpenCode integration have separate setup guides.</p>
+<h2  id="what-appears-at-startup"><span id="what_appears_at_startup"></span>What appears at startup<a class="heading-anchor" href="#what-appears-at-startup" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The hook identifies a project from the session&rsquo;s working directory. For a recognized project, the startup context shows its name, language, domain, and CPG availability. When the configured CPG is available, the context can also show method and file counts and notes about the parsed scope.</p>
+<h2  id="configure-the-startup-hook"><span id="configure_the_startup_hook"></span>Configure the startup hook<a class="heading-anchor" href="#configure-the-startup-hook" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Set the command path to your local CodeGraph repository. This example registers only <code>SessionStart</code>:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"command"</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"python \"&lt;absolute-repository-path&gt;/.claude/hooks/session_context.py\""</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">"timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span>
+<span class="w">  </span><span class="nt">&quot;hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;SessionStart&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;matcher&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;hooks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;command&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;python \&quot;&lt;absolute-repository-path&gt;/.claude/hooks/session_context.py\&quot;&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Keep <code>.claude/settings.json</code> valid JSON. <code>matcher</code> is a string; the current Bash post-tool hooks use
-<code>"Bash"</code>. The <code>timeout</code> field uses seconds, not milliseconds. The checked-in values
-10000 and 60000 do not mean 10 and 60 seconds. Set approved timeouts before use; see the
-<a href="https://code.claude.com/docs/en/hooks">Claude hook contract</a>. Start a new session after changing registrations.</p>
-<h2  id="runtime-behavior"><span id="runtime_behavior"></span>Runtime behavior<a class="heading-anchor" href="#runtime-behavior" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The hooks read structured JSON from stdin and return Claude-compatible JSON on stdout. CPG queries
-go through the GoCPG subprocess boundary in <code>.claude/hooks/_utils.py</code>; hook code must not open the
-project DuckDB directly. Project selection is resolved from the checkout and cached under
-<code>.claude/.cache</code>.</p>
-<p>Metrics are written best-effort to <code>data/hook_metrics.jsonl</code> or the path selected by
-<code>CODEGRAPH_HOOK_METRICS_FILE</code>. Secret-like fields are redacted, but operators should still protect
-the log as diagnostic data.</p>
-<h2  id="verify-before-use"><span id="verify_before_use"></span>Verify before use<a class="heading-anchor" href="#verify-before-use" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Run commands in PowerShell from the CodeGraph source repository root with the project Python
-environment installed. Review requires a registered project and an available CPG.</p>
-<p>In PowerShell, enable UTF-8 for Python and its child processes. The tests send JSON with Russian role names; the same encoding preserves these values over stdin. These settings apply to the current shell session.</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$env:PYTHONUTF8</span> <span class="p">=</span> <span class="s2">"1"</span>
-<span class="nv">$env:PYTHONIOENCODING</span> <span class="p">=</span> <span class="s2">"utf-8"</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">json</span><span class="p">.</span><span class="n">tool</span> <span class="p">.</span><span class="n">claude</span><span class="p">/</span><span class="n">settings</span><span class="p">.</span><span class="n">json</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">pytest</span> <span class="n">tests</span><span class="p">/</span><span class="n">unit</span><span class="p">/</span><span class="n">hooks</span> <span class="n">-q</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">review</span> <span class="p">-</span><span class="n">-staged</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<p>Replace <code>&lt;absolute-repository-path&gt;</code> with the full path to your local repository. On Windows, use forward slashes or escape backslashes in the JSON string. Save the object in <code>.claude/settings.json</code>. If that file already contains hooks, add the <code>SessionStart</code> entry and keep the existing settings. Make sure <code>python</code> starts the CodeGraph project environment.</p>
+<p>The <code>matcher</code> value is a string. Claude Code interprets hook <code>timeout</code> values in seconds, so <code>10</code> means ten seconds. See the <a href="https://code.claude.com/docs/en/hooks">Claude Code hooks reference</a> for the settings schema and event inputs.</p>
+<p>Check the JSON and start a new Claude Code session from the repository:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">json</span><span class="p">.</span><span class="n">tool</span> <span class="p">.</span><span class="n">claude</span><span class="p">/</span><span class="n">settings</span><span class="p">.</span><span class="n">json</span>
 </code></pre></div>
 
-<p><code>json.tool</code> checks settings syntax, the tests verify the local hook contracts, and <code>review</code> exercises
-the current review CLI. None proves that Claude Code loaded the file: start a clean session and
-observe one <code>SessionStart</code> result and one bounded edit warning.</p>
-<h2  id="git-and-cpg-expectations"><span id="git_and_cpg_expectations"></span>Git and CPG expectations<a class="heading-anchor" href="#git-and-cpg-expectations" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>The current <code>commit_analysis.py</code> recognizes <code>subcommand: commit</code> or <code>tool: Bash</code> with
-<code>git commit</code> in the command. The current Claude contract sends <code>tool_name</code>; the handler does not
-normalize that field. Registering <code>PostToolUse</code> therefore does not prove that commit analysis
-runs. Event selection also does not check whether the Git command succeeded.</p>
-<p>Once it recognizes an event, the handler reads CPG through GoCPG and checks changed files;
-the current analysis path does not refresh the graph. No output does not prove the absence of
-defects: the event may be unrecognized, the graph unavailable, or the analysis limited.</p>
-<p>Use the canonical review workflow for acceptance decisions:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">review</span> <span class="p">-</span><span class="n">-base-ref</span> <span class="n">origin</span><span class="p">/</span><span class="n">main</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+<p>In the new session, check the startup context for the selected project and CPG status.</p>
+<h2  id="review-changed-files-with-codegraph-cli"><span id="review_changed_files_with_codegraph_cli"></span>Review changed files with CodeGraph CLI<a class="heading-anchor" href="#review-changed-files-with-codegraph-cli" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Run the commands in PowerShell from the CodeGraph source repository root with the project Python environment. Replace <code>&lt;cpg.duckdb&gt;</code> with the path to the CPG for the project under review. Keep the quotation marks when the path contains spaces.</p>
+<p>Before reviewing new changes, update the graph using the <a href="../guides/PROJECT_IMPORT.html">project import guide</a>. Then review staged changes:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">review</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">&quot;&lt;cpg.duckdb&gt;&quot;</span> <span class="p">-</span><span class="n">-staged</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
 </code></pre></div>
 
-<h2  id="troubleshooting-and-removal"><span id="troubleshooting_and_removal"></span>Troubleshooting and removal<a class="heading-anchor" href="#troubleshooting-and-removal" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>To compare the current branch with a base branch, run:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">review</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">&quot;&lt;cpg.duckdb&gt;&quot;</span> <span class="p">-</span><span class="n">-base-ref</span> <span class="n">origin</span><span class="p">/</span><span class="n">main</span> <span class="p">-</span><span class="n">-format</span> <span class="n">json</span>
+</code></pre></div>
+
+<p>Use the <a href="../guides/CODE_REVIEW.html">Code review guide</a> to interpret the report and choose the right review scope.</p>
+<h2  id="remove-the-project-registration"><span id="remove_the_project_registration"></span>Remove the project registration<a class="heading-anchor" href="#remove-the-project-registration" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Remove the <code>SessionStart</code> entry from <code>.claude/settings.json</code> in your local CodeGraph repository. Remove other event entries only if you added them for this integration. Keep settings for other tools separate.</p>
+<h2  id="related-materials"><span id="related_materials"></span>Related materials<a class="heading-anchor" href="#related-materials" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
-<li>No hook output: confirm event registration, absolute path, Python, stdin JSON, and timeout.</li>
-<li>Wrong project: clear the checkout-local <code>.claude/.cache</code> entry and restart the session.</li>
-<li>Stale graph: refresh the project through the supported CodeGraph workflow before relying on CPG
-  findings.</li>
-<li>To remove the integration, delete only the corresponding registrations from the user&rsquo;s Claude
-  settings. Do not remove <code>.codex/hooks</code> or OpenCode configuration as part of that rollback.</li>
-</ul>
-<h2  id="source-of-truth"><span id="source_of_truth"></span>Source of truth<a class="heading-anchor" href="#source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li>Registration: <code>.claude/settings.json</code></li>
-<li>Hook implementation: <code>.claude/hooks</code></li>
-<li>Separate Codex implementation: <code>.codex/hooks</code></li>
-<li>Review workflow: <a href="../guides/CODE_REVIEW.html">Code review</a></li>
+<li><a href="../guides/PROJECT_IMPORT.html">Project import guide</a></li>
+<li><a href="../guides/CODE_REVIEW.html">Code review guide</a></li>
+<li><a href="https://code.claude.com/docs/en/hooks">Claude Code hooks reference</a></li>
 </ul>
       </article>
 
@@ -306,13 +240,11 @@ defects: the event may be unrecognized, the graph unavailable, or the analysis l
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#current-registered-hooks" class="level-2" aria-current="location">Current registered hooks</a></li>
-<li><a href="#installation-boundary" class="level-2">Installation boundary</a></li>
-<li><a href="#runtime-behavior" class="level-2">Runtime behavior</a></li>
-<li><a href="#verify-before-use" class="level-2">Verify before use</a></li>
-<li><a href="#git-and-cpg-expectations" class="level-2">Git and CPG expectations</a></li>
-<li><a href="#troubleshooting-and-removal" class="level-2">Troubleshooting and removal</a></li>
-<li><a href="#source-of-truth" class="level-2">Source of truth</a></li>
+        <li><a href="#what-appears-at-startup" class="level-2" aria-current="location">What appears at startup</a></li>
+<li><a href="#configure-the-startup-hook" class="level-2">Configure the startup hook</a></li>
+<li><a href="#review-changed-files-with-codegraph-cli" class="level-2">Review changed files with CodeGraph CLI</a></li>
+<li><a href="#remove-the-project-registration" class="level-2">Remove the project registration</a></li>
+<li><a href="#related-materials" class="level-2">Related materials</a></li>
       </ul>
     </aside>
   </div>

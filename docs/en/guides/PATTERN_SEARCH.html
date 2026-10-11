@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Run explicit-scope GoCPG pattern searches and scans, then gate any source rewrite through preview, approval, backup, and verification.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Structural pattern search and controlled rewrite — Documentation">
@@ -151,8 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html" class="active" aria-current="page">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,7 +198,7 @@
         <h1>Structural pattern search and controlled rewrite</h1>
         <p class="doc-lead">Run explicit-scope GoCPG pattern searches and scans, then gate any source rewrite through preview, approval, backup, and verification.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-08-24">Updated: 2026-08-24</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
@@ -212,54 +210,77 @@ code shapes and may filter them with CPG facts. Architecture rules first
 classify files and symbols into stable components, then evaluate typed
 dependencies and a separate release-gate contract. Use
 <a href="ARCHITECTURE_CONTROL_ADOPTION.html">Architecture control in CodeGraph</a> for that workflow.</p>
-<section class="doc-summary" aria-labelledby="prerequisites-and-scope"><h2  id="prerequisites-and-scope"><span id="prerequisites_and_scope"></span>Prerequisites and scope<a class="heading-anchor" href="#prerequisites-and-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Prepare the Python environment using the <a href="CLI_GUIDE.html">CLI guide</a>. Run these examples in PowerShell from the CodeGraph repository root with the required GoCPG service available. Replace the quoted path placeholders with the intended CPG and source root. Single quotes preserve <code>$SIZE</code> as an AST-pattern variable rather than a PowerShell variable.</p>
-<p>Every scan, search, list, stats, or fix command requires an explicit <code>--db PATH</code>; the CLI does not borrow a hidden active project. Record the source revision used to build that CPG, the database identity, selected rule directories, rule ID, language, file filters and GoCPG version.</p>
-<p>Built-in rule packs are stored in <code>gocpg/configs/rules/</code>. Choose a language or task directory and pass it with <code>--rules</code> to use that YAML rule set. Retain the directory and pack revision with the results.</p>
-<p>For <code>search</code>, the CLI selects the source directory of the project that owns <code>--db</code>. If the database is not registered with a project, it searches the current directory. Run that command from the source root you want to inspect, with the CodeGraph Python package and GoCPG service configuration available in that environment. <code>search</code> parses the files again, so its results reflect their current contents.</p>
-<p>In gRPC mode, the GoCPG process reads the CPG files and <code>--rules</code> directories. Relative rule paths start from the server working directory. To select a specific pack, pass an absolute directory path available to that process.</p>
+<h2  id="prerequisites-and-scope"><span id="prerequisites_and_scope"></span>Prerequisites and scope<a class="heading-anchor" href="#prerequisites-and-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>The GoCPG CLI must be installed, with <code>gocpg</code> available in <code>PATH</code>. Build instructions in a local source checkout are in <code>gocpg/README.md</code>. Run the examples in PowerShell. <code>gocpg search</code> needs source files; <code>gocpg scan</code> also needs a CPG built from those files. Replace the quoted path placeholders with your paths. Single quotes preserve <code>$SIZE</code> as an AST-pattern variable rather than a PowerShell variable.</p>
 <h2  id="search-and-scan-without-changing-source"><span id="search_and_scan_without_changing_source"></span>Search and scan without changing source<a class="heading-anchor" href="#search-and-scan-without-changing-source" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Run an ad hoc AST-pattern search:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">patterns</span> <span class="n">search</span> <span class="s1">'malloc($SIZE)'</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">c</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span>
+<p>Save this sample as <code>example.c</code> in a separate directory. It contains two calls to <code>malloc</code> and one call to <code>calloc</code>:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdlib.h&gt;</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">example</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">malloc</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span>
+<span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">calloc</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">malloc</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="p">}</span>
 </code></pre></div>
 
-<p>Run a reviewed rule pack and save a SARIF artifact:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">patterns</span> <span class="n">scan</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span> <span class="p">-</span><span class="n">-rules</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">configs</span><span class="p">/</span><span class="n">rules</span><span class="p">/</span><span class="n">c</span> <span class="p">-</span><span class="n">-format</span> <span class="n">sarif</span> <span class="p">-</span><span class="n">-output</span> <span class="n">results</span><span class="p">.</span><span class="n">sarif</span>
+<p>Pass that directory&rsquo;s path as <code>--input</code> and run the AST-pattern search:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">gocpg</span> <span class="n">search</span> <span class="p">-</span><span class="n">-pattern</span> <span class="s1">'malloc($SIZE)'</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">c</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;source-root&gt;"</span> <span class="p">-</span><span class="n">-json</span>
 </code></pre></div>
 
-<p><code>search</code> returns matches using <code>--max-results</code>. In gRPC mode, <code>scan</code> reads the selected CPG, evaluates YAML rules, and returns findings and a summary. These commands preserve source files. Retain findings, diagnostics, rule digests, and the CPG/source revision relationship.</p>
+<p>The JSON should contain <code>match_count: 2</code> and <code>total_files: 1</code>. The <code>matches</code> array contains <code>malloc(100)</code> on line 3 and <code>malloc(n * 2)</code> on line 5. Their <code>bindings.SIZE</code> values are <code>100</code> and <code>n * 2</code>, respectively. The <code>calloc</code> call is excluded.</p>
+<p>For a repeatable check, save this rule as <code>malloc.yaml</code> in a separate rule directory:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docs-malloc</span>
+<span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">"Allocation:</span><span class="nv"> </span><span class="s">$SIZE"</span>
+<span class="nt">rule</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">"malloc($SIZE)"</span>
+</code></pre></div>
+
+<p>Build a CPG of the sample directory. Choose a new database path to preserve existing graphs. Then pass the absolute directory path containing <code>malloc.yaml</code> and save SARIF:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">gocpg</span> <span class="n">parse</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;source-root&gt;"</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;cpg-path&gt;"</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">c</span>
+<span class="n">gocpg</span> <span class="n">scan</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span> <span class="p">-</span><span class="n">-rules</span> <span class="s2">"&lt;absolute-rule-directory&gt;"</span> <span class="p">-</span><span class="n">-format</span> <span class="n">sarif</span> <span class="p">|</span> <span class="nb">Set-Content</span> <span class="n">-Encoding</span> <span class="n">utf8</span> <span class="n">results</span><span class="p">.</span><span class="n">sarif</span>
+</code></pre></div>
+
+<p>The <code>results.sarif</code> file should contain version <code>2.1.0</code> and two entries in <code>runs[0].results</code> with rule <code>docs-malloc</code> and locations on lines 3 and 5. These are structural findings: the rule marks <code>malloc</code> calls for review. Follow the locations to inspect how the source handles each call&rsquo;s result.</p>
+<p><code>gocpg search</code> reads current source files and limits matches per file with <code>--limit</code>. <code>gocpg scan</code> reads the selected CPG and evaluates YAML rules. These commands preserve source files. Retain findings, diagnostics, the rule digest, and the CPG/source revision relationship.</p>
 <h2  id="preview-a-rewrite-first"><span id="preview_a_rewrite_first"></span>Preview a rewrite first<a class="heading-anchor" href="#preview-a-rewrite-first" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p><code>patterns fix</code> is a mutating command unless <code>--dry-run</code> is supplied. Always begin with the same database, source root, rule directory, rule ID and file scope you intend to approve:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">patterns</span> <span class="n">fix</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span> <span class="p">-</span><span class="n">-rules</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">configs</span><span class="p">/</span><span class="n">rules</span><span class="p">/</span><span class="n">autofix</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;source-root&gt;"</span> <span class="p">-</span><span class="n">-dry-run</span>
+<p>Copy the sample example.c into a separate directory and build its CPG. Save malloc.yaml in a new rule directory:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docs-malloc-rewrite</span>
+<span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c</span>
+<span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">info</span>
+<span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">"Review</span><span class="nv"> </span><span class="s">allocation:</span><span class="nv"> </span><span class="s">$SIZE"</span>
+<span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">autofix</span><span class="p p-Indicator">]</span>
+<span class="nt">rule</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pattern</span><span class="p">:</span><span class="w"> </span><span class="s">"malloc($SIZE)"</span>
+<span class="nt">fix</span><span class="p">:</span><span class="w"> </span><span class="s">"calloc(1,</span><span class="nv"> </span><span class="s">$SIZE)"</span>
 </code></pre></div>
 
-<p>The preview prints affected files, lines, diagnostics and diffs where the backend provides them. The CLI also calculates a <code>preview_digest</code> over the reviewed scope. Stop if the source revision moved, a path escapes <code>SOURCE_ROOT</code>, the rule pack changed, or the preview lacks enough detail to assess the rewrite.</p>
-</section><h2  id="approve-apply-and-verify"><span id="approve_apply_and_verify"></span>Approve, apply, and verify<a class="heading-anchor" href="#approve-apply-and-verify" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>After recording the preview and exact scope, rerun the same command without <code>--dry-run</code>:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">patterns</span> <span class="n">fix</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span> <span class="p">-</span><span class="n">-rules</span> <span class="n">gocpg</span><span class="p">/</span><span class="n">configs</span><span class="p">/</span><span class="n">rules</span><span class="p">/</span><span class="n">autofix</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;source-root&gt;"</span>
+<p>This tutorial transformation uses calloc, which allocates memory and fills it with zeros. For your own rule, choose a transformation that matches the intended behavior of your program.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">gocpg</span> <span class="n">scan</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span> <span class="p">-</span><span class="n">-rules</span> <span class="s2">"&lt;absolute-rewrite-rule-directory&gt;"</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;rewrite-source-root&gt;"</span> <span class="p">-</span><span class="n">-fix</span> <span class="p">-</span><span class="n">-dry-run</span>
 </code></pre></div>
 
-<p>The CLI requests authorization through <code>ApprovalEngine</code>; when that route is unavailable in an interactive terminal, it falls back to an explicit prompt. Rejection, EOF, or an approval error must not be converted into implicit consent.</p>
-<p>Backups are enabled by default and use <code>.bak</code> files where the GoCPG rewrite backend supports them. <code>--no-backup</code> deliberately weakens recovery and should be used only under separately accepted version-control and rollback evidence. A successful command requires every returned rewrite to report <code>fix_applied</code>; unconfirmed results fail closed.</p>
-<p>After application, inspect the version-control diff, run focused tests and static checks, and compare each changed file with the approved preview. A backup stores a copy; transactional rollback uses reviewed version-control state or a verified backup after resolving the exact target paths.</p>
-<h2  id="other-cli-operations"><span id="other_cli_operations"></span>Other CLI operations<a class="heading-anchor" href="#other-cli-operations" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">patterns</span> <span class="n">list</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">patterns</span> <span class="n">stats</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span>
-<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="nb">cli </span><span class="n">patterns</span> <span class="n">generate</span> <span class="s2">"find unchecked return values"</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">c</span> <span class="p">-</span><span class="n">-output</span> <span class="n">rule</span><span class="p">.</span><span class="n">yaml</span>
+<p>The preview shows two replacements: malloc(100) becomes calloc(1, 100), and malloc(n * 2) becomes calloc(1, n * 2). The call to calloc(10, sizeof(int)) stays unchanged. The source file remains unchanged during preview.</p>
+<h2  id="approve-apply-and-verify"><span id="approve_apply_and_verify"></span>Approve, apply, and verify<a class="heading-anchor" href="#approve-apply-and-verify" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Review the diff and approve the changes before running the next command. The native CLI applies <code>--fix</code> immediately; you provide the approval. Use the same source files and rule that you reviewed:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">gocpg</span> <span class="n">scan</span> <span class="p">-</span><span class="n">-db</span> <span class="s2">"&lt;cpg-path&gt;"</span> <span class="p">-</span><span class="n">-rules</span> <span class="s2">"&lt;absolute-rewrite-rule-directory&gt;"</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;rewrite-source-root&gt;"</span> <span class="p">-</span><span class="n">-fix</span>
 </code></pre></div>
 
-<p>Review and test generated rules before use. <code>generate</code> can invoke an LLM and may require configured
-model access; syntax, precision, and rewrite safety come from that review and testing.</p>
-<h2  id="runtime-surface-boundary"><span id="runtime_surface_boundary"></span>Runtime surface boundary<a class="heading-anchor" href="#runtime-surface-boundary" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>Structural search and rewriting are available through the <code>patterns</code> CLI group. <code>list</code> shows stored rules, and <code>stats</code> summarizes findings in the CPG. Use <code>search</code> for an ad hoc search, <code>scan</code> to evaluate YAML rules, and <code>fix</code> to apply approved source changes.</p>
-<h2  id="source-contract"><span id="source_contract"></span>Source contract<a class="heading-anchor" href="#source-contract" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/cli/analysis_commands/patterns_command.py</code> — CLI registration, explicit DB scope, preview, approval, backup and apply confirmation;</li>
-<li><code>src/services/cpg/query_mixins/pattern_queries.py</code> — reads persisted pattern rules, findings and statistics;</li>
-<li><code>src/services/gocpg/core/models.py</code> — current scan request and result models;</li>
-<li><code>gocpg/configs/rules/</code> — maintained checked-in rule packs;</li>
-<li><code>gocpg/pkg/storage/duckdb/schema.go</code> — pattern-result and rule tables.</li>
-</ul>
+<p>Expect two replacements in example.c and an example.c.bak backup containing the original source. Compare the file with the preview and check the result with search:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">gocpg</span> <span class="n">search</span> <span class="p">-</span><span class="n">-pattern</span> <span class="s1">'malloc($SIZE)'</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">c</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;rewrite-source-root&gt;"</span> <span class="p">-</span><span class="n">-json</span>
+<span class="n">gocpg</span> <span class="n">search</span> <span class="p">-</span><span class="n">-pattern</span> <span class="s1">'calloc(1, $SIZE)'</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">c</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;rewrite-source-root&gt;"</span> <span class="p">-</span><span class="n">-json</span>
+</code></pre></div>
+
+<p>The first search returns match_count: 0. The second returns match_count: 2: lines 3 and 5, with SIZE values 100 and n * 2. Run the project build checks and tests. If GCC is installed, check the sample syntax:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">gcc</span> <span class="n">-fsyntax-only</span> <span class="s2">"&lt;rewrite-source-root&gt;/example.c"</span>
+</code></pre></div>
+
+<p>After changing the source, build an updated CPG at a new path:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">gocpg</span> <span class="n">parse</span> <span class="p">-</span><span class="n">-input</span> <span class="s2">"&lt;rewrite-source-root&gt;"</span> <span class="p">-</span><span class="n">-output</span> <span class="s2">"&lt;updated-cpg-path&gt;"</span> <span class="p">-</span><span class="n">-lang</span> <span class="n">c</span>
+</code></pre></div>
+
+<p>To restore the sample, use the saved example.c.bak copy. For a project, retain the original revision and review the diff before accepting changes.</p>
+<h2  id="choose-a-command"><span id="choose_a_command"></span>Choose a command<a class="heading-anchor" href="#choose-a-command" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>Use <code>gocpg search --json</code> for an ad hoc search and <code>gocpg scan</code> for repeatable checks with YAML rules. Add <code>--fix --dry-run</code> to preview replacements, then apply the reviewed rule with <code>--fix</code>. For Python CLI rule-catalog operations, see the <a href="CLI_GUIDE.html">command-line guide</a>.</p>
 <h2  id="related-guides"><span id="related_guides"></span>Related guides<a class="heading-anchor" href="#related-guides" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li><a href="scenarios/02-security-audit-autofix.html">Security autofix</a></li>
@@ -273,9 +294,9 @@ model access; syntax, precision, and rewrite safety come from that review and te
       </div>
       <nav class="doc-page-nav">
 
-      <a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html" class="doc-page-nav-prev">
+      <a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html" class="doc-page-nav-prev">
         <span class="doc-page-nav-label">Previous</span>
-        <span class="doc-page-nav-title">Working with DASHA, CARA, and VERA</span>
+        <span class="doc-page-nav-title">Dashboard user guide</span>
       </a>
 
       <a href="/docs/en/guides/RELEASE_GATE.html" class="doc-page-nav-next">
@@ -292,9 +313,7 @@ model access; syntax, precision, and rewrite safety come from that review and te
 <li><a href="#search-and-scan-without-changing-source" class="level-2">Search and scan without changing source</a></li>
 <li><a href="#preview-a-rewrite-first" class="level-2">Preview a rewrite first</a></li>
 <li><a href="#approve-apply-and-verify" class="level-2">Approve, apply, and verify</a></li>
-<li><a href="#other-cli-operations" class="level-2">Other CLI operations</a></li>
-<li><a href="#runtime-surface-boundary" class="level-2">Runtime surface boundary</a></li>
-<li><a href="#source-contract" class="level-2">Source contract</a></li>
+<li><a href="#choose-a-command" class="level-2">Choose a command</a></li>
 <li><a href="#related-guides" class="level-2">Related guides</a></li>
       </ul>
     </aside>

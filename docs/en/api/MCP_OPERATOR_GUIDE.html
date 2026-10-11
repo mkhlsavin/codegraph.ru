@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="MCP operator guide — Documentation">
@@ -159,7 +159,7 @@
         <h1>MCP operator guide</h1>
         <p class="doc-lead">Practical operation of the current CodeGraph MCP server, profiles, wire contracts, authorization, and recovery.</p>
 
-        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>API Reference</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
@@ -244,6 +244,11 @@ send these headers for the <code>tools/list</code> example:</p>
 </table></div>
 <p>Keep <code>MCP-Method</code> equal to the JSON-RPC body&rsquo;s <code>method</code>. The server returns
 <code>mcp-method header does not match the request body's method</code> when they differ.</p>
+<p>For a tool call, set <code>MCP-Method: tools/call</code> and set <code>MCP-Name</code> to the body&rsquo;s
+<code>params.name</code>. For example, calling <code>codegraph_project_context_status</code> requires
+<code>MCP-Name: codegraph_project_context_status</code>. Inspect the tool result after the
+response: <code>denied</code> with reason <code>mcp_authentication_required</code> requires authentication,
+even when the HTTP response is <code>200</code>.</p>
 <h2  id="authentication-and-project-scope"><span id="authentication_and_project_scope"></span>Authentication and project scope<a class="heading-anchor" href="#authentication-and-project-scope" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Stdio is a trusted local transport. HTTP requires authentication by default and accepts either
 <code>Authorization: Bearer &lt;jwt&gt;</code> or <code>X-API-Key: &lt;api-key&gt;</code>. Send <code>X-Project-ID</code> when a network
@@ -261,6 +266,20 @@ A full or owner-scoped profile defines the catalog available to the operator.</p
 <p>The command starts with the <code>codex</code> profile unless <code>CODEGRAPH_MCP_TOOL_PROFILE</code> is set. Owner
 profiles are the normal route to lane-specific tools. Derive the current tool catalog from the
 selected profile.</p>
+<p>Set the profile in the environment of the process that starts the server. These
+commands explicitly select <code>codex</code>. For an owner connection, replace <code>codex</code> with
+the profile name from that connection&rsquo;s settings.</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">CODEGRAPH_MCP_TOOL_PROFILE</span><span class="o">=</span>codex<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.mcp<span class="w"> </span>--transport<span class="w"> </span>stdio
+</code></pre></div>
+
+<p>In PowerShell, set the variable before starting the server:</p>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$env:CODEGRAPH_MCP_TOOL_PROFILE</span> <span class="p">=</span> <span class="s1">'codex'</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">src</span><span class="p">.</span><span class="n">mcp</span> <span class="p">-</span><span class="n">-transport</span> <span class="n">stdio</span>
+</code></pre></div>
+
+<p>When an IDE starts the server, set this variable in the MCP connection&rsquo;s
+environment settings. Reconnect the client and send <code>tools/list</code> to inspect the
+selected catalog.</p>
 <p>For a source-checkout diagnostic, derive the current set instead of copying a count into docs:</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">python</span> <span class="n">-c</span> <span class="s2">"from src.mcp.surface_catalog import profile_family_tool_names; print(len(profile_family_tool_names('full')))"</span>
 </code></pre></div>

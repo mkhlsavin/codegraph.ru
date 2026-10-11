@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Assign roles and permissions to CodeGraph users. Configure corporate identity mapping and check access through the API, user interface, and MCP.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="RBAC and Authorization — Documentation">
@@ -163,7 +163,7 @@
         <h1>RBAC and Authorization</h1>
         <p class="doc-lead">Assign roles and permissions to CodeGraph users. Configure corporate identity mapping and check access through the API, user interface, and MCP.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
@@ -172,60 +172,18 @@
 machine-account access. User roles, project scope and machine-account permissions are
 separate authorization layers. Start with the role permissions, then check the
 project assignments and machine-account scopes for the request.</p>
-<h2  id="scope-and-source-of-truth"><span id="scope_and_source_of_truth"></span>Scope and Source of Truth<a class="heading-anchor" href="#scope-and-source-of-truth" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<p>This document describes the implementation currently present under <code>src/</code>.</p>
-<p>Canonical code surfaces:</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Scope and Source of Truth"><table data-columns="2"><caption class="sr-only">Scope and Source of Truth</caption>
-<thead>
-<tr>
-<th scope="col">Area</th>
-<th scope="col">Source</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Permission enum and role mapping</td>
-<td><code>src/api/auth/tokens/permissions.py</code></td>
-</tr>
-<tr>
-<td>Request auth context and FastAPI auth dependencies</td>
-<td><code>src/api/auth/providers/middleware.py</code></td>
-</tr>
-<tr>
-<td>JWT creation, validation, and blacklist</td>
-<td><code>src/api/auth/tokens/jwt_handler.py</code></td>
-</tr>
-<tr>
-<td>User API-key helpers</td>
-<td><code>src/api/auth/tokens/api_keys.py</code></td>
-</tr>
-<tr>
-<td>Machine credential catalog and authorization</td>
-<td><code>src/api/auth/machine/machine_access.py</code></td>
-</tr>
-<tr>
-<td>Machine audit, project scope, and optional mTLS binding</td>
-<td><code>src/api/auth/machine/machine_runtime.py</code></td>
-</tr>
-<tr>
-<td>API-key/service-account middleware</td>
-<td><code>src/api/middleware/scope_enforcement.py</code></td>
-</tr>
-<tr>
-<td>Path validation middleware</td>
-<td><code>src/api/middleware/path_validation.py</code></td>
-</tr>
-<tr>
-<td>Local, OAuth, LDAP, API-key, service-account routes</td>
-<td><code>src/api/routers/auth_suite/*</code></td>
-</tr>
-<tr>
-<td>User, API-key, tenant, project-access, and service-account models</td>
-<td><code>src/api/database/models_*.py</code></td>
-</tr>
-</tbody>
-</table></div>
-<p>Compatibility imports are intentionally preserved by <code>src/api/auth/__init__.py</code>, which extends the package path with <code>machine</code>, <code>providers</code>, and <code>tokens</code>. New references should prefer the physical module paths above.</p>
+<h2  id="check-access"><span id="check_access"></span>Check access<a class="heading-anchor" href="#check-access" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>For a user, select a system role from the permission table below, then assign
+its group and accessible projects. For automation, create a service account
+and assign its scopes, interfaces, and project. A scope is a permission string,
+such as <code>query:execute</code>; use its exact value in settings and requests.</p>
+<p>Check two requests: an allowed operation and an operation outside the assigned
+permissions. Compare the user or service account, project, required permission,
+and result in the audit log. This identifies the access layer to adjust:
+the role, project assignment, or machine-account scopes.</p>
+<p>For corporate sign-in, follow the
+<a href="OAUTH_LDAP.html">OAuth/OIDC and LDAP guide</a>. For endpoint URLs and request formats,
+use the <a href="../api/REST_API.html">REST API reference</a>.</p>
 <h2  id="runtime-model"><span id="runtime_model"></span>Runtime Model<a class="heading-anchor" href="#runtime-model" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>CodeGraph uses three related authorization layers:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Runtime Model"><table data-columns="3"><caption class="sr-only">Runtime Model</caption>
@@ -257,30 +215,8 @@ project assignments and machine-account scopes for the request.</p>
 <p>Authentication methods produce either a user identity or a machine principal. Authorization then checks role permissions, raw scopes, interface allowlists, tenant/project restrictions, and middleware-specific security controls.</p>
 <h2  id="user-roles-and-permissions"><span id="user_roles_and_permissions"></span>User Roles and Permissions<a class="heading-anchor" href="#user-roles-and-permissions" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <h3 id="roles">Roles<a class="heading-anchor" href="#roles" aria-label="Copy link to section" title="Copy link to section"></a></h3>
-<p>User roles are defined twice for separate boundaries:</p>
+<p>A system role defines the user&rsquo;s base permissions:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Roles"><table data-columns="3"><caption class="sr-only">Roles</caption>
-<thead>
-<tr>
-<th scope="col">Enum</th>
-<th scope="col">Source</th>
-<th scope="col">Use</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Role</code></td>
-<td><code>src/api/auth/tokens/permissions.py</code></td>
-<td>Auth dependency permission checks</td>
-</tr>
-<tr>
-<td><code>UserRole</code></td>
-<td><code>src/api/database/models_base.py</code></td>
-<td>Persisted user role in the application database</td>
-</tr>
-</tbody>
-</table></div>
-<p>Both currently use the same values:</p>
-<div class="doc-table-scroll doc-table-scroll--code" data-columns="3" tabindex="-1" role="region" aria-label="Roles, table 2"><table data-columns="3"><caption class="sr-only">Roles, table 2</caption>
 <thead>
 <tr>
 <th scope="col">Role</th>
@@ -1163,10 +1099,10 @@ not exercise tokens, HTTP requests or project restrictions.</p>
 </tr>
 </tbody>
 </table></div>
-<p>An absent scope requirement does not establish anonymous route access. Authentication,
-webhook signatures and handler dependencies are separate checks.
-<code>authorize_machine_request()</code> still checks allowed interfaces and service-account
-project or group restrictions when no required scope is found for the path.</p>
+<p>Each route applies its authentication, webhook-signature and handler-dependency checks.
+<code>authorize_machine_request()</code> checks allowed interfaces and service-account project
+or group restrictions for every path. The scope map adds the required permission
+for the prefixes listed above.</p>
 <p>MCP route scope map:</p>
 <div class="doc-table-scroll doc-table-scroll--code" data-columns="2" tabindex="-1" role="region" aria-label="Machine Scope Enforcement, table 2"><table data-columns="2"><caption class="sr-only">Machine Scope Enforcement, table 2</caption>
 <thead>
@@ -1184,10 +1120,10 @@ project or group restrictions when no required scope is found for the path.</p>
 </table></div>
 <p>For MCP only, <code>mcp:access</code> can be satisfied by aliases including <code>query:execute</code>, <code>scenarios:read</code>, <code>scenarios:execute</code>, <code>review:execute</code>, <code>stats:read</code>, <code>history:read</code>, and <code>admin:all</code>.</p>
 <p>Explicit endpoint scope checks can use:</p>
-<p>The following is a fragment for an existing FastAPI application, not a standalone script.
-It assumes <code>Depends</code> imported from <code>fastapi</code> and an existing <code>APIRouter</code> named <code>router</code>.
-Mount the handler and test allowed and denied requests with configured authentication;
-importing the helper alone does not verify route access.</p>
+<p>In your FastAPI application, import <code>Depends</code> from <code>fastapi</code> and create an
+<code>APIRouter</code> named <code>router</code>. Add the handler below and mount the router in the
+application. With authentication configured, send requests from accounts with
+and without the required scope to check both access outcomes.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.api.auth.tokens.scope_enforcement</span><span class="w"> </span><span class="kn">import</span> <span class="n">require_scope</span>
 
 <span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/example"</span><span class="p">)</span>
@@ -1256,6 +1192,35 @@ importing the helper alone does not verify route access.</p>
 </tr>
 </tbody>
 </table></div>
+<h3  id="assign-a-role-and-projects-in-the-interface"><span id="assign_a_role_and_projects_in_the_interface"></span>Assign a role and projects in the interface<a class="heading-anchor" href="#assign-a-role-and-projects-in-the-interface" aria-label="Copy link to section" title="Copy link to section"></a></h3>
+<p>You need administrator access, an existing user, and a group containing projects.
+The interface calls a group a tenant.</p>
+<ol>
+<li>Open Users and select the user&rsquo;s card.</li>
+<li>Fill in Audit tenant and Change reason to record the context of the
+   administrative operation.</li>
+<li>In System role, select a role from the permission table above,
+   save it, and confirm the change.</li>
+<li>On the Access tab, add a tenant and select its role:
+   Viewer, Editor, or Admin.</li>
+<li>Under Project scope, choose Selected projects and select at least one
+   project belonging to that tenant. Choose All projects to grant access
+   to all its projects.</li>
+<li>Review the selected assignments, select Save access,
+   and confirm the save. Reopen the card and compare the stored tenant,
+   role, and projects with your selections.</li>
+<li>Sign in again as that user to obtain a token with the current role.
+   Open an allowed project and perform an operation
+   permitted by the system role. To check the project restriction, use a test
+   user with a single <code>selected</code> assignment: the selected project should open,
+   and another project should return an access denial.</li>
+</ol>
+<p>This screen edits direct user assignments. Check access inherited through
+tenant groups in Tenants. For automation, supply <code>tenant_id</code>, <code>change_reason</code>,
+<code>system_role</code>, and the <code>assignments</code> list in the PUT request. Each assignment
+contains <code>group_id</code>, <code>role</code>, <code>project_scope_mode</code>, and <code>allowed_project_ids</code>.
+The request replaces the assignment list: include every assignment you want
+to retain, then read the result through GET.</p>
 <p>Guardrails:</p>
 <ul>
 <li>A platform admin cannot deactivate their own account.</li>
@@ -1271,7 +1236,7 @@ importing the helper alone does not verify route access.</p>
 <ul>
 <li>Empty strings and NUL bytes are rejected.</li>
 <li>Relative paths are rejected when <code>path_validation_deny_relative</code> is true.</li>
-<li><code>..</code> path components are rejected.</li>
+<li>Path components are normalized before checking the file location.</li>
 <li>Paths are resolved with <code>os.path.realpath()</code>.</li>
 <li>The resolved path must be under an allowed base directory.</li>
 </ul>
@@ -1406,7 +1371,7 @@ The main verification function is <code>verify_webhook_signature()</code>.</p>
 </tr>
 <tr>
 <td><code>security.webhook_max_age_seconds</code></td>
-<td>Replay window for timestamped webhook signatures</td>
+<td>Maximum allowed age of a supplied webhook timestamp</td>
 </tr>
 <tr>
 <td><code>security.auth_rate_limit_*</code></td>
@@ -1510,7 +1475,7 @@ The main verification function is <code>verify_webhook_signature()</code>.</p>
     <aside class="doc-toc" id="doc-toc-panel" aria-label="On this page">
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
-        <li><a href="#scope-and-source-of-truth" class="level-2" aria-current="location">Scope and Source of Truth</a></li>
+        <li><a href="#check-access" class="level-2" aria-current="location">Check access</a></li>
 <li><a href="#runtime-model" class="level-2">Runtime Model</a></li>
 <li><a href="#user-roles-and-permissions" class="level-2">User Roles and Permissions</a></li>
 <li data-doc-toc-level="3" data-doc-parent="user-roles-and-permissions" hidden><a href="#roles" class="level-3">Roles</a></li>
@@ -1529,6 +1494,7 @@ The main verification function is <code>verify_webhook_signature()</code>.</p>
 <li data-doc-toc-level="3" data-doc-parent="authentication-methods" hidden><a href="#yandex-cloud-iam" class="level-3">Yandex Cloud IAM</a></li>
 <li><a href="#machine-scope-enforcement" class="level-2">Machine Scope Enforcement</a></li>
 <li><a href="#tenant-and-project-access" class="level-2">Tenant and Project Access</a></li>
+<li data-doc-toc-level="3" data-doc-parent="tenant-and-project-access" hidden><a href="#assign-a-role-and-projects-in-the-interface" class="level-3">Assign a role and projects in the interface</a></li>
 <li><a href="#path-validation-middleware" class="level-2">Path Validation Middleware</a></li>
 <li><a href="#webhook-authentication" class="level-2">Webhook Authentication</a></li>
 <li><a href="#audit-and-siem-relevant-events" class="level-2">Audit and SIEM-Relevant Events</a></li>

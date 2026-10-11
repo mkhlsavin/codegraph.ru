@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Sign in to a deployed CodeGraph instance, grant project access, import a repository, check its CPG, and connect a local MCP client.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Quick start — Documentation">
@@ -157,7 +157,7 @@
         <h1>Quick start</h1>
         <p class="doc-lead">Sign in to a deployed CodeGraph instance, grant project access, import a repository, check its CPG, and connect a local MCP client.</p>
 
-        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
+        <div class="doc-meta"><span>Getting Started</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
@@ -170,6 +170,7 @@ instance addresses; the API URL does not include <code>/api/v1</code>.</p>
 <p>Sign in at <code>&lt;UI_URL&gt;/dashboard/login</code>; the project catalog is at
 <code>&lt;UI_URL&gt;/dashboard/projects</code>. Check <code>&lt;API_URL&gt;/api/v1/health/ready</code>. The REST schema is at
 <code>&lt;API_URL&gt;/api/docs</code> (Swagger UI) or <code>&lt;API_URL&gt;/api/openapi.json</code> (OpenAPI JSON).</p>
+<h3  id="administrator-create-an-account-and-grant-access"><span id="administrator_create_an_account_and_grant_access"></span>Administrator: create an account and grant access<a class="heading-anchor" href="#administrator-create-an-account-and-grant-access" aria-label="Copy link to section" title="Copy link to section"></a></h3>
 <p>If you need an account, the administrator first obtains a token from <code>POST /api/v1/auth/token</code>
 with <code>username</code> and <code>password</code>, then finds an existing group ID using <code>GET /api/v1/groups</code>.
 With <code>Authorization: Bearer &lt;admin-access-token&gt;</code>, create the user at
@@ -182,8 +183,8 @@ With <code>Authorization: Bearer &lt;admin-access-token&gt;</code>, create the u
 <span class="p">}</span>
 </code></pre></div>
 
-<p><code>tenant_id</code> records the audit context; it does not grant group access. Give the returned
-<code>temporary_password</code> to the user through a secure channel. <code>analyst</code> suits most developers;
+<p><code>tenant_id</code> records the administrative action context in the audit log. Grant project access
+with the separate access request below. Save the returned user <code>id</code> for the <code>{user_id}</code> path parameter. Give the returned <code>temporary_password</code> to the user through a secure channel. <code>analyst</code> suits most developers;
 <code>reviewer</code> has additional review and approval permissions. <code>viewer</code> is read oriented and
 <code>admin</code> administers the instance. After importing a project, use its <code>id</code> from
 <code>GET /api/v1/projects</code> to grant access with
@@ -203,6 +204,7 @@ With <code>Authorization: Bearer &lt;admin-access-token&gt;</code>, create the u
 <p><code>editor</code> is a group role, distinct from the system role. Group roles are <code>viewer</code>, <code>editor</code>,
 and <code>admin</code>. The <code>PUT</code> replaces all assignments: before changing an existing user, read
 <code>GET /api/v1/admin/identity/users/{user_id}/access</code> and retain the required entries.</p>
+<p>After granting access, repeat <code>GET /api/v1/admin/identity/users/{user_id}/access</code> and verify the <code>editor</code> role, <code>selected</code> mode, and selected project ID. Then sign in as the engineer and open the project catalog.</p>
 <h2  id="2-select-or-import-a-project"><span id="2_select_or_import_a_project"></span>2. Select or import a project<a class="heading-anchor" href="#2-select-or-import-a-project" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Open <code>&lt;UI_URL&gt;/dashboard/repositories</code>, select a configured Git provider, and import a repository.
 Then check <code>&lt;UI_URL&gt;/dashboard/projects</code>. If no provider is configured, follow the
@@ -225,8 +227,7 @@ deterministic JSON report without an LLM conclusion:</p>
 <p>Replace all three placeholders with paths inside the API container. The output directory must
 exist and be writable. <code>--skip-persistence</code> prevents report persistence and automatic CPG refresh;
 it still writes the requested JSON file. If the command returns <code>audit_cpg_refresh_required</code>,
-refresh the project through the approved import workflow and retry with its current graph.
-Do not remove the flag merely to bypass the freshness refusal.</p>
+refresh the project through the approved import workflow and retry the same command with its current graph.</p>
 <p>Check the report, source revision, and analysis limitations. See the
 <a href="../guides/CPG_AUDIT.html">CPG audit guide</a> for interpretation. Then choose a task with an
 observable result, for example:</p>
@@ -236,9 +237,9 @@ observable result, for example:</p>
 <li>review a bounded commit range;</li>
 <li>explain a dependency path and cite its source locations.</li>
 </ul>
-<p>Keep the first scope small. Confirm that the response names the selected project, includes source
-evidence, and states any freshness or availability limitation. A professional engineering or
-security decision still requires human review.</p>
+<p>Start with one component or a commit range. Check that the response names the selected project
+and cites its source files. Check the graph&rsquo;s freshness and data availability when interpreting
+the result.</p>
 <h2  id="4-connect-a-client-and-your-project-documentation"><span id="4_connect_a_client_and_your_project_documentation"></span>4. Connect a client and your project documentation<a class="heading-anchor" href="#4-connect-a-client-and-your-project-documentation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Install Codex CLI or an Agent Plugins compatible client on Windows, macOS, or Ubuntu. Get the
 MCP address and client package from your instance administrator. For the published remote
@@ -265,6 +266,17 @@ criteria in a full task under your team&rsquo;s process.</p>
 <p>To see a guided workflow without importing customer documents, open
 <code>/dashboard/onboarding-research</code> and select a demo preset. Demo data explains the interface; use
 the imported project and its current CPG for repository-specific results.</p>
+<h2  id="configure-automatic-project-checks"><span id="configure_automatic_project_checks"></span>Configure automatic project checks<a class="heading-anchor" href="#configure-automatic-project-checks" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<p>After importing the repository, connect its events. A <code>push</code> webhook supplies new commits for CPG updates; pull request or merge request events start review preparation. Follow the guide for your Git server:</p>
+<ul>
+<li><a href="../integrations/GITHUB.html#configure-the-webhook">GitHub</a>: repository connection, webhooks and pull request review.</li>
+<li><a href="../integrations/GITLAB.html#configure-the-webhook">GitLab</a>: repository connection, webhooks and merge request review.</li>
+<li><a href="../integrations/GITVERSE.html#configure-the-webhook">GitVerse</a>: webhooks, synchronization and pull request review publication.</li>
+<li><a href="../integrations/SOURCECRAFT.html#configure-the-webhook">SourceCraft</a>: repository coordinates, webhooks and merge request review.</li>
+</ul>
+<p>Choose events for the branches you use and verify a test push: wait for the synchronization job, then compare the CPG commit with the repository commit. For a PR/MR, inspect the review result and its publication in the target request.</p>
+<p><a href="../guides/ARCHITECTURE_CONTROL_ADOPTION.html">Architecture control</a> explains how to describe components and allowed dependencies in YAML, validate rules and apply them when checking changes.</p>
+<p>To run checks regularly, configure <a href="../guides/CPG_AUDIT.html#automatic-audits-on-a-schedule">automatic project audits</a>: choose the cadence, time zone, service account and missed-run policy. Verify the first run and its saved report.</p>
 <h2  id="if-the-first-run-fails"><span id="if_the_first_run_fails"></span>If the first run fails<a class="heading-anchor" href="#if-the-first-run-fails" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <ul>
 <li>No project is visible: ask the administrator to check tenant and project access.</li>
@@ -297,10 +309,12 @@ the imported project and its current CPG for repository-specific results.</p>
       <div class="doc-toc-title">On this page</div>
       <ul class="doc-toc-list">
         <li><a href="#1-check-that-the-instance-is-ready" class="level-2" aria-current="location">1. Check that the instance is ready</a></li>
+<li data-doc-toc-level="3" data-doc-parent="1-check-that-the-instance-is-ready" hidden><a href="#administrator-create-an-account-and-grant-access" class="level-3">Administrator: create an account and grant access</a></li>
 <li><a href="#2-select-or-import-a-project" class="level-2">2. Select or import a project</a></li>
 <li><a href="#3-run-a-first-task" class="level-2">3. Run a first task</a></li>
 <li><a href="#4-connect-a-client-and-your-project-documentation" class="level-2">4. Connect a client and your project documentation</a></li>
 <li><a href="#5-explore-the-bundled-demo" class="level-2">5. Explore the bundled demo</a></li>
+<li><a href="#configure-automatic-project-checks" class="level-2">Configure automatic project checks</a></li>
 <li><a href="#if-the-first-run-fails" class="level-2">If the first run fails</a></li>
       </ul>
     </aside>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Build a typed scenario request, bind it to an accepted task scope, and handle policy rejection or incomplete execution results.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Typed scenario invocation — Documentation">
@@ -151,8 +151,6 @@
         <li><a href="/docs/en/guides/DASHBOARD_METHODOLOGY.html">Dashboard score methodology</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_OPERATIONS.html">Dashboard operations</a></li>
         <li><a href="/docs/en/guides/DASHBOARD_USER_GUIDE.html">Dashboard user guide</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_OVERVIEW.html">Digital employees for investment and construction control</a></li>
-        <li><a href="/docs/en/guides/INVESTMENT_CONSTRUCTION_EMPLOYEES_USER_GUIDE.html">Working with DASHA, CARA, and VERA</a></li>
         <li><a href="/docs/en/guides/PATTERN_SEARCH.html">Structural pattern search and controlled rewrite</a></li>
         <li><a href="/docs/en/guides/RELEASE_GATE.html">Operational release gate</a></li>
         <li><a href="/docs/en/guides/SCA_SBOM.html">Generate an SBOM and audit dependencies</a></li>
@@ -200,16 +198,21 @@
         <h1>Typed scenario invocation</h1>
         <p class="doc-lead">Build a typed scenario request, bind it to an accepted task scope, and handle policy rejection or incomplete execution results.</p>
 
-        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-04">Updated: 2026-10-04</time></div>
+        <div class="doc-meta"><span>User Guides</span><time datetime="2026-10-11">Updated: 2026-10-11</time></div>
       </header>
 
       <!-- Content -->
       <article class="doc-content">
-        <p>CodeGraph exports one typed Python request surface for role-bound scenario
+        <p>CodeGraph exports a typed Python request contract for role-bound scenario
 execution. Use it for an in-process integration that already participates in a
 governed CodeGraph task. For an agent or remote client, prefer the registered
 MCP or API interface for that client; see the
 <a href="../api/MCP_OPERATOR_GUIDE.html">MCP operator guide</a> for setup.</p>
+<p>Use a typed request when an application repeats an operation, such as preparing
+interface documentation for each accepted task. The application supplies the
+scenario and work scope; CodeGraph checks the selected employee and returns the
+result with execution metadata. This metadata connects the answer to the task
+and helps diagnose a rejected request.</p>
 <h2  id="minimal-request"><span id="minimal_request"></span>Minimal request<a class="heading-anchor" href="#minimal-request" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Run the example from a local CodeGraph repository root with the project dependencies
 installed; see the prerequisites in the <a href="CLI_GUIDE.html">CLI guide</a>.
@@ -219,6 +222,10 @@ for instance settings.
 Replace <code>&lt;project-key&gt;</code>, <code>&lt;namespace&gt;</code> and <code>&lt;task-id&gt;</code> with accepted task values,
 and <code>source://current-contract</code> with a current source reference. Before invocation,
 check the project service settings and selected LLM provider in your instance configuration.</p>
+<p>The documentation scenario needs a current CPG for the selected project. Check
+the graph revision and completion of its update using
+<a href="CPG_AUDIT.html#prepare-the-project">Prepare the project</a>. Then invoke the accepted
+task: the scenario uses this graph to retrieve code context.</p>
 <div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">src.digital_employees.runtime.scenarios</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">RoleBoundScenarioInvocationRequest</span><span class="p">,</span>
     <span class="n">invoke_role_bound_scenario_request</span><span class="p">,</span>
@@ -353,17 +360,6 @@ async event loop&rsquo;s main thread when it can block, and use the orchestratio
 surface appropriate to the deployment when durable remote execution is needed.</p>
 <p>The typed request covers the declared scenario operation. File edits, publication and state
 changes run through the task carrier, lane ownership and approval defined by their own contracts.</p>
-<h2  id="maintained-sources"><span id="maintained_sources"></span>Maintained sources<a class="heading-anchor" href="#maintained-sources" aria-label="Copy link to section" title="Copy link to section"></a></h2>
-<ul>
-<li><code>src/digital_employees/runtime/scenarios/__init__.py</code> defines the exported
-  names.</li>
-<li><code>src/digital_employees/runtime/scenarios/role_bound_scenario_invoker.py</code>
-  defines request validation, routing and the shared result envelope.</li>
-<li><code>src/digital_employees/runtime/scenarios/employee_scenario_invocation.py</code>
-  defines employee/scenario/event policy and invocation evidence.</li>
-</ul>
-<p>When updating the integration, compare exported names and request fields with
-these modules in your installed version.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -392,7 +388,6 @@ these modules in your installed version.</p>
 <li><a href="#result-contract" class="level-2">Result contract</a></li>
 <li><a href="#error-handling" class="level-2">Error handling</a></li>
 <li><a href="#concurrency-and-side-effects" class="level-2">Concurrency and side effects</a></li>
-<li><a href="#maintained-sources" class="level-2">Maintained sources</a></li>
       </ul>
     </aside>
   </div>

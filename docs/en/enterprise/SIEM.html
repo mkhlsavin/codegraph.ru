@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Configure Syslog, CEF or LEEF event handlers. Verify dispatch, in-memory buffering, failure recovery and receipt at the downstream SIEM.">
-  <meta name="cg:build-commit" content="9f4246bea003849ba925d65ee46ae4fc2ce8d731">
+  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
   <meta name="cg:css-build" content="8442b4f455ba">
 
   <meta property="og:title" content="Integrate CodeGraph security events with SIEM — Documentation">
@@ -163,7 +163,7 @@
         <h1>Integrate CodeGraph security events with SIEM</h1>
         <p class="doc-lead">Configure Syslog, CEF or LEEF event handlers. Verify dispatch, in-memory buffering, failure recovery and receipt at the downstream SIEM.</p>
 
-        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-03">Updated: 2026-10-03</time></div>
+        <div class="doc-meta"><span>Enterprise</span><time datetime="2026-10-10">Updated: 2026-10-10</time></div>
       </header>
 
       <!-- Content -->
@@ -308,8 +308,8 @@ For UDP, the receiver record confirms receipt. For TCP/TLS, it also shows indexi
 after the network send.</p>
 <h2  id="how-buffering-works"><span id="how_buffering_works"></span>How buffering works<a class="heading-anchor" href="#how-buffering-works" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p><code>dispatch(event)</code> enqueues the event in process memory. A background thread sends
-pending events at <code>flush_interval_seconds</code> intervals. Failed sends are retried
-according to <code>retry_attempts</code> and <code>retry_backoff_seconds</code>.</p>
+pending events at <code>flush_interval_seconds</code> intervals. Failed sends return to the
+queue for the next flush, up to the total number of attempts set by <code>retry_attempts</code>.</p>
 <p>The queue holds <code>max_size</code> events. When full, a new event replaces the oldest one
 and increments <code>dropped</code>. A process restart creates a new queue. Use these properties
 to choose queue capacity and plan updates.</p>
@@ -337,12 +337,12 @@ handler sends the event. <code>dispatch_sync_detailed(event)</code> returns each
 </tr>
 <tr>
 <td><code>failed</code></td>
-<td>Failed send attempts.</td>
+<td>Events whose send attempts are exhausted.</td>
 <td>Check the address, transport and receiver.</td>
 </tr>
 <tr>
 <td><code>retried</code></td>
-<td>Retry attempts.</td>
+<td>Events scheduled for another send attempt.</td>
 <td>Identify the cause of unstable delivery.</td>
 </tr>
 <tr>
@@ -399,13 +399,10 @@ owner, additional monitoring channel and recovery exit condition for the degrada
 queue statistics, SIEM index record and alert settings. Exercise authentication
 and DLP event producers through their user actions:
 <a href="OAUTH_LDAP.html">OAuth/LDAP</a> and <a href="DLP_SECURITY.html">DLP</a>.</p>
-<h2  id="fields-and-implementation"><span id="fields_and_implementation"></span>Fields and implementation<a class="heading-anchor" href="#fields-and-implementation" aria-label="Copy link to section" title="Copy link to section"></a></h2>
+<h2  id="event-fields"><span id="event_fields"></span>Event fields<a class="heading-anchor" href="#event-fields" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>An event contains <code>event_type</code>, <code>timestamp</code>, <code>request_id</code>, <code>message</code> and <code>severity</code>.
 Optional fields describe the user, network, provider, model and DLP action.
 The <code>severity</code> values use the Syslog <code>0–7</code> scale.</p>
-<p>Event types and fields are defined in <code>src/security/siem/base_handler.py</code>. The
-dispatcher is implemented in <code>src/security/siem/dispatcher.py</code>, and the queue in
-<code>src/security/siem/buffer.py</code>. <code>src.security.config</code> loads typed settings from <code>security.siem</code>.</p>
       </article>
 
       <div class="doc-maintenance">
@@ -434,7 +431,7 @@ dispatcher is implemented in <code>src/security/siem/dispatcher.py</code>, and t
 <li><a href="#how-buffering-works" class="level-2">How buffering works</a></li>
 <li><a href="#inspect-the-integration-through-the-api" class="level-2">Inspect the integration through the API</a></li>
 <li><a href="#operate-the-integration" class="level-2">Operate the integration</a></li>
-<li><a href="#fields-and-implementation" class="level-2">Fields and implementation</a></li>
+<li><a href="#event-fields" class="level-2">Event fields</a></li>
       </ul>
     </aside>
   </div>
