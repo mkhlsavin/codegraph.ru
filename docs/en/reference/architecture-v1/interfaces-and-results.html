@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; style-src 'self'; img-src 'self' data: https://mc.yandex.ru; font-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://mc.yandex.ru https://mc.yandex.net; connect-src 'self' https://api.codegraph.ru https://mc.yandex.ru https://mc.yandex.net; form-action 'self'">
   <meta name="description" content="Inspect GoCPG architecture results with CLI and gRPC. Export JSON, SARIF and diagrams, explain findings and diagnose incomplete analysis.">
-  <meta name="cg:build-commit" content="f495a6acf5acfed0dbb42296a7319d51d9afd387">
-  <meta name="cg:css-build" content="8442b4f455ba">
+  <meta name="cg:build-commit" content="c7a6e704c77d78f218601c5a66de77cb26fe8b62">
+  <meta name="cg:css-build" content="6d8e6d99a601">
 
   <meta property="og:title" content="Inspect and export GoCPG architecture results — Documentation">
   <meta property="og:description" content="Inspect GoCPG architecture results with CLI and gRPC. Export JSON, SARIF and diagrams, explain findings and diagnose incomplete analysis.">
@@ -26,7 +26,7 @@
 
   <link rel="canonical" href="https://codegraph.ru/docs/en/reference/architecture-v1/interfaces-and-results.html">
   <link rel="icon" type="image/svg+xml" href="../../../../assets/favicon.svg">
-  <link rel="stylesheet" href="../../../../css/tailwind.min.css?v=8442b4f455ba">
+  <link rel="stylesheet" href="../../../../css/tailwind.min.css?v=6d8e6d99a601">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Inspect and export GoCPG architecture results — Documentation","description":"Inspect GoCPG architecture results with CLI and gRPC. Export JSON, SARIF and diagrams, explain findings and diagnose incomplete analysis.","url":"https://codegraph.ru/docs/en/reference/architecture-v1/interfaces-and-results.html","inLanguage":"en"}</script>
 </head>
 <body class="page-docs" data-doc-layout="article" data-density="expressive">
@@ -242,7 +242,7 @@ must still be accessible to the server when a separate parse or scan request
 needs them. For a local server that exposes reflection, this PowerShell
 command illustrates a typed read; replace the run ID with one returned by a
 completed production check:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">grpcurl</span> <span class="n">-plaintext</span> <span class="n">-d</span> <span class="s1">'{"db":"projects/shop-api/cpg/current.duckdb","run_id":"RUN_ID"}'</span> <span class="p">`</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">grpcurl</span> <span class="n">-plaintext</span> <span class="n">-d</span> <span class="s1">&#39;{&quot;db&quot;:&quot;projects/shop-api/cpg/current.duckdb&quot;,&quot;run_id&quot;:&quot;RUN_ID&quot;}&#39;</span> <span class="p">`</span>
   <span class="n">127</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">0</span><span class="p">.</span><span class="n">1</span><span class="p">:</span><span class="n">50051</span> <span class="n">gocpg</span><span class="p">.</span><span class="n">v1</span><span class="p">.</span><span class="n">QueryService</span><span class="p">/</span><span class="n">DescribeArchitectureResults</span>
 </code></pre></div>
 
@@ -296,15 +296,15 @@ TLS and authorization metadata described in the
 </table></div>
 <p>The response contains the selected <code>format</code>, content type <code>mediaType</code>, and file bytes in <code>content</code>. In the JSON response from <code>grpcurl</code>, <code>content</code> is Base64-encoded: decode it before saving the file. A typed gRPC client receives the bytes directly. For JSON, check <code>run.run_id</code> and <code>run.commit_hash</code> in the decoded file; for SARIF, check version <code>2.1.0</code> and the results array. Keep diagrams alongside the canonical JSON to retain the run and finding details.</p>
 <p>For a local server exposing reflection, use PowerShell 7 with <code>grpcurl</code> on <code>PATH</code>. Set <code>$RunId</code> from the run artifact, then replace the server address and <code>$Db</code> selector. The database must contain that run. This example saves the file in the current directory:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$GrpcTarget</span> <span class="p">=</span> <span class="s2">"127.0.0.1:50051"</span>
-<span class="nv">$Db</span> <span class="p">=</span> <span class="s2">"projects/shop-api/cpg/current.duckdb"</span>
-<span class="nv">$request</span> <span class="p">=</span> <span class="p">@{</span> <span class="n">db</span> <span class="p">=</span> <span class="nv">$Db</span><span class="p">;</span> <span class="n">run_id</span> <span class="p">=</span> <span class="nv">$RunId</span><span class="p">;</span> <span class="n">format</span> <span class="p">=</span> <span class="s2">"json"</span> <span class="p">}</span> <span class="p">|</span> <span class="nb">ConvertTo-Json</span> <span class="n">-Compress</span>
-<span class="nv">$responseText</span> <span class="p">=</span> <span class="nv">$request</span> <span class="p">|</span> <span class="n">grpcurl</span> <span class="n">-plaintext</span> <span class="n">-d</span> <span class="s1">'@'</span> <span class="nv">$GrpcTarget</span> <span class="n">gocpg</span><span class="p">.</span><span class="n">v1</span><span class="p">.</span><span class="n">QueryService</span><span class="p">/</span><span class="n">ExportArchitectureResults</span>
-<span class="k">if</span> <span class="p">(</span><span class="nv">$LASTEXITCODE</span> <span class="o">-ne</span> <span class="n">0</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">"Architecture export failed"</span> <span class="p">}</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="nv">$GrpcTarget</span> <span class="p">=</span> <span class="s2">&quot;127.0.0.1:50051&quot;</span>
+<span class="nv">$Db</span> <span class="p">=</span> <span class="s2">&quot;projects/shop-api/cpg/current.duckdb&quot;</span>
+<span class="nv">$request</span> <span class="p">=</span> <span class="p">@{</span> <span class="n">db</span> <span class="p">=</span> <span class="nv">$Db</span><span class="p">;</span> <span class="n">run_id</span> <span class="p">=</span> <span class="nv">$RunId</span><span class="p">;</span> <span class="n">format</span> <span class="p">=</span> <span class="s2">&quot;json&quot;</span> <span class="p">}</span> <span class="p">|</span> <span class="nb">ConvertTo-Json</span> <span class="n">-Compress</span>
+<span class="nv">$responseText</span> <span class="p">=</span> <span class="nv">$request</span> <span class="p">|</span> <span class="n">grpcurl</span> <span class="n">-plaintext</span> <span class="n">-d</span> <span class="s1">&#39;@&#39;</span> <span class="nv">$GrpcTarget</span> <span class="n">gocpg</span><span class="p">.</span><span class="n">v1</span><span class="p">.</span><span class="n">QueryService</span><span class="p">/</span><span class="n">ExportArchitectureResults</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$LASTEXITCODE</span> <span class="o">-ne</span> <span class="n">0</span><span class="p">)</span> <span class="p">{</span> <span class="k">throw</span> <span class="s2">&quot;Architecture export failed&quot;</span> <span class="p">}</span>
 <span class="nv">$response</span> <span class="p">=</span> <span class="nv">$responseText</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
 <span class="nv">$bytes</span> <span class="p">=</span> <span class="no">[Convert]</span><span class="p">::</span><span class="n">FromBase64String</span><span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">content</span><span class="p">)</span>
-<span class="no">[IO.File]</span><span class="p">::</span><span class="n">WriteAllBytes</span><span class="p">((</span><span class="nb">Join-Path</span> <span class="nv">$PWD</span> <span class="s2">"architecture-results.json"</span><span class="p">),</span> <span class="nv">$bytes</span><span class="p">)</span>
-<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">format</span> <span class="o">-eq</span> <span class="s2">"json"</span><span class="p">)</span> <span class="p">{</span>
+<span class="no">[IO.File]</span><span class="p">::</span><span class="n">WriteAllBytes</span><span class="p">((</span><span class="nb">Join-Path</span> <span class="nv">$PWD</span> <span class="s2">&quot;architecture-results.json&quot;</span><span class="p">),</span> <span class="nv">$bytes</span><span class="p">)</span>
+<span class="k">if</span> <span class="p">(</span><span class="nv">$response</span><span class="p">.</span><span class="n">format</span> <span class="o">-eq</span> <span class="s2">&quot;json&quot;</span><span class="p">)</span> <span class="p">{</span>
   <span class="nv">$saved</span> <span class="p">=</span> <span class="nb">Get-Content</span> <span class="n">architecture-results</span><span class="p">.</span><span class="n">json</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
   <span class="nv">$saved</span><span class="p">.</span><span class="n">run</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">run_id</span><span class="p">,</span> <span class="n">project_key</span><span class="p">,</span> <span class="n">commit_hash</span>
 <span class="p">}</span>
@@ -452,10 +452,10 @@ missing CPG facts or substitute for a full production run.</p>
 <h2  id="implementation-checks"><span id="implementation_checks"></span>Implementation checks<a class="heading-anchor" href="#implementation-checks" aria-label="Copy link to section" title="Copy link to section"></a></h2>
 <p>Run from the <code>gocpg</code> module root. These tests check CLI, typed results,
 projections and the zero-denominator failure path in the implementation:</p>
-<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">cmd</span><span class="p">/</span><span class="n">gocpg</span> <span class="n">-run</span> <span class="s1">'^TestArchitectureCLICommands$'</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
-<span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">server</span> <span class="n">-run</span> <span class="s1">'^TestQueryServiceArchitectureResultsTypedSurfaces$'</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
-<span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">architecture</span> <span class="n">-run</span> <span class="s1">'^TestCanonicalResultsPersistAndExportDeterministicEvidence$'</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
-<span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">architecture</span> <span class="n">-run</span> <span class="s1">'^TestResolutionCoverageZeroDenominatorIsIncompleteNotOneHundredPercent$'</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
+<div class="highlight"><pre class="code-block" tabindex="0"><span></span><code><span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">cmd</span><span class="p">/</span><span class="n">gocpg</span> <span class="n">-run</span> <span class="s1">&#39;^TestArchitectureCLICommands$&#39;</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
+<span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">server</span> <span class="n">-run</span> <span class="s1">&#39;^TestQueryServiceArchitectureResultsTypedSurfaces$&#39;</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
+<span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">architecture</span> <span class="n">-run</span> <span class="s1">&#39;^TestCanonicalResultsPersistAndExportDeterministicEvidence$&#39;</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
+<span class="n">go</span> <span class="n">test</span> <span class="p">./</span><span class="n">pkg</span><span class="p">/</span><span class="n">architecture</span> <span class="n">-run</span> <span class="s1">&#39;^TestResolutionCoverageZeroDenominatorIsIncompleteNotOneHundredPercent$&#39;</span> <span class="n">-count</span><span class="p">=</span><span class="n">1</span>
 </code></pre></div>
       </article>
 
