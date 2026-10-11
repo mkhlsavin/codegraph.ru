@@ -67,7 +67,7 @@ def test_audited_legacy_redirects_are_complete_and_not_discoverable() -> None:
     verifier_source = verifier_path.read_text(encoding="utf-8")
     assert "_discover_required_doc_redirects" in verifier_source
     redirects = runpy.run_path(str(verifier_path))["REQUIRED_DOC_REDIRECTS"]
-    assert len(redirects) == 74
+    assert redirects == {}
 
     sitemap = (LANDING_ROOT / "sitemap.xml").read_text(encoding="utf-8")
     for route, target in redirects.items():
