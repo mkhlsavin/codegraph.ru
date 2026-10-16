@@ -495,6 +495,25 @@ def test_diagram_viewer_controls_have_dialog_targets() -> None:
             assert viewer.select_one('[role="dialog"]') is not None
 
 
+def test_public_pages_share_the_homepage_release_marker() -> None:
+    """Every commercial route checked by live smoke must identify its release."""
+    import runpy
+
+    verifier = runpy.run_path(str(LANDING_ROOT / "tests" / "verify_live_release.py"))
+    routes = verifier["_routes_from_sitemap"](
+        (LANDING_ROOT / "sitemap.xml").read_bytes()
+    )
+    expected = _soup("index.html").find("meta", attrs={"name": "cg:release"})
+    assert expected is not None and expected.get("content")
+    for route in routes:
+        if route.startswith("docs/"):
+            continue
+        soup = _soup(route)
+        marker = soup.find("meta", attrs={"name": "cg:release"})
+        assert marker is not None, route
+        assert marker.get("content") == expected.get("content"), route
+
+
 def test_homepage_omits_removed_buyer_caveats() -> None:
     """Keep the product-owner copy simplification in source projections."""
     visible = _normalized_text(_soup("index.html").get_text(" ", strip=True)).casefold()
