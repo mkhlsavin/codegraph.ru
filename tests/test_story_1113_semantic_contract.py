@@ -485,6 +485,16 @@ def test_every_explanatory_product_figure_is_inline_svg() -> None:
     assert not errors, "Non-SVG product diagrams remain:\n" + "\n".join(errors)
 
 
+def test_diagram_viewer_controls_have_dialog_targets() -> None:
+    """Every published diagram control must resolve to a usable dialog."""
+    for path in _public_html_files():
+        soup = BeautifulSoup(path.read_text(encoding="utf-8"), "html.parser")
+        for trigger in soup.select("[data-diagram-viewer]"):
+            viewer = soup.find(id=trigger.get("aria-controls", ""))
+            assert viewer is not None, path.relative_to(LANDING_ROOT).as_posix()
+            assert viewer.select_one('[role="dialog"]') is not None
+
+
 def test_homepage_omits_removed_buyer_caveats() -> None:
     """Keep the product-owner copy simplification in source projections."""
     visible = _normalized_text(_soup("index.html").get_text(" ", strip=True)).casefold()
