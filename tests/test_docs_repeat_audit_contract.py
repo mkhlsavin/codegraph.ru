@@ -20,6 +20,13 @@ FORBIDDEN_RU_SEARCH_PHRASES = (
 PRIVATE_REPOSITORY_ORIGIN = "https://github.com/mkhlsavin/codegraph/"
 
 
+def test_release_smoke_documentation_routes_exist() -> None:
+    """Keep release smoke checks on existing canonical documentation routes."""
+    verifier = runpy.run_path(str(LANDING_ROOT / "tests" / "verify_live_release.py"))
+    for route in verifier["DOC_PUBLIC_ROUTES"]:
+        assert (LANDING_ROOT / route).is_file(), route
+
+
 def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> None:
     """Keep the production gate closed when docs or the JS bundle drift."""
     source = (LANDING_ROOT / "tests" / "verify_live_release.py").read_text(
@@ -29,7 +36,7 @@ def test_release_smoke_includes_the_six_documentation_routes_and_js_asset() -> N
         "docs/ru/index.html",
         "docs/en/index.html",
         "docs/ru/enterprise/index.html",
-        "docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html",
+        "docs/ru/gocpg/GOCPG_VS_JOERN_ANALYSIS.html",
         "docs/ru/getting-started/QUICK_START.html",
         "docs/en/api/REST_API.html",
     ):
@@ -137,7 +144,7 @@ def test_docs_shell_and_keyboard_contracts_cover_repeat_audit_findings() -> None
 def test_generated_docs_use_heading_specific_table_labels_and_current_css() -> None:
     """Tables remain distinguishable to assistive technology and use the live CSS hash."""
     page = (
-        LANDING_ROOT / "docs" / "ru" / "enterprise" / "GOCPG_VS_JOERN_ANALYSIS.html"
+        LANDING_ROOT / "docs" / "ru" / "gocpg" / "GOCPG_VS_JOERN_ANALYSIS.html"
     ).read_text(encoding="utf-8")
     css_hash = (
         __import__("hashlib")
@@ -281,10 +288,7 @@ def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_dat
             entries[loc].findtext("sm:priority", namespaces=namespace)
             == expected_priority
         )
-    assert (
-        "https://codegraph.ru/docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html"
-        in entries
-    )
+    assert "https://codegraph.ru/docs/ru/gocpg/GOCPG_VS_JOERN_ANALYSIS.html" in entries
     for route in ("research/tochnost-otvetov-i-skorost-razbora.html",):
         assert f"https://codegraph.ru/{route}" not in entries
     assert "https://codegraph.ru/downloads/digital-role-passport/" in entries
@@ -297,7 +301,7 @@ def test_sitemap_covers_indexable_documentation_pages_with_canonical_release_dat
 def test_generated_docs_mark_documentation_as_the_current_global_section() -> None:
     """The shared shell exposes the current documentation section to all users."""
     page = (
-        LANDING_ROOT / "docs" / "ru" / "enterprise" / "GOCPG_VS_JOERN_ANALYSIS.html"
+        LANDING_ROOT / "docs" / "ru" / "gocpg" / "GOCPG_VS_JOERN_ANALYSIS.html"
     ).read_text(encoding="utf-8")
     assert page.count('data-nav-link aria-current="page"') == 2
 

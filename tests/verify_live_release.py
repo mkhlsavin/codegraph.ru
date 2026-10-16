@@ -29,7 +29,7 @@ DOC_PUBLIC_ROUTES = (
     "docs/ru/index.html",
     "docs/en/index.html",
     "docs/ru/enterprise/index.html",
-    "docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html",
+    "docs/ru/gocpg/GOCPG_VS_JOERN_ANALYSIS.html",
     "docs/ru/getting-started/QUICK_START.html",
     "docs/en/api/REST_API.html",
 )

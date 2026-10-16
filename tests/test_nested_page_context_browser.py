@@ -68,7 +68,7 @@ def test_docs_drawers_remove_closed_panels_from_focus_tree(
     page = browser.new_page(viewport={"width": 1024, "height": 768})
     try:
         page.goto(
-            f"{site_url}/docs/ru/enterprise/GOCPG_VS_JOERN_ANALYSIS.html",
+            f"{site_url}/docs/ru/gocpg/GOCPG_VS_JOERN_ANALYSIS.html",
             wait_until="networkidle",
         )
         page.wait_for_function("document.body.dataset.docEnhanced === 'true'")

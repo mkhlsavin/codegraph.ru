@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoCPG — движок графа кода · CodeGraph</title>
+  <meta name="description" content="GoCPG строит граф кода, выполняет структурный поиск и архитектурные проверки. CLI, gRPC и роль движка внутри платформы CodeGraph.">
+  <link rel="canonical" href="https://codegraph.ru/gocpg.html">
+  <link rel="alternate" hreflang="ru" href="https://codegraph.ru/gocpg.html">
+  <link rel="alternate" hreflang="x-default" href="https://codegraph.ru/gocpg.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/tailwind.min.css?v=3292d1665dc1">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:site_name" content="CodeGraph">
+  <meta property="og:url" content="https://codegraph.ru/gocpg.html">
+  <meta property="og:title" content="GoCPG — движок графа кода · CodeGraph">
+  <meta property="og:description" content="GoCPG строит граф кода, выполняет структурный поиск и архитектурные проверки. CLI, gRPC и роль движка внутри платформы CodeGraph.">
+  <meta property="og:image" content="https://codegraph.ru/assets/og-codegraph-platform-20260722.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+    {"@type":"Question","name":"Чем GoCPG отличается от CodeGraph?","acceptedAnswer":{"@type":"Answer","text":"GoCPG строит и анализирует граф кода. CodeGraph использует результаты в аудите и рабочих процессах, управляет задачами, ответственными и приёмкой изменений."}},
+    {"@type":"Question","name":"Можно ли интегрировать движок отдельно?","acceptedAnswer":{"@type":"Answer","text":"У GoCPG есть собственные CLI и gRPC-сервер. Для интеграции нужна совместимая сборка; доступные команды и ограничения описаны в документации."}},
+    {"@type":"Question","name":"Что означает отсутствие находок?","acceptedAnswer":{"@type":"Answer","text":"Пустой список находок нужно оценивать вместе с областью разбора, выбранными правилами и полнотой анализа. Сам по себе он не подтверждает отсутствие дефектов."}}
+  ]}
+  </script>
+  <meta name="twitter:title" content="GoCPG — движок графа кода · CodeGraph">
+  <meta name="twitter:description" content="GoCPG строит граф кода, выполняет структурный поиск и архитектурные проверки. CLI, gRPC и роль движка внутри платформы CodeGraph.">
+  <meta name="cg:buyer-question" content="Как GoCPG строит граф кода и выполняет проверки?">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "name": "GoCPG — движок графа кода · CodeGraph", "description": "GoCPG строит граф кода, выполняет структурный поиск и архитектурные проверки. CLI, gRPC и роль движка внутри платформы CodeGraph.", "url": "https://codegraph.ru/gocpg.html", "inLanguage": "ru-RU", "dateModified": "2026-10-16", "isPartOf": {"@type": "WebSite", "name": "CodeGraph", "url": "https://codegraph.ru/"}}</script>
+</head>
+<body data-density="expressive">
+  <!-- Header -->
+  <header></header>
+  <main data-buyer-question="Как GoCPG строит граф кода и выполняет проверки?" data-page-id="gocpg" data-page-label="Движок GoCPG" data-page-stage="mechanism" data-buyer-role="architecture-security" data-initiative-task="engine-integration" data-intent="gocpg_engine_review" data-use-case="code_analysis" id="main-content" class="bg-cg-surface text-cg-ink dark:bg-cg-surface-inverse-raised dark:text-cg-inverse cg-page-flow">
+    <section class="relative overflow-hidden bg-cg-canvas-inverse pt-28 pb-16 text-cg-inverse sm:pt-32 sm:pb-20">
+      <div class="absolute inset-0 bg-gradient-to-br from-cg-primary-deep via-cg-canvas-inverse to-cg-surface-inverse-raised" aria-hidden="true"></div>
+      <div class="cg-content-shell relative mx-auto w-full px-4 sm:px-6 lg:px-8">
+        <p class="mb-4 text-sm font-semibold uppercase tracking-wide text-cg-inverse-secondary">Движок анализа кода</p>
+        <h1 class="max-w-5xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">GoCPG: граф кода для проверки изменений</h1>
+        <p class="mt-7 max-w-4xl text-lg leading-8 text-cg-inverse-secondary">GoCPG разбирает исходники, связывает объявления и вызовы, строит потоки управления и данных. По этому графу можно искать шаблоны и проверять архитектурные зависимости.</p>
+        <div class="mt-9 flex flex-col gap-3 sm:flex-row">
+          <a href="docs/ru/gocpg/OVERVIEW.html" class="cg-button cg-button-secondary cg-button-lg">Документация GoCPG</a>
+          <a href="https://codegraph.tech" class="cg-button cg-button-dark-outline cg-button-lg">Rabotnik + GoCPG</a>
+        </div>
+      </div>
+    </section>
+    <section id="pipeline" class="py-16 sm:py-20">
+      <div class="cg-content-shell mx-auto w-full px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-7 max-w-4xl text-2xl font-semibold tracking-tight sm:text-3xl">От репозитория к результату</h2>
+        <p class="max-w-4xl text-lg leading-8">Граф свойств кода (CPG) хранит структуру программы и связи между её элементами вместе с координатами исходников. Каждый следующий этап использует данные предыдущего.</p>
+        <figure data-product-diagram="gocpg-pipeline" class="grid gap-4 rounded-cg-panel border border-cg-border bg-cg-surface p-4 dark:border-cg-border-strong dark:bg-cg-surface-inverse-raised sm:p-6"><div class="overflow-x-auto rounded-cg-panel bg-cg-surface p-3 dark:bg-cg-canvas-inverse/60"><svg id="gocpg-pipeline-svg" role="img" aria-labelledby="gocpg-pipeline-title gocpg-pipeline-description" viewBox="0 0 1200 170" class="cg-svg-canvas hidden h-auto w-full sm:block" xmlns="http://www.w3.org/2000/svg"><title id="gocpg-pipeline-title">Конвейер GoCPG</title><desc id="gocpg-pipeline-description">Исходники проходят языковой адаптер и анализ; граф в DuckDB используется запросами и правилами.</desc><defs><marker id="gocpg-pipeline-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="cg-diagram-marker"/></marker><marker id="gocpg-pipeline-active-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" class="cg-diagram-marker-active"/></marker></defs><g><rect x="10" y="20" width="220" height="130" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="30" y="54" font-size="16" font-weight="600" class="cg-diagram-title">1. Исходники</text><text x="30" y="84" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="30" dy="0">Файлы и область разбора</tspan></text></g><g><rect x="250" y="20" width="220" height="130" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="270" y="54" font-size="16" font-weight="600" class="cg-diagram-title">2. Адаптер языка</text><text x="270" y="84" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="270" dy="0">Объявления, выражения</tspan><tspan x="270" dy="22">и вызовы</tspan></text></g><g><rect x="490" y="20" width="220" height="130" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="510" y="54" font-size="16" font-weight="600" class="cg-diagram-title">3. Проходы анализа</text><text x="510" y="84" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="510" dy="0">Типы, связи,</tspan><tspan x="510" dy="22">потоки данных</tspan></text></g><g><rect x="730" y="20" width="220" height="130" rx="8" class="cg-diagram-node-active" stroke-width="2"/><text x="750" y="54" font-size="16" font-weight="600" class="cg-diagram-title-active">4. CPG в DuckDB</text><text x="750" y="84" font-size="14" font-weight="400" class="cg-diagram-body-active"><tspan x="750" dy="0">Граф с координатами</tspan><tspan x="750" dy="22">исходного кода</tspan></text></g><g><rect x="970" y="20" width="220" height="130" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="990" y="54" font-size="16" font-weight="600" class="cg-diagram-title">5. Проверки</text><text x="990" y="84" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="990" dy="0">Запросы, правила,</tspan><tspan x="990" dy="22">результаты</tspan></text></g><path d="M230 85 L250 85" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/><path d="M470 85 L490 85" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/><path d="M710 85 L730 85" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/><path d="M950 85 L970 85" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/></svg><svg class="h-auto w-full sm:hidden" viewBox="0 0 320 750" role="img" aria-labelledby="gocpg-mobile-title gocpg-mobile-desc" xmlns="http://www.w3.org/2000/svg"><title id="gocpg-mobile-title">Конвейер GoCPG</title><desc id="gocpg-mobile-desc">Исходники, адаптер языка, проходы анализа, DuckDB и проверки.</desc><g><rect x="10" y="10" width="300" height="120" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="30" y="44" font-size="16" font-weight="600" class="cg-diagram-title">1. Исходники</text><text x="30" y="74" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="30" dy="0">Файлы и область разбора</tspan></text></g><g><rect x="10" y="160" width="300" height="120" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="30" y="194" font-size="16" font-weight="600" class="cg-diagram-title">2. Адаптер языка</text><text x="30" y="224" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="30" dy="0">Объявления, выражения</tspan><tspan x="30" dy="22">и вызовы</tspan></text></g><g><rect x="10" y="310" width="300" height="120" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="30" y="344" font-size="16" font-weight="600" class="cg-diagram-title">3. Проходы анализа</text><text x="30" y="374" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="30" dy="0">Типы, связи,</tspan><tspan x="30" dy="22">потоки данных</tspan></text></g><g><rect x="10" y="460" width="300" height="120" rx="8" class="cg-diagram-node-active" stroke-width="2"/><text x="30" y="494" font-size="16" font-weight="600" class="cg-diagram-title-active">4. CPG в DuckDB</text><text x="30" y="524" font-size="14" font-weight="400" class="cg-diagram-body-active"><tspan x="30" dy="0">Граф с координатами</tspan><tspan x="30" dy="22">исходного кода</tspan></text></g><g><rect x="10" y="610" width="300" height="120" rx="8" class="cg-diagram-node" stroke-width="2"/><text x="30" y="644" font-size="16" font-weight="600" class="cg-diagram-title">5. Проверки</text><text x="30" y="674" font-size="14" font-weight="400" class="cg-diagram-body"><tspan x="30" dy="0">Запросы, правила,</tspan><tspan x="30" dy="22">результаты</tspan></text></g><path d="M160 130 L160 160" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/><path d="M160 280 L160 310" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/><path d="M160 430 L160 460" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/><path d="M160 580 L160 610" fill="none" class="cg-diagram-edge" stroke-width="2" marker-end="url(#gocpg-pipeline-arrow)"/></svg></div><figcaption class="text-sm leading-6 text-cg-muted dark:text-cg-inverse-secondary">Состав и точность проходов зависят от языка, профиля и доступных исходников.</figcaption><button type="button" class="cg-button cg-button-outline cg-diagram-viewer-trigger self-start" data-diagram-viewer data-diagram-id="gocpg-pipeline-svg" data-diagram-title="Конвейер GoCPG" data-diagram-description="Исходники проходят языковой адаптер и анализ; граф в DuckDB используется запросами и правилами." aria-controls="diagram-viewer">Открыть схему</button></figure>
+        <p class="mt-6"><a class="font-semibold text-cg-primary" href="cpg.html">Как устроен граф свойств кода →</a></p>
+      </div>
+    </section>
+    <section class="bg-cg-surface-subtle py-16 sm:py-20 dark:bg-cg-surface-inverse">
+      <div class="cg-content-shell mx-auto w-full px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-7 text-2xl font-semibold tracking-tight sm:text-3xl">Что можно проверить</h2>
+        <div class="grid gap-6 md:grid-cols-3">
+          <article class="rounded-cg-card border border-cg-border p-6"><h3 class="text-xl font-semibold">Структурные шаблоны</h3><p class="mt-4 leading-7">Найдите вызовы и конструкции по AST-шаблону. Сохраните повторяемые проверки в YAML-правилах.</p><a class="mt-4 inline-block font-semibold text-cg-primary" href="docs/ru/gocpg/PATTERN_SEARCH.html">Поиск и правила →</a></article>
+          <article class="rounded-cg-card border border-cg-border p-6"><h3 class="text-xl font-semibold">Символы и вызовы</h3><p class="mt-4 leading-7">Получите объявления, вызывающие и вызываемые методы. Учитывайте неразрешённые связи в динамическом коде.</p><a class="mt-4 inline-block font-semibold text-cg-primary" href="docs/ru/gocpg/GRPC_API.html">Интерфейс gRPC →</a></article>
+          <article class="rounded-cg-card border border-cg-border p-6"><h3 class="text-xl font-semibold">Границы компонентов</h3><p class="mt-4 leading-7">Задайте компоненты и правила зависимостей. Проверьте находки, область анализа и полноту результата.</p><a class="mt-4 inline-block font-semibold text-cg-primary" href="docs/ru/gocpg/architecture-v1/model-and-rules.html">Модель архитектуры →</a></article>
+        </div>
+        <p class="mt-8 max-w-4xl leading-7">Статический анализ не выполняет программу. Рефлексия, генерация кода и неполные исходники ограничивают результат. Пустой список находок без проверки полноты не доказывает отсутствие дефектов.</p>
+      </div>
+    </section>
+    <section class="py-16 sm:py-20">
+      <div class="cg-content-shell mx-auto w-full px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-7 text-2xl font-semibold tracking-tight sm:text-3xl">Движок внутри платформы CodeGraph</h2>
+        <div class="grid gap-6 md:grid-cols-2">
+          <article class="rounded-cg-card border border-cg-border p-6"><h3 class="text-xl font-semibold">GoCPG строит и анализирует граф</h3><p class="mt-4 leading-7">Движок разбирает код, обновляет DuckDB, выполняет запросы и правила. Результат содержит находки, координаты и сведения о полноте анализа.</p></article>
+          <article class="rounded-cg-card border border-cg-border p-6"><h3 class="text-xl font-semibold">CodeGraph организует работу</h3><p class="mt-4 leading-7">Платформа использует результаты в аудите и рабочих процессах. Оценки Dashboard, задачи, ответственные и приёмка изменений относятся к CodeGraph.</p></article>
+        </div>
+        <p class="mt-8 max-w-4xl leading-7">CLI подходит для локальных операций и CI. gRPC предоставляет типизированные контракты интеграции. REST и MCP платформы — отдельные интерфейсы CodeGraph.</p>
+        <p class="mt-4"><a class="font-semibold text-cg-primary" href="docs/ru/gocpg/architecture-v1/interfaces-and-results.html">CLI, gRPC и форматы результатов →</a></p>
+      </div>
+    </section>
+    <section class="bg-cg-surface-subtle py-16 sm:py-20 dark:bg-cg-surface-inverse">
+      <div class="cg-content-shell mx-auto w-full px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-7 text-2xl font-semibold tracking-tight sm:text-3xl">Вопросы о GoCPG</h2>
+        <div class="grid gap-6 mb-12">
+          <article><h3 class="text-xl font-semibold">Чем GoCPG отличается от CodeGraph?</h3><p class="mt-3 leading-7">GoCPG строит и анализирует граф кода. CodeGraph использует результаты в аудите и рабочих процессах, управляет задачами, ответственными и приёмкой изменений.</p></article>
+          <article><h3 class="text-xl font-semibold">Можно ли интегрировать движок отдельно?</h3><p class="mt-3 leading-7">У GoCPG есть собственные CLI и gRPC-сервер. Для интеграции нужна совместимая сборка; доступные команды и ограничения описаны в документации.</p></article>
+          <article><h3 class="text-xl font-semibold">Что означает отсутствие находок?</h3><p class="mt-3 leading-7">Пустой список находок нужно оценивать вместе с областью разбора, выбранными правилами и полнотой анализа. Сам по себе он не подтверждает отсутствие дефектов.</p></article>
+        </div>
+        <h2 class="mb-7 text-2xl font-semibold tracking-tight sm:text-3xl">Выберите следующий шаг</h2>
+        <p class="max-w-4xl text-lg leading-8">В документации — устройство движка, правила и интерфейсы. На codegraph.tech — отдельное предложение Rabotnik + GoCPG: агентская платформа для команды и проверка изменений по графу кода.</p>
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <a href="docs/ru/gocpg/OVERVIEW.html" class="cg-button cg-button-primary cg-button-lg">Документация GoCPG</a>
+          <a href="https://codegraph.tech" class="cg-button cg-button-secondary cg-button-lg">Rabotnik + GoCPG</a>
+          <a href="docs/en/gocpg/OVERVIEW.html" class="cg-button cg-button-secondary cg-button-lg" lang="en">Documentation in English</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <!-- Footer -->
+  <footer></footer>
+  <script src="js/main.min.js" defer></script>
+</body>
+</html>
