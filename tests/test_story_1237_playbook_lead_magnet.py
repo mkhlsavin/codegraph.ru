@@ -62,7 +62,7 @@ def test_playbook_page_is_form_first_and_initially_hides_pdf() -> None:
     assert link.has_attr("hidden")
     assert link.get("aria-hidden") == "true"
     assert link.get("tabindex") == "-1"
-    assert link.get("href") == "CODEGRAPH_AI_NATIVE_PDLC_SDLC_PLAYBOOK_RU.pdf"
+    assert link.get("href") == "../codegraph-rabotnik-v2.7.pdf"
     assert "После успешной регистрации заявки появится ссылка на PDF." in soup.get_text(
         " ", strip=True
     )
@@ -283,7 +283,7 @@ def test_downloads_index_routes_to_both_lead_magnets() -> None:
     assert page.select_one("footer[data-shell-footer]") is not None
     assert page.select_one("footer a[href='../downloads/']") is not None
     cards = page.select("a[data-download-card]")
-    assert len(cards) == 5
+    assert len(cards) == 4
     assert {card.get("href") for card in cards} == {
         "ai-native-pdlc-sdlc-playbook/",
         "digital-role-passport/",
