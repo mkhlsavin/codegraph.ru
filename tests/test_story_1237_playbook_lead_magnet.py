@@ -283,10 +283,11 @@ def test_downloads_index_routes_to_both_lead_magnets() -> None:
     assert page.select_one("footer[data-shell-footer]") is not None
     assert page.select_one("footer a[href='../downloads/']") is not None
     cards = page.select("a[data-download-card]")
-    assert len(cards) == 2
+    assert len(cards) == 5
     assert {card.get("href") for card in cards} == {
         "ai-native-pdlc-sdlc-playbook/",
         "digital-role-passport/",
+        "#get-materials",
     }
     assert all(card.select_one("h2") is not None for card in cards)
 
