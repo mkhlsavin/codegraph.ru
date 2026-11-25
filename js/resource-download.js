@@ -101,7 +101,7 @@ function initResourceLeadForm(form) {
     link.setAttribute("aria-hidden", "false");
     link.removeAttribute("tabindex");
     try {
-      sessionStorage.setItem(config.sessionKey, "1");
+      localStorage.setItem("codegraph_resources_unlocked", "1");
     } catch (_error) {
       // The accepted lead remains usable when browser storage is restricted.
     }
@@ -110,7 +110,7 @@ function initResourceLeadForm(form) {
 
   const wasUnlocked = () => {
     try {
-      return sessionStorage.getItem(config.sessionKey) === "1";
+      return localStorage.getItem("codegraph_resources_unlocked") === "1";
     } catch (_error) {
       return false;
     }
@@ -119,7 +119,7 @@ function initResourceLeadForm(form) {
   hideDownload();
   if (wasUnlocked()) {
     revealDownload();
-    status.textContent = "PDF уже доступен в этой сессии браузера.";
+    status.textContent = "Материалы уже доступны в этом браузере.";
   }
 
   form.addEventListener("submit", async (event) => {
